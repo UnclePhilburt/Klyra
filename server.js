@@ -8,12 +8,14 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
     cors: {
-        origin: ["https://klyra.lol", "http://localhost:3000", "http://localhost:5500"],
+        origin: ["https://klyra.lol", "http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500"],
         methods: ["GET", "POST"],
         credentials: true
     },
     pingTimeout: 60000,
-    pingInterval: 25000
+    pingInterval: 25000,
+    maxHttpBufferSize: 1e6, // 1MB max message size
+    transports: ['websocket', 'polling']
 });
 
 app.use(cors());
@@ -23,31 +25,84 @@ const PORT = process.env.PORT || 3000;
 
 // Game constants
 const MAX_PLAYERS_PER_LOBBY = 10;
-const LOBBY_START_DELAY = 3000; // 3 seconds before game starts when lobby is full
+const LOBBY_START_DELAY = 5000; // 5 seconds before game starts
+const RECONNECT_TIMEOUT = 30000; // 30 seconds to reconnect
+const AFK_TIMEOUT = 180000; // 3 minutes AFK kick
+const RATE_LIMIT_INTERVAL = 100; // Min ms between actions
+const MAX_MESSAGE_LENGTH = 200;
 
 // Data structures
-const lobbies = new Map(); // lobbyId -> Lobby object
-const players = new Map(); // socketId -> Player object
-const waitingQueue = []; // Array of player socketIds waiting for a lobby
+const lobbies = new Map();
+const players = new Map();
+const disconnectedPlayers = new Map(); // For reconnection
+const rateLimits = new Map(); // Rate limiting per player
+
+// Performance metrics
+const metrics = {
+    totalGames: 0,
+    totalPlayers: 0,
+    averageGameDuration: 0,
+    peakPlayers: 0
+};
 
 // Player class
 class Player {
     constructor(socketId, username) {
         this.id = socketId;
-        this.username = username || `Player_${Math.floor(Math.random() * 9999)}`;
+        this.username = this.sanitizeUsername(username);
         this.lobbyId = null;
         this.position = { x: 0, y: 0 };
         this.health = 100;
         this.maxHealth = 100;
         this.level = 1;
-        this.class = 'warrior'; // Default class
+        this.experience = 0;
+        this.class = 'warrior';
         this.isAlive = true;
+        this.isReady = false;
         this.inventory = [];
-        this.stats = {
-            strength: 10,
-            defense: 10,
-            speed: 10
+        this.stats = this.getClassStats('warrior');
+        this.kills = 0;
+        this.deaths = 0;
+        this.itemsCollected = 0;
+        this.lastActivity = Date.now();
+        this.isReconnecting = false;
+        this.disconnectedAt = null;
+    }
+
+    sanitizeUsername(username) {
+        if (!username || typeof username !== 'string') {
+            return `Player_${Math.floor(Math.random() * 9999)}`;
+        }
+        // Remove special chars, limit length
+        return username.slice(0, 20).replace(/[^a-zA-Z0-9_-]/g, '') || `Player_${Math.floor(Math.random() * 9999)}`;
+    }
+
+    getClassStats(characterClass) {
+        const classStats = {
+            warrior: { strength: 15, defense: 12, speed: 8, health: 120 },
+            mage: { strength: 8, defense: 6, speed: 10, health: 80 },
+            rogue: { strength: 10, defense: 8, speed: 15, health: 90 },
+            archer: { strength: 12, defense: 8, speed: 12, health: 100 },
+            paladin: { strength: 13, defense: 15, speed: 7, health: 130 },
+            necromancer: { strength: 9, defense: 7, speed: 9, health: 85 }
         };
+
+        const stats = classStats[characterClass] || classStats.warrior;
+        this.maxHealth = stats.health;
+        this.health = stats.health;
+        return {
+            strength: stats.strength,
+            defense: stats.defense,
+            speed: stats.speed
+        };
+    }
+
+    updateActivity() {
+        this.lastActivity = Date.now();
+    }
+
+    isAFK() {
+        return Date.now() - this.lastActivity > AFK_TIMEOUT;
     }
 
     toJSON() {
@@ -58,32 +113,45 @@ class Player {
             health: this.health,
             maxHealth: this.maxHealth,
             level: this.level,
+            experience: this.experience,
             class: this.class,
             isAlive: this.isAlive,
-            stats: this.stats
+            isReady: this.isReady,
+            stats: this.stats,
+            kills: this.kills,
+            itemsCollected: this.itemsCollected
         };
     }
 }
 
 // Lobby class
 class Lobby {
-    constructor() {
+    constructor(difficulty = 'normal') {
         this.id = uuidv4();
-        this.players = new Map(); // socketId -> Player
+        this.players = new Map();
         this.maxPlayers = MAX_PLAYERS_PER_LOBBY;
         this.status = 'waiting'; // waiting, starting, active, finished
+        this.difficulty = difficulty;
         this.gameState = {
             floor: 1,
             enemies: [],
             items: [],
-            dungeon: null
+            dungeon: null,
+            startTime: null,
+            endTime: null
         };
         this.createdAt = Date.now();
+        this.readyPlayers = new Set();
+        this.votes = new Map(); // For voting systems
     }
 
     addPlayer(player) {
         if (this.players.size >= this.maxPlayers) {
-            return false;
+            return { success: false, error: 'Lobby is full' };
+        }
+
+        if (this.status !== 'waiting') {
+            return { success: false, error: 'Game already started' };
         }
 
         this.players.set(player.id, player);
@@ -93,122 +161,263 @@ class Lobby {
         const spawnPoints = this.getSpawnPoints();
         player.position = spawnPoints[this.players.size - 1];
 
-        console.log(`Player ${player.username} joined lobby ${this.id} (${this.players.size}/${this.maxPlayers})`);
+        console.log(`✅ ${player.username} joined lobby ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
 
-        // Check if lobby is full
-        if (this.players.size === this.maxPlayers && this.status === 'waiting') {
-            this.status = 'starting';
-            setTimeout(() => this.startGame(), LOBBY_START_DELAY);
+        // Check if all players are ready (if using ready system)
+        if (this.players.size >= 4 && this.allPlayersReady()) {
+            this.startGameCountdown();
+        } else if (this.players.size === this.maxPlayers && this.status === 'waiting') {
+            this.startGameCountdown();
         }
 
-        return true;
+        return { success: true };
     }
 
     removePlayer(socketId) {
         const player = this.players.get(socketId);
         if (player) {
             this.players.delete(socketId);
-            console.log(`Player ${player.username} left lobby ${this.id} (${this.players.size}/${this.maxPlayers})`);
+            this.readyPlayers.delete(socketId);
+            console.log(`❌ ${player.username} left lobby ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
 
-            // If lobby is empty, mark for deletion
             if (this.players.size === 0) {
                 this.status = 'finished';
+            } else if (this.status === 'starting') {
+                // Cancel countdown if player left during countdown
+                this.status = 'waiting';
             }
         }
     }
 
+    allPlayersReady() {
+        if (this.players.size < 4) return false;
+        return Array.from(this.players.values()).every(p => p.isReady);
+    }
+
+    startGameCountdown() {
+        if (this.status !== 'waiting') return;
+
+        this.status = 'starting';
+        console.log(`⏰ Lobby ${this.id.slice(0, 8)} starting in ${LOBBY_START_DELAY / 1000}s...`);
+
+        // Notify players of countdown
+        this.broadcast('game:countdown', {
+            seconds: LOBBY_START_DELAY / 1000
+        });
+
+        setTimeout(() => {
+            if (this.status === 'starting') {
+                this.startGame();
+            }
+        }, LOBBY_START_DELAY);
+    }
+
+    startGame() {
+        if (this.status !== 'starting' || this.players.size === 0) {
+            this.status = 'waiting';
+            return;
+        }
+
+        this.status = 'active';
+        this.gameState.startTime = Date.now();
+        this.generateDungeon();
+
+        metrics.totalGames++;
+
+        console.log(`🎮 Lobby ${this.id.slice(0, 8)} started with ${this.players.size} players`);
+
+        this.broadcast('game:start', {
+            lobbyId: this.id,
+            players: Array.from(this.players.values()).map(p => p.toJSON()),
+            gameState: this.gameState,
+            difficulty: this.difficulty
+        });
+    }
+
+    generateDungeon() {
+        const size = this.getDungeonSize();
+
+        this.gameState.dungeon = {
+            width: size.width,
+            height: size.height,
+            tiles: this.generateDungeonTiles(size.width, size.height),
+            rooms: this.generateRooms(size.width, size.height),
+            seed: Math.random().toString(36).substring(7)
+        };
+
+        // Spawn enemies based on difficulty
+        const enemyCount = this.getEnemyCount();
+        this.spawnEnemies(enemyCount);
+
+        // Spawn items
+        const itemCount = this.getItemCount();
+        this.spawnItems(itemCount);
+    }
+
+    getDungeonSize() {
+        const sizes = {
+            easy: { width: 40, height: 40 },
+            normal: { width: 50, height: 50 },
+            hard: { width: 60, height: 60 },
+            nightmare: { width: 70, height: 70 }
+        };
+        return sizes[this.difficulty] || sizes.normal;
+    }
+
+    getEnemyCount() {
+        const counts = {
+            easy: 5,
+            normal: 8,
+            hard: 12,
+            nightmare: 15
+        };
+        return Math.floor((counts[this.difficulty] || 8) * (1 + this.gameState.floor * 0.2));
+    }
+
+    getItemCount() {
+        return Math.floor(10 + this.gameState.floor * 2);
+    }
+
+    generateRooms(width, height) {
+        const rooms = [];
+        const roomCount = Math.floor(Math.random() * 5) + 5; // 5-10 rooms
+
+        for (let i = 0; i < roomCount; i++) {
+            const roomWidth = Math.floor(Math.random() * 8) + 5;
+            const roomHeight = Math.floor(Math.random() * 8) + 5;
+            const x = Math.floor(Math.random() * (width - roomWidth - 2)) + 1;
+            const y = Math.floor(Math.random() * (height - roomHeight - 2)) + 1;
+
+            rooms.push({ x, y, width: roomWidth, height: roomHeight });
+        }
+
+        return rooms;
+    }
+
+    generateDungeonTiles(width, height) {
+        // Improved dungeon generation with rooms and corridors
+        const tiles = Array(height).fill(null).map(() => Array(width).fill(1));
+
+        // Create rooms
+        const rooms = this.gameState.dungeon?.rooms || this.generateRooms(width, height);
+
+        rooms.forEach(room => {
+            for (let y = room.y; y < room.y + room.height; y++) {
+                for (let x = room.x; x < room.x + room.width; x++) {
+                    if (y < height && x < width) {
+                        tiles[y][x] = 0; // Floor
+                    }
+                }
+            }
+        });
+
+        // Connect rooms with corridors
+        for (let i = 0; i < rooms.length - 1; i++) {
+            const roomA = rooms[i];
+            const roomB = rooms[i + 1];
+
+            const startX = Math.floor(roomA.x + roomA.width / 2);
+            const startY = Math.floor(roomA.y + roomA.height / 2);
+            const endX = Math.floor(roomB.x + roomB.width / 2);
+            const endY = Math.floor(roomB.y + roomB.height / 2);
+
+            // Horizontal corridor
+            for (let x = Math.min(startX, endX); x <= Math.max(startX, endX); x++) {
+                if (startY < height && x < width) {
+                    tiles[startY][x] = 0;
+                }
+            }
+
+            // Vertical corridor
+            for (let y = Math.min(startY, endY); y <= Math.max(startY, endY); y++) {
+                if (y < height && endX < width) {
+                    tiles[y][endX] = 0;
+                }
+            }
+        }
+
+        return tiles;
+    }
+
     getSpawnPoints() {
-        // Generate spawn points in a circle
         const points = [];
         const radius = 5;
         for (let i = 0; i < this.maxPlayers; i++) {
             const angle = (2 * Math.PI * i) / this.maxPlayers;
             points.push({
-                x: Math.round(radius * Math.cos(angle)),
-                y: Math.round(radius * Math.sin(angle))
+                x: Math.round(25 + radius * Math.cos(angle)),
+                y: Math.round(25 + radius * Math.sin(angle))
             });
         }
         return points;
     }
 
-    startGame() {
-        if (this.status !== 'starting') return;
-
-        this.status = 'active';
-        this.generateDungeon();
-
-        console.log(`Lobby ${this.id} starting game with ${this.players.size} players`);
-
-        // Notify all players in the lobby
-        this.broadcast('game:start', {
-            lobbyId: this.id,
-            players: Array.from(this.players.values()).map(p => p.toJSON()),
-            gameState: this.gameState
-        });
-    }
-
-    generateDungeon() {
-        // Simple dungeon generation (placeholder - expand this based on your game design)
-        this.gameState.dungeon = {
-            width: 50,
-            height: 50,
-            tiles: this.generateDungeonTiles(50, 50),
-            rooms: []
-        };
-
-        // Spawn some enemies
-        this.spawnEnemies(5);
-
-        // Spawn some items
-        this.spawnItems(10);
-    }
-
-    generateDungeonTiles(width, height) {
-        // Simple tile generation - 0 = floor, 1 = wall
-        const tiles = [];
-        for (let y = 0; y < height; y++) {
-            tiles[y] = [];
-            for (let x = 0; x < width; x++) {
-                // Border walls
-                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-                    tiles[y][x] = 1;
-                } else {
-                    // Random walls (20% chance)
-                    tiles[y][x] = Math.random() < 0.2 ? 1 : 0;
-                }
-            }
-        }
-        return tiles;
-    }
-
     spawnEnemies(count) {
+        const enemyTypes = [
+            { type: 'goblin', health: 50, damage: 10, speed: 5 },
+            { type: 'orc', health: 80, damage: 15, speed: 3 },
+            { type: 'skeleton', health: 40, damage: 12, speed: 6 },
+            { type: 'troll', health: 120, damage: 20, speed: 2 },
+            { type: 'demon', health: 150, damage: 25, speed: 4 }
+        ];
+
         for (let i = 0; i < count; i++) {
+            const enemyTemplate = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+            const difficultyMultiplier = { easy: 0.7, normal: 1, hard: 1.3, nightmare: 1.6 }[this.difficulty] || 1;
+
             this.gameState.enemies.push({
                 id: uuidv4(),
-                type: 'goblin',
-                position: {
-                    x: Math.floor(Math.random() * 40) + 5,
-                    y: Math.floor(Math.random() * 40) + 5
-                },
-                health: 50,
-                maxHealth: 50,
-                damage: 10
+                type: enemyTemplate.type,
+                position: this.getRandomFloorPosition(),
+                health: Math.floor(enemyTemplate.health * difficultyMultiplier * (1 + this.gameState.floor * 0.15)),
+                maxHealth: Math.floor(enemyTemplate.health * difficultyMultiplier * (1 + this.gameState.floor * 0.15)),
+                damage: Math.floor(enemyTemplate.damage * difficultyMultiplier),
+                speed: enemyTemplate.speed,
+                isAlive: true,
+                lastMove: Date.now()
             });
         }
     }
 
     spawnItems(count) {
-        const itemTypes = ['health_potion', 'sword', 'shield', 'armor', 'key'];
+        const itemTypes = [
+            { type: 'health_potion', rarity: 'common', effect: { health: 30 } },
+            { type: 'mana_potion', rarity: 'common', effect: { mana: 50 } },
+            { type: 'strength_potion', rarity: 'uncommon', effect: { strength: 5 } },
+            { type: 'sword', rarity: 'uncommon', effect: { damage: 10 } },
+            { type: 'shield', rarity: 'uncommon', effect: { defense: 8 } },
+            { type: 'armor', rarity: 'rare', effect: { defense: 15 } },
+            { type: 'legendary_sword', rarity: 'legendary', effect: { damage: 25 } },
+            { type: 'key', rarity: 'special', effect: { unlocks: 'door' } },
+            { type: 'treasure', rarity: 'rare', effect: { gold: 100 } }
+        ];
+
         for (let i = 0; i < count; i++) {
+            const item = itemTypes[Math.floor(Math.random() * itemTypes.length)];
             this.gameState.items.push({
                 id: uuidv4(),
-                type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
-                position: {
-                    x: Math.floor(Math.random() * 40) + 5,
-                    y: Math.floor(Math.random() * 40) + 5
-                }
+                type: item.type,
+                rarity: item.rarity,
+                effect: item.effect,
+                position: this.getRandomFloorPosition()
             });
         }
+    }
+
+    getRandomFloorPosition() {
+        if (!this.gameState.dungeon) return { x: 25, y: 25 };
+
+        // Try to find a floor tile
+        for (let attempt = 0; attempt < 100; attempt++) {
+            const x = Math.floor(Math.random() * this.gameState.dungeon.width);
+            const y = Math.floor(Math.random() * this.gameState.dungeon.height);
+
+            if (this.gameState.dungeon.tiles[y]?.[x] === 0) {
+                return { x, y };
+            }
+        }
+
+        return { x: 25, y: 25 }; // Fallback
     }
 
     broadcast(event, data) {
@@ -223,208 +432,381 @@ class Lobby {
             playerCount: this.players.size,
             maxPlayers: this.maxPlayers,
             status: this.status,
+            difficulty: this.difficulty,
             floor: this.gameState.floor
         };
     }
 }
 
-// Matchmaking system
-function findOrCreateLobby() {
-    // Find a lobby that's waiting and not full
+// Rate limiting
+function checkRateLimit(socketId, action) {
+    const key = `${socketId}_${action}`;
+    const now = Date.now();
+    const lastAction = rateLimits.get(key) || 0;
+
+    if (now - lastAction < RATE_LIMIT_INTERVAL) {
+        return false; // Rate limited
+    }
+
+    rateLimits.set(key, now);
+    return true;
+}
+
+// Matchmaking
+function findOrCreateLobby(difficulty = 'normal') {
+    // Find waiting lobby with matching difficulty
     for (const [lobbyId, lobby] of lobbies.entries()) {
-        if (lobby.status === 'waiting' && lobby.players.size < lobby.maxPlayers) {
+        if (lobby.status === 'waiting' &&
+            lobby.players.size < lobby.maxPlayers &&
+            lobby.difficulty === difficulty) {
             return lobby;
         }
     }
 
-    // Create a new lobby if none available
-    const newLobby = new Lobby();
+    // Create new lobby
+    const newLobby = new Lobby(difficulty);
     lobbies.set(newLobby.id, newLobby);
-    console.log(`Created new lobby ${newLobby.id}`);
+    console.log(`🆕 Created lobby ${newLobby.id.slice(0, 8)} (${difficulty})`);
     return newLobby;
+}
+
+// Validation helpers
+function isValidPosition(position) {
+    return position &&
+           typeof position.x === 'number' &&
+           typeof position.y === 'number' &&
+           position.x >= 0 && position.x < 100 &&
+           position.y >= 0 && position.y < 100;
+}
+
+function sanitizeMessage(message) {
+    if (typeof message !== 'string') return '';
+    return message.slice(0, MAX_MESSAGE_LENGTH).trim();
 }
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-    console.log(`Client connected: ${socket.id}`);
+    console.log(`🔌 Client connected: ${socket.id}`);
+
+    metrics.totalPlayers++;
+    if (players.size + 1 > metrics.peakPlayers) {
+        metrics.peakPlayers = players.size + 1;
+    }
 
     // Handle player joining
     socket.on('player:join', (data) => {
-        const { username, characterClass } = data || {};
+        try {
+            const { username, characterClass, difficulty } = data || {};
 
-        // Create player object
-        const player = new Player(socket.id, username);
-        if (characterClass) {
-            player.class = characterClass;
+            // Check if player is reconnecting
+            const disconnectedPlayer = disconnectedPlayers.get(username);
+            let player;
+
+            if (disconnectedPlayer && Date.now() - disconnectedPlayer.disconnectedAt < RECONNECT_TIMEOUT) {
+                // Reconnection
+                player = disconnectedPlayer;
+                player.id = socket.id;
+                player.isReconnecting = false;
+                player.disconnectedAt = null;
+                disconnectedPlayers.delete(username);
+                console.log(`🔄 ${username} reconnected`);
+            } else {
+                // New player
+                player = new Player(socket.id, username);
+                if (characterClass && typeof characterClass === 'string') {
+                    player.class = characterClass;
+                    player.stats = player.getClassStats(characterClass);
+                }
+            }
+
+            players.set(socket.id, player);
+
+            // Find or create lobby
+            const lobby = findOrCreateLobby(difficulty || 'normal');
+            const result = lobby.addPlayer(player);
+
+            if (!result.success) {
+                socket.emit('error', { message: result.error });
+                return;
+            }
+
+            socket.join(lobby.id);
+
+            // Send lobby info
+            socket.emit('lobby:joined', {
+                lobbyId: lobby.id,
+                player: player.toJSON(),
+                players: Array.from(lobby.players.values()).map(p => p.toJSON()),
+                lobbyStatus: lobby.status,
+                playerCount: lobby.players.size,
+                maxPlayers: lobby.maxPlayers,
+                difficulty: lobby.difficulty
+            });
+
+            // Notify others
+            socket.to(lobby.id).emit('player:joined', {
+                player: player.toJSON(),
+                playerCount: lobby.players.size
+            });
+
+        } catch (error) {
+            console.error('Error in player:join:', error);
+            socket.emit('error', { message: 'Failed to join game' });
         }
-        players.set(socket.id, player);
+    });
 
-        // Find or create a lobby
-        const lobby = findOrCreateLobby();
-        lobby.addPlayer(player);
+    // Handle player ready
+    socket.on('player:ready', () => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
 
-        // Send lobby info to player
-        socket.emit('lobby:joined', {
-            lobbyId: lobby.id,
-            player: player.toJSON(),
-            players: Array.from(lobby.players.values()).map(p => p.toJSON()),
-            lobbyStatus: lobby.status,
-            playerCount: lobby.players.size,
-            maxPlayers: lobby.maxPlayers
-        });
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby) return;
 
-        // Notify other players in the lobby
-        socket.to(lobby.id).emit('player:joined', {
-            player: player.toJSON(),
-            playerCount: lobby.players.size
-        });
+            player.isReady = true;
+            player.updateActivity();
+            lobby.readyPlayers.add(socket.id);
 
-        // Join the socket room for this lobby
-        socket.join(lobby.id);
+            lobby.broadcast('player:ready', {
+                playerId: player.id,
+                username: player.username,
+                readyCount: lobby.readyPlayers.size,
+                totalPlayers: lobby.players.size
+            });
+
+            // Start if all ready
+            if (lobby.allPlayersReady() && lobby.status === 'waiting') {
+                lobby.startGameCountdown();
+            }
+        } catch (error) {
+            console.error('Error in player:ready:', error);
+        }
     });
 
     // Handle player movement
     socket.on('player:move', (data) => {
-        const player = players.get(socket.id);
-        if (!player || !player.lobbyId) return;
+        try {
+            if (!checkRateLimit(socket.id, 'move')) return;
 
-        const lobby = lobbies.get(player.lobbyId);
-        if (!lobby || lobby.status !== 'active') return;
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
 
-        // Update player position
-        player.position = data.position;
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby || lobby.status !== 'active') return;
 
-        // Broadcast to other players in the lobby
-        socket.to(lobby.id).emit('player:moved', {
-            playerId: player.id,
-            position: player.position
-        });
+            if (!isValidPosition(data.position)) return;
+
+            player.position = data.position;
+            player.updateActivity();
+
+            socket.to(lobby.id).emit('player:moved', {
+                playerId: player.id,
+                position: player.position
+            });
+        } catch (error) {
+            console.error('Error in player:move:', error);
+        }
     });
 
     // Handle player attack
     socket.on('player:attack', (data) => {
-        const player = players.get(socket.id);
-        if (!player || !player.lobbyId) return;
+        try {
+            if (!checkRateLimit(socket.id, 'attack')) return;
 
-        const lobby = lobbies.get(player.lobbyId);
-        if (!lobby || lobby.status !== 'active') return;
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId || !player.isAlive) return;
 
-        // Broadcast attack to all players
-        lobby.broadcast('player:attacked', {
-            playerId: player.id,
-            target: data.target,
-            damage: data.damage
-        });
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby || lobby.status !== 'active') return;
+
+            player.updateActivity();
+
+            lobby.broadcast('player:attacked', {
+                playerId: player.id,
+                target: data.target,
+                damage: data.damage || player.stats.strength,
+                position: player.position
+            });
+        } catch (error) {
+            console.error('Error in player:attack:', error);
+        }
     });
 
     // Handle enemy hit
     socket.on('enemy:hit', (data) => {
-        const player = players.get(socket.id);
-        if (!player || !player.lobbyId) return;
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
 
-        const lobby = lobbies.get(player.lobbyId);
-        if (!lobby || lobby.status !== 'active') return;
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby || lobby.status !== 'active') return;
 
-        // Find enemy and update health
-        const enemy = lobby.gameState.enemies.find(e => e.id === data.enemyId);
-        if (enemy) {
-            enemy.health -= data.damage;
+            const enemy = lobby.gameState.enemies.find(e => e.id === data.enemyId);
+            if (!enemy || !enemy.isAlive) return;
+
+            const damage = data.damage || player.stats.strength;
+            enemy.health -= damage;
+            player.updateActivity();
 
             if (enemy.health <= 0) {
-                // Remove enemy
-                lobby.gameState.enemies = lobby.gameState.enemies.filter(e => e.id !== data.enemyId);
+                enemy.isAlive = false;
+                player.kills++;
+                player.experience += 10;
 
                 lobby.broadcast('enemy:killed', {
                     enemyId: data.enemyId,
-                    killedBy: player.id
+                    killedBy: player.id,
+                    killerName: player.username,
+                    experience: player.experience
                 });
             } else {
                 lobby.broadcast('enemy:damaged', {
                     enemyId: data.enemyId,
                     health: enemy.health,
-                    damage: data.damage
+                    maxHealth: enemy.maxHealth,
+                    damage: damage
                 });
             }
+        } catch (error) {
+            console.error('Error in enemy:hit:', error);
         }
     });
 
     // Handle item pickup
     socket.on('item:pickup', (data) => {
-        const player = players.get(socket.id);
-        if (!player || !player.lobbyId) return;
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
 
-        const lobby = lobbies.get(player.lobbyId);
-        if (!lobby || lobby.status !== 'active') return;
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby || lobby.status !== 'active') return;
 
-        // Find and remove item
-        const itemIndex = lobby.gameState.items.findIndex(i => i.id === data.itemId);
-        if (itemIndex !== -1) {
+            const itemIndex = lobby.gameState.items.findIndex(i => i.id === data.itemId);
+            if (itemIndex === -1) return;
+
             const item = lobby.gameState.items[itemIndex];
             lobby.gameState.items.splice(itemIndex, 1);
 
-            // Add to player inventory
             player.inventory.push(item);
+            player.itemsCollected++;
+            player.updateActivity();
 
-            // Broadcast to all players
+            // Apply item effects
+            if (item.effect) {
+                if (item.effect.health) {
+                    player.health = Math.min(player.maxHealth, player.health + item.effect.health);
+                }
+                if (item.effect.strength) {
+                    player.stats.strength += item.effect.strength;
+                }
+                if (item.effect.defense) {
+                    player.stats.defense += item.effect.defense;
+                }
+            }
+
             lobby.broadcast('item:picked', {
                 itemId: data.itemId,
-                playerId: player.id
+                playerId: player.id,
+                playerName: player.username,
+                item: item,
+                newStats: player.toJSON()
             });
+        } catch (error) {
+            console.error('Error in item:pickup:', error);
         }
     });
 
     // Handle chat messages
     socket.on('chat:message', (data) => {
-        const player = players.get(socket.id);
-        if (!player || !player.lobbyId) return;
+        try {
+            if (!checkRateLimit(socket.id, 'chat')) return;
 
-        const lobby = lobbies.get(player.lobbyId);
-        if (!lobby) return;
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
 
-        lobby.broadcast('chat:message', {
-            playerId: player.id,
-            username: player.username,
-            message: data.message,
-            timestamp: Date.now()
-        });
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby) return;
+
+            const message = sanitizeMessage(data.message);
+            if (!message) return;
+
+            player.updateActivity();
+
+            lobby.broadcast('chat:message', {
+                playerId: player.id,
+                username: player.username,
+                message: message,
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            console.error('Error in chat:message:', error);
+        }
     });
 
-    // Handle player ready status
-    socket.on('player:ready', () => {
-        const player = players.get(socket.id);
-        if (!player || !player.lobbyId) return;
+    // Handle player death
+    socket.on('player:death', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
 
-        const lobby = lobbies.get(player.lobbyId);
-        if (!lobby) return;
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby) return;
 
-        socket.to(lobby.id).emit('player:ready', {
-            playerId: player.id,
-            username: player.username
-        });
+            player.isAlive = false;
+            player.deaths++;
+            player.health = 0;
+
+            lobby.broadcast('player:died', {
+                playerId: player.id,
+                playerName: player.username,
+                killedBy: data.killedBy,
+                position: player.position
+            });
+        } catch (error) {
+            console.error('Error in player:death:', error);
+        }
     });
 
     // Handle disconnection
     socket.on('disconnect', () => {
-        console.log(`Client disconnected: ${socket.id}`);
+        console.log(`🔌 Client disconnected: ${socket.id}`);
 
         const player = players.get(socket.id);
         if (player && player.lobbyId) {
             const lobby = lobbies.get(player.lobbyId);
-            if (lobby) {
-                lobby.removePlayer(socket.id);
 
-                // Notify other players
-                socket.to(lobby.id).emit('player:left', {
+            if (lobby) {
+                // Allow reconnection window
+                player.disconnectedAt = Date.now();
+                player.isReconnecting = true;
+                disconnectedPlayers.set(player.username, player);
+
+                // Remove after timeout
+                setTimeout(() => {
+                    if (disconnectedPlayers.has(player.username)) {
+                        disconnectedPlayers.delete(player.username);
+                        lobby.removePlayer(socket.id);
+
+                        socket.to(lobby.id).emit('player:left', {
+                            playerId: player.id,
+                            username: player.username,
+                            playerCount: lobby.players.size
+                        });
+
+                        if (lobby.status === 'finished') {
+                            lobbies.delete(lobby.id);
+                        }
+                    }
+                }, RECONNECT_TIMEOUT);
+
+                // Immediate notification of disconnect
+                socket.to(lobby.id).emit('player:disconnected', {
                     playerId: player.id,
                     username: player.username,
-                    playerCount: lobby.players.size
+                    canReconnect: true,
+                    timeout: RECONNECT_TIMEOUT
                 });
-
-                // Clean up empty lobbies
-                if (lobby.status === 'finished') {
-                    lobbies.delete(lobby.id);
-                    console.log(`Deleted empty lobby ${lobby.id}`);
-                }
             }
         }
 
@@ -438,47 +820,107 @@ app.get('/health', (req, res) => {
         status: 'healthy',
         uptime: process.uptime(),
         lobbies: lobbies.size,
-        players: players.size,
+        activePlayers: players.size,
+        disconnectedPlayers: disconnectedPlayers.size,
+        memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
     });
 });
 
-// Server stats endpoint
+// Stats endpoint
 app.get('/stats', (req, res) => {
-    const lobbyStats = Array.from(lobbies.values()).map(lobby => lobby.toJSON());
+    const lobbyStats = Array.from(lobbies.values()).map(lobby => ({
+        id: lobby.id.slice(0, 8),
+        playerCount: lobby.players.size,
+        status: lobby.status,
+        difficulty: lobby.difficulty,
+        floor: lobby.gameState.floor
+    }));
 
     res.json({
         totalLobbies: lobbies.size,
-        totalPlayers: players.size,
+        activePlayers: players.size,
         lobbies: lobbyStats,
+        metrics: metrics,
         serverUptime: process.uptime(),
         timestamp: Date.now()
     });
 });
 
-// Cleanup old finished lobbies every 5 minutes
+// Metrics endpoint
+app.get('/metrics', (req, res) => {
+    res.json({
+        ...metrics,
+        currentPlayers: players.size,
+        currentLobbies: lobbies.size,
+        uptime: process.uptime()
+    });
+});
+
+// AFK check interval
+setInterval(() => {
+    players.forEach((player, socketId) => {
+        if (player.isAFK() && player.lobbyId) {
+            console.log(`⏰ Kicking AFK player: ${player.username}`);
+            io.to(socketId).emit('kicked', { reason: 'AFK' });
+            io.to(socketId).disconnect(true);
+        }
+    });
+}, 60000); // Check every minute
+
+// Cleanup old lobbies
 setInterval(() => {
     const now = Date.now();
     for (const [lobbyId, lobby] of lobbies.entries()) {
-        // Remove finished lobbies older than 5 minutes
         if (lobby.status === 'finished' && (now - lobby.createdAt) > 300000) {
             lobbies.delete(lobbyId);
-            console.log(`Cleaned up old lobby ${lobbyId}`);
+            console.log(`🧹 Cleaned up lobby ${lobbyId.slice(0, 8)}`);
         }
     }
-}, 300000);
+}, 300000); // Every 5 minutes
+
+// Cleanup rate limits
+setInterval(() => {
+    rateLimits.clear();
+}, 600000); // Every 10 minutes
 
 // Start server
 server.listen(PORT, () => {
-    console.log(`🎮 Klyra multiplayer server running on port ${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/health`);
-    console.log(`📈 Stats endpoint: http://localhost:${PORT}/stats`);
+    console.log(`
+╔═══════════════════════════════════════════════════════╗
+║     🎮 KLYRA MULTIPLAYER SERVER v2.0                 ║
+║                                                       ║
+║  Port: ${PORT.toString().padEnd(44)} ║
+║  Status: ONLINE ✅                                    ║
+║                                                       ║
+║  Endpoints:                                           ║
+║  - GET /health   - Server health                      ║
+║  - GET /stats    - Game statistics                    ║
+║  - GET /metrics  - Performance metrics                ║
+╚═══════════════════════════════════════════════════════╝
+    `);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    console.log('SIGTERM signal received: closing HTTP server');
-    server.close(() => {
-        console.log('HTTP server closed');
+    console.log('⚠️  SIGTERM received: shutting down gracefully');
+
+    // Notify all players
+    io.emit('server:shutdown', {
+        message: 'Server is restarting. Please reconnect in a moment.',
+        timestamp: Date.now()
     });
+
+    server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+    });
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('💥 Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
 });
