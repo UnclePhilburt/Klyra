@@ -218,8 +218,8 @@ class MenuScene extends Phaser.Scene {
         console.log(`🎮 Joining as ${username} (${this.selectedClass}, ${this.selectedDifficulty})`);
         networkManager.joinGame(username, this.selectedClass, this.selectedDifficulty);
 
-        // Go to lobby
-        this.scene.start('LobbyScene');
+        // Go directly to game (instant join - no lobby)
+        this.scene.start('GameScene');
     }
 
     shutdown() {

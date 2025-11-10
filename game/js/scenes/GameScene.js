@@ -15,6 +15,33 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // Show loading message
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        this.loadingText = this.add.text(width / 2, height / 2, 'Joining game...', {
+            font: '24px monospace',
+            fill: '#00ff00'
+        }).setOrigin(0.5);
+
+        // Wait for game:start event (instant join - no lobby)
+        networkManager.on('game:start', (data) => {
+            this.gameData = data;
+            this.initializeGame();
+        });
+
+        // If gameData already exists (from init), initialize immediately
+        if (this.gameData) {
+            this.initializeGame();
+        }
+    }
+
+    initializeGame() {
+        // Remove loading text
+        if (this.loadingText) {
+            this.loadingText.destroy();
+        }
+
         // Create dungeon
         this.createDungeon(this.gameData.gameState.dungeon);
 

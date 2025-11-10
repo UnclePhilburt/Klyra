@@ -80,6 +80,11 @@ class NetworkManager {
 
         this.socket.on('game:start', (data) => {
             console.log('🎮 Game started!', data);
+            // Set player data (instant join - no lobby wait)
+            this.currentPlayer = data.player;
+            this.lobbyId = data.lobbyId;
+            this.players.clear();
+            data.players.forEach(p => this.players.set(p.id, p));
             this.emit('game:start', data);
         });
 

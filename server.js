@@ -130,28 +130,28 @@ class Lobby {
         this.id = uuidv4();
         this.players = new Map();
         this.maxPlayers = MAX_PLAYERS_PER_LOBBY;
-        this.status = 'waiting'; // waiting, starting, active, finished
+        this.status = 'active'; // Always active - instant join!
         this.difficulty = difficulty;
         this.gameState = {
             floor: 1,
             enemies: [],
             items: [],
             dungeon: null,
-            startTime: null,
+            startTime: Date.now(),
             endTime: null
         };
         this.createdAt = Date.now();
         this.readyPlayers = new Set();
         this.votes = new Map(); // For voting systems
+
+        // Generate dungeon immediately when lobby is created
+        this.generateDungeon();
+        metrics.totalGames++;
     }
 
     addPlayer(player) {
         if (this.players.size >= this.maxPlayers) {
-            return { success: false, error: 'Lobby is full' };
-        }
-
-        if (this.status !== 'waiting') {
-            return { success: false, error: 'Game already started' };
+            return { success: false, error: 'Game is full' };
         }
 
         this.players.set(player.id, player);
@@ -161,14 +161,7 @@ class Lobby {
         const spawnPoints = this.getSpawnPoints();
         player.position = spawnPoints[this.players.size - 1];
 
-        console.log(`✅ ${player.username} joined lobby ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
-
-        // Check if all players are ready (if using ready system)
-        if (this.players.size >= 4 && this.allPlayersReady()) {
-            this.startGameCountdown();
-        } else if (this.players.size === this.maxPlayers && this.status === 'waiting') {
-            this.startGameCountdown();
-        }
+        console.log(`✅ ${player.username} joined game ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
 
         return { success: true };
     }
@@ -177,61 +170,13 @@ class Lobby {
         const player = this.players.get(socketId);
         if (player) {
             this.players.delete(socketId);
-            this.readyPlayers.delete(socketId);
-            console.log(`❌ ${player.username} left lobby ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
+            console.log(`❌ ${player.username} left game ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
 
+            // Mark as finished if empty
             if (this.players.size === 0) {
                 this.status = 'finished';
-            } else if (this.status === 'starting') {
-                // Cancel countdown if player left during countdown
-                this.status = 'waiting';
             }
         }
-    }
-
-    allPlayersReady() {
-        if (this.players.size < 4) return false;
-        return Array.from(this.players.values()).every(p => p.isReady);
-    }
-
-    startGameCountdown() {
-        if (this.status !== 'waiting') return;
-
-        this.status = 'starting';
-        console.log(`⏰ Lobby ${this.id.slice(0, 8)} starting in ${LOBBY_START_DELAY / 1000}s...`);
-
-        // Notify players of countdown
-        this.broadcast('game:countdown', {
-            seconds: LOBBY_START_DELAY / 1000
-        });
-
-        setTimeout(() => {
-            if (this.status === 'starting') {
-                this.startGame();
-            }
-        }, LOBBY_START_DELAY);
-    }
-
-    startGame() {
-        if (this.status !== 'starting' || this.players.size === 0) {
-            this.status = 'waiting';
-            return;
-        }
-
-        this.status = 'active';
-        this.gameState.startTime = Date.now();
-        this.generateDungeon();
-
-        metrics.totalGames++;
-
-        console.log(`🎮 Lobby ${this.id.slice(0, 8)} started with ${this.players.size} players`);
-
-        this.broadcast('game:start', {
-            lobbyId: this.id,
-            players: Array.from(this.players.values()).map(p => p.toJSON()),
-            gameState: this.gameState,
-            difficulty: this.difficulty
-        });
     }
 
     generateDungeon() {
@@ -452,21 +397,21 @@ function checkRateLimit(socketId, action) {
     return true;
 }
 
-// Matchmaking
+// Matchmaking - Find active game or create new one
 function findOrCreateLobby(difficulty = 'normal') {
-    // Find waiting lobby with matching difficulty
+    // Find active game with space and matching difficulty
     for (const [lobbyId, lobby] of lobbies.entries()) {
-        if (lobby.status === 'waiting' &&
+        if (lobby.status === 'active' &&
             lobby.players.size < lobby.maxPlayers &&
             lobby.difficulty === difficulty) {
             return lobby;
         }
     }
 
-    // Create new lobby
+    // Create new game (starts immediately with dungeon)
     const newLobby = new Lobby(difficulty);
     lobbies.set(newLobby.id, newLobby);
-    console.log(`🆕 Created lobby ${newLobby.id.slice(0, 8)} (${difficulty})`);
+    console.log(`🆕 Created new game ${newLobby.id.slice(0, 8)} (${difficulty}) - Ready for players!`);
     return newLobby;
 }
 
@@ -532,18 +477,18 @@ io.on('connection', (socket) => {
 
             socket.join(lobby.id);
 
-            // Send lobby info
-            socket.emit('lobby:joined', {
+            // Send game start immediately (no lobby waiting!)
+            socket.emit('game:start', {
                 lobbyId: lobby.id,
                 player: player.toJSON(),
                 players: Array.from(lobby.players.values()).map(p => p.toJSON()),
-                lobbyStatus: lobby.status,
+                gameState: lobby.gameState,
+                difficulty: lobby.difficulty,
                 playerCount: lobby.players.size,
-                maxPlayers: lobby.maxPlayers,
-                difficulty: lobby.difficulty
+                maxPlayers: lobby.maxPlayers
             });
 
-            // Notify others
+            // Notify others that a new player joined the active game
             socket.to(lobby.id).emit('player:joined', {
                 player: player.toJSON(),
                 playerCount: lobby.players.size
@@ -552,35 +497,6 @@ io.on('connection', (socket) => {
         } catch (error) {
             console.error('Error in player:join:', error);
             socket.emit('error', { message: 'Failed to join game' });
-        }
-    });
-
-    // Handle player ready
-    socket.on('player:ready', () => {
-        try {
-            const player = players.get(socket.id);
-            if (!player || !player.lobbyId) return;
-
-            const lobby = lobbies.get(player.lobbyId);
-            if (!lobby) return;
-
-            player.isReady = true;
-            player.updateActivity();
-            lobby.readyPlayers.add(socket.id);
-
-            lobby.broadcast('player:ready', {
-                playerId: player.id,
-                username: player.username,
-                readyCount: lobby.readyPlayers.size,
-                totalPlayers: lobby.players.size
-            });
-
-            // Start if all ready
-            if (lobby.allPlayersReady() && lobby.status === 'waiting') {
-                lobby.startGameCountdown();
-            }
-        } catch (error) {
-            console.error('Error in player:ready:', error);
         }
     });
 
