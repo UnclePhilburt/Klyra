@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sir Aldric Thornheart - KLYRA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --neon-pink: #ff006e;
+            --neon-purple: #8b5cf6;
+            --neon-blue: #3b82f6;
+            --neon-cyan: #06b6d4;
+            --neon-green: #10b981;
+            --gold: #ffd700;
+            --steel-blue: #4682b4;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: #000000;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        #grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(255, 215, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 215, 0, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Floating orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            animation: float 15s ease-in-out infinite;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--gold), transparent);
+            top: -300px;
+            right: -300px;
+        }
+
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--steel-blue), transparent);
+            bottom: -250px;
+            left: -250px;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(60px, 60px); }
+        }
+
+        /* Scanlines */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 999;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            z-index: 1000;
+        }
+
+        .logo {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, var(--neon-pink), var(--neon-purple), var(--neon-cyan), var(--neon-green));
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s linear infinite;
+            filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.8));
+            text-decoration: none;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2.5rem;
+        }
+
+        nav a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 700;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        nav a:hover {
+            color: var(--gold);
+            text-shadow: 0 0 10px var(--gold);
+        }
+
+        /* Hero section */
+        .hero {
+            position: relative;
+            z-index: 10;
+            padding: 150px 3rem 6rem;
+            text-align: center;
+        }
+
+        .character-icon-large {
+            font-size: 10rem;
+            margin-bottom: 2rem;
+            filter: drop-shadow(0 0 50px var(--gold));
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 50px var(--gold)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 80px var(--gold)); }
+        }
+
+        .character-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, var(--gold), var(--steel-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 30px var(--gold));
+        }
+
+        .character-subtitle {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .character-quote {
+            font-size: 1.2rem;
+            font-style: italic;
+            color: var(--gold);
+            max-width: 800px;
+            margin: 2rem auto;
+            line-height: 1.8;
+        }
+
+        /* Content sections */
+        .content {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 3rem 6rem;
+        }
+
+        .section {
+            margin-bottom: 5rem;
+            background: rgba(255, 215, 0, 0.05);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            padding: 3rem;
+            transition: all 0.3s;
+        }
+
+        .section:hover {
+            background: rgba(255, 215, 0, 0.08);
+            border-color: rgba(255, 215, 0, 0.5);
+            box-shadow: 0 10px 40px rgba(255, 215, 0, 0.3);
+        }
+
+        .section-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: var(--gold);
+            letter-spacing: 2px;
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 1rem;
+        }
+
+        .section-content {
+            font-size: 1.1rem;
+            line-height: 2;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .section-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-content strong {
+            color: var(--gold);
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid var(--gold);
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 30px var(--gold);
+        }
+
+        .stat-value {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 3rem;
+            color: var(--gold);
+            margin-bottom: 1rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Abilities */
+        .abilities-grid {
+            display: grid;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .ability {
+            background: rgba(0, 0, 0, 0.4);
+            border-left: 4px solid var(--gold);
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .ability:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-left-width: 8px;
+            transform: translateX(10px);
+        }
+
+        .ability-name {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.2rem;
+            color: var(--gold);
+            margin-bottom: 1rem;
+        }
+
+        .ability-description {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .ability-cooldown {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            font-style: italic;
+        }
+
+        /* Lore timeline */
+        .timeline {
+            margin-top: 2rem;
+            border-left: 3px solid var(--gold);
+            padding-left: 2rem;
+        }
+
+        .timeline-event {
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .timeline-event::before {
+            content: '⚔';
+            position: absolute;
+            left: -2.8rem;
+            top: 0;
+            width: 2rem;
+            height: 2rem;
+            background: var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            box-shadow: 0 0 20px var(--gold);
+        }
+
+        .timeline-date {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            color: var(--gold);
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-text {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Play button */
+        .play-button {
+            display: inline-block;
+            margin: 3rem auto;
+            padding: 1.5rem 4rem;
+            background: linear-gradient(135deg, var(--gold), var(--steel-blue));
+            color: black;
+            font-weight: 700;
+            text-decoration: none;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            transition: all 0.3s;
+            animation: buttonPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes buttonPulse {
+            0%, 100% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); }
+            50% { box-shadow: 0 0 50px rgba(255, 215, 0, 0.8); }
+        }
+
+        .play-button:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.9);
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 4rem 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .character-title {
+                font-size: 2.5rem;
+            }
+
+            .character-icon-large {
+                font-size: 6rem;
+            }
+
+            .section {
+                padding: 2rem;
+            }
+
+            .content {
+                padding: 0 1.5rem 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="grid-bg"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <header>
+        <a href="../index.html" class="logo">KLYRA</a>
+        <nav>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../characters.html">Characters</a></li>
+                <li><a href="../lore.html">Lore</a></li>
+                <li><a href="../game/">Play</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="hero">
+        <div class="character-icon-large">
+            🛡️
+        </div>
+        <h1 class="character-title">SIR ALDRIC THORNHEART</h1>
+        <p class="character-subtitle">The Unbreakable Sentinel</p>
+        <p class="character-quote">
+            "While I draw breath, no harm shall come to those under my watch. I am the wall that does not fall. I am the shield that does not break."
+        </p>
+    </div>
+
+    <div class="content">
+        <!-- Stats Section -->
+        <div class="section">
+            <h2 class="section-title">Combat Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">14</div>
+                    <div class="stat-label">Strength</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">150</div>
+                    <div class="stat-label">Health</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">18</div>
+                    <div class="stat-label">Defense</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">6</div>
+                    <div class="stat-label">Speed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backstory Section -->
+        <div class="section">
+            <h2 class="section-title">Origin Story</h2>
+            <div class="section-content">
+                <p>
+                    <strong>Sir Aldric Thornheart</strong> was born into nobility in the Kingdom of Valorheim, a realm renowned for its code of honor and unwavering dedication to the protection of the innocent. From boyhood, he was trained in the art of warfare, but more importantly, in the sacred duty of service.
+                </p>
+                <p>
+                    Rising through the ranks with distinction, Aldric became the <strong>King's Personal Guard</strong> - the highest honor a knight could achieve. He stood at the monarch's side through wars, assassinations, and political upheaval, never once faltering in his duty. His shield bore the crest of the thornheart - a heart wrapped in thorns, symbolizing love protected by sacrifice.
+                </p>
+                <p>
+                    When the <strong>Siege of Valorheim</strong> began, enemy forces numbering in the thousands descended upon the capital. As the city walls crumbled, the King ordered the evacuation of all civilians through the eastern bridge - the last escape route. Someone had to hold it. Someone had to buy time.
+                </p>
+                <p>
+                    Aldric stepped forward without hesitation. <strong>For three days and three nights</strong>, he held that bridge alone. Wave after wave of enemies crashed against him like water against stone. His armor shattered, his sword broke, his shield splintered - but his resolve never wavered. Thousands of innocents escaped because of his stand.
+                </p>
+                <p>
+                    On the third day, as the last civilian crossed to safety, Aldric's body finally gave out. He fell not from defeat, but from exhaustion - his duty fulfilled. The enemy forces found him collapsed on that bridge, surrounded by the fallen, a faint smile on his bloodied face.
+                </p>
+                <p>
+                    But death is not always the end. <strong>Klyra</strong> pulled his soul from whatever afterlife awaited him, binding him to its cursed dungeons. Now, a century later, Sir Aldric continues his vigil - protecting other Seekers, standing as their shield against the horrors of Klyra. He believes if he saves enough souls, he'll finally earn his rest.
+                </p>
+                <p>
+                    He doesn't yet realize that his own sense of duty is what traps him here.
+                </p>
+            </div>
+        </div>
+
+        <!-- Abilities Section -->
+        <div class="section">
+            <h2 class="section-title">Abilities</h2>
+            <div class="abilities-grid">
+                <div class="ability">
+                    <div class="ability-name">🛡️ Shield Wall</div>
+                    <div class="ability-description">
+                        Raise your shield in an impenetrable defensive stance, reducing all incoming damage by 70% for 8 seconds.
+                        While active, you cannot attack but gain immunity to knockback and crowd control effects.
+                        Your presence inspires nearby allies, granting them +25% defense.
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 25 seconds</div>
+                </div>
+
+                <div class="ability">
+                    <div class="ability-name">⚔️ Bastion's Resolve</div>
+                    <div class="ability-description">
+                        Strike your shield with your weapon, creating a resonating challenge that taunts all enemies within 15 meters to attack you instead of your allies.
+                        For 6 seconds after taunting, each hit you take increases your defense by 5% (stacks up to 10 times).
+                        The sound of duty calls - and enemies cannot resist.
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 18 seconds</div>
+                </div>
+
+                <div class="ability">
+                    <div class="ability-name">💛 Guardian's Oath</div>
+                    <div class="ability-description">
+                        Designate a target ally and swear a sacred oath to protect them. For 12 seconds, you redirect 50% of all damage they would take to yourself instead.
+                        Additionally, if the protected ally's health drops below 30%, they gain a shield equal to 20% of your maximum health.
+                        Your oath is unbreakable - even in death.
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 35 seconds</div>
+                </div>
+
+                <div class="ability">
+                    <div class="ability-name">🏰 Immortal Bulwark (Ultimate)</div>
+                    <div class="ability-description">
+                        Channel the memory of your legendary stand at Valorheim Bridge. For 15 seconds, you become an immovable object -
+                        reducing all damage taken to 1 per hit, gaining immunity to all status effects, and automatically taunting any enemy that attacks an ally within 20 meters.
+                        While active, your defensive aura grants all nearby allies 40% damage reduction.
+                        You are the wall. You do not fall.
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 120 seconds</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lore Timeline -->
+        <div class="section">
+            <h2 class="section-title">The Chronicles of Sir Aldric</h2>
+            <div class="timeline">
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 986 - Birth of a Knight</div>
+                    <div class="timeline-text">
+                        Aldric is born to House Thornheart, a noble family in the Kingdom of Valorheim. From the moment he can walk,
+                        he begins his training in swordsmanship, honor, and the sacred duty of protecting those who cannot protect themselves.
+                        His family motto: "Through Thorns, We Shield the Heart."
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1005 - Knight of the Realm</div>
+                    <div class="timeline-text">
+                        At nineteen, Aldric is formally knighted after single-handedly defending a village from a bandit raid.
+                        His reputation for unshakable courage and selfless protection spreads throughout Valorheim.
+                        The King takes notice of the young knight's dedication.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1012 - The King's Guard</div>
+                    <div class="timeline-text">
+                        Aldric is appointed to the King's Personal Guard - the highest honor in Valorheim. He serves with unwavering loyalty,
+                        thwarting three assassination attempts and standing firm during the Rebellion of the Northern Lords.
+                        His shield has never been broken, his oath never wavered.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1024 - The Siege Begins</div>
+                    <div class="timeline-text">
+                        The Coalition of Free Cities, jealous of Valorheim's prosperity, launches a massive siege. Thirty thousand soldiers surround the capital.
+                        The King orders the evacuation of all civilians through the eastern bridge - a narrow stone passage over a deadly gorge.
+                        Someone must hold it long enough for the evacuation to complete. Aldric volunteers immediately.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1024 - The Stand</div>
+                    <div class="timeline-text">
+                        For three days and three nights, Sir Aldric Thornheart holds Valorheim Bridge alone. Historians would later count over
+                        four hundred enemy soldiers fell trying to cross. His armor shattered. His sword broke. His shield split down the middle.
+                        But he did not fall. Not until the last civilian - a young girl carrying her infant brother - crossed to safety.
+                        Only then did he allow himself to collapse. His duty was complete.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1025 - Pulled into Klyra</div>
+                    <div class="timeline-text">
+                        Aldric's heroic death should have earned him eternal rest in the Hall of Heroes. Instead, something darker intervened.
+                        Klyra - the cursed dungeon that feeds on souls - sensed his unbreakable sense of duty. It pulled him from death itself,
+                        binding him to its endless corridors. Aldric awoke in darkness, shield in hand, surrounded by terrified Seekers who needed protection.
+                        His duty, it seemed, was not yet done.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1050-1120 - The Eternal Guardian</div>
+                    <div class="timeline-text">
+                        For decades, Aldric protects other Seekers within Klyra's depths. He saves hundreds - maybe thousands - of souls from the dungeon's horrors.
+                        Some escape Klyra entirely thanks to his protection. Each time someone survives because of him, he feels his purpose validated.
+                        He begins to believe that if he saves enough people, Klyra will release him. That his duty will finally be complete.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1128 - Present Day</div>
+                    <div class="timeline-text">
+                        Sir Aldric continues his vigil within Klyra's ever-shifting dungeons. His golden armor - though ethereal now - still gleams with purpose.
+                        Other Seekers speak of him in hushed, reverent tones: "If you see the Golden Shield, you'll live to see another day."
+                        But a terrible truth lurks beneath his hope: it is his very dedication, his unbreakable oath to protect, that keeps pulling him back to Klyra.
+                        The curse is not external - it is woven into the very core of who he is. To break free, he would have to abandon his duty.
+                        And Sir Aldric Thornheart would sooner die a thousand deaths than break his oath.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secrets Section -->
+        <div class="section">
+            <h2 class="section-title">Hidden Truths</h2>
+            <div class="section-content">
+                <p>
+                    <strong>Sir Aldric believes he is trapped in Klyra against his will.</strong> He thinks that if he protects enough Seekers,
+                    if he saves enough souls, the dungeon will finally release him from his eternal service. Every life he saves, every shield-wall he raises,
+                    every ally he defends - these are tallies toward his freedom. He keeps count in his mind: <strong>2,847 Seekers protected. 1,203 saved from certain death.</strong>
+                </p>
+                <p>
+                    But there is a cruel irony at the heart of Aldric's existence. <strong>Klyra does not hold him prisoner.</strong>
+                    It is his own oath - sworn when he became a knight, reinforced at the bridge, and repeated with every soul he saves - that binds him.
+                    His sense of duty is so absolute, so unbreakable, that it has become a metaphysical chain stronger than any magic.
+                </p>
+                <p>
+                    Klyra doesn't need to trap him. <strong>He traps himself.</strong> Every time a Seeker is in danger, his oath pulls him back from whatever rest he might have found.
+                    Every cry for help echoes through the void and drags his soul back into the dungeon. He cannot rest while others suffer.
+                    He cannot lay down his shield while innocents are in peril.
+                </p>
+                <p>
+                    The only way for Sir Aldric Thornheart to escape Klyra would be to break his oath - to abandon someone in need, to turn away from his duty,
+                    to place his own freedom above the lives of others. But that would destroy the very essence of who he is.
+                    He would rather spend eternity as Klyra's Unbreakable Sentinel than live one day as a knight who broke his word.
+                </p>
+                <p>
+                    <strong>His curse is not imprisonment. It is perfection of purpose.</strong> And that is the most terrible trap of all -
+                    because it's one he would never choose to escape, even if he knew the truth.
+                </p>
+            </div>
+        </div>
+
+        <!-- Play CTA -->
+        <div class="button-container">
+            <a href="/game/" class="play-button">Play as Sir Aldric →</a>
+        </div>
+    </div>
+
+    <script>
+        // Add scroll reveal animation
+        const sections = document.querySelectorAll('.section');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        sections.forEach(section => {
+            section.style.opacity = '0';
+            section.style.transform = 'translateY(30px)';
+            section.style.transition = 'all 0.6s ease-out';
+            observer.observe(section);
+        });
+    </script>
+</body>
+</html>
