@@ -187,15 +187,20 @@ class Lobby {
         // Generate unique seed based on lobby ID + timestamp for unique procedural worlds
         const uniqueSeed = `${this.id}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
+        // Generate fantasy world with biomes instead of dungeon
+        const worldData = this.generateFantasyWorld(size.width, size.height, uniqueSeed);
+
         this.gameState.dungeon = {
             width: size.width,
             height: size.height,
-            tiles: this.generateDungeonTiles(size.width, size.height),
-            rooms: this.generateRooms(size.width, size.height),
+            tiles: worldData.tiles,
+            biomes: worldData.biomes,
+            decorations: worldData.decorations,
             seed: uniqueSeed
         };
 
-        console.log(`🗺️  Generated unique world for room ${this.id.slice(0, 8)} (${size.width}x${size.height}, ${this.difficulty})`);
+        console.log(`🗺️  Generated unique fantasy world for room ${this.id.slice(0, 8)} (${size.width}x${size.height}, ${this.difficulty})`);
+        console.log(`   Biomes: ${worldData.biomeStats.join(', ')}`);
 
         // Spawn enemies based on difficulty
         const enemyCount = this.getEnemyCount();
@@ -230,65 +235,92 @@ class Lobby {
         return Math.floor(10 + this.gameState.floor * 2);
     }
 
-    generateRooms(width, height) {
-        const rooms = [];
-        const roomCount = Math.floor(Math.random() * 5) + 5; // 5-10 rooms
-
-        for (let i = 0; i < roomCount; i++) {
-            const roomWidth = Math.floor(Math.random() * 8) + 5;
-            const roomHeight = Math.floor(Math.random() * 8) + 5;
-            const x = Math.floor(Math.random() * (width - roomWidth - 2)) + 1;
-            const y = Math.floor(Math.random() * (height - roomHeight - 2)) + 1;
-
-            rooms.push({ x, y, width: roomWidth, height: roomHeight });
-        }
-
-        return rooms;
+    // Seeded random number generator for consistent procedural generation
+    seededRandom(seed) {
+        const x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
     }
 
-    generateDungeonTiles(width, height) {
-        // Improved dungeon generation with rooms and corridors
-        const tiles = Array(height).fill(null).map(() => Array(width).fill(1));
+    // Perlin-like noise for natural terrain generation
+    noise2D(x, y, seed) {
+        const n = x + y * 57 + seed * 131;
+        let noise = Math.sin(n) * 43758.5453;
+        return noise - Math.floor(noise);
+    }
 
-        // Create rooms
-        const rooms = this.gameState.dungeon?.rooms || this.generateRooms(width, height);
+    generateFantasyWorld(width, height, seedString) {
+        // Convert seed string to number
+        const seed = seedString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
-        rooms.forEach(room => {
-            for (let y = room.y; y < room.y + room.height; y++) {
-                for (let x = room.x; x < room.x + room.width; x++) {
-                    if (y < height && x < width) {
-                        tiles[y][x] = 0; // Floor
-                    }
-                }
-            }
-        });
+        const tiles = Array(height).fill(null).map(() => Array(width).fill(null));
+        const biomes = Array(height).fill(null).map(() => Array(width).fill(null));
+        const decorations = [];
 
-        // Connect rooms with corridors
-        for (let i = 0; i < rooms.length - 1; i++) {
-            const roomA = rooms[i];
-            const roomB = rooms[i + 1];
+        // Biome definitions with tile types
+        const BIOMES = {
+            GRASSLAND: { id: 'grassland', tiles: [10, 11, 12], weight: 0.3 },
+            FOREST: { id: 'forest', tiles: [20, 21, 22], weight: 0.25 },
+            MAGIC_GROVE: { id: 'magic', tiles: [30, 31, 32], weight: 0.15 },
+            DARK_WOODS: { id: 'dark', tiles: [40, 41, 42], weight: 0.15 },
+            CRYSTAL_PLAINS: { id: 'crystal', tiles: [50, 51, 52], weight: 0.1 },
+            VOID_ZONE: { id: 'void', tiles: [60, 61, 62], weight: 0.05 }
+        };
 
-            const startX = Math.floor(roomA.x + roomA.width / 2);
-            const startY = Math.floor(roomA.y + roomA.height / 2);
-            const endX = Math.floor(roomB.x + roomB.width / 2);
-            const endY = Math.floor(roomB.y + roomB.height / 2);
+        const biomeStats = {};
 
-            // Horizontal corridor
-            for (let x = Math.min(startX, endX); x <= Math.max(startX, endX); x++) {
-                if (startY < height && x < width) {
-                    tiles[startY][x] = 0;
-                }
-            }
+        // Generate biome map using multiple octaves of noise
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                // Multi-octave noise for natural-looking biomes
+                const noise1 = this.noise2D(x * 0.05, y * 0.05, seed);
+                const noise2 = this.noise2D(x * 0.1, y * 0.1, seed + 1000);
+                const noise3 = this.noise2D(x * 0.2, y * 0.2, seed + 2000);
 
-            // Vertical corridor
-            for (let y = Math.min(startY, endY); y <= Math.max(startY, endY); y++) {
-                if (y < height && endX < width) {
-                    tiles[y][endX] = 0;
-                }
+                const combinedNoise = (noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2);
+
+                // Determine biome based on noise value
+                let selectedBiome;
+                if (combinedNoise < 0.2) selectedBiome = BIOMES.GRASSLAND;
+                else if (combinedNoise < 0.4) selectedBiome = BIOMES.FOREST;
+                else if (combinedNoise < 0.6) selectedBiome = BIOMES.MAGIC_GROVE;
+                else if (combinedNoise < 0.75) selectedBiome = BIOMES.DARK_WOODS;
+                else if (combinedNoise < 0.9) selectedBiome = BIOMES.CRYSTAL_PLAINS;
+                else selectedBiome = BIOMES.VOID_ZONE;
+
+                biomes[y][x] = selectedBiome.id;
+
+                // Select random tile variation from biome
+                const tileVariation = Math.floor(this.seededRandom(seed + x * 100 + y) * selectedBiome.tiles.length);
+                tiles[y][x] = selectedBiome.tiles[tileVariation];
+
+                // Track biome stats
+                biomeStats[selectedBiome.id] = (biomeStats[selectedBiome.id] || 0) + 1;
             }
         }
 
-        return tiles;
+        // Add decorations (trees, rocks, crystals, etc.)
+        const decorationCount = Math.floor(width * height * 0.05); // 5% coverage
+        for (let i = 0; i < decorationCount; i++) {
+            const x = Math.floor(this.seededRandom(seed + i * 1000) * width);
+            const y = Math.floor(this.seededRandom(seed + i * 1001) * height);
+            const biome = biomes[y][x];
+
+            let decorationType;
+            if (biome === 'grassland') decorationType = this.seededRandom(seed + i) < 0.7 ? 'flower' : 'rock';
+            else if (biome === 'forest') decorationType = this.seededRandom(seed + i) < 0.8 ? 'tree' : 'bush';
+            else if (biome === 'magic') decorationType = this.seededRandom(seed + i) < 0.6 ? 'magic_tree' : 'rune_stone';
+            else if (biome === 'dark') decorationType = this.seededRandom(seed + i) < 0.7 ? 'dead_tree' : 'skull';
+            else if (biome === 'crystal') decorationType = this.seededRandom(seed + i) < 0.8 ? 'crystal' : 'gem_rock';
+            else decorationType = this.seededRandom(seed + i) < 0.5 ? 'void_portal' : 'shadow';
+
+            decorations.push({ x, y, type: decorationType, biome });
+        }
+
+        const biomeList = Object.entries(biomeStats)
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, count]) => `${name}(${Math.round(count / (width * height) * 100)}%)`);
+
+        return { tiles, biomes, decorations, biomeStats: biomeList };
     }
 
     getSpawnPoints() {

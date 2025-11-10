@@ -81,32 +81,86 @@ class GameScene extends Phaser.Scene {
 
     createDungeon(dungeonData) {
         const tileSize = GameConfig.GAME.TILE_SIZE;
-        const { width, height, tiles } = dungeonData;
+        const { width, height, tiles, biomes, decorations } = dungeonData;
 
         // Create tilemap graphics
         this.dungeon = this.add.graphics();
 
-        // Draw dungeon
+        // Biome color palettes with variations for beautiful graphics
+        const BIOME_COLORS = {
+            // Grassland - Lush greens
+            10: [0x4a7c59, 0x5a8c69, 0x6a9c79], // Grass variations
+            11: [0x3a6c49, 0x4a7c59, 0x5a8c69],
+            12: [0x2a5c39, 0x3a6c49, 0x4a7c59],
+
+            // Forest - Rich greens and browns
+            20: [0x2d5016, 0x3d6026, 0x4d7036], // Dark forest floor
+            21: [0x1d4006, 0x2d5016, 0x3d6026],
+            22: [0x0d3000, 0x1d4006, 0x2d5016],
+
+            // Magic Grove - Mystical purples and blues
+            30: [0x6b4c9a, 0x7b5caa, 0x8b6cba], // Magical grass
+            31: [0x5b3c8a, 0x6b4c9a, 0x7b5caa],
+            32: [0x4b2c7a, 0x5b3c8a, 0x6b4c9a],
+
+            // Dark Woods - Ominous grays and dark greens
+            40: [0x2a2a3a, 0x3a3a4a, 0x4a4a5a], // Shadowy ground
+            41: [0x1a1a2a, 0x2a2a3a, 0x3a3a4a],
+            42: [0x0a0a1a, 0x1a1a2a, 0x2a2a3a],
+
+            // Crystal Plains - Shimmering cyan and blue
+            50: [0x4dd0e1, 0x5de0f1, 0x6df0ff], // Crystal ground
+            51: [0x3dc0d1, 0x4dd0e1, 0x5de0f1],
+            52: [0x2db0c1, 0x3dc0d1, 0x4dd0e1],
+
+            // Void Zone - Dark purples and blacks
+            60: [0x1a0a2a, 0x2a1a3a, 0x3a2a4a], // Void ground
+            61: [0x0a001a, 0x1a0a2a, 0x2a1a3a],
+            62: [0x000010, 0x0a001a, 0x1a0a2a]
+        };
+
+        // Draw fantasy world with biomes
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const tile = tiles[y][x];
                 const px = x * tileSize;
                 const py = y * tileSize;
 
-                if (tile === 0) {
-                    // Floor
-                    this.dungeon.fillStyle(0x1a1a1a, 1);
-                    this.dungeon.fillRect(px, py, tileSize, tileSize);
-                    this.dungeon.lineStyle(1, 0x2a2a2a, 0.5);
-                    this.dungeon.strokeRect(px, py, tileSize, tileSize);
+                // Get color variations for this tile type
+                const colors = BIOME_COLORS[tile] || [0x1a1a1a, 0x2a2a2a, 0x3a3a3a];
+                const colorIndex = (x + y) % colors.length;
+                const baseColor = colors[colorIndex];
+
+                // Add slight randomness to each tile for variety
+                const variance = ((x * 7 + y * 13) % 20) - 10;
+                const finalColor = this.adjustColor(baseColor, variance);
+
+                // Draw base tile
+                this.dungeon.fillStyle(finalColor, 1);
+                this.dungeon.fillRect(px, py, tileSize, tileSize);
+
+                // Add subtle texture lines for detail
+                this.dungeon.lineStyle(1, this.adjustColor(finalColor, -20), 0.3);
+                if ((x + y) % 2 === 0) {
+                    this.dungeon.lineBetween(px, py, px + tileSize, py);
                 } else {
-                    // Wall
-                    this.dungeon.fillStyle(0x0a0a0a, 1);
-                    this.dungeon.fillRect(px, py, tileSize, tileSize);
-                    this.dungeon.lineStyle(1, 0x00ff00, 0.3);
-                    this.dungeon.strokeRect(px, py, tileSize, tileSize);
+                    this.dungeon.lineBetween(px, py, px, py + tileSize);
+                }
+
+                // Add occasional highlights for sparkle
+                if (tile >= 30 && (x * y) % 7 === 0) {
+                    const sparkleColor = tile >= 50 ? 0xffffff : 0xffaaff;
+                    this.dungeon.fillStyle(sparkleColor, 0.3);
+                    this.dungeon.fillCircle(px + tileSize/2, py + tileSize/2, 2);
                 }
             }
+        }
+
+        // Render decorations (trees, crystals, rocks, etc.)
+        if (decorations) {
+            decorations.forEach(deco => {
+                this.createDecoration(deco.x, deco.y, deco.type, tileSize);
+            });
         }
 
         // Set world bounds
@@ -115,6 +169,96 @@ class GameScene extends Phaser.Scene {
 
         // Store tiles for collision
         this.dungeonTiles = tiles;
+    }
+
+    adjustColor(color, amount) {
+        const r = Math.max(0, Math.min(255, ((color >> 16) & 0xFF) + amount));
+        const g = Math.max(0, Math.min(255, ((color >> 8) & 0xFF) + amount));
+        const b = Math.max(0, Math.min(255, (color & 0xFF) + amount));
+        return (r << 16) | (g << 8) | b;
+    }
+
+    createDecoration(x, y, type, tileSize) {
+        const px = x * tileSize + tileSize / 2;
+        const py = y * tileSize + tileSize / 2;
+
+        const DECORATION_STYLES = {
+            // Grassland decorations
+            flower: { color: 0xff69b4, size: 4, shape: 'star' },
+            rock: { color: 0x808080, size: 6, shape: 'circle' },
+
+            // Forest decorations
+            tree: { color: 0x2d5016, size: 8, shape: 'triangle' },
+            bush: { color: 0x3d6026, size: 5, shape: 'circle' },
+
+            // Magic decorations
+            magic_tree: { color: 0xff00ff, size: 10, shape: 'star', glow: true },
+            rune_stone: { color: 0x00ffff, size: 7, shape: 'diamond', glow: true },
+
+            // Dark decorations
+            dead_tree: { color: 0x3a3a3a, size: 9, shape: 'line' },
+            skull: { color: 0xeeeeee, size: 6, shape: 'circle' },
+
+            // Crystal decorations
+            crystal: { color: 0x00ffff, size: 8, shape: 'diamond', glow: true },
+            gem_rock: { color: 0x4dd0e1, size: 7, shape: 'star', glow: true },
+
+            // Void decorations
+            void_portal: { color: 0x8b00ff, size: 10, shape: 'circle', glow: true, pulse: true },
+            shadow: { color: 0x1a0a2a, size: 8, shape: 'circle' }
+        };
+
+        const style = DECORATION_STYLES[type];
+        if (!style) return;
+
+        // Draw decoration based on shape
+        let decoration;
+        switch (style.shape) {
+            case 'star':
+                decoration = this.add.star(px, py, 5, style.size/2, style.size, style.color);
+                break;
+            case 'circle':
+                decoration = this.add.circle(px, py, style.size, style.color);
+                break;
+            case 'triangle':
+                decoration = this.add.triangle(px, py, 0, style.size, -style.size, -style.size, style.size, -style.size, style.color);
+                break;
+            case 'diamond':
+                decoration = this.add.star(px, py, 4, style.size/2, style.size, style.color);
+                break;
+            case 'line':
+                decoration = this.add.rectangle(px, py, 2, style.size * 2, style.color);
+                break;
+        }
+
+        // Add glow effect for magical items
+        if (style.glow) {
+            const glow = this.add.circle(px, py, style.size + 4, style.color, 0.2);
+
+            if (style.pulse) {
+                this.tweens.add({
+                    targets: glow,
+                    alpha: 0.4,
+                    scale: 1.2,
+                    duration: 2000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            }
+        }
+
+        // Add subtle floating animation to some decorations
+        if (type.includes('magic') || type.includes('crystal') || type.includes('void')) {
+            this.tweens.add({
+                targets: decoration,
+                y: py - 3,
+                duration: 2000 + Math.random() * 1000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        }
     }
 
     createUI() {
