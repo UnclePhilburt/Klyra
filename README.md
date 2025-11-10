@@ -21,31 +21,31 @@ This repository contains:
 
 ## 🚀 Quick Start
 
-### Website (Already Deployed)
+### Website (Live)
 The game website is live at: **https://klyra.lol**
 
-### Multiplayer Server Deployment
+### Multiplayer Server (Live)
+The server is deployed and running at: **https://klyra-server.onrender.com**
+
+**Server Endpoints:**
+- Health Check: https://klyra-server.onrender.com/health
+- Stats: https://klyra-server.onrender.com/stats
+
+### Local Development
 
 1. **Install Dependencies**
 ```bash
 npm install
 ```
 
-2. **Test Locally**
+2. **Run Server Locally**
 ```bash
 npm start
 ```
 
-3. **Deploy to Render**
-   - Push code to GitHub
-   - Go to [Render Dashboard](https://dashboard.render.com/)
-   - Create New Web Service
-   - Connect your GitHub repo
-   - Render will auto-detect and deploy
-
-4. **Get Server URL**
-   - After deployment, save your Render URL (e.g., `https://klyra-server.onrender.com`)
-   - Use this URL in your game client to connect
+3. **Test Connection**
+   - Open `client-example.html` in your browser
+   - Server runs on `http://localhost:3000`
 
 ## 📁 Project Structure
 

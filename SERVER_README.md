@@ -18,17 +18,24 @@ Real-time multiplayer server for Klyra roguelike game using Node.js, Express, an
 - **Socket.IO** - Real-time bidirectional communication
 - **UUID** - Unique identifier generation
 
-## Deployment to Render
+## Production Server
 
-### 1. Push Code to GitHub
+**Server is live at:** https://klyra-server.onrender.com
 
-```bash
-git add .
-git commit -m "Add multiplayer server"
-git push origin main
-```
+**Endpoints:**
+- Health: https://klyra-server.onrender.com/health
+- Stats: https://klyra-server.onrender.com/stats
 
-### 2. Deploy on Render
+## Deployment to Render (Already Done!)
+
+The server is already deployed. To redeploy or update:
+
+1. Push changes to GitHub
+2. Render will auto-deploy from the `main` branch
+
+### Manual Deployment
+
+If you need to deploy from scratch:
 
 1. Go to [Render Dashboard](https://dashboard.render.com/)
 2. Click "New +" → "Web Service"
@@ -40,15 +47,6 @@ git push origin main
    - **Start Command**: `npm start`
    - **Plan**: Free (or choose paid for better performance)
 5. Click "Create Web Service"
-
-### 3. Get Your Server URL
-
-After deployment, Render will give you a URL like:
-```
-https://klyra-server.onrender.com
-```
-
-Save this URL - you'll use it to connect your game client.
 
 ## Local Development
 
