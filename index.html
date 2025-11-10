@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="KLYRA - Epic multiplayer roguelike. Dive into neon-soaked dungeons with friends. Permadeath never felt so good.">
-    <title>KLYRA - Multiplayer Roguelike</title>
+    <meta name="description" content="KLYRA - Epic 2D pixel multiplayer roguelite. Explore vast open worlds with up to 10 players. Permadeath never felt so good.">
+    <title>KLYRA - Multiplayer Roguelite</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -566,10 +566,10 @@
 
     <section id="home" class="hero">
         <h1 class="glitch">KLYRA</h1>
-        <p class="tagline">Multiplayer Roguelike</p>
+        <p class="tagline">2D Pixel Multiplayer Roguelite</p>
         <p class="hero-text">
-            Dive into neon-soaked dungeons with friends. Battle through procedurally generated chaos.
-            Die gloriously. Respawn stronger. Permadeath never felt so good.
+            Explore vast open worlds with up to 10 players. Battle through procedurally generated realms.
+            Master unique characters. Die gloriously. Respawn stronger.
         </p>
 
         <div class="cta-container">
@@ -593,38 +593,85 @@
         </div>
     </section>
 
+    <!-- Characters Showcase -->
+    <section id="characters" class="features" style="padding-top: 4rem;">
+        <h2 class="section-title">Choose Your Fighter</h2>
+        <p style="text-align: center; color: rgba(255,255,255,0.6); margin-bottom: 3rem; font-size: 1.1rem;">Three unique playstyles. Master them all.</p>
+        <div class="features-grid" style="max-width: 1400px; margin: 0 auto; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));">
+            <div class="feature" style="border: 2px solid rgba(220, 38, 38, 0.5); background: rgba(220, 38, 38, 0.05);">
+                <span class="feature-icon" style="font-size: 4rem; filter: drop-shadow(0 0 20px rgba(220, 38, 38, 0.8));">💀</span>
+                <h3 style="color: #dc2626;">Malachar</h3>
+                <p style="font-size: 0.9rem; color: rgba(255,255,255,0.5); margin-bottom: 1rem;">NECROMANCER SUMMONER</p>
+                <p>Command an army of undead. Spawn with 1 skeleton minion. 10% chance to raise more on kill. Overwhelm enemies with dark magic.</p>
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-around; font-size: 0.85rem;">
+                    <div><strong style="color: #dc2626;">16</strong> STR</div>
+                    <div><strong style="color: #dc2626;">115</strong> HP</div>
+                    <div><strong style="color: #dc2626;">10</strong> DEF</div>
+                    <div><strong style="color: #dc2626;">9</strong> SPD</div>
+                </div>
+            </div>
+            <div class="feature" style="border: 2px solid rgba(255, 215, 0, 0.5); background: rgba(255, 215, 0, 0.05);">
+                <span class="feature-icon" style="font-size: 4rem; filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));">🛡️</span>
+                <h3 style="color: #ffd700;">Sir Aldric</h3>
+                <p style="font-size: 0.9rem; color: rgba(255,255,255,0.5); margin-bottom: 1rem;">KNIGHT TANK</p>
+                <p>The unbreakable wall. Highest HP and defense. Protect your team with Shield Slam AoE damage. You do not fall.</p>
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-around; font-size: 0.85rem;">
+                    <div><strong style="color: #ffd700;">14</strong> STR</div>
+                    <div><strong style="color: #ffd700;">150</strong> HP</div>
+                    <div><strong style="color: #ffd700;">18</strong> DEF</div>
+                    <div><strong style="color: #ffd700;">6</strong> SPD</div>
+                </div>
+            </div>
+            <div class="feature" style="border: 2px solid rgba(220, 20, 60, 0.5); background: rgba(220, 20, 60, 0.05);">
+                <span class="feature-icon" style="font-size: 4rem; filter: drop-shadow(0 0 20px rgba(220, 20, 60, 0.8));">⚔️</span>
+                <h3 style="color: #dc143c;">Hiroshi</h3>
+                <p style="font-size: 0.9rem; color: rgba(255,255,255,0.5); margin-bottom: 1rem;">SAMURAI SWORDMASTER</p>
+                <p>Lightning-fast blade dancer. Highest damage and speed. Slice enemies with Blade Flurry combos. Precision is everything.</p>
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-around; font-size: 0.85rem;">
+                    <div><strong style="color: #dc143c;">18</strong> STR</div>
+                    <div><strong style="color: #dc143c;">100</strong> HP</div>
+                    <div><strong style="color: #dc143c;">8</strong> DEF</div>
+                    <div><strong style="color: #dc143c;">14</strong> SPD</div>
+                </div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 3rem;">
+            <a href="characters.html" class="cta cta-secondary">View All Characters →</a>
+        </div>
+    </section>
+
     <section id="features" class="features">
         <h2 class="section-title">Features</h2>
         <div class="features-grid">
             <div class="feature">
                 <span class="feature-icon">🎮</span>
-                <h3>Drop-In Multiplayer</h3>
-                <p>No lobbies. No waiting. Just instant 10-player chaos. Jump in, team up, die together.</p>
+                <h3>10-Player Co-op</h3>
+                <p>Drop-in multiplayer. No lobbies. No waiting. Team up with friends or strangers instantly.</p>
             </div>
             <div class="feature">
                 <span class="feature-icon">🗺️</span>
-                <h3>Infinite Worlds</h3>
-                <p>Every run is a new procedurally generated nightmare. Same game, different hell every time.</p>
+                <h3>Open World Exploration</h3>
+                <p>Vast procedurally generated 2D pixel realms. Every run is a completely new world to explore.</p>
             </div>
             <div class="feature">
                 <span class="feature-icon">⚔️</span>
                 <h3>Real-Time Combat</h3>
-                <p>Fast-paced action combat. No turns. No mercy. Just pure adrenaline-fueled mayhem.</p>
+                <p>Fast-paced auto-attack action. Unique abilities for each character. No turns. Pure chaos.</p>
             </div>
             <div class="feature">
                 <span class="feature-icon">💀</span>
-                <h3>Permadeath</h3>
-                <p>Death means something here. One life. Make it count. Or don't. We don't judge.</p>
+                <h3>Permadeath Loop</h3>
+                <p>Death means something. One life per run. But Klyra's curse pulls you back. Forever.</p>
             </div>
             <div class="feature">
-                <span class="feature-icon">☠️</span>
-                <h3>Play as Malachar</h3>
-                <p>Master the necromancer summoner. Raise skeleton armies to fight by your side. More characters coming soon.</p>
+                <span class="feature-icon">🎨</span>
+                <h3>Pixel Art Aesthetic</h3>
+                <p>Beautiful 2D pixel art meets modern cyberpunk style. Retro visuals, modern polish.</p>
             </div>
             <div class="feature">
-                <span class="feature-icon">🌈</span>
-                <h3>Neon Aesthetic</h3>
-                <p>Cyberpunk meets fantasy in a visual feast of colors. Because dying should look beautiful.</p>
+                <span class="feature-icon">📈</span>
+                <h3>Progression System</h3>
+                <p>Level up, unlock abilities, customize your build. Start with one skill, master them all.</p>
             </div>
         </div>
     </section>
