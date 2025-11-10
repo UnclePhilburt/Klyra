@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Klyra - An immersive multiplayer roguelike adventure. Team up with friends and conquer procedurally generated dungeons.">
+    <meta name="description" content="KLYRA - Epic multiplayer roguelike. Dive into neon-soaked dungeons with friends. Permadeath never felt so good.">
     <title>KLYRA - Multiplayer Roguelike</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -16,29 +14,86 @@
         }
 
         :root {
-            --neon-pink: #FF006E;
-            --neon-purple: #8338EC;
-            --neon-blue: #3A86FF;
-            --neon-cyan: #06FFF0;
-            --neon-green: #06FF7A;
-            --neon-yellow: #FFD60A;
-            --neon-orange: #FF5400;
-            --dark: #0F0F1E;
-            --darker: #050508;
-            --light: #FFFFFF;
+            --neon-pink: #ff006e;
+            --neon-purple: #8b5cf6;
+            --neon-blue: #3b82f6;
+            --neon-cyan: #06b6d4;
+            --neon-green: #10b981;
         }
 
         body {
             font-family: 'Space Mono', monospace;
-            background: radial-gradient(ellipse at top, #1a1a3e 0%, #0F0F1E 50%, #050508 100%);
-            color: var(--light);
-            line-height: 1.6;
+            background: #000000;
+            color: #ffffff;
             overflow-x: hidden;
             position: relative;
-            -webkit-font-smoothing: antialiased;
         }
 
-        /* Subtle scanlines */
+        /* Animated grid background */
+        #grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Floating orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.4;
+            animation: float 15s ease-in-out infinite;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--neon-pink), transparent);
+            top: -300px;
+            left: -300px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--neon-cyan), transparent);
+            top: 20%;
+            right: -250px;
+            animation-delay: 5s;
+        }
+
+        .orb-3 {
+            width: 550px;
+            height: 550px;
+            background: radial-gradient(circle, var(--neon-purple), transparent);
+            bottom: -200px;
+            left: 40%;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(80px, 120px) scale(1.1); }
+            66% { transform: translate(-80px, 80px) scale(0.9); }
+        }
+
+        /* Scanlines */
         body::before {
             content: '';
             position: fixed;
@@ -48,575 +103,557 @@
             height: 100%;
             background: repeating-linear-gradient(
                 0deg,
-                rgba(0, 0, 0, 0.05),
-                rgba(0, 0, 0, 0.05) 1px,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
                 transparent 1px,
                 transparent 2px
             );
             pointer-events: none;
-            z-index: 9999;
-            opacity: 0.5;
+            z-index: 999;
+            animation: scanline 8s linear infinite;
         }
 
-        /* Animated gradient orbs */
-        .orb {
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.3;
-            animation: float 20s ease-in-out infinite;
-            z-index: 0;
-        }
-
-        .orb-1 {
-            width: 500px;
-            height: 500px;
-            background: var(--neon-purple);
-            top: -200px;
-            left: -200px;
-            animation-delay: 0s;
-        }
-
-        .orb-2 {
-            width: 400px;
-            height: 400px;
-            background: var(--neon-blue);
-            top: 50%;
-            right: -150px;
-            animation-delay: 5s;
-        }
-
-        .orb-3 {
-            width: 450px;
-            height: 450px;
-            background: var(--neon-pink);
-            bottom: -200px;
-            left: 30%;
-            animation-delay: 10s;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(50px, 100px) scale(1.1); }
-            66% { transform: translate(-50px, 50px) scale(0.9); }
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100%); }
         }
 
         /* Header */
         header {
-            background: rgba(15, 15, 30, 0.8);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            padding: 1.5rem 0;
             position: fixed;
-            width: 100%;
             top: 0;
-            z-index: 1000;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        nav {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 3rem;
+            width: 100%;
+            padding: 1.5rem 3rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+            z-index: 1000;
         }
 
         .logo {
             font-family: 'Press Start 2P', cursive;
-            font-size: 1.3rem;
-            background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple), var(--neon-blue), var(--neon-cyan));
-            background-size: 300% 300%;
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, var(--neon-pink), var(--neon-purple), var(--neon-cyan), var(--neon-green));
+            background-size: 300% 100%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: gradientFlow 6s ease infinite;
-            letter-spacing: 2px;
+            animation: gradientShift 3s linear infinite;
+            filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.8));
         }
 
-        @keyframes gradientFlow {
+        @keyframes gradientShift {
             0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
         }
 
         nav ul {
             list-style: none;
             display: flex;
-            gap: 3rem;
+            gap: 2.5rem;
         }
 
         nav a {
-            font-family: 'Space Mono', monospace;
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.7);
             text-decoration: none;
-            font-size: 0.9rem;
             font-weight: 700;
             letter-spacing: 1px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s;
             position: relative;
+            text-transform: uppercase;
+            font-size: 0.85rem;
         }
 
-        nav a::after {
-            content: '';
+        nav a::before {
+            content: '>';
             position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            left: -15px;
+            opacity: 0;
+            transition: all 0.3s;
         }
 
         nav a:hover {
-            color: var(--light);
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan);
         }
 
-        nav a:hover::after {
-            width: 100%;
+        nav a:hover::before {
+            opacity: 1;
+            left: -20px;
         }
 
-        /* Hero Section */
+        /* Hero */
         .hero {
-            margin-top: 80px;
-            padding: 8rem 3rem 6rem;
-            text-align: center;
+            position: relative;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            position: relative;
-            z-index: 1;
+            text-align: center;
+            padding: 2rem;
+            z-index: 10;
         }
 
-        .hero h1 {
+        .glitch {
             font-family: 'Press Start 2P', cursive;
-            font-size: 5rem;
-            margin-bottom: 2rem;
-            background: linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 25%, var(--neon-blue) 50%, var(--neon-cyan) 75%, var(--neon-green) 100%);
-            background-size: 200% auto;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: gradientFlow 8s linear infinite;
-            letter-spacing: 8px;
-            filter: drop-shadow(0 0 40px rgba(131, 56, 236, 0.6));
-        }
-
-        .subtitle {
-            font-size: 1.1rem;
-            max-width: 600px;
-            margin: 0 auto 1rem;
-            color: rgba(255, 255, 255, 0.6);
-            font-weight: 700;
-            letter-spacing: 3px;
+            font-size: 7rem;
+            font-weight: bold;
             text-transform: uppercase;
-        }
-
-        .hero p {
-            font-size: 1.3rem;
-            max-width: 700px;
-            margin: 0 auto 3rem;
-            color: rgba(255, 255, 255, 0.85);
-            line-height: 1.8;
-        }
-
-        .cta-button {
-            font-family: 'Space Mono', monospace;
-            display: inline-block;
-            padding: 1.2rem 3rem;
-            background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple), var(--neon-blue));
-            background-size: 200% auto;
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            font-size: 1rem;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow:
-                0 10px 40px rgba(255, 0, 110, 0.4),
-                0 0 0 1px rgba(255, 255, 255, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            animation: buttonPulse 3s ease-in-out infinite;
             position: relative;
-            overflow: hidden;
+            margin-bottom: 1rem;
+            animation: glitchText 5s infinite;
         }
 
-        .cta-button::before {
-            content: '';
+        .glitch::before,
+        .glitch::after {
+            content: 'KLYRA';
             position: absolute;
             top: 0;
-            left: -100%;
+            left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.5s;
         }
 
-        .cta-button:hover::before {
-            left: 100%;
+        .glitch::before {
+            animation: glitchBefore 3s infinite;
+            clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+            transform: translate(-5px, -2px);
+        }
+
+        .glitch::after {
+            animation: glitchAfter 2s infinite;
+            clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+            transform: translate(3px, 2px);
+        }
+
+        @keyframes glitchText {
+            0%, 90%, 100% {
+                background: linear-gradient(90deg, var(--neon-pink), var(--neon-purple), var(--neon-cyan));
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                filter: drop-shadow(0 0 30px var(--neon-purple));
+            }
+            92%, 96% {
+                background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green), var(--neon-pink));
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                filter: drop-shadow(0 0 40px var(--neon-cyan)) hue-rotate(45deg);
+            }
+        }
+
+        @keyframes glitchBefore {
+            0%, 90%, 100% { opacity: 0; }
+            92%, 94%, 96% {
+                opacity: 0.8;
+                background: var(--neon-cyan);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+        }
+
+        @keyframes glitchAfter {
+            0%, 90%, 100% { opacity: 0; }
+            91%, 93%, 95%, 97% {
+                opacity: 0.7;
+                background: var(--neon-pink);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 4px;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            animation: fadeIn 1s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-text {
+            max-width: 700px;
+            font-size: 1.2rem;
+            line-height: 2;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 3rem;
+        }
+
+        .cta-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .cta {
+            font-family: 'Press Start 2P', cursive;
+            padding: 1.5rem 3rem;
+            font-size: 0.9rem;
+            text-decoration: none;
+            border-radius: 0;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .cta-primary {
+            background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+            color: white;
+            border: 2px solid var(--neon-purple);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+            animation: buttonPulse 2s ease-in-out infinite;
         }
 
         @keyframes buttonPulse {
             0%, 100% {
-                background-position: 0% center;
-                box-shadow: 0 10px 40px rgba(255, 0, 110, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+                transform: scale(1);
             }
             50% {
-                background-position: 100% center;
-                box-shadow: 0 10px 50px rgba(58, 134, 255, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                box-shadow: 0 0 50px rgba(255, 0, 110, 0.8);
+                transform: scale(1.02);
             }
         }
 
-        .cta-button:hover {
-            transform: translateY(-3px);
-            box-shadow:
-                0 20px 60px rgba(255, 0, 110, 0.6),
-                0 0 0 1px rgba(255, 255, 255, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        .cta-primary:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 0 60px rgba(139, 92, 246, 0.9);
         }
 
-        .cta-button:active {
-            transform: translateY(-1px);
+        .cta-secondary {
+            background: transparent;
+            color: var(--neon-cyan);
+            border: 2px solid var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+        }
+
+        .cta-secondary:hover {
+            background: rgba(6, 182, 212, 0.1);
+            box-shadow: 0 0 40px rgba(6, 182, 212, 0.6);
+            transform: translateY(-3px);
+        }
+
+        /* Particles */
+        #particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: var(--neon-cyan);
+            box-shadow: 0 0 10px var(--neon-cyan);
+            animation: particleFloat 5s linear infinite;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% {
+                transform: translateY(-100px) translateX(var(--drift));
+                opacity: 0;
+            }
         }
 
         /* Stats */
         .stats {
             display: flex;
-            justify-content: center;
-            gap: 3rem;
+            gap: 4rem;
             margin-top: 5rem;
             flex-wrap: wrap;
+            justify-content: center;
         }
 
-        .stat-box {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 2rem 3rem;
-            min-width: 140px;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .stat-box:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-5px);
+        .stat {
+            text-align: center;
         }
 
         .stat-number {
             font-family: 'Press Start 2P', cursive;
-            font-size: 2.5rem;
-            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+            font-size: 3rem;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-green));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
+            filter: drop-shadow(0 0 20px var(--neon-cyan));
         }
 
         .stat-label {
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             color: rgba(255, 255, 255, 0.5);
-            margin-top: 0.5rem;
-            letter-spacing: 2px;
             text-transform: uppercase;
-            font-weight: 700;
+            letter-spacing: 2px;
+            margin-top: 0.5rem;
         }
 
-        /* Features Section */
+        /* Features */
         .features {
             padding: 8rem 3rem;
             position: relative;
-            z-index: 1;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
+            z-index: 10;
         }
 
         .section-title {
             font-family: 'Press Start 2P', cursive;
+            font-size: 3rem;
             text-align: center;
-            font-size: 2.5rem;
             margin-bottom: 5rem;
-            background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
+            background: linear-gradient(90deg, var(--neon-purple), var(--neon-pink));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: 4px;
+            filter: drop-shadow(0 0 20px var(--neon-purple));
         }
 
         .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
-        .feature-card {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
+        .feature {
+            background: rgba(139, 92, 246, 0.05);
+            border: 2px solid rgba(139, 92, 246, 0.3);
             padding: 3rem;
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
 
-        .feature-card::before {
+        .feature::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--neon-pink), var(--neon-purple), var(--neon-blue), var(--neon-cyan));
-            background-size: 200% auto;
-            animation: gradientFlow 3s linear infinite;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--neon-pink), var(--neon-purple), var(--neon-cyan));
+            z-index: -1;
             opacity: 0;
-            transition: opacity 0.5s;
+            transition: opacity 0.4s;
         }
 
-        .feature-card:hover {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.2);
+        .feature:hover {
             transform: translateY(-10px);
-            box-shadow: 0 20px 60px rgba(131, 56, 236, 0.3);
+            background: rgba(139, 92, 246, 0.1);
+            box-shadow: 0 20px 60px rgba(139, 92, 246, 0.4);
         }
 
-        .feature-card:hover::before {
+        .feature:hover::before {
             opacity: 1;
         }
 
         .feature-icon {
-            font-size: 3rem;
+            font-size: 3.5rem;
             margin-bottom: 1.5rem;
-            display: inline-block;
-            filter: grayscale(0);
-            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: block;
+            filter: drop-shadow(0 0 20px currentColor);
+            transition: transform 0.4s;
         }
 
-        .feature-card:hover .feature-icon {
+        .feature:hover .feature-icon {
             transform: scale(1.2) rotate(-5deg);
         }
 
-        .feature-card h3 {
+        .feature h3 {
             font-family: 'Press Start 2P', cursive;
-            font-size: 1rem;
-            margin-bottom: 1.5rem;
-            color: var(--light);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--neon-cyan);
             letter-spacing: 1px;
         }
 
-        .feature-card p {
-            font-size: 1.1rem;
-            color: rgba(255, 255, 255, 0.7);
+        .feature p {
+            font-size: 1rem;
             line-height: 1.8;
-        }
-
-        /* About Section */
-        .about {
-            padding: 8rem 3rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .about-content {
-            max-width: 900px;
-            margin: 0 auto;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
-            padding: 4rem;
-            border-radius: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .about-content h2 {
-            font-family: 'Press Start 2P', cursive;
-            font-size: 2rem;
-            margin-bottom: 3rem;
-            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-green));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: 3px;
-        }
-
-        .about-content p {
-            font-size: 1.2rem;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 1.5rem;
-            line-height: 2;
+            color: rgba(255, 255, 255, 0.7);
         }
 
         /* Footer */
         footer {
-            background: rgba(5, 5, 8, 0.95);
-            backdrop-filter: blur(20px);
-            text-align: center;
             padding: 3rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid rgba(139, 92, 246, 0.3);
             position: relative;
-            z-index: 1;
+            z-index: 10;
         }
 
         footer p {
-            font-family: 'Space Mono', monospace;
             color: rgba(255, 255, 255, 0.5);
             font-size: 0.9rem;
-            letter-spacing: 1px;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-                letter-spacing: 3px;
+            .glitch {
+                font-size: 3rem;
             }
 
-            .hero p {
-                font-size: 1.1rem;
+            .hero-text {
+                font-size: 1rem;
             }
 
-            .cta-button {
-                font-size: 0.9rem;
+            .cta {
+                font-size: 0.7rem;
                 padding: 1rem 2rem;
             }
 
             nav ul {
-                gap: 1.5rem;
+                gap: 1rem;
             }
 
             nav a {
-                font-size: 0.75rem;
-            }
-
-            .section-title {
-                font-size: 1.5rem;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
+                font-size: 0.7rem;
             }
 
             .logo {
                 font-size: 1rem;
             }
 
-            nav {
-                padding: 0 1.5rem;
+            .section-title {
+                font-size: 1.8rem;
             }
 
-            .hero, .features, .about {
-                padding-left: 1.5rem;
-                padding-right: 1.5rem;
+            .features-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
+    <div id="grid-bg"></div>
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
 
+    <div id="particles"></div>
+
     <header>
+        <div class="logo">KLYRA</div>
         <nav>
-            <div class="logo">KLYRA</div>
             <ul>
                 <li><a href="#home">Home</a></li>
                 <li><a href="#features">Features</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="#play">Play</a></li>
+                <li><a href="game/" class="cta-secondary" style="padding: 0.5rem 1.5rem; font-size: 0.75rem;">Play Now</a></li>
             </ul>
         </nav>
     </header>
 
     <section id="home" class="hero">
-        <div class="subtitle">Multiplayer Roguelike</div>
-        <h1>KLYRA</h1>
-        <p>Embark on an epic multiplayer roguelike adventure. Team up with friends, battle fierce enemies, and conquer procedurally generated dungeons in this thrilling cooperative experience.</p>
-        <a href="#play" class="cta-button">Start Adventure</a>
+        <h1 class="glitch">KLYRA</h1>
+        <p class="tagline">Multiplayer Roguelike</p>
+        <p class="hero-text">
+            Dive into neon-soaked dungeons with friends. Battle through procedurally generated chaos.
+            Die gloriously. Respawn stronger. Permadeath never felt so good.
+        </p>
+
+        <div class="cta-container">
+            <a href="game/" class="cta cta-primary">Enter the Void</a>
+            <a href="#features" class="cta cta-secondary">Learn More</a>
+        </div>
 
         <div class="stats">
-            <div class="stat-box">
+            <div class="stat">
                 <div class="stat-number">∞</div>
                 <div class="stat-label">Dungeons</div>
             </div>
-            <div class="stat-box">
-                <div class="stat-number">4</div>
+            <div class="stat">
+                <div class="stat-number">10</div>
                 <div class="stat-label">Players</div>
             </div>
-            <div class="stat-box">
-                <div class="stat-number">1</div>
-                <div class="stat-label">Life</div>
+            <div class="stat">
+                <div class="stat-number">7</div>
+                <div class="stat-label">Classes</div>
             </div>
         </div>
     </section>
 
     <section id="features" class="features">
-        <div class="container">
-            <h2 class="section-title">Features</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🎮</div>
-                    <h3>Multiplayer Co-op</h3>
-                    <p>Team up with friends online and coordinate your strategies to overcome challenging dungeons together.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🗺️</div>
-                    <h3>Procedural Generation</h3>
-                    <p>Every playthrough is unique with randomly generated dungeons, enemies, and loot. No two runs are ever the same.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">⚔️</div>
-                    <h3>Tactical Combat</h3>
-                    <p>Master turn-based combat with strategic positioning, abilities, and team coordination to defeat powerful foes.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">💎</div>
-                    <h3>Rich Loot System</h3>
-                    <p>Discover legendary weapons, armor, and artifacts with unique properties to customize your playstyle.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🎭</div>
-                    <h3>Multiple Classes</h3>
-                    <p>Choose from diverse character classes, each with unique abilities and playstyles to master.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔄</div>
-                    <h3>Permanent Progression</h3>
-                    <p>Unlock new abilities and upgrades that persist between runs, making each attempt stronger than the last.</p>
-                </div>
+        <h2 class="section-title">Features</h2>
+        <div class="features-grid">
+            <div class="feature">
+                <span class="feature-icon">🎮</span>
+                <h3>Drop-In Multiplayer</h3>
+                <p>No lobbies. No waiting. Just instant 10-player chaos. Jump in, team up, die together.</p>
             </div>
-        </div>
-    </section>
-
-    <section id="about" class="about">
-        <div class="container">
-            <div class="about-content">
-                <h2>About Klyra</h2>
-                <p>
-                    Klyra is a thrilling multiplayer roguelike that combines the addictive nature of procedurally generated dungeons with the excitement of cooperative gameplay.
-                </p>
-                <p>
-                    Gather your party, delve into dangerous dungeons filled with monsters and treasures, and work together to overcome seemingly impossible odds.
-                </p>
-                <p>
-                    With permadeath mechanics that keep the stakes high and persistent progression that rewards your determination, every run is a new story waiting to be told.
-                </p>
+            <div class="feature">
+                <span class="feature-icon">🗺️</span>
+                <h3>Infinite Worlds</h3>
+                <p>Every run is a new procedurally generated nightmare. Same game, different hell every time.</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">⚔️</span>
+                <h3>Real-Time Combat</h3>
+                <p>Fast-paced action combat. No turns. No mercy. Just pure adrenaline-fueled mayhem.</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">💀</span>
+                <h3>Permadeath</h3>
+                <p>Death means something here. One life. Make it count. Or don't. We don't judge.</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🎭</span>
+                <h3>7 Unique Classes</h3>
+                <p>Warriors, mages, rogues, and more. Each with distinct abilities and playstyles. Pick your poison.</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🌈</span>
+                <h3>Neon Aesthetic</h3>
+                <p>Cyberpunk meets fantasy in a visual feast of colors. Because dying should look beautiful.</p>
             </div>
         </div>
     </section>
 
     <footer>
-        <p>© 2025 Klyra. All rights reserved.</p>
-        <p style="margin-top: 0.5rem; opacity: 0.5;">Crafted with precision.</p>
+        <p>© 2025 KLYRA. Built with Phaser 3 & Socket.IO.</p>
+        <p style="margin-top: 0.5rem; opacity: 0.3;">Prepare to die. A lot.</p>
     </footer>
+
+    <script>
+        // Create floating particles
+        const particlesContainer = document.getElementById('particles');
+        for (let i = 0; i < 30; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 5 + 's';
+            particle.style.setProperty('--drift', (Math.random() * 100 - 50) + 'px');
+            particlesContainer.appendChild(particle);
+        }
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
