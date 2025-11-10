@@ -55,10 +55,8 @@ class MenuScene extends Phaser.Scene {
         `;
         document.body.appendChild(this.usernameInput);
 
-        // Clean background with subtle gradient
-        const bgGradient = this.add.graphics();
-        bgGradient.fillGradientStyle(0x0a0a0a, 0x0a0a0a, 0x1a1a2a, 0x1a1a2a, 1, 1, 1, 1);
-        bgGradient.fillRect(0, 0, width, height);
+        // Clean dark background
+        this.cameras.main.setBackgroundColor('#0f0f1a');
 
         // Left side - Character display
         const charX = width * 0.3;
