@@ -4,34 +4,157 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KLYRA - Multiplayer Roguelike</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: #000000;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-        }
-    </style>
+
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <!-- Custom Menu Styles -->
+    <link rel="stylesheet" href="mainmenu/mainmenu.css">
+    <link rel="stylesheet" href="mainmenu/character-select-styles.css">
 </head>
 <body>
-    <div id="game-container"></div>
+    <!-- Particle Background Canvas -->
+    <canvas id="backgroundCanvas"></canvas>
 
-    <!-- Phaser 3 Library -->
+    <!-- Main Menu / Lobby Screen -->
+    <div id="lobbyScreen">
+        <div class="mystical-gateway">
+            <!-- Pixel Clouds -->
+            <div class="pixel-clouds">
+                <div class="pixel-cloud"></div>
+                <div class="pixel-cloud"></div>
+                <div class="pixel-cloud"></div>
+                <div class="pixel-cloud"></div>
+            </div>
+
+            <!-- Title -->
+            <div class="title-runes">
+                <h1 class="main-title">KLYRA</h1>
+                <p class="subtitle-runes">Multiplayer Roguelike Adventure</p>
+            </div>
+
+            <!-- Menu Container -->
+            <div class="gateway-container">
+                <div class="ritual-circle">
+                    <!-- Floating Sword Icon -->
+                    <div class="floating-runes">
+                        <span class="floating-rune"></span>
+                    </div>
+
+                    <!-- Name Input -->
+                    <div class="name-inscription">
+                        <label for="playerName" class="name-label">ENTER YOUR NAME</label>
+                        <input
+                            type="text"
+                            id="playerName"
+                            class="mystic-input"
+                            placeholder="ADVENTURER"
+                            maxlength="20"
+                            autocomplete="off"
+                        />
+                    </div>
+
+                    <!-- Enter Button -->
+                    <div class="enter-prompt" id="portalClick">ENTER REALM</div>
+
+                    <!-- Status Text -->
+                    <div class="status-runes" id="statusText"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Characters Button (Top Left) -->
+    <button id="charactersBtn">⚔️ CHARACTERS</button>
+
+    <!-- Settings Button -->
+    <button id="settingsBtn">⚙️</button>
+
+    <!-- Character Select Modal -->
+    <div id="characterSelectModal">
+        <div class="character-select-container">
+            <div class="character-select-title">SELECT YOUR HERO</div>
+            <button class="character-select-close" id="closeCharacterSelect">✕</button>
+
+            <div id="selectedCharacterDisplay" style="margin-bottom: 30px;">
+                Current Hero: <span id="currentCharacterName">ALDRIC</span>
+            </div>
+
+            <div class="character-grid" id="characterGrid">
+                <!-- Character cards will be dynamically generated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2>⚙️ SETTINGS</h2>
+                <button class="close-settings" id="closeSettings">✕</button>
+            </div>
+
+            <div style="padding: 30px;">
+                <!-- Music Volume -->
+                <div class="setting-item">
+                    <label>
+                        <span class="setting-icon">🎵</span>
+                        MUSIC VOLUME
+                    </label>
+                    <div class="volume-control">
+                        <input
+                            type="range"
+                            id="musicVolume"
+                            class="volume-slider"
+                            min="0"
+                            max="100"
+                            value="30"
+                        />
+                        <div id="volumeBar" style="display: flex; gap: 5px; align-items: flex-end; height: 20px;">
+                            <!-- Volume bar segments created by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fullscreen Toggle -->
+                <div class="setting-item" style="margin-top: 25px;">
+                    <button
+                        id="fullscreenToggle"
+                        style="
+                            width: 100%;
+                            padding: 20px;
+                            background: #6B4FFF;
+                            border: 4px solid #2C1B47;
+                            color: #FFFFFF;
+                            font-family: 'Press Start 2P', monospace;
+                            font-size: 11px;
+                            cursor: pointer;
+                            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.3);
+                            transition: all 0.2s ease;
+                        "
+                    >
+                        ENTER FULLSCREEN
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phaser Game Container (Hidden Initially) -->
+    <div id="game-container" style="display: none;"></div>
+
+    <!-- Version Info -->
+    <div class="version">v2.0 ALPHA</div>
+
+    <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-
-    <!-- Socket.IO Client -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <!-- Character System (Load First!) -->
+    <script src="js/config/characters.js"></script>
 
     <!-- Game Scripts -->
     <script src="js/config.js"></script>
-    <script src="js/config/characters.js"></script>
     <script src="js/utils/BiomeGenerator.js"></script>
     <script src="js/utils/MobileControls.js"></script>
     <script src="js/managers/NetworkManager.js"></script>
@@ -44,5 +167,17 @@
     <script src="js/scenes/LobbyScene.js"></script>
     <script src="js/scenes/GameScene.js"></script>
     <script src="js/main.js"></script>
+
+    <!-- Custom Menu System -->
+    <script src="mainmenu/mainmenu.js"></script>
+    <script src="mainmenu/CharacterSelectManager.js"></script>
+
+    <!-- Initialize -->
+    <script>
+        console.log('🎮 KLYRA Loading...');
+        console.log('📦 Character System:', window.CharacterSystem ? 'Loaded' : 'Missing');
+        console.log('🎨 Main Menu:', window.mainMenuInstance ? 'Loaded' : 'Missing');
+        console.log('⚔️ Character Manager:', window.characterSelectManager ? 'Loaded' : 'Missing');
+    </script>
 </body>
 </html>

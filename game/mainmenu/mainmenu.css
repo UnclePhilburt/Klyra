@@ -1,0 +1,883 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Mobile viewport height support */
+:root {
+    --vh: 1vh;
+}
+
+body {
+    background: linear-gradient(180deg, 
+        #5A9FD4 0%,      /* Classic NES blue */
+        #7BB3E0 25%,     /* Lighter blue */
+        #A8DADC 50%,     /* Pastel cyan */
+        #FFB4C8 75%,     /* Pink */
+        #FF69B4 100%     /* Hot pink */
+    );
+    overflow: hidden;
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+    cursor: default;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100); /* Fallback for mobile */
+    touch-action: none; /* Prevent default touch behaviors */
+    -webkit-user-select: none; /* Prevent text selection on iOS */
+    user-select: none;
+}
+
+/* CRT Scanlines Effect */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15) 0px,
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+    z-index: 9999;
+    animation: scanlines 8s linear infinite;
+    transition: opacity 0.5s ease-out;
+}
+
+/* Hide CRT effects when game is active */
+body.game-active::before {
+    opacity: 0;
+    pointer-events: none;
+}
+
+@keyframes scanlines {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(2px); }
+}
+
+/* CRT Screen Curvature */
+body::after {
+    content: '';
+    position: fixed;
+    top: -10%;
+    left: -10%;
+    width: 120%;
+    height: 120%;
+    background: radial-gradient(ellipse at center, 
+        transparent 50%, 
+        rgba(0, 0, 0, 0.3) 100%);
+    pointer-events: none;
+    z-index: 9998;
+    transition: opacity 0.5s ease-out;
+}
+
+/* Hide CRT curvature when game is active */
+body.game-active::after {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Old TV Glow Effect */
+@keyframes screenGlow {
+    0%, 100% { box-shadow: inset 0 0 100px rgba(255, 255, 255, 0.05); }
+    50% { box-shadow: inset 0 0 120px rgba(255, 255, 255, 0.08); }
+}
+
+/* Pixel Stars Background */
+canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+
+/* Main Container */
+#lobbyScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+#lobbyScreen.hidden {
+    display: none;
+}
+
+/* Castle Silhouette - Pixel Art Style */
+.mystical-gateway::before {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 40%;
+    background: linear-gradient(to top, #2C1B47 0%, transparent 100%);
+    z-index: 1;
+}
+
+/* Pixel Art Mountains */
+.mystical-gateway::after {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 25%;
+    background: 
+        linear-gradient(135deg, transparent 49%, #483D8B 49%, #483D8B 51%, transparent 51%),
+        linear-gradient(-135deg, transparent 49%, #483D8B 49%, #483D8B 51%, transparent 51%);
+    background-size: 200px 100%;
+    background-position: 0 100%;
+    z-index: 2;
+    opacity: 0.7;
+}
+
+/* Retro Pixel Clouds */
+.mystical-gateway {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 2s ease-out;
+}
+
+.mystical-gateway .pixel-clouds {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.pixel-cloud {
+    position: absolute;
+    width: 80px;
+    height: 32px;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.8) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.8) 0%, transparent 50%),
+        radial-gradient(circle at 80% 50%, rgba(255, 255, 255, 0.8) 0%, transparent 50%);
+    animation: cloudDrift 40s linear infinite;
+    filter: drop-shadow(2px 2px 0px rgba(0, 0, 0, 0.1));
+    image-rendering: pixelated;
+}
+
+.pixel-cloud:nth-child(1) {
+    top: 10%;
+    left: -100px;
+    animation-delay: 0s;
+}
+
+.pixel-cloud:nth-child(2) {
+    top: 20%;
+    left: -150px;
+    animation-delay: -10s;
+    transform: scale(0.7);
+}
+
+.pixel-cloud:nth-child(3) {
+    top: 15%;
+    left: -200px;
+    animation-delay: -20s;
+    transform: scale(1.2);
+}
+
+.pixel-cloud:nth-child(4) {
+    top: 25%;
+    left: -250px;
+    animation-delay: -30s;
+    transform: scale(0.9);
+}
+
+@keyframes cloudDrift {
+    0% { transform: translateX(-100px); }
+    100% { transform: translateX(calc(100vw + 200px)); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Title Container - Retro ASCII Frame */
+.title-runes {
+    position: relative;
+    text-align: center;
+    z-index: 20;
+    margin-bottom: 60px;
+    padding: 40px 80px;
+    background: 
+        repeating-linear-gradient(
+            0deg,
+            #FFFFFF 0px,
+            #FFFFFF 2px,
+            #F0F0F0 2px,
+            #F0F0F0 4px
+        );
+    border: 12px solid #000000;
+    box-shadow: 
+        inset 0 0 0 4px #FFD700,
+        inset 0 0 0 8px #000000,
+        12px 12px 0 0 rgba(0, 0, 0, 0.5),
+        0 0 40px rgba(255, 215, 0, 0.4);
+    animation: titleFloat 3s ease-in-out infinite;
+}
+
+/* ASCII Corner Decorations */
+.title-runes::before {
+    content: '╔═══════════════╗';
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: #FFD700;
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.5);
+    animation: blink 2s ease-in-out infinite;
+    white-space: nowrap;
+}
+
+.title-runes::after {
+    content: '╚═══════════════╝';
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: #FFD700;
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.5);
+    animation: blink 2s ease-in-out infinite;
+    animation-delay: 1s;
+    white-space: nowrap;
+}
+
+@keyframes blink {
+    0%, 49%, 100% { opacity: 1; }
+    50%, 99% { opacity: 0.3; }
+}
+
+/* Main Title - Chunky 8-bit Style */
+.main-title {
+    font-size: 84px;
+    font-weight: 900;
+    letter-spacing: 12px;
+    color: #FC0FC0;
+    text-shadow: 
+        4px 0px 0px #FF1493,
+        8px 0px 0px #8B00FF,
+        12px 0px 0px #4169E1,
+        0px 4px 0px rgba(0, 0, 0, 0.5);
+    animation: titleGlitch 3s ease-in-out infinite;
+    position: relative;
+    filter: contrast(1.2) saturate(1.3);
+}
+
+@keyframes titleGlitch {
+    0%, 90%, 100% { 
+        transform: scale(1) skewX(0deg);
+        text-shadow: 
+            4px 0px 0px #FF1493,
+            8px 0px 0px #8B00FF,
+            12px 0px 0px #4169E1,
+            0px 4px 0px rgba(0, 0, 0, 0.5);
+    }
+    92% { 
+        transform: scale(1.02) skewX(-2deg);
+        text-shadow: 
+            6px 0px 0px #00FFFF,
+            10px 0px 0px #FF00FF,
+            14px 0px 0px #FFFF00,
+            0px 4px 0px rgba(0, 0, 0, 0.5);
+    }
+    94% { 
+        transform: scale(0.98) skewX(2deg);
+    }
+}
+
+@keyframes titleFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+}
+
+/* Subtitle - Retro Blinking Text */
+.subtitle-runes {
+    font-size: 18px;
+    letter-spacing: 6px;
+    color: #00FF00;
+    text-shadow: 
+        2px 2px 0px rgba(0, 0, 0, 0.5),
+        0 0 10px #00FF00;
+    margin-top: 20px;
+    text-transform: uppercase;
+    animation: subtitleBlink 4s ease-in-out infinite;
+}
+
+@keyframes subtitleBlink {
+    0%, 40%, 42%, 100% { opacity: 1; }
+    41% { opacity: 0.5; }
+}
+
+/* Game Menu Container - Super Retro JRPG Style */
+.gateway-container {
+    position: relative;
+    width: 700px;
+    padding: 50px;
+    background: 
+        repeating-linear-gradient(
+            0deg,
+            #FFFFFF 0px,
+            #FFFFFF 4px,
+            #F5F5F5 4px,
+            #F5F5F5 8px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            #FFFFFF 0px,
+            #FFFFFF 4px,
+            #F5F5F5 4px,
+            #F5F5F5 8px
+        );
+    background-blend-mode: multiply;
+    border: 12px solid #000000;
+    box-shadow: 
+        inset 0 0 0 6px #FFD700,
+        inset 0 0 0 12px #000000,
+        12px 12px 0 0 rgba(0, 0, 0, 0.6),
+        0 16px 80px rgba(0, 0, 0, 0.6);
+    z-index: 15;
+    animation: containerPulse 4s ease-in-out infinite;
+}
+
+@keyframes containerPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.01); }
+}
+
+/* Chunky Corner Decorations */
+.gateway-container::before,
+.gateway-container::after {
+    content: '';
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background: #FFD700;
+    border: 6px solid #000000;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+}
+
+.gateway-container::before {
+    top: -6px;
+    left: -6px;
+}
+
+.gateway-container::after {
+    top: -6px;
+    right: -6px;
+}
+
+/* Bottom chunky corners */
+.gateway-container .ritual-circle::before,
+.gateway-container .ritual-circle::after {
+    content: '';
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background: #FFD700;
+    border: 6px solid #000000;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+    bottom: -56px;
+}
+
+.gateway-container .ritual-circle::before {
+    left: -56px;
+}
+
+.gateway-container .ritual-circle::after {
+    right: -56px;
+}
+
+.ritual-circle {
+    position: relative;
+}
+
+/* Hide old portal stuff */
+.mystical-portal,
+.portal-tunnel,
+.portal-core,
+.tunnel-ring,
+.stone-archway,
+.energy-pillar,
+.ritual-symbols,
+.ritual-symbol,
+.archway-runes {
+    display: none !important;
+}
+
+/* Pixel Sword Icon */
+.floating-runes {
+    position: absolute;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 48px;
+    animation: swordBounce 2s ease-in-out infinite;
+}
+
+
+@keyframes swordBounce {
+    0%, 100% { transform: translateX(-50%) translateY(0px) rotate(-10deg); }
+    50% { transform: translateX(-50%) translateY(-15px) rotate(10deg); }
+}
+
+.floating-rune {
+    display: inline-block;
+    color: #FFD700;
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.3);
+    filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+}
+
+.floating-rune:nth-child(n+2) {
+    display: none;
+}
+
+.floating-rune:first-child::before {
+    content: '⚔️';
+}
+
+/* Portal Interact - Now hidden, button handles clicks */
+.portal-interact {
+    display: none !important;
+}
+
+/* Enter Prompt - Super Chunky Retro Button */
+.enter-prompt {
+    position: relative;
+    padding: 24px 50px;
+    background: #FF0000;
+    border: 8px solid #000000;
+    color: #FFFFFF;
+    font-size: 22px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    box-shadow: 
+        inset 0 0 0 4px #FFD700,
+        inset 0 0 0 8px #000000,
+        8px 8px 0 0 rgba(0, 0, 0, 0.6),
+        0 0 20px rgba(255, 0, 0, 0.5);
+    cursor: pointer;
+    animation: buttonBlink 2s ease-in-out infinite;
+    margin: 40px auto;
+    text-align: center;
+    z-index: 10;
+    user-select: none;
+    white-space: nowrap;
+    text-shadow: 
+        3px 3px 0px rgba(0, 0, 0, 0.5),
+        0 0 10px #FFFFFF;
+}
+
+@keyframes buttonBlink {
+    0%, 70%, 100% { 
+        background: #FF0000;
+        box-shadow: 
+            inset 0 0 0 4px #FFD700,
+            inset 0 0 0 8px #000000,
+            8px 8px 0 0 rgba(0, 0, 0, 0.6),
+            0 0 20px rgba(255, 0, 0, 0.5);
+    }
+    75% { 
+        background: #FF4444;
+        box-shadow: 
+            inset 0 0 0 4px #FFFF00,
+            inset 0 0 0 8px #000000,
+            8px 8px 0 0 rgba(0, 0, 0, 0.6),
+            0 0 30px rgba(255, 255, 0, 0.8);
+    }
+}
+
+.enter-prompt:hover {
+    background: #FF4444;
+    animation: buttonFlash 0.3s ease-in-out infinite;
+    transform: scale(1.03);
+    box-shadow: 
+        inset 0 0 0 4px #FFFF00,
+        inset 0 0 0 8px #000000,
+        10px 10px 0 0 rgba(0, 0, 0, 0.7),
+        0 0 40px rgba(255, 255, 0, 1);
+}
+
+@keyframes buttonFlash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.9; }
+}
+
+/* Name Input Section */
+.name-inscription {
+    position: relative;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.name-label {
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: #6B4FFF;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+    margin-bottom: 15px;
+    text-transform: uppercase;
+}
+
+/* Input Field - Retro Game Style */
+.mystic-input {
+    width: 100%;
+    padding: 20px 30px;
+    background: #FFFFFF;
+    border: 6px solid #2C1B47;
+    color: #2C1B47;
+    font-size: 24px;
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+    text-align: center;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    outline: none;
+    box-shadow: 
+        inset 4px 4px 0px rgba(0, 0, 0, 0.1),
+        0 0 0 3px #FFD700,
+        0 0 0 6px #2C1B47;
+    transition: all 0.2s ease;
+}
+
+.mystic-input:focus {
+    background: #FFF5E6;
+    border-color: #FF1493;
+    box-shadow: 
+        inset 4px 4px 0px rgba(255, 20, 147, 0.1),
+        0 0 0 3px #FFD700,
+        0 0 0 6px #FF1493,
+        0 0 20px rgba(255, 20, 147, 0.5);
+    transform: scale(1.02);
+}
+
+.mystic-input::placeholder {
+    color: rgba(44, 27, 71, 0.3);
+    letter-spacing: 3px;
+}
+
+/* Status Text */
+.status-runes {
+    margin-top: 15px;
+    font-size: 12px;
+    color: #FF1493;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+    letter-spacing: 2px;
+    min-height: 20px;
+}
+
+/* Settings Button - Pixel Gear */
+.settings-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 60px;
+    height: 60px;
+    background: #FFD700;
+    border: 6px solid #2C1B47;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 
+        4px 4px 0px rgba(0, 0, 0, 0.3),
+        0 0 0 3px #FFD700,
+        0 0 0 6px #2C1B47;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-btn:hover {
+    background: #FFA500;
+    transform: scale(1.1) rotate(90deg);
+}
+
+.settings-icon {
+    font-size: 28px;
+    color: #2C1B47;
+    line-height: 1;
+}
+
+/* Settings Panel - Pixel Menu */
+.settings-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.settings-panel.active {
+    display: flex;
+}
+
+.settings-header {
+    background: #6B4FFF;
+    padding: 20px;
+    border-bottom: 6px solid #2C1B47;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settings-header h2 {
+    color: #FFFFFF;
+    font-size: 18px;
+    letter-spacing: 3px;
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.3);
+}
+
+.close-settings {
+    width: 40px;
+    height: 40px;
+    background: #FF1493;
+    border: 4px solid #2C1B47;
+    color: #FFFFFF;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
+
+.close-settings:hover {
+    background: #FF69B4;
+    transform: scale(1.1);
+}
+
+.settings-content {
+    padding: 30px;
+    max-width: 500px;
+    background: #FFFFFF;
+    border: 8px solid #2C1B47;
+    box-shadow: 
+        0 0 0 4px #FFD700,
+        0 0 0 8px #2C1B47,
+        8px 8px 0 0 rgba(0, 0, 0, 0.3);
+}
+
+.setting-item {
+    margin-bottom: 20px;
+}
+
+.setting-item label {
+    display: block;
+    color: #2C1B47;
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+}
+
+.setting-icon {
+    color: #FF1493;
+    margin-right: 10px;
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.volume-slider {
+    flex: 1;
+    height: 12px;
+    background: #E0E0E0;
+    border: 4px solid #2C1B47;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 24px;
+    background: #FF1493;
+    border: 4px solid #2C1B47;
+    cursor: pointer;
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: #FF1493;
+    border: 4px solid #2C1B47;
+    cursor: pointer;
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+}
+
+.volume-value {
+    color: #6B4FFF;
+    font-size: 14px;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+    min-width: 50px;
+}
+
+/* Fullscreen Toggle Button */
+.fullscreen-toggle:hover {
+    transform: scale(1.05);
+    box-shadow: 5px 5px 0px rgba(0, 0, 0, 0.4);
+}
+
+.fullscreen-toggle:active {
+    transform: scale(0.98);
+}
+
+/* Connection Status - Pixel HUD */
+#connectionStatus {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px 20px;
+    border: 6px solid #2C1B47;
+    font-size: 11px;
+    display: none;
+    z-index: 100;
+    box-shadow: 
+        0 0 0 3px #FFD700,
+        0 0 0 6px #2C1B47,
+        6px 6px 0 0 rgba(0, 0, 0, 0.3);
+    width: 200px;
+    letter-spacing: 1px;
+}
+
+#connectionStatus > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 4px 0;
+    padding: 3px 0;
+    color: #2C1B47;
+}
+
+#connectionStatus > div:first-child {
+    font-weight: bold;
+    color: #6B4FFF;
+    border-bottom: 3px solid #FFD700;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 8px;
+    border: 2px solid #2C1B47;
+    animation: pixelBlink 2s ease-in-out infinite;
+}
+
+@keyframes pixelBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.status-good { 
+    background: #4AE290;
+    box-shadow: 0 0 8px #4AE290;
+}
+
+.status-warning { 
+    background: #FFD700;
+    box-shadow: 0 0 8px #FFD700;
+}
+
+.status-bad { 
+    background: #FF4444;
+    box-shadow: 0 0 8px #FF4444;
+}
+
+/* Version Info - Pixel Style */
+.version {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 10px;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+    letter-spacing: 2px;
+    padding: 8px 12px;
+    background: rgba(44, 27, 71, 0.6);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Stats Hint */
+#statsHint {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 10px;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+    letter-spacing: 2px;
+    display: none;
+    padding: 8px 12px;
+    background: rgba(44, 27, 71, 0.6);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Portal Activation Animation */
+#lobbyScreen.portal-activated {
+    animation: screenFlash 0.5s ease-out;
+}
+
+@keyframes screenFlash {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(2) saturate(2); }
+    100% { filter: brightness(0); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .main-title {
+        font-size: 48px;
+        letter-spacing: 4px;
+    }
+    
+    .gateway-container {
+        width: 90%;
+        padding: 30px 20px;
+    }
+    
+    .mystic-input {
+        font-size: 18px;
+        padding: 15px 20px;
+    }
+    
+    .enter-prompt {
+        font-size: 16px;
+        padding: 15px 30px;
+    }
+}

@@ -9,7 +9,11 @@ const CHARACTERS = {
             description: "Armored defender with unwavering resolve",
             class: "Tank/Warrior",
             color: 0x4169E1,
-            locked: false
+            locked: false,
+            avatar: null  // Will use color fallback
+        },
+        equipment: {
+            startingWeapon: "iron_sword"
         },
         stats: {
             base: {
@@ -45,7 +49,11 @@ const CHARACTERS = {
             description: "Swift assassin who strikes from shadows",
             class: "Rogue/Assassin",
             color: 0x228B22,
-            locked: false
+            locked: false,
+            avatar: null
+        },
+        equipment: {
+            startingWeapon: "shadow_daggers"
         },
         stats: {
             base: {
@@ -81,7 +89,11 @@ const CHARACTERS = {
             description: "Dark summoner who commands the dead",
             class: "Necromancer",
             color: 0x8B008B,
-            locked: false
+            locked: false,
+            avatar: null
+        },
+        equipment: {
+            startingWeapon: "necro_staff"
         },
         stats: {
             base: {
@@ -118,7 +130,11 @@ const CHARACTERS = {
             description: "Dwarven berserker with explosive damage",
             class: "Berserker",
             color: 0xDC143C,
-            locked: false
+            locked: false,
+            avatar: null
+        },
+        equipment: {
+            startingWeapon: "battle_axe"
         },
         stats: {
             base: {
@@ -154,7 +170,11 @@ const CHARACTERS = {
             description: "Wind mage with devastating spells",
             class: "Mage/Sorcerer",
             color: 0xFF4500,
-            locked: false
+            locked: false,
+            avatar: null
+        },
+        equipment: {
+            startingWeapon: "storm_wand"
         },
         stats: {
             base: {
@@ -190,7 +210,11 @@ const CHARACTERS = {
             description: "Exiled blade dancer seeking redemption through the way of the sword",
             class: "Samurai Swordmaster",
             color: 0xDC143C,
-            locked: false
+            locked: false,
+            avatar: null
+        },
+        equipment: {
+            startingWeapon: "katana"
         },
         stats: {
             base: {
@@ -227,3 +251,11 @@ const MINIONS = {
         stats: { maxHP: 20, damage: 5, moveSpeed: 140, attackSpeed: 1.0 }
     }
 };
+
+// Export for custom menu system
+if (typeof window !== 'undefined') {
+    window.CharacterSystem = {
+        CHARACTERS: CHARACTERS,
+        MINIONS: MINIONS
+    };
+}

@@ -102,42 +102,17 @@ class BootScene extends Phaser.Scene {
     }
 
     async create() {
-        console.log('🚀 Booting game...');
+        console.log('🚀 Booting game assets...');
 
         // Create walking animations for all characters
         this.createCharacterAnimations();
 
-        try {
-            await networkManager.connect();
-            console.log('✅ Connected to server');
+        // Don't connect to server - custom menu handles that
+        // Just load assets and wait for custom menu to call game.connect()
+        console.log('✅ Game assets loaded - waiting for menu...');
 
-            // Wait a moment then go to character select
-            this.time.delayedCall(500, () => {
-                // Get username from localStorage or prompt later in CharacterSelectScene
-                const username = localStorage.getItem('klyra_username') || '';
-                this.scene.start('CharacterSelectScene', { username });
-            });
-
-        } catch (error) {
-            console.error('❌ Failed to connect:', error);
-
-            // Show error message
-            const errorText = this.add.text(
-                this.cameras.main.centerX,
-                this.cameras.main.centerY,
-                'Failed to connect to server\nClick to retry',
-                {
-                    font: '24px monospace',
-                    fill: '#ff0000',
-                    align: 'center'
-                }
-            );
-            errorText.setOrigin(0.5);
-
-            this.input.once('pointerdown', () => {
-                this.scene.restart();
-            });
-        }
+        // Hide Phaser canvas initially (custom menu is shown)
+        this.game.canvas.style.display = 'none';
     }
 
     createCharacterAnimations() {

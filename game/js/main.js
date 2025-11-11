@@ -21,3 +21,56 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
+
+// Add connect method for custom menu system
+game.connect = async function(username) {
+    console.log('🎮 Connecting to game...', username);
+
+    try {
+        // Connect to server
+        await networkManager.connect();
+        console.log('✅ Connected to server');
+
+        // Get selected character from CharacterSelectManager
+        const selectedCharacter = window.characterSelectManager
+            ? window.characterSelectManager.getSelectedCharacter()
+            : 'ALDRIC';
+
+        console.log('⚔️ Selected character:', selectedCharacter);
+
+        // Join game
+        networkManager.joinGame(username, selectedCharacter);
+
+        // Show game container and Phaser canvas
+        document.getElementById('game-container').style.display = 'block';
+        game.canvas.style.display = 'block';
+
+        // Wait for game:start event
+        return new Promise((resolve, reject) => {
+            networkManager.on('game:start', (data) => {
+                console.log('🎮 Game started!');
+
+                // Start GameScene directly
+                game.scene.start('GameScene', {
+                    username: username,
+                    selectedCharacter: selectedCharacter,
+                    gameData: data
+                });
+
+                resolve();
+            });
+
+            // Timeout after 10 seconds
+            setTimeout(() => {
+                reject(new Error('Connection timeout'));
+            }, 10000);
+        });
+
+    } catch (error) {
+        console.error('❌ Connection failed:', error);
+        throw error;
+    }
+};
+
+// Expose game globally for menu system
+window.game = game;
