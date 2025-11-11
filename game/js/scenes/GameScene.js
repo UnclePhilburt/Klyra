@@ -246,9 +246,9 @@ class GameScene extends Phaser.Scene {
         const py = y * tileSize;
 
         // Tree tile patterns: rows of tiles that make up one complete tree
-        // Top row: 1-4, Second: 16-19, Third: 32-34, Fourth: 48-50, Bottom: 64-66
+        // Top row: 0-3, Second: 16-19, Third: 32-34, Fourth: 48-50, Bottom: 64-66
         const TREE_TILES = [
-            [1, 2, 3, 4],       // Top row (4 tiles wide)
+            [0, 1, 2, 3],       // Top row (4 tiles wide)
             [16, 17, 18, 19],   // Second row (4 tiles wide)
             [32, 33, 34],       // Third row (3 tiles wide)
             [48, 49, 50],       // Fourth row (3 tiles wide)
