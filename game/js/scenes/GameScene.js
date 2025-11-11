@@ -304,8 +304,16 @@ class GameScene extends Phaser.Scene {
                     if (tileFrame === collisionTile) {
                         collisionY = tilePy + tileSize;  // Bottom of the collision tile
 
-                        // Create invisible collision rectangle
-                        const collisionRect = this.add.rectangle(tilePx, tilePy, tileSize, tileSize, 0xff0000, 0);
+                        // Create invisible collision rectangle at the tile's actual position
+                        // Use tilePx which already has xOffset applied for TREE_TWO
+                        const collisionRect = this.add.rectangle(
+                            tilePx + (tileSize / 2),  // Center X of tile
+                            tilePy + (tileSize / 2),  // Center Y of tile
+                            tileSize,
+                            tileSize,
+                            0xff0000,
+                            0
+                        );
                         this.physics.add.existing(collisionRect, true);  // true = static body
 
                         // Store for later collision setup (after player is created)
