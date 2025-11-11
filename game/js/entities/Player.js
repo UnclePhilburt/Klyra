@@ -29,7 +29,18 @@ class Player {
 
         // Check if sprite sheet exists for this character
         if (this.scene.textures.exists(textureKey)) {
-            // Malachar idle animation frames (2x2 tiles per frame) - define first
+            // Calculate frames per row: 2640 / 48 = 55 frames per row
+            const FRAMES_PER_ROW = 55;
+
+            // Helper function to calculate bottom row frame from top row frame
+            const bottomFrame = (topFrame) => topFrame + FRAMES_PER_ROW;
+
+            // Malachar idle animation frames (2x2 tiles per frame)
+            // User specified: top row then bottom row for each frame
+            // Frame 1: 57-58 / 113-114
+            // Verify: 113 - 57 = 56 (should be 55 if consecutive rows!)
+
+            // Let me recalculate assuming 56 frames per row:
             this.idleFrames = [
                 { topLeft: 57, topRight: 58, bottomLeft: 113, bottomRight: 114 },
                 { topLeft: 60, topRight: 61, bottomLeft: 116, bottomRight: 117 },
@@ -40,6 +51,11 @@ class Player {
                 { topLeft: 77, topRight: 78, bottomLeft: 133, bottomRight: 134 },
                 { topLeft: 80, topRight: 81, bottomLeft: 136, bottomRight: 137 }
             ];
+
+            console.log('🔢 Frame calculation check:');
+            console.log('  - Calculated frames per row:', FRAMES_PER_ROW);
+            console.log('  - User frame diff (113-57):', 113 - 57);
+            console.log('  - First frame verification:', this.idleFrames[0]);
 
             // Create 2x2 tile character (multi-sprite)
             // Frames are 48x48, scale to 32x32 to match tile size
@@ -102,10 +118,34 @@ class Player {
         if (!this.usingSprite || !this.topLeft) return;
 
         try {
+            // Get current positions before frame change
+            const beforePos = {
+                tl: { x: this.topLeft.x, y: this.topLeft.y },
+                tr: { x: this.topRight.x, y: this.topRight.y },
+                bl: { x: this.bottomLeft.x, y: this.bottomLeft.y },
+                br: { x: this.bottomRight.x, y: this.bottomRight.y }
+            };
+
             this.topLeft.setFrame(frameData.topLeft);
             this.topRight.setFrame(frameData.topRight);
             this.bottomLeft.setFrame(frameData.bottomLeft);
             this.bottomRight.setFrame(frameData.bottomRight);
+
+            // Check if positions changed (they shouldn't!)
+            const afterPos = {
+                tl: { x: this.topLeft.x, y: this.topLeft.y },
+                tr: { x: this.topRight.x, y: this.topRight.y },
+                bl: { x: this.bottomLeft.x, y: this.bottomLeft.y },
+                br: { x: this.bottomRight.x, y: this.bottomRight.y }
+            };
+
+            if (beforePos.tl.x !== afterPos.tl.x || beforePos.tl.y !== afterPos.tl.y) {
+                console.warn('⚠️ POSITION CHANGED ON FRAME UPDATE!', {
+                    frame: frameData,
+                    before: beforePos.tl,
+                    after: afterPos.tl
+                });
+            }
         } catch (e) {
             console.error('❌ Error setting frames:', frameData, e.message);
         }
