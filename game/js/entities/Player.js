@@ -52,9 +52,9 @@ class Player {
             this.bottomLeft = this.scene.add.sprite(x - spriteSize, y, textureKey, 0);
             this.bottomRight = this.scene.add.sprite(x, y, textureKey, 0);
 
-            // Set origin to left-bottom to prevent horizontal shifting
+            // Set origin to top-left (0,0) to lock all frames to same corner
             [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight].forEach(s => {
-                s.setOrigin(0, 1.0);
+                s.setOrigin(0, 0);
                 s.setScale(scale);
                 s.setDepth(y + 1000);
             });
