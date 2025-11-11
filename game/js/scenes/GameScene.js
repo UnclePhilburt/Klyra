@@ -235,15 +235,27 @@ class GameScene extends Phaser.Scene {
         const px = x * tileSize;
         const py = y * tileSize;
 
-        // Tree tile patterns: rows of tiles that make up one complete tree
-        // Top row: 0-3, Second: 16-19, Third: 32-34, Fourth: 48-50, Bottom: 64-66
-        const TREE_TILES = [
+        // Tree tile patterns: rows of tiles that make up complete trees
+        // TREE ONE - Top: 0-3, Second: 16-19, Third: 32-34, Fourth: 48-50, Bottom: 64-66
+        const TREE_ONE = [
             [0, 1, 2, 3],       // Top row (4 tiles wide)
             [16, 17, 18, 19],   // Second row (4 tiles wide)
             [32, 33, 34],       // Third row (3 tiles wide)
             [48, 49, 50],       // Fourth row (3 tiles wide)
             [64, 65, 66]        // Bottom row (3 tiles wide)
         ];
+
+        // TREE TWO - Top: 35-39, Second: 51-55, Third: 67-71, Fourth: 84-86, Bottom: 100-102
+        const TREE_TWO = [
+            [35, 36, 37, 38, 39],   // Top row (5 tiles wide)
+            [51, 52, 53, 54, 55],   // Second row (5 tiles wide)
+            [67, 68, 69, 70, 71],   // Third row (5 tiles wide)
+            [84, 85, 86],           // Fourth row (3 tiles wide)
+            [100, 101, 102]         // Bottom row (3 tiles wide)
+        ];
+
+        // Select tree pattern randomly
+        const TREE_TILES = Math.random() < 0.5 ? TREE_ONE : TREE_TWO;
 
         if (type === 'tree' || type === 'magic_tree' || type === 'dead_tree') {
             // Render multi-tile tree - NO TINTS
