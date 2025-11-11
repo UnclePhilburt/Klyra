@@ -263,9 +263,16 @@ class GameScene extends Phaser.Scene {
 
             for (let row = 0; row < TREE_TILES.length; row++) {
                 const rowTiles = TREE_TILES[row];
+
+                // For TREE_TWO, offset bottom 2 rows (rows 3 and 4) by 1 tile to center the trunk
+                let xOffset = 0;
+                if (TREE_TILES === TREE_TWO && row >= 3) {
+                    xOffset = 1;  // Shift right by 1 tile to center under 5-wide top
+                }
+
                 for (let col = 0; col < rowTiles.length; col++) {
                     const tileFrame = rowTiles[col];
-                    const tilePx = px + (col * tileSize);
+                    const tilePx = px + ((col + xOffset) * tileSize);
                     const tilePy = py + (row * tileSize);
 
                     const tileSprite = this.add.sprite(tilePx, tilePy, 'objects_d', tileFrame);
