@@ -260,18 +260,24 @@ class MainMenu {
                         setTimeout(() => {
                             lobbyScreen.classList.add('hidden');
                             document.body.classList.add('game-active');
-                            
+
                             const settingsBtn = document.getElementById('settingsBtn');
                             if (settingsBtn) {
                                 settingsBtn.style.display = 'none';
                             }
-                            
+
                             // Hide server status when in game
                             const serverStatus = document.getElementById('serverStatus');
                             if (serverStatus) {
                                 serverStatus.style.display = 'none';
                             }
-                            
+
+                            // Hide background canvas to remove blue tint
+                            const bgCanvas = document.getElementById('backgroundCanvas');
+                            if (bgCanvas) {
+                                bgCanvas.style.display = 'none';
+                            }
+
                             this.stopMusic();
                         }, 500);
                     }
@@ -299,9 +305,9 @@ class MainMenu {
     }
     
     animate() {
-        this.ctx.fillStyle = 'rgba(74, 144, 226, 0.1)';
+        this.ctx.fillStyle = 'rgba(10, 10, 10, 0.1)';  // Changed from blue to black
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        
+
         this.particles.forEach(particle => {
             particle.update();
             particle.draw(this.ctx);
