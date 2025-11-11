@@ -254,22 +254,22 @@ class GameScene extends Phaser.Scene {
         const py = y * tileSize;
 
         // Map decoration types to tileset sprites
-        // RPG Maker B/C/D tilesets contain trees, bushes, rocks, etc.
+        // Use Fantasy_Outside_D for trees, B for bushes/rocks, C for small objects
         const DECORATION_MAPPING = {
-            // Grassland decorations - use objects_c for flowers/rocks
+            // Grassland decorations
             flower: { texture: 'objects_c', frame: 16, scale: 0.7, tint: 0xffffff },
             rock: { texture: 'objects_b', frame: 40, scale: 0.8, tint: 0xffffff },
 
-            // Forest decorations - use objects_b for trees/bushes
-            tree: { texture: 'objects_b', frame: 0, scale: 1.0, tint: 0xffffff },
+            // Forest decorations - trees from objects_d, bushes from objects_b
+            tree: { texture: 'objects_d', frame: 0, scale: 1.0, tint: 0xffffff },
             bush: { texture: 'objects_b', frame: 8, scale: 0.8, tint: 0xffffff },
 
-            // Magic decorations - trees/stones with magical tints
-            magic_tree: { texture: 'objects_b', frame: 0, scale: 1.0, tint: 0xbb88ff, glow: 0xbb88ff },
+            // Magic decorations - trees with magical tints
+            magic_tree: { texture: 'objects_d', frame: 0, scale: 1.0, tint: 0xbb88ff, glow: 0xbb88ff },
             rune_stone: { texture: 'objects_c', frame: 32, scale: 0.9, tint: 0x88ffff, glow: 0x88ffff },
 
-            // Dark decorations - darker versions
-            dead_tree: { texture: 'objects_b', frame: 0, scale: 1.0, tint: 0x444444 },
+            // Dark decorations - darker tree versions
+            dead_tree: { texture: 'objects_d', frame: 0, scale: 1.0, tint: 0x444444 },
             skull: { texture: 'objects_c', frame: 48, scale: 0.7, tint: 0xcccccc }
         };
 
