@@ -302,13 +302,14 @@ class GameScene extends Phaser.Scene {
 
                     // Add collision on specific tile
                     if (tileFrame === collisionTile) {
-                        collisionY = tilePy + tileSize;  // Bottom of the collision tile
+                        collisionY = tilePy;  // Top of the collision tile for depth sorting
 
                         // Create invisible collision rectangle at the tile's actual position
                         // Use tilePx which already has xOffset applied for TREE_TWO
+                        // Shift Y up by quarter tile to better match visual trunk position
                         const collisionRect = this.add.rectangle(
                             tilePx + (tileSize / 2),  // Center X of tile
-                            tilePy + (tileSize / 2),  // Center Y of tile
+                            tilePy - (tileSize / 4),  // Shift up by 1/4 tile
                             tileSize,
                             tileSize,
                             0xff0000,
