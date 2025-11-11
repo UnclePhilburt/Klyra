@@ -54,7 +54,8 @@ class Player {
             const spriteSize = 32; // Target size per sprite (one game tile)
             const scale = spriteSize / 48; // 32/48 = 0.667
 
-            // Create 4 sprites for 2x2 grid with left-bottom origin
+            // Create 4 sprites for 2x2 grid
+            // With origin (0,0) and scale 0.667, each sprite occupies exactly 32x32 pixels
             this.topLeft = this.scene.add.sprite(x - spriteSize, y - spriteSize, textureKey, 0);
             this.topRight = this.scene.add.sprite(x, y - spriteSize, textureKey, 0);
             this.bottomLeft = this.scene.add.sprite(x - spriteSize, y, textureKey, 0);
@@ -65,6 +66,16 @@ class Player {
                 s.setOrigin(0, 0);
                 s.setScale(scale);
                 s.setDepth(y + 1000);
+            });
+
+            console.log(`🔍 Sprite positioning:`, {
+                center: { x, y },
+                topLeft: { x: x - spriteSize, y: y - spriteSize },
+                topRight: { x: x, y: y - spriteSize },
+                bottomLeft: { x: x - spriteSize, y: y },
+                bottomRight: { x: x, y: y },
+                spriteSize: spriteSize,
+                scale: scale
             });
 
             // Use main sprite reference (center point for physics)
@@ -78,7 +89,9 @@ class Player {
             this.animState = 'idle';
 
             console.log(`✅ Created 2x2 sprite for ${this.data.username} using ${textureKey}, depth: ${y + 1000}`);
-            console.log(`  - Starting at frame: ${this.idleFrames[0].topLeft}-${this.idleFrames[0].topRight} / ${this.idleFrames[0].bottomLeft}-${this.idleFrames[0].bottomRight}`);
+            console.log(`  - Frame 1: TL=${this.idleFrames[0].topLeft} TR=${this.idleFrames[0].topRight} BL=${this.idleFrames[0].bottomLeft} BR=${this.idleFrames[0].bottomRight}`);
+            console.log(`  - Verify layout: TR should be TL+1 (${this.idleFrames[0].topLeft + 1}), BR should be BL+1 (${this.idleFrames[0].bottomLeft + 1})`);
+            console.log(`  - Verify rows: BL should be TL+55 (${this.idleFrames[0].topLeft + 55}), BR should be TR+55 (${this.idleFrames[0].topRight + 55})`);
             this.usingSprite = true;
 
             // Set initial animation frame
