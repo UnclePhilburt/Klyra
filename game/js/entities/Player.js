@@ -20,7 +20,9 @@ class Player {
         const x = this.data.position.x * tileSize + tileSize / 2;
         const y = this.data.position.y * tileSize + tileSize / 2;
 
-        const classConfig = GameConfig.CLASSES[this.class];
+        // Get character config from new system
+        const character = CHARACTERS[this.class] || CHARACTERS.ALDRIC;
+        const classConfig = { color: character.display.color };
 
         // Check if sprite sheet exists for this character
         if (this.scene.textures.exists(this.class)) {

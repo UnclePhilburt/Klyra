@@ -111,9 +111,11 @@ class BootScene extends Phaser.Scene {
             await networkManager.connect();
             console.log('✅ Connected to server');
 
-            // Wait a moment then go to menu
+            // Wait a moment then go to character select
             this.time.delayedCall(500, () => {
-                this.scene.start('MenuScene');
+                // Get username from localStorage or prompt later in CharacterSelectScene
+                const username = localStorage.getItem('klyra_username') || '';
+                this.scene.start('CharacterSelectScene', { username });
             });
 
         } catch (error) {

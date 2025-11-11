@@ -14,6 +14,31 @@ class GameScene extends Phaser.Scene {
         this.gameData = data.gameData;
     }
 
+    preload() {
+        // Load tileset images for dungeon rendering
+        console.log('📦 Loading PNG tilesets...');
+
+        // Terrain tilesets
+        this.load.image('terrain_base', 'assets/tilesets/a2_terrain_base.png');
+        this.load.image('terrain_green', 'assets/tilesets/a2_terrain_green.png');
+        this.load.image('terrain_red', 'assets/tilesets/a2_terrain_red.png');
+
+        // Forest tilesets
+        this.load.image('forest', 'assets/tilesets/a2_forest.png');
+        this.load.image('forest_extended', 'assets/tilesets/A2_extended_forest_terrain.png');
+
+        // Water tilesets
+        this.load.image('water_base', 'assets/tilesets/a1_water_base.png');
+        this.load.image('water_green', 'assets/tilesets/a1_water_green.png');
+        this.load.image('water_red', 'assets/tilesets/a1_water_red.png');
+
+        // Additional terrain
+        this.load.image('walls_floors', 'assets/tilesets/A3 - Walls And Floors.png');
+        this.load.image('walls', 'assets/tilesets/A4 - Walls.png');
+
+        console.log('✅ All tilesets queued for loading');
+    }
+
     create() {
         // Show loading message
         const width = this.cameras.main.width;
@@ -83,76 +108,65 @@ class GameScene extends Phaser.Scene {
         const tileSize = GameConfig.GAME.TILE_SIZE;
         const { width, height, tiles, biomes, decorations } = dungeonData;
 
-        // Create tilemap graphics
-        this.dungeon = this.add.graphics();
+        console.log('🎨 Rendering dungeon with PNG tilesets...');
 
-        // Biome color palettes with variations for beautiful graphics
-        const BIOME_COLORS = {
-            // Grassland - Lush greens
-            10: [0x4a7c59, 0x5a8c69, 0x6a9c79], // Grass variations
-            11: [0x3a6c49, 0x4a7c59, 0x5a8c69],
-            12: [0x2a5c39, 0x3a6c49, 0x4a7c59],
+        // Create container for tiles
+        this.tileContainer = this.add.container(0, 0);
 
-            // Forest - Rich greens and browns
-            20: [0x2d5016, 0x3d6026, 0x4d7036], // Dark forest floor
-            21: [0x1d4006, 0x2d5016, 0x3d6026],
-            22: [0x0d3000, 0x1d4006, 0x2d5016],
+        // Map biome types to tileset textures
+        const BIOME_TILESET_MAP = {
+            // Grassland - Use green terrain
+            10: { texture: 'terrain_green', tint: 0xffffff },
+            11: { texture: 'terrain_green', tint: 0xeeeeee },
+            12: { texture: 'terrain_green', tint: 0xdddddd },
 
-            // Magic Grove - Mystical purples and blues
-            30: [0x6b4c9a, 0x7b5caa, 0x8b6cba], // Magical grass
-            31: [0x5b3c8a, 0x6b4c9a, 0x7b5caa],
-            32: [0x4b2c7a, 0x5b3c8a, 0x6b4c9a],
+            // Forest - Use forest tiles
+            20: { texture: 'forest', tint: 0xffffff },
+            21: { texture: 'forest', tint: 0xdddddd },
+            22: { texture: 'forest', tint: 0xbbbbbb },
 
-            // Dark Woods - Ominous grays and dark greens
-            40: [0x2a2a3a, 0x3a3a4a, 0x4a4a5a], // Shadowy ground
-            41: [0x1a1a2a, 0x2a2a3a, 0x3a3a4a],
-            42: [0x0a0a1a, 0x1a1a2a, 0x2a2a3a],
+            // Magic Grove - Use base terrain with purple tint
+            30: { texture: 'terrain_base', tint: 0xbb88ff },
+            31: { texture: 'terrain_base', tint: 0xaa77ee },
+            32: { texture: 'terrain_base', tint: 0x9966dd },
 
-            // Crystal Plains - Shimmering cyan and blue
-            50: [0x4dd0e1, 0x5de0f1, 0x6df0ff], // Crystal ground
-            51: [0x3dc0d1, 0x4dd0e1, 0x5de0f1],
-            52: [0x2db0c1, 0x3dc0d1, 0x4dd0e1],
+            // Dark Woods - Use forest with dark tint
+            40: { texture: 'forest', tint: 0x666666 },
+            41: { texture: 'forest', tint: 0x555555 },
+            42: { texture: 'forest', tint: 0x444444 },
 
-            // Void Zone - Dark purples and blacks
-            60: [0x1a0a2a, 0x2a1a3a, 0x3a2a4a], // Void ground
-            61: [0x0a001a, 0x1a0a2a, 0x2a1a3a],
-            62: [0x000010, 0x0a001a, 0x1a0a2a]
+            // Crystal Plains - Use water base
+            50: { texture: 'water_base', tint: 0xaaffff },
+            51: { texture: 'water_base', tint: 0x88ddff },
+            52: { texture: 'water_base', tint: 0x66bbff },
+
+            // Void Zone - Use terrain with dark purple tint
+            60: { texture: 'terrain_base', tint: 0x442266 },
+            61: { texture: 'terrain_base', tint: 0x331155 },
+            62: { texture: 'terrain_base', tint: 0x220044 }
         };
 
-        // Draw fantasy world with biomes
+        // Render tiles using PNG sprites
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const tile = tiles[y][x];
                 const px = x * tileSize;
                 const py = y * tileSize;
 
-                // Get color variations for this tile type
-                const colors = BIOME_COLORS[tile] || [0x1a1a1a, 0x2a2a2a, 0x3a3a3a];
-                const colorIndex = (x + y) % colors.length;
-                const baseColor = colors[colorIndex];
+                // Get tileset mapping for this biome
+                const tileInfo = BIOME_TILESET_MAP[tile] || { texture: 'terrain_base', tint: 0xffffff };
 
-                // Add slight randomness to each tile for variety
-                const variance = ((x * 7 + y * 13) % 20) - 10;
-                const finalColor = this.adjustColor(baseColor, variance);
+                // Create sprite from tileset
+                const tileSprite = this.add.image(px, py, tileInfo.texture);
+                tileSprite.setOrigin(0, 0);
+                tileSprite.setDisplaySize(tileSize, tileSize);
+                tileSprite.setTint(tileInfo.tint);
 
-                // Draw base tile
-                this.dungeon.fillStyle(finalColor, 1);
-                this.dungeon.fillRect(px, py, tileSize, tileSize);
+                // Add slight depth by varying alpha slightly
+                const depthVariation = 0.05 * ((x + y) % 3);
+                tileSprite.setAlpha(0.95 + depthVariation);
 
-                // Add subtle texture lines for detail
-                this.dungeon.lineStyle(1, this.adjustColor(finalColor, -20), 0.3);
-                if ((x + y) % 2 === 0) {
-                    this.dungeon.lineBetween(px, py, px + tileSize, py);
-                } else {
-                    this.dungeon.lineBetween(px, py, px, py + tileSize);
-                }
-
-                // Add occasional highlights for sparkle
-                if (tile >= 30 && (x * y) % 7 === 0) {
-                    const sparkleColor = tile >= 50 ? 0xffffff : 0xffaaff;
-                    this.dungeon.fillStyle(sparkleColor, 0.3);
-                    this.dungeon.fillCircle(px + tileSize/2, py + tileSize/2, 2);
-                }
+                this.tileContainer.add(tileSprite);
             }
         }
 
@@ -169,6 +183,8 @@ class GameScene extends Phaser.Scene {
 
         // Store tiles for collision
         this.dungeonTiles = tiles;
+
+        console.log(`✅ Dungeon rendered with ${width * height} PNG tiles`);
     }
 
     adjustColor(color, amount) {
