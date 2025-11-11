@@ -15,26 +15,60 @@ class GameScene extends Phaser.Scene {
     }
 
     preload() {
-        // Load tileset images for dungeon rendering
-        console.log('📦 Loading PNG tilesets...');
+        // Load tileset spritesheets for dungeon rendering
+        // RPG Maker tilesets are 48x48 pixels per tile
+        console.log('📦 Loading PNG tilesets as spritesheets...');
 
-        // Terrain tilesets
-        this.load.image('terrain_base', 'assets/tilesets/a2_terrain_base.png');
-        this.load.image('terrain_green', 'assets/tilesets/a2_terrain_green.png');
-        this.load.image('terrain_red', 'assets/tilesets/a2_terrain_red.png');
+        const tileWidth = 48;
+        const tileHeight = 48;
+
+        // Terrain tilesets (A2 format)
+        this.load.spritesheet('terrain_base', 'assets/tilesets/a2_terrain_base.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
+        this.load.spritesheet('terrain_green', 'assets/tilesets/a2_terrain_green.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
+        this.load.spritesheet('terrain_red', 'assets/tilesets/a2_terrain_red.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
 
         // Forest tilesets
-        this.load.image('forest', 'assets/tilesets/a2_forest.png');
-        this.load.image('forest_extended', 'assets/tilesets/A2_extended_forest_terrain.png');
+        this.load.spritesheet('forest', 'assets/tilesets/a2_forest.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
+        this.load.spritesheet('forest_extended', 'assets/tilesets/A2_extended_forest_terrain.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
 
-        // Water tilesets
-        this.load.image('water_base', 'assets/tilesets/a1_water_base.png');
-        this.load.image('water_green', 'assets/tilesets/a1_water_green.png');
-        this.load.image('water_red', 'assets/tilesets/a1_water_red.png');
+        // Water tilesets (A1 format - animated)
+        this.load.spritesheet('water_base', 'assets/tilesets/a1_water_base.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
+        this.load.spritesheet('water_green', 'assets/tilesets/a1_water_green.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
+        this.load.spritesheet('water_red', 'assets/tilesets/a1_water_red.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
 
         // Additional terrain
-        this.load.image('walls_floors', 'assets/tilesets/A3 - Walls And Floors.png');
-        this.load.image('walls', 'assets/tilesets/A4 - Walls.png');
+        this.load.spritesheet('walls_floors', 'assets/tilesets/A3 - Walls And Floors.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
+        this.load.spritesheet('walls', 'assets/tilesets/A4 - Walls.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
 
         console.log('✅ All tilesets queued for loading');
     }
@@ -108,45 +142,46 @@ class GameScene extends Phaser.Scene {
         const tileSize = GameConfig.GAME.TILE_SIZE;
         const { width, height, tiles, biomes, decorations } = dungeonData;
 
-        console.log('🎨 Rendering dungeon with PNG tilesets...');
+        console.log('🎨 Rendering dungeon with tileset sprites...');
 
         // Create container for tiles
         this.tileContainer = this.add.container(0, 0);
 
-        // Map biome types to tileset textures
+        // Map biome types to tileset textures and tile indices
+        // RPG Maker A2 tilesets have specific tile positions
         const BIOME_TILESET_MAP = {
-            // Grassland - Use green terrain
-            10: { texture: 'terrain_green', tint: 0xffffff },
-            11: { texture: 'terrain_green', tint: 0xeeeeee },
-            12: { texture: 'terrain_green', tint: 0xdddddd },
+            // Grassland - Use green terrain tiles
+            10: { texture: 'terrain_green', frame: 3, tint: 0xffffff },
+            11: { texture: 'terrain_green', frame: 5, tint: 0xffffff },
+            12: { texture: 'terrain_green', frame: 7, tint: 0xffffff },
 
             // Forest - Use forest tiles
-            20: { texture: 'forest', tint: 0xffffff },
-            21: { texture: 'forest', tint: 0xdddddd },
-            22: { texture: 'forest', tint: 0xbbbbbb },
+            20: { texture: 'forest', frame: 3, tint: 0xffffff },
+            21: { texture: 'forest', frame: 5, tint: 0xffffff },
+            22: { texture: 'forest', frame: 7, tint: 0xffffff },
 
             // Magic Grove - Use base terrain with purple tint
-            30: { texture: 'terrain_base', tint: 0xbb88ff },
-            31: { texture: 'terrain_base', tint: 0xaa77ee },
-            32: { texture: 'terrain_base', tint: 0x9966dd },
+            30: { texture: 'terrain_base', frame: 3, tint: 0xbb88ff },
+            31: { texture: 'terrain_base', frame: 5, tint: 0xaa77ee },
+            32: { texture: 'terrain_base', frame: 7, tint: 0x9966dd },
 
             // Dark Woods - Use forest with dark tint
-            40: { texture: 'forest', tint: 0x666666 },
-            41: { texture: 'forest', tint: 0x555555 },
-            42: { texture: 'forest', tint: 0x444444 },
+            40: { texture: 'forest', frame: 10, tint: 0x666666 },
+            41: { texture: 'forest', frame: 12, tint: 0x555555 },
+            42: { texture: 'forest', frame: 14, tint: 0x444444 },
 
-            // Crystal Plains - Use water base
-            50: { texture: 'water_base', tint: 0xaaffff },
-            51: { texture: 'water_base', tint: 0x88ddff },
-            52: { texture: 'water_base', tint: 0x66bbff },
+            // Crystal Plains - Use water tiles
+            50: { texture: 'water_base', frame: 2, tint: 0xaaffff },
+            51: { texture: 'water_base', frame: 4, tint: 0x88ddff },
+            52: { texture: 'water_base', frame: 6, tint: 0x66bbff },
 
             // Void Zone - Use terrain with dark purple tint
-            60: { texture: 'terrain_base', tint: 0x442266 },
-            61: { texture: 'terrain_base', tint: 0x331155 },
-            62: { texture: 'terrain_base', tint: 0x220044 }
+            60: { texture: 'terrain_base', frame: 15, tint: 0x442266 },
+            61: { texture: 'terrain_base', frame: 17, tint: 0x331155 },
+            62: { texture: 'terrain_base', frame: 19, tint: 0x220044 }
         };
 
-        // Render tiles using PNG sprites
+        // Render tiles using individual frames from spritesheets
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const tile = tiles[y][x];
@@ -154,17 +189,23 @@ class GameScene extends Phaser.Scene {
                 const py = y * tileSize;
 
                 // Get tileset mapping for this biome
-                const tileInfo = BIOME_TILESET_MAP[tile] || { texture: 'terrain_base', tint: 0xffffff };
+                const tileInfo = BIOME_TILESET_MAP[tile] || { texture: 'terrain_base', frame: 0, tint: 0xffffff };
 
-                // Create sprite from tileset
-                const tileSprite = this.add.image(px, py, tileInfo.texture);
+                // Create sprite from specific tile frame in the spritesheet
+                const tileSprite = this.add.sprite(px, py, tileInfo.texture, tileInfo.frame);
                 tileSprite.setOrigin(0, 0);
-                tileSprite.setDisplaySize(tileSize, tileSize);
+
+                // Scale to game tile size (48px tileset -> 32px game tile)
+                const scale = tileSize / 48;
+                tileSprite.setScale(scale);
+
                 tileSprite.setTint(tileInfo.tint);
 
-                // Add slight depth by varying alpha slightly
-                const depthVariation = 0.05 * ((x + y) % 3);
-                tileSprite.setAlpha(0.95 + depthVariation);
+                // Add slight variety with random frames for same biome
+                if (Math.random() < 0.2) {
+                    const randomOffset = Math.floor(Math.random() * 3);
+                    tileSprite.setFrame(tileInfo.frame + randomOffset);
+                }
 
                 this.tileContainer.add(tileSprite);
             }
