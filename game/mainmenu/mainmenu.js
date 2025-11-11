@@ -284,11 +284,9 @@ class MainMenu {
                 }
             });
         }
-        
-        if (portalClick) {
-            portalClick.style.display = 'none';
-        }
-        
+
+        // Button is visible by default - removed hiding code
+
         if (playerNameInput) {
             playerNameInput.addEventListener('input', (e) => {
                 this.animateCarvedText(e.target.value);
