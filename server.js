@@ -257,36 +257,32 @@ class Lobby {
         const biomes = Array(height).fill(null).map(() => Array(width).fill(null));
         const decorations = [];
 
-        // Biome definitions with tile types
+        // Biome definitions with tile types (removed water-based crystal plains)
         const BIOMES = {
-            GRASSLAND: { id: 'grassland', tiles: [10, 11, 12], weight: 0.3 },
-            FOREST: { id: 'forest', tiles: [20, 21, 22], weight: 0.25 },
+            GRASSLAND: { id: 'grassland', tiles: [10, 11, 12], weight: 0.35 },
+            FOREST: { id: 'forest', tiles: [20, 21, 22], weight: 0.35 },
             MAGIC_GROVE: { id: 'magic', tiles: [30, 31, 32], weight: 0.15 },
-            DARK_WOODS: { id: 'dark', tiles: [40, 41, 42], weight: 0.15 },
-            CRYSTAL_PLAINS: { id: 'crystal', tiles: [50, 51, 52], weight: 0.1 },
-            VOID_ZONE: { id: 'void', tiles: [60, 61, 62], weight: 0.05 }
+            DARK_WOODS: { id: 'dark', tiles: [40, 41, 42], weight: 0.15 }
         };
 
         const biomeStats = {};
 
-        // Generate biome map using multiple octaves of noise
+        // Generate biome map using multiple octaves of noise with LOWER frequencies for larger regions
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                // Multi-octave noise for natural-looking biomes
-                const noise1 = this.noise2D(x * 0.05, y * 0.05, seed);
-                const noise2 = this.noise2D(x * 0.1, y * 0.1, seed + 1000);
-                const noise3 = this.noise2D(x * 0.2, y * 0.2, seed + 2000);
+                // Lower frequencies (0.02, 0.04, 0.08) create larger, more cohesive biome regions
+                const noise1 = this.noise2D(x * 0.02, y * 0.02, seed);
+                const noise2 = this.noise2D(x * 0.04, y * 0.04, seed + 1000);
+                const noise3 = this.noise2D(x * 0.08, y * 0.08, seed + 2000);
 
-                const combinedNoise = (noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2);
+                const combinedNoise = (noise1 * 0.6 + noise2 * 0.3 + noise3 * 0.1);
 
-                // Determine biome based on noise value
+                // Determine biome based on noise value - creates larger distinct regions
                 let selectedBiome;
-                if (combinedNoise < 0.2) selectedBiome = BIOMES.GRASSLAND;
-                else if (combinedNoise < 0.4) selectedBiome = BIOMES.FOREST;
-                else if (combinedNoise < 0.6) selectedBiome = BIOMES.MAGIC_GROVE;
-                else if (combinedNoise < 0.75) selectedBiome = BIOMES.DARK_WOODS;
-                else if (combinedNoise < 0.9) selectedBiome = BIOMES.CRYSTAL_PLAINS;
-                else selectedBiome = BIOMES.VOID_ZONE;
+                if (combinedNoise < 0.35) selectedBiome = BIOMES.GRASSLAND;
+                else if (combinedNoise < 0.7) selectedBiome = BIOMES.FOREST;
+                else if (combinedNoise < 0.85) selectedBiome = BIOMES.MAGIC_GROVE;
+                else selectedBiome = BIOMES.DARK_WOODS;
 
                 biomes[y][x] = selectedBiome.id;
 
@@ -311,8 +307,7 @@ class Lobby {
             else if (biome === 'forest') decorationType = this.seededRandom(seed + i) < 0.8 ? 'tree' : 'bush';
             else if (biome === 'magic') decorationType = this.seededRandom(seed + i) < 0.6 ? 'magic_tree' : 'rune_stone';
             else if (biome === 'dark') decorationType = this.seededRandom(seed + i) < 0.7 ? 'dead_tree' : 'skull';
-            else if (biome === 'crystal') decorationType = this.seededRandom(seed + i) < 0.8 ? 'crystal' : 'gem_rock';
-            else decorationType = this.seededRandom(seed + i) < 0.5 ? 'void_portal' : 'shadow';
+            else decorationType = 'rock'; // Fallback
 
             decorations.push({ x, y, type: decorationType, biome });
         }
