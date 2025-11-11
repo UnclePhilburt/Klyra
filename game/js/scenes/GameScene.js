@@ -253,66 +253,80 @@ class GameScene extends Phaser.Scene {
         const px = x * tileSize;
         const py = y * tileSize;
 
-        // Map decoration types to tileset sprites
-        // Use Fantasy_Outside_D for trees, B for bushes/rocks, C for small objects
+        // ONLY use Fantasy_Outside_D for trees
         const DECORATION_MAPPING = {
             // Grassland decorations
-            flower: { texture: 'objects_c', frame: 16, scale: 0.7, tint: 0xffffff },
-            rock: { texture: 'objects_b', frame: 40, scale: 0.8, tint: 0xffffff },
+            flower: { texture: 'objects_d', frame: 32, scale: 0.7, tint: 0xffffff },
+            rock: { texture: 'objects_d', frame: 48, scale: 0.8, tint: 0xffffff },
 
-            // Forest decorations - trees from objects_d, bushes from objects_b
+            // Forest decorations - ALL from objects_d
             tree: { texture: 'objects_d', frame: 0, scale: 1.0, tint: 0xffffff },
-            bush: { texture: 'objects_b', frame: 8, scale: 0.8, tint: 0xffffff },
+            bush: { texture: 'objects_d', frame: 16, scale: 0.8, tint: 0xffffff },
 
             // Magic decorations - trees with magical tints
             magic_tree: { texture: 'objects_d', frame: 0, scale: 1.0, tint: 0xbb88ff, glow: 0xbb88ff },
-            rune_stone: { texture: 'objects_c', frame: 32, scale: 0.9, tint: 0x88ffff, glow: 0x88ffff },
+            rune_stone: { texture: 'objects_d', frame: 48, scale: 0.9, tint: 0x88ffff, glow: 0x88ffff },
 
             // Dark decorations - darker tree versions
             dead_tree: { texture: 'objects_d', frame: 0, scale: 1.0, tint: 0x444444 },
-            skull: { texture: 'objects_c', frame: 48, scale: 0.7, tint: 0xcccccc }
+            skull: { texture: 'objects_d', frame: 64, scale: 0.7, tint: 0xcccccc }
         };
 
         const decoInfo = DECORATION_MAPPING[type];
-        if (!decoInfo) return;
+        if (!decoInfo) {
+            console.warn(`Unknown decoration type: ${type}`);
+            return;
+        }
 
-        // Add random frame variation (0-7 in same row)
+        // Check if texture exists
+        if (!this.textures.exists(decoInfo.texture)) {
+            console.error(`Texture ${decoInfo.texture} not loaded for decoration ${type}`);
+            return;
+        }
+
+        // Add random frame variation (0-3 in same row)
         const frameVariation = Math.floor(Math.random() * 4);
         const finalFrame = decoInfo.frame + frameVariation;
 
-        // Create sprite from tileset
-        const decoration = this.add.sprite(px, py, decoInfo.texture, finalFrame);
-        decoration.setOrigin(0, 0);
+        try {
+            // Create sprite from tileset
+            const decoration = this.add.sprite(px, py, decoInfo.texture, finalFrame);
+            decoration.setOrigin(0, 0);
 
-        // Scale 48px tileset to game size
-        const scale = (tileSize / 48) * decoInfo.scale;
-        decoration.setScale(scale);
-        decoration.setTint(decoInfo.tint);
+            // Scale 48px tileset to game size
+            const scale = (tileSize / 48) * decoInfo.scale;
+            decoration.setScale(scale);
+            decoration.setTint(decoInfo.tint);
 
-        // Add to tile container for proper layering
-        this.tileContainer.add(decoration);
+            // Add to tile container for proper layering
+            this.tileContainer.add(decoration);
 
-        // Add glow effect for magical decorations
-        if (decoInfo.glow) {
-            const glowSprite = this.add.sprite(px, py, decoInfo.texture, finalFrame);
-            glowSprite.setOrigin(0, 0);
-            glowSprite.setScale(scale * 1.1);
-            glowSprite.setTint(decoInfo.glow);
-            glowSprite.setAlpha(0.3);
-            glowSprite.setBlendMode(Phaser.BlendModes.ADD);
+            console.log(`✅ Created ${type} at ${x},${y} using ${decoInfo.texture} frame ${finalFrame}`);
 
-            this.tileContainer.add(glowSprite);
+            // Add glow effect for magical decorations
+            if (decoInfo.glow) {
+                const glowSprite = this.add.sprite(px, py, decoInfo.texture, finalFrame);
+                glowSprite.setOrigin(0, 0);
+                glowSprite.setScale(scale * 1.1);
+                glowSprite.setTint(decoInfo.glow);
+                glowSprite.setAlpha(0.3);
+                glowSprite.setBlendMode(Phaser.BlendModes.ADD);
 
-            // Pulsing glow animation
-            this.tweens.add({
-                targets: glowSprite,
-                alpha: 0.5,
-                scale: scale * 1.15,
-                duration: 2000,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
-            });
+                this.tileContainer.add(glowSprite);
+
+                // Pulsing glow animation
+                this.tweens.add({
+                    targets: glowSprite,
+                    alpha: 0.5,
+                    scale: scale * 1.15,
+                    duration: 2000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            }
+        } catch (error) {
+            console.error(`Failed to create decoration ${type}:`, error);
         }
     }
 
