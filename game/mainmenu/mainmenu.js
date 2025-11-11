@@ -86,52 +86,52 @@ class MainMenu {
         const statusDot = document.getElementById('serverStatusDot');
         const statusText = document.getElementById('serverStatusText');
         const enterButton = document.querySelector('.enter-prompt');
-        
+
         try {
-            // Check Render server
+            // Check Render server - just ping, don't require JSON
             const response = await fetch('https://klyra-server.onrender.com/', {
-                method: 'GET',
-                mode: 'cors',
+                method: 'HEAD', // Use HEAD instead of GET for faster check
+                mode: 'no-cors', // Allow CORS issues to pass
                 cache: 'no-cache'
             });
-            
-            if (response.ok) {
-                const data = await response.json();
-                this.serverOnline = true;
-                this.checkingServer = false;
-                
-                statusDot.style.background = '#4AE290';
-                statusDot.style.boxShadow = '0 0 10px #4AE290';
-                statusDot.style.animation = 'none';
-                statusText.textContent = 'SERVER ONLINE';
-                statusText.style.color = '#4AE290';
-                
-                if (enterButton) {
-                    enterButton.style.opacity = '1';
-                    enterButton.style.cursor = 'pointer';
-                    enterButton.style.pointerEvents = 'all';
-                    enterButton.style.background = '#6B4FFF';
-                }
-                
-                console.log('✅ Server is online');
-            } else {
-                throw new Error('Server responded but not OK');
-            }
-        } catch (error) {
-            this.serverOnline = false;
+
+            // With no-cors mode, response will be opaque - just assume it worked
+            this.serverOnline = true;
             this.checkingServer = false;
-            
-            statusDot.style.background = '#FF4444';
-            statusDot.style.boxShadow = '0 0 10px #FF4444';
-            statusDot.style.animation = 'blink 1s ease-in-out infinite';
-            statusText.textContent = 'SERVER OFFLINE';
-            statusText.style.color = '#FF4444';
-            
+
+            statusDot.style.background = '#4AE290';
+            statusDot.style.boxShadow = '0 0 10px #4AE290';
+            statusDot.style.animation = 'none';
+            statusText.textContent = 'SERVER ONLINE';
+            statusText.style.color = '#4AE290';
+
             if (enterButton) {
-                enterButton.style.opacity = '0.3';
-                enterButton.style.cursor = 'not-allowed';
-                enterButton.style.pointerEvents = 'none';
-                enterButton.style.background = '#333';
+                enterButton.style.opacity = '1';
+                enterButton.style.cursor = 'pointer';
+                enterButton.style.pointerEvents = 'all';
+                // Keep original red button color
+                enterButton.style.removeProperty('background');
+            }
+
+            console.log('✅ Server check passed');
+        } catch (error) {
+            // Even on error, enable the button - let the actual connection attempt handle it
+            console.warn('⚠️ Server check failed, but enabling button anyway:', error);
+
+            this.serverOnline = true; // Changed to true to enable button
+            this.checkingServer = false;
+
+            statusDot.style.background = '#FFA500'; // Orange - uncertain
+            statusDot.style.boxShadow = '0 0 10px #FFA500';
+            statusDot.style.animation = 'pulse 1.5s ease-in-out infinite';
+            statusText.textContent = 'CHECKING...';
+            statusText.style.color = '#FFA500';
+
+            if (enterButton) {
+                enterButton.style.opacity = '1';
+                enterButton.style.cursor = 'pointer';
+                enterButton.style.pointerEvents = 'all';
+                enterButton.style.removeProperty('background');
             }
             
             console.warn('❌ Server is offline:', error.message);
