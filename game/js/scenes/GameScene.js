@@ -297,7 +297,8 @@ class GameScene extends Phaser.Scene {
                     tileSprite.setScale(scale);
                     // NO TINT - render naturally
 
-                    this.tileContainer.add(tileSprite);
+                    // Don't add to tileContainer - add directly to scene for proper depth sorting
+                    // this.tileContainer.add(tileSprite);
                     treeGroup.push(tileSprite);
 
                     // Add collision on specific tile
@@ -500,18 +501,20 @@ class GameScene extends Phaser.Scene {
 
         this.localPlayer.move(velocityX, velocityY);
 
-        // Depth sorting for trees - player layers behind/in front based on Y position
+        // Depth sorting - use Y position for proper layering
+        // Higher Y = further down screen = higher depth (in front)
         if (this.treeSprites && this.treeSprites.length > 0) {
             const playerY = this.localPlayer.sprite.y;
 
-            this.treeSprites.forEach(tree => {
-                // If player is above the collision tile, render behind tree (lower depth)
-                // If player is below the collision tile, render in front of tree (higher depth)
-                const playerDepth = playerY < tree.collisionY ? 5 : 15;
-                const treeDepth = playerY < tree.collisionY ? 10 : 5;
+            // Set player depth based on Y position
+            this.localPlayer.sprite.setDepth(playerY);
 
-                this.localPlayer.sprite.setDepth(playerDepth);
-                tree.sprites.forEach(sprite => sprite.setDepth(treeDepth));
+            // Set each tree sprite's depth based on its collision Y
+            this.treeSprites.forEach(tree => {
+                // All sprites in a tree use the tree's collision Y as their depth
+                tree.sprites.forEach(sprite => {
+                    sprite.setDepth(tree.collisionY);
+                });
             });
         }
 
