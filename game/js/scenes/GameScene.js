@@ -70,6 +70,20 @@ class GameScene extends Phaser.Scene {
             frameHeight: tileHeight
         });
 
+        // Object/Decoration tilesets (trees, bushes, rocks, etc.)
+        this.load.spritesheet('objects_b', 'assets/tilesets/Fantasy_Outside_B.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
+        this.load.spritesheet('objects_c', 'assets/tilesets/Fantasy_Outside_C.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
+        this.load.spritesheet('objects_d', 'assets/tilesets/Fantasy_Outside_D.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
+
         console.log('✅ All tilesets queued for loading');
     }
 
@@ -236,81 +250,65 @@ class GameScene extends Phaser.Scene {
     }
 
     createDecoration(x, y, type, tileSize) {
-        const px = x * tileSize + tileSize / 2;
-        const py = y * tileSize + tileSize / 2;
+        const px = x * tileSize;
+        const py = y * tileSize;
 
-        const DECORATION_STYLES = {
-            // Grassland decorations
-            flower: { color: 0xff69b4, size: 4, shape: 'star' },
-            rock: { color: 0x808080, size: 6, shape: 'circle' },
+        // Map decoration types to tileset sprites
+        // RPG Maker B/C/D tilesets contain trees, bushes, rocks, etc.
+        const DECORATION_MAPPING = {
+            // Grassland decorations - use objects_c for flowers/rocks
+            flower: { texture: 'objects_c', frame: 16, scale: 0.7, tint: 0xffffff },
+            rock: { texture: 'objects_b', frame: 40, scale: 0.8, tint: 0xffffff },
 
-            // Forest decorations
-            tree: { color: 0x2d5016, size: 8, shape: 'triangle' },
-            bush: { color: 0x3d6026, size: 5, shape: 'circle' },
+            // Forest decorations - use objects_b for trees/bushes
+            tree: { texture: 'objects_b', frame: 0, scale: 1.0, tint: 0xffffff },
+            bush: { texture: 'objects_b', frame: 8, scale: 0.8, tint: 0xffffff },
 
-            // Magic decorations
-            magic_tree: { color: 0xff00ff, size: 10, shape: 'star', glow: true },
-            rune_stone: { color: 0x00ffff, size: 7, shape: 'diamond', glow: true },
+            // Magic decorations - trees/stones with magical tints
+            magic_tree: { texture: 'objects_b', frame: 0, scale: 1.0, tint: 0xbb88ff, glow: 0xbb88ff },
+            rune_stone: { texture: 'objects_c', frame: 32, scale: 0.9, tint: 0x88ffff, glow: 0x88ffff },
 
-            // Dark decorations
-            dead_tree: { color: 0x3a3a3a, size: 9, shape: 'line' },
-            skull: { color: 0xeeeeee, size: 6, shape: 'circle' },
-
-            // Crystal decorations
-            crystal: { color: 0x00ffff, size: 8, shape: 'diamond', glow: true },
-            gem_rock: { color: 0x4dd0e1, size: 7, shape: 'star', glow: true },
-
-            // Void decorations
-            void_portal: { color: 0x8b00ff, size: 10, shape: 'circle', glow: true, pulse: true },
-            shadow: { color: 0x1a0a2a, size: 8, shape: 'circle' }
+            // Dark decorations - darker versions
+            dead_tree: { texture: 'objects_b', frame: 0, scale: 1.0, tint: 0x444444 },
+            skull: { texture: 'objects_c', frame: 48, scale: 0.7, tint: 0xcccccc }
         };
 
-        const style = DECORATION_STYLES[type];
-        if (!style) return;
+        const decoInfo = DECORATION_MAPPING[type];
+        if (!decoInfo) return;
 
-        // Draw decoration based on shape
-        let decoration;
-        switch (style.shape) {
-            case 'star':
-                decoration = this.add.star(px, py, 5, style.size/2, style.size, style.color);
-                break;
-            case 'circle':
-                decoration = this.add.circle(px, py, style.size, style.color);
-                break;
-            case 'triangle':
-                decoration = this.add.triangle(px, py, 0, style.size, -style.size, -style.size, style.size, -style.size, style.color);
-                break;
-            case 'diamond':
-                decoration = this.add.star(px, py, 4, style.size/2, style.size, style.color);
-                break;
-            case 'line':
-                decoration = this.add.rectangle(px, py, 2, style.size * 2, style.color);
-                break;
-        }
+        // Add random frame variation (0-7 in same row)
+        const frameVariation = Math.floor(Math.random() * 4);
+        const finalFrame = decoInfo.frame + frameVariation;
 
-        // Add glow effect for magical items
-        if (style.glow) {
-            const glow = this.add.circle(px, py, style.size + 4, style.color, 0.2);
+        // Create sprite from tileset
+        const decoration = this.add.sprite(px, py, decoInfo.texture, finalFrame);
+        decoration.setOrigin(0, 0);
 
-            if (style.pulse) {
-                this.tweens.add({
-                    targets: glow,
-                    alpha: 0.4,
-                    scale: 1.2,
-                    duration: 2000,
-                    yoyo: true,
-                    repeat: -1,
-                    ease: 'Sine.easeInOut'
-                });
-            }
-        }
+        // Scale 48px tileset to game size
+        const scale = (tileSize / 48) * decoInfo.scale;
+        decoration.setScale(scale);
+        decoration.setTint(decoInfo.tint);
 
-        // Add subtle floating animation to some decorations
-        if (type.includes('magic') || type.includes('crystal') || type.includes('void')) {
+        // Add to tile container for proper layering
+        this.tileContainer.add(decoration);
+
+        // Add glow effect for magical decorations
+        if (decoInfo.glow) {
+            const glowSprite = this.add.sprite(px, py, decoInfo.texture, finalFrame);
+            glowSprite.setOrigin(0, 0);
+            glowSprite.setScale(scale * 1.1);
+            glowSprite.setTint(decoInfo.glow);
+            glowSprite.setAlpha(0.3);
+            glowSprite.setBlendMode(Phaser.BlendModes.ADD);
+
+            this.tileContainer.add(glowSprite);
+
+            // Pulsing glow animation
             this.tweens.add({
-                targets: decoration,
-                y: py - 3,
-                duration: 2000 + Math.random() * 1000,
+                targets: glowSprite,
+                alpha: 0.5,
+                scale: scale * 1.15,
+                duration: 2000,
                 yoyo: true,
                 repeat: -1,
                 ease: 'Sine.easeInOut'
