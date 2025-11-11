@@ -352,14 +352,18 @@ class MainMenu {
             const savedVolume = localStorage.getItem('menuMusicVolume');
             if (savedVolume !== null) {
                 musicVolume.value = savedVolume;
-                volumeValue.textContent = savedVolume + '%';
+                if (volumeValue) {
+                    volumeValue.textContent = savedVolume + '%';
+                }
             }
-            
+
             musicVolume.addEventListener('input', (e) => {
                 const volume = e.target.value;
-                volumeValue.textContent = volume + '%';
+                if (volumeValue) {
+                    volumeValue.textContent = volume + '%';
+                }
                 localStorage.setItem('menuMusicVolume', volume);
-                
+
                 if (this.menuMusic) {
                     this.menuMusic.volume = volume / 100;
                 }

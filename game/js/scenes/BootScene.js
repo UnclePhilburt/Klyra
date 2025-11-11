@@ -57,48 +57,8 @@ class BootScene extends Phaser.Scene {
             frameHeight: 64
         });
 
-        // Add other character sprites as they become available
-        this.load.spritesheet('warrior', 'assets/sprites/warrior.png', {
-            frameWidth: 64,
-            frameHeight: 64
-        }).on('loaderror', () => {
-            console.log('Warrior sprite not found, using placeholder');
-        });
-
-        this.load.spritesheet('mage', 'assets/sprites/mage.png', {
-            frameWidth: 64,
-            frameHeight: 64
-        }).on('loaderror', () => {
-            console.log('Mage sprite not found, using placeholder');
-        });
-
-        this.load.spritesheet('rogue', 'assets/sprites/rogue.png', {
-            frameWidth: 64,
-            frameHeight: 64
-        }).on('loaderror', () => {
-            console.log('Rogue sprite not found, using placeholder');
-        });
-
-        this.load.spritesheet('archer', 'assets/sprites/archer.png', {
-            frameWidth: 64,
-            frameHeight: 64
-        }).on('loaderror', () => {
-            console.log('Archer sprite not found, using placeholder');
-        });
-
-        this.load.spritesheet('paladin', 'assets/sprites/paladin.png', {
-            frameWidth: 64,
-            frameHeight: 64
-        }).on('loaderror', () => {
-            console.log('Paladin sprite not found, using placeholder');
-        });
-
-        this.load.spritesheet('necromancer', 'assets/sprites/necromancer.png', {
-            frameWidth: 64,
-            frameHeight: 64
-        }).on('loaderror', () => {
-            console.log('Necromancer sprite not found, using placeholder');
-        });
+        console.log('✅ Loaded character sprites: malachar');
+        console.log('💡 Other characters will use colored placeholders');
     }
 
     async create() {
@@ -116,7 +76,8 @@ class BootScene extends Phaser.Scene {
     }
 
     createCharacterAnimations() {
-        const characters = ['warrior', 'mage', 'rogue', 'archer', 'paladin', 'necromancer', 'malachar'];
+        // Only create animations for sprites that exist
+        const characters = ['malachar'];
 
         characters.forEach(char => {
             // Check if sprite sheet loaded
