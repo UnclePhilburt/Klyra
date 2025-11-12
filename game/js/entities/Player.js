@@ -28,71 +28,46 @@ class Player {
         // Check if sprite sheet exists for this character
         if (this.scene.textures.exists(textureKey)) {
             console.log(`✅ Creating 2x2 sprite character: ${this.data.username} (${textureKey})`);
+            console.log(`⚠️ DEBUG MODE: Static frames only (no animation) to test if setFrame() causes stuttering`);
 
             // Frame configuration (56 frames per row)
             const FRAMES_PER_ROW = 56;
 
-            // Idle animation frames (8 frames total)
-            this.idleFrames = [
-                { topLeft: 57, topRight: 58, bottomLeft: 113, bottomRight: 114 },
-                { topLeft: 60, topRight: 61, bottomLeft: 116, bottomRight: 117 },
-                { topLeft: 63, topRight: 64, bottomLeft: 119, bottomRight: 120 },
-                { topLeft: 67, topRight: 68, bottomLeft: 123, bottomRight: 124 },
-                { topLeft: 70, topRight: 71, bottomLeft: 126, bottomRight: 127 },
-                { topLeft: 74, topRight: 75, bottomLeft: 130, bottomRight: 131 },
-                { topLeft: 77, topRight: 78, bottomLeft: 133, bottomRight: 134 },
-                { topLeft: 80, topRight: 81, bottomLeft: 136, bottomRight: 137 }
-            ];
+            // Use only first frame for testing
+            const testFrame = { topLeft: 57, topRight: 58, bottomLeft: 113, bottomRight: 114 };
 
             // Each frame is 48x48, we want 32x32 (one game tile per sprite)
             const scale = 32 / 48; // 0.667
 
-            // Create 4 sprites for 2x2 character
-            // Position them relative to origin (0, 0) within the container
-            this.topLeft = this.scene.add.sprite(0, 0, textureKey, this.idleFrames[0].topLeft);
-            this.topRight = this.scene.add.sprite(32, 0, textureKey, this.idleFrames[0].topRight);
-            this.bottomLeft = this.scene.add.sprite(0, 32, textureKey, this.idleFrames[0].bottomLeft);
-            this.bottomRight = this.scene.add.sprite(32, 32, textureKey, this.idleFrames[0].bottomRight);
+            // Create invisible physics rectangle (this is what actually moves)
+            this.physicsBody = this.scene.add.rectangle(x, y, tileSize, tileSize, 0x000000, 0);
+            this.scene.physics.add.existing(this.physicsBody);
 
-            // Set origin to top-left for all sprites
+            // This is our main "sprite" reference
+            this.sprite = this.physicsBody;
+            this.sprite.setDepth(y + 1000);
+
+            // Create 4 visual sprites (not physics-enabled)
+            // These will be manually positioned to follow physicsBody
+            this.topLeft = this.scene.add.sprite(0, 0, textureKey, testFrame.topLeft);
+            this.topRight = this.scene.add.sprite(0, 0, textureKey, testFrame.topRight);
+            this.bottomLeft = this.scene.add.sprite(0, 0, textureKey, testFrame.bottomLeft);
+            this.bottomRight = this.scene.add.sprite(0, 0, textureKey, testFrame.bottomRight);
+
+            // Set origin and scale
             [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight].forEach(s => {
                 s.setOrigin(0, 0);
                 s.setScale(scale);
             });
 
-            // Create container to hold all 4 sprites as one unit
-            this.container = this.scene.add.container(x, y, [
-                this.topLeft,
-                this.topRight,
-                this.bottomLeft,
-                this.bottomRight
-            ]);
-
-            // Container origin is center-bottom for proper foot position
-            // Offset container position so bottom-center is at (x, y)
-            this.container.x = x - 32; // Move left by half width (64/2)
-            this.container.y = y - 64; // Move up by full height
-
-            // Add physics to the container
-            this.scene.physics.add.existing(this.container);
-            this.container.body.setSize(32, 32); // Physics body is 1 tile
-            this.container.body.setOffset(16, 32); // Center bottom of the visual sprite
-
-            // The container IS our main sprite now
-            this.sprite = this.container;
-            this.sprite.setDepth(y + 1000);
-
-            // Animation state
-            this.currentAnimFrame = 0;
-            this.animTimer = 0;
-            this.animState = 'idle';
+            // Position them initially
+            this.updateSpritePositions();
 
             this.usingSprite = true;
 
-            console.log(`✅ Container-based 2x2 sprite created at (${x}, ${y})`);
-            console.log(`  - Container size: 64x64 (2x2 tiles @ 32px each)`);
-            console.log(`  - Physics body: 32x32 with offset (16, 32)`);
-            console.log(`  - Scale: ${scale}, Frames/row: ${FRAMES_PER_ROW}`);
+            console.log(`✅ Static 2x2 sprite created at (${x}, ${y})`);
+            console.log(`  - Using frames: TL=${testFrame.topLeft}, TR=${testFrame.topRight}, BL=${testFrame.bottomLeft}, BR=${testFrame.bottomRight}`);
+            console.log(`  - NO ANIMATION - if this stutters, problem is NOT setFrame()`);
 
         } else {
             // Fallback to circle placeholder
@@ -111,36 +86,42 @@ class Player {
             this.weapon.setOrigin(0, 0.5);
             this.weapon.setDepth(y + 1000);
 
-            this.container = this.scene.add.container(0, 0, [this.glow, this.sprite, this.weapon]);
             this.usingSprite = false;
         }
 
         this.currentDirection = 'down';
     }
 
-    updateSpriteFrames(frameData) {
+    updateSpritePositions() {
         if (!this.usingSprite || !this.topLeft) return;
 
-        this.topLeft.setFrame(frameData.topLeft);
-        this.topRight.setFrame(frameData.topRight);
-        this.bottomLeft.setFrame(frameData.bottomLeft);
-        this.bottomRight.setFrame(frameData.bottomRight);
+        const x = this.sprite.x;
+        const y = this.sprite.y;
+        const spriteSize = 32;
+
+        // Calculate positions - simple and direct
+        const left = x - spriteSize;
+        const right = x;
+        const top = y - spriteSize * 2;
+        const bottom = y - spriteSize;
+
+        // Set positions (no rounding, no math tricks, just direct assignment)
+        this.topLeft.setPosition(left, top);
+        this.topRight.setPosition(right, top);
+        this.bottomLeft.setPosition(left, bottom);
+        this.bottomRight.setPosition(right, bottom);
+
+        // Set depth
+        const depth = y + 1000;
+        this.topLeft.setDepth(depth);
+        this.topRight.setDepth(depth);
+        this.bottomLeft.setDepth(depth);
+        this.bottomRight.setDepth(depth);
     }
 
     updateAnimation(delta) {
-        if (!this.usingSprite || !this.topLeft) return;
-
-        this.animTimer += delta;
-        const frameTime = 125; // 8 fps
-
-        if (this.animTimer >= frameTime) {
-            this.animTimer = 0;
-
-            if (this.animState === 'idle') {
-                this.currentAnimFrame = (this.currentAnimFrame + 1) % this.idleFrames.length;
-                this.updateSpriteFrames(this.idleFrames[this.currentAnimFrame]);
-            }
-        }
+        // DISABLED FOR TESTING
+        // If static sprite doesn't stutter, then setFrame() is the problem
     }
 
     createNameTag() {
@@ -165,17 +146,19 @@ class Player {
 
         body.setVelocity(velocityX * speed, velocityY * speed);
 
-        // Update animations and direction
+        // Update sprite positions to follow physics body
+        if (this.usingSprite) {
+            this.updateSpritePositions();
+        }
+
+        if (!this.usingSprite && this.weapon && (velocityX !== 0 || velocityY !== 0)) {
+            // Update weapon rotation for circle placeholder
+            const angle = Math.atan2(velocityY, velocityX);
+            this.weapon.setRotation(angle);
+        }
+
+        // Send position to server (throttled)
         if (velocityX !== 0 || velocityY !== 0) {
-            this.animState = 'moving';
-
-            if (!this.usingSprite && this.weapon) {
-                // Update weapon rotation for circle placeholder
-                const angle = Math.atan2(velocityY, velocityX);
-                this.weapon.setRotation(angle);
-            }
-
-            // Send position to server (throttled)
             const now = Date.now();
             if (!this.lastUpdate || now - this.lastUpdate > 50) {
                 this.lastUpdate = now;
@@ -185,8 +168,6 @@ class Player {
                     y: Math.floor(this.sprite.y / tileSize)
                 });
             }
-        } else {
-            this.animState = 'idle';
         }
     }
 
@@ -206,12 +187,15 @@ class Player {
                 (dx / distance) * speed,
                 (dy / distance) * speed
             );
-            this.animState = 'moving';
         } else {
             this.sprite.body.setVelocity(0, 0);
             this.sprite.x = targetX;
             this.sprite.y = targetY;
-            this.animState = 'idle';
+        }
+
+        // Update sprite positions
+        if (this.usingSprite) {
+            this.updateSpritePositions();
         }
     }
 
@@ -290,6 +274,11 @@ class Player {
     }
 
     updateElements() {
+        // Update sprite positions
+        if (this.usingSprite) {
+            this.updateSpritePositions();
+        }
+
         // Update depth for Y-sorting
         const spriteDepth = this.sprite.y + 1000;
         this.sprite.setDepth(spriteDepth);
@@ -310,7 +299,7 @@ class Player {
         }
 
         // Update name tag and health bar
-        const yOffset = this.usingSprite ? 35 : 25;
+        const yOffset = this.usingSprite ? 75 : 25;
         this.nameTag.setPosition(this.sprite.x, this.sprite.y - yOffset);
         this.nameTag.setDepth(spriteDepth + 1);
 
