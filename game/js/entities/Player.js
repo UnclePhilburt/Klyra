@@ -151,7 +151,7 @@ class Player {
 
     createNameTag() {
         const x = this.sprite.x;
-        const yOffset = this.usingSprite ? 105 : 25; // 25% smaller than 140
+        const yOffset = this.usingSprite ? 105 : 25;
 
         // Apply same offset as sprite (down 55, right 32)
         const offsetX = this.usingSprite ? 32 : 0;
@@ -160,16 +160,65 @@ class Player {
         const nameX = x + offsetX;
         const nameY = this.sprite.y - yOffset + offsetY;
 
-        this.nameTag = this.scene.add.text(nameX, nameY, this.data.username, {
-            font: '10px monospace',
-            fill: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 4, y: 2 }
-        }).setOrigin(0.5);
+        // Modern health bar (above name)
+        const healthBarWidth = 60;
+        const healthBarHeight = 8;
+        const healthBarY = nameY - 18;
 
-        // Health bar above name
-        this.healthBarBg = this.scene.add.rectangle(nameX, nameY - 15, 40, 4, 0x000000);
-        this.healthBar = this.scene.add.rectangle(nameX, nameY - 15, 40, 4, 0x00ff00);
+        // Health bar background with border
+        this.healthBarBorder = this.scene.add.rectangle(
+            nameX,
+            healthBarY,
+            healthBarWidth + 2,
+            healthBarHeight + 2,
+            0x000000
+        );
+        this.healthBarBorder.setStrokeStyle(1, 0x333333);
+
+        // Health bar background (dark red)
+        this.healthBarBg = this.scene.add.rectangle(
+            nameX,
+            healthBarY,
+            healthBarWidth,
+            healthBarHeight,
+            0x440000
+        );
+
+        // Health bar fill (bright green to red gradient)
+        this.healthBar = this.scene.add.rectangle(
+            nameX,
+            healthBarY,
+            healthBarWidth,
+            healthBarHeight,
+            0x00ff00
+        );
+
+        // Modern name tag background
+        this.nameTagBg = this.scene.add.graphics();
+        this.nameTagBg.fillStyle(0x000000, 0.7);
+        this.nameTagBg.fillRoundedRect(
+            nameX - 40,
+            nameY - 10,
+            80,
+            18,
+            4
+        );
+        this.nameTagBg.lineStyle(1, 0x444444, 1);
+        this.nameTagBg.strokeRoundedRect(
+            nameX - 40,
+            nameY - 10,
+            80,
+            18,
+            4
+        );
+
+        // Name text (modern font, slightly larger)
+        this.nameTag = this.scene.add.text(nameX, nameY, this.data.username, {
+            font: 'bold 11px Arial',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0.5);
     }
 
     move(velocityX, velocityY) {
@@ -331,7 +380,7 @@ class Player {
         }
 
         // Update name tag and health bar
-        const yOffset = this.usingSprite ? 105 : 25; // 25% smaller than 140
+        const yOffset = this.usingSprite ? 105 : 25;
 
         // Apply same offset as sprite (down 55, right 32)
         const offsetX = this.usingSprite ? 32 : 0;
@@ -340,27 +389,73 @@ class Player {
         const nameX = this.sprite.x + offsetX;
         const nameY = this.sprite.y - yOffset + offsetY;
 
+        const healthBarWidth = 60;
+        const healthBarHeight = 8;
+        const healthBarY = nameY - 18;
+
+        // Update name tag background
+        if (this.nameTagBg) {
+            this.nameTagBg.clear();
+            this.nameTagBg.fillStyle(0x000000, 0.7);
+            this.nameTagBg.fillRoundedRect(
+                nameX - 40,
+                nameY - 10,
+                80,
+                18,
+                4
+            );
+            this.nameTagBg.lineStyle(1, 0x444444, 1);
+            this.nameTagBg.strokeRoundedRect(
+                nameX - 40,
+                nameY - 10,
+                80,
+                18,
+                4
+            );
+            this.nameTagBg.setDepth(spriteDepth + 1);
+        }
+
+        // Update name tag text
         this.nameTag.setPosition(nameX, nameY);
-        this.nameTag.setDepth(spriteDepth + 1);
+        this.nameTag.setDepth(spriteDepth + 2);
 
-        this.healthBarBg.setPosition(nameX, nameY + 10);
-        this.healthBarBg.setDepth(spriteDepth + 1);
+        // Update health bar border
+        if (this.healthBarBorder) {
+            this.healthBarBorder.setPosition(nameX, healthBarY);
+            this.healthBarBorder.setDepth(spriteDepth + 1);
+        }
 
+        // Update health bar background
+        this.healthBarBg.setPosition(nameX, healthBarY);
+        this.healthBarBg.setDepth(spriteDepth + 2);
+
+        // Update health bar fill
         const healthPercent = this.health / this.maxHealth;
         this.healthBar.setPosition(
-            nameX - 20 + (40 * healthPercent / 2),
-            nameY + 10
+            nameX - (healthBarWidth / 2) + (healthBarWidth * healthPercent / 2),
+            healthBarY
         );
-        this.healthBar.setDepth(spriteDepth + 2);
+        this.healthBar.setDepth(spriteDepth + 3);
 
         this.updateHealthBar();
     }
 
     updateHealthBar() {
+        const healthBarWidth = 60;
         const healthPercent = this.health / this.maxHealth;
-        this.healthBar.width = 40 * healthPercent;
+        this.healthBar.width = healthBarWidth * healthPercent;
 
-        const color = healthPercent > 0.5 ? 0x00ff00 : healthPercent > 0.25 ? 0xffff00 : 0xff0000;
+        // Color gradient: green -> yellow -> orange -> red
+        let color;
+        if (healthPercent > 0.6) {
+            color = 0x00ff00; // Green
+        } else if (healthPercent > 0.4) {
+            color = 0xaaff00; // Yellow-green
+        } else if (healthPercent > 0.25) {
+            color = 0xffaa00; // Orange
+        } else {
+            color = 0xff0000; // Red
+        }
         this.healthBar.setFillStyle(color);
     }
 }
