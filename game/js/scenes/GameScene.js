@@ -348,30 +348,130 @@ class GameScene extends Phaser.Scene {
             console.log(`✅ Created multi-tile ${type} at ${x},${y} with collision at Y=${collisionY}`);
 
         } else {
-            // Simple single-tile decorations
-            const SIMPLE_DECORATIONS = {
-                flower: { frame: 80, scale: 0.7 },
-                rock: { frame: 96, scale: 0.8 },
-                bush: { frame: 112, scale: 0.8 },
-                rune_stone: { frame: 96, scale: 0.9 },
-                skull: { frame: 128, scale: 0.7 }
+            // Enhanced decoration system with variety
+            const scale = tileSize / 48;
+
+            // Rock variants (5 types - mix of single and multi-tile)
+            const ROCK_VARIANTS = [
+                { frames: [88], scale: 0.8 },      // Rock one
+                { frames: [89, 105], scale: 0.8 }, // Rock two (2x1 vertical)
+                { frames: [106], scale: 0.8 },     // Rock three
+                { frames: [90], scale: 0.8 },      // Rock four
+                { frames: [59], scale: 0.8 }       // Rock five
+            ];
+
+            // Bush variants (3 types)
+            const BUSH_VARIANTS = [
+                { frames: [121], scale: 0.8 },     // Bush one
+                { frames: [122], scale: 0.8 },     // Bush two
+                { frames: [123], scale: 0.8 }      // Bush three
+            ];
+
+            // Flower variants (10 types with different colors)
+            const FLOWER_VARIANTS = [
+                { frames: [12], scale: 0.7 },      // Red flower one
+                { frames: [136], scale: 0.7 },     // Red flower two
+                { frames: [137], scale: 0.7 },     // Blue flower one
+                { frames: [138], scale: 0.7 },     // Blue flower two
+                { frames: [139], scale: 0.7 },     // Blue flower three
+                { frames: [140], scale: 0.7 },     // Cyan flower one
+                { frames: [141], scale: 0.7 }      // Cyan flower two
+            ];
+
+            // Grass blade variants (3 types)
+            const GRASS_VARIANTS = [
+                { frames: [173], scale: 0.7 },     // Grass blades one
+                { frames: [188, 204], scale: 0.7 },// Grass blades two (2x1 vertical)
+                { frames: [189, 205], scale: 0.7 } // Grass blades three (2x1 vertical)
+            ];
+
+            // Log variants (4 types)
+            const LOG_VARIANTS = [
+                { frames: [107], scale: 0.8 },     // Log one
+                { frames: [92, 108], scale: 0.8 }, // Log two (2x1 vertical)
+                { frames: [93, 109], scale: 0.8 }, // Log three (2x1 vertical)
+                { frames: [94, 95], scale: 0.8, horizontal: true } // Log four (1x2 horizontal)
+            ];
+
+            // Other decorations
+            const OTHER_DECORATIONS = {
+                rune_stone: { frames: [96], scale: 0.9 },
+                skull: { frames: [128], scale: 0.7 },
+                baby_tree: { frames: [87, 103], scale: 0.9 },      // 2x1 vertical
+                tree_stump: { frames: [4], scale: 0.8 },           // Stump one
+                tree_stump2: { frames: [20], scale: 0.8 },         // Stump two
+                hollow_trunk: { frames: [96, 112], scale: 0.9 }    // 2x1 vertical
             };
 
-            const decoInfo = SIMPLE_DECORATIONS[type];
+            let decoInfo;
+
+            // Select variant based on type
+            if (type === 'rock') {
+                const variant = Math.floor(this.seededRandom(this.dungeonSeed) * ROCK_VARIANTS.length);
+                decoInfo = ROCK_VARIANTS[variant];
+            } else if (type === 'bush') {
+                const variant = Math.floor(this.seededRandom(this.dungeonSeed) * BUSH_VARIANTS.length);
+                decoInfo = BUSH_VARIANTS[variant];
+            } else if (type === 'flower') {
+                const variant = Math.floor(this.seededRandom(this.dungeonSeed) * FLOWER_VARIANTS.length);
+                decoInfo = FLOWER_VARIANTS[variant];
+            } else if (type === 'grass') {
+                const variant = Math.floor(this.seededRandom(this.dungeonSeed) * GRASS_VARIANTS.length);
+                decoInfo = GRASS_VARIANTS[variant];
+            } else if (type === 'log') {
+                const variant = Math.floor(this.seededRandom(this.dungeonSeed) * LOG_VARIANTS.length);
+                decoInfo = LOG_VARIANTS[variant];
+            } else {
+                decoInfo = OTHER_DECORATIONS[type];
+            }
+
             if (!decoInfo) {
                 console.warn(`Unknown decoration type: ${type}`);
                 return;
             }
 
-            const scale = (tileSize / 48) * decoInfo.scale;
-            const decoration = this.add.sprite(px, py, 'objects_d', decoInfo.frame);
-            decoration.setOrigin(0, 0);
-            decoration.setScale(scale);
-            decoration.setDepth(py + tileSize);
+            const finalScale = scale * decoInfo.scale;
+            const frames = decoInfo.frames;
 
-            this.tileContainer.add(decoration);
+            // Render multi-tile or single-tile decoration
+            if (frames.length === 1) {
+                // Single tile
+                const decoration = this.add.sprite(px, py, 'objects_d', frames[0]);
+                decoration.setOrigin(0, 0);
+                decoration.setScale(finalScale);
+                decoration.setDepth(py + tileSize);
+                this.tileContainer.add(decoration);
 
-            console.log(`✅ Created ${type} at ${x},${y}`);
+            } else if (frames.length === 2 && decoInfo.horizontal) {
+                // Horizontal 1x2 (side by side)
+                const sprite1 = this.add.sprite(px, py, 'objects_d', frames[0]);
+                sprite1.setOrigin(0, 0);
+                sprite1.setScale(finalScale);
+                sprite1.setDepth(py + tileSize);
+                this.tileContainer.add(sprite1);
+
+                const sprite2 = this.add.sprite(px + tileSize, py, 'objects_d', frames[1]);
+                sprite2.setOrigin(0, 0);
+                sprite2.setScale(finalScale);
+                sprite2.setDepth(py + tileSize);
+                this.tileContainer.add(sprite2);
+
+            } else if (frames.length === 2) {
+                // Vertical 2x1 (stacked)
+                const topSprite = this.add.sprite(px, py, 'objects_d', frames[0]);
+                topSprite.setOrigin(0, 0);
+                topSprite.setScale(finalScale);
+                topSprite.setDepth(py + tileSize * 2);
+                this.tileContainer.add(topSprite);
+
+                const bottomSprite = this.add.sprite(px, py + tileSize, 'objects_d', frames[1]);
+                bottomSprite.setOrigin(0, 0);
+                bottomSprite.setScale(finalScale);
+                bottomSprite.setDepth(py + tileSize * 2);
+                this.tileContainer.add(bottomSprite);
+            }
+
+            console.log(`✅ Created ${type} at ${x},${y} with ${frames.length} tile(s)`);
         }
     }
 
