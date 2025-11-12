@@ -660,13 +660,16 @@
         .character-card {
             background: rgba(139, 92, 246, 0.05);
             border: 2px solid rgba(139, 92, 246, 0.3);
-            padding: 3rem;
+            padding: 2rem;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            overflow: hidden;
+            overflow: visible;
             opacity: 0;
             transform: translateX(-50px);
             cursor: pointer;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
         }
 
         .character-card.visible {
@@ -903,6 +906,12 @@
 
             .features-grid {
                 grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .character-card {
+                padding: 1.5rem;
+                min-height: auto;
             }
 
             header {
@@ -926,6 +935,18 @@
 
             #particles .particle:nth-child(-n+15) {
                 display: block;
+            }
+        }
+
+        /* Tablet responsive */
+        @media (min-width: 769px) and (max-width: 1200px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2rem;
+            }
+
+            .character-card {
+                padding: 1.75rem;
             }
         }
 
@@ -1004,7 +1025,7 @@
     <section id="characters" class="features" style="padding-top: 4rem;">
         <h2 class="section-title">Choose Your Fighter</h2>
         <p style="text-align: center; color: rgba(255,255,255,0.6); margin-bottom: 3rem; font-size: 1.1rem;">Six unique heroes. Master them all.</p>
-        <div class="features-grid" style="max-width: 1400px; margin: 0 auto; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+        <div class="features-grid" style="max-width: 1600px; margin: 0 auto; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 2.5rem;">
             <!-- Aldric - Tank -->
             <div class="character-card interactive" data-theme="aldric" style="border: 2px solid rgba(255, 215, 0, 0.5); background: rgba(255, 215, 0, 0.05);">
                 <span class="feature-icon" style="font-size: 4rem; filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));">🛡️</span>
