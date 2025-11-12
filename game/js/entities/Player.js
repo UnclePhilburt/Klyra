@@ -221,7 +221,7 @@ class Player {
             this.animState = 'idle';
         }
 
-        this.updateElements();
+        // Don't call updateElements() here - scene handles syncSpriteGroup()
     }
 
     moveToPosition(position) {
@@ -229,14 +229,24 @@ class Player {
         const targetX = position.x * tileSize + tileSize / 2;
         const targetY = position.y * tileSize + tileSize / 2;
 
-        // Smooth movement
-        this.scene.tweens.add({
-            targets: this.sprite,
-            x: targetX,
-            y: targetY,
-            duration: 100,
-            ease: 'Linear'
-        });
+        // Use physics velocity for consistent movement (no tweens)
+        const dx = targetX - this.sprite.x;
+        const dy = targetY - this.sprite.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 1) {
+            const speed = GameConfig.PLAYER.SPEED;
+            this.sprite.body.setVelocity(
+                (dx / distance) * speed,
+                (dy / distance) * speed
+            );
+            this.animState = 'moving';
+        } else {
+            this.sprite.body.setVelocity(0, 0);
+            this.sprite.x = targetX;
+            this.sprite.y = targetY;
+            this.animState = 'idle';
+        }
     }
 
     attack(targetX, targetY) {
@@ -337,32 +347,40 @@ class Player {
         this.nameTag.setAlpha(0.5);
     }
 
+    syncSpriteGroup() {
+        // Lightweight helper to sync 4 sub-sprites to main sprite position
+        // Called once per frame from scene update
+        if (!this.usingSprite || !this.topLeft) return;
+
+        const spriteSize = 32;
+        const x = Math.round(this.sprite.x);
+        const y = Math.round(this.sprite.y);
+        const depth = y + 1000;
+
+        // Position all 4 sprites (pixel-perfect)
+        this.topLeft.x = x - spriteSize/2;
+        this.topLeft.y = y - spriteSize;
+        this.topLeft.setDepth(depth);
+
+        this.topRight.x = x + spriteSize/2;
+        this.topRight.y = y - spriteSize;
+        this.topRight.setDepth(depth);
+
+        this.bottomLeft.x = x - spriteSize/2;
+        this.bottomLeft.y = y;
+        this.bottomLeft.setDepth(depth);
+
+        this.bottomRight.x = x + spriteSize/2;
+        this.bottomRight.y = y;
+        this.bottomRight.setDepth(depth);
+    }
+
     updateElements() {
         // Update sprite depth for proper Y-sorting
         const spriteDepth = this.sprite.y + 1000;
         this.sprite.setDepth(spriteDepth);
 
-        if (this.usingSprite && this.topLeft) {
-            // Update all 4 sprite positions for 2x2 character
-            const spriteSize = 32;
-            const x = Math.round(this.sprite.x);  // Round to prevent sub-pixel jitter
-            const y = Math.round(this.sprite.y);
-
-            // Position sprites with center-bottom origin (0.5, 1.0)
-            // Round all positions to whole pixels
-            this.topLeft.x = Math.round(x - spriteSize/2);
-            this.topLeft.y = Math.round(y - spriteSize);
-            this.topRight.x = Math.round(x + spriteSize/2);
-            this.topRight.y = Math.round(y - spriteSize);
-            this.bottomLeft.x = Math.round(x - spriteSize/2);
-            this.bottomLeft.y = Math.round(y);
-            this.bottomRight.x = Math.round(x + spriteSize/2);
-            this.bottomRight.y = Math.round(y);
-
-            [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight].forEach(s => {
-                s.setDepth(spriteDepth);
-            });
-        } else if (!this.usingSprite) {
+        if (!this.usingSprite) {
             // Update glow position for circle placeholder
             this.glow.setPosition(this.sprite.x, this.sprite.y);
             this.glow.setDepth(spriteDepth - 1);

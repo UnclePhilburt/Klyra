@@ -557,11 +557,28 @@ class GameScene extends Phaser.Scene {
 
         this.localPlayer.move(velocityX, velocityY);
 
-        // Update animations
+        // Update animations (once per frame)
         this.localPlayer.updateAnimation(delta);
         Object.values(this.otherPlayers).forEach(player => {
             player.updateAnimation(delta);
         });
+
+        // Sync sprite groups (once per frame, lightweight)
+        this.localPlayer.syncSpriteGroup();
+        Object.values(this.otherPlayers).forEach(player => {
+            player.syncSpriteGroup();
+        });
+
+        // Update UI elements (name tags, health bars) less frequently
+        if (!this.uiUpdateCounter) this.uiUpdateCounter = 0;
+        this.uiUpdateCounter++;
+        if (this.uiUpdateCounter >= 5) {  // Every 5 frames (~83ms at 60fps)
+            this.uiUpdateCounter = 0;
+            this.localPlayer.updateElements();
+            Object.values(this.otherPlayers).forEach(player => {
+                player.updateElements();
+            });
+        }
 
         // Depth sorting - use Y position for proper layering
         // Higher Y = further down screen = higher depth (in front)
