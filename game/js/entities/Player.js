@@ -64,6 +64,9 @@ class Player {
                 s.setOrigin(0.5, 1.0);
                 s.setScale(scale);
                 s.setDepth(y + 1000);
+                // Round to pixel positions to prevent sub-pixel jitter
+                s.x = Math.round(s.x);
+                s.y = Math.round(s.y);
             });
 
             console.log(`🔍 Sprite positioning:`, {
@@ -342,14 +345,19 @@ class Player {
         if (this.usingSprite && this.topLeft) {
             // Update all 4 sprite positions for 2x2 character
             const spriteSize = 32;
-            const x = this.sprite.x;
-            const y = this.sprite.y;
+            const x = Math.round(this.sprite.x);  // Round to prevent sub-pixel jitter
+            const y = Math.round(this.sprite.y);
 
             // Position sprites with center-bottom origin (0.5, 1.0)
-            this.topLeft.setPosition(x - spriteSize/2, y - spriteSize);
-            this.topRight.setPosition(x + spriteSize/2, y - spriteSize);
-            this.bottomLeft.setPosition(x - spriteSize/2, y);
-            this.bottomRight.setPosition(x + spriteSize/2, y);
+            // Round all positions to whole pixels
+            this.topLeft.x = Math.round(x - spriteSize/2);
+            this.topLeft.y = Math.round(y - spriteSize);
+            this.topRight.x = Math.round(x + spriteSize/2);
+            this.topRight.y = Math.round(y - spriteSize);
+            this.bottomLeft.x = Math.round(x - spriteSize/2);
+            this.bottomLeft.y = Math.round(y);
+            this.bottomRight.x = Math.round(x + spriteSize/2);
+            this.bottomRight.y = Math.round(y);
 
             [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight].forEach(s => {
                 s.setDepth(spriteDepth);

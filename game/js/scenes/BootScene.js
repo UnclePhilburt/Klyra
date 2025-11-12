@@ -69,11 +69,15 @@ class BootScene extends Phaser.Scene {
         this.load.once('complete', () => {
             const texture = this.textures.get('malachar');
             const frames = texture.getFrameNames();
+
+            // Disable texture smoothing for pixel-perfect rendering
+            texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+
             console.log('🖼️ Malachar spritesheet loaded:');
             console.log('  - Total frames:', frames.length);
             console.log('  - Image size:', texture.source[0].width, 'x', texture.source[0].height);
             console.log('  - Frames per row:', Math.floor(texture.source[0].width / 64));
-            console.log('  - Frame test - trying to display frame 57, 113, etc.');
+            console.log('  - Texture filtering: NEAREST (pixel-perfect)');
         });
 
         console.log('✅ Loaded character sprites: malachar');
