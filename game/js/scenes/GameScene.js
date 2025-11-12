@@ -376,33 +376,8 @@ class GameScene extends Phaser.Scene {
     }
 
     createUI() {
-        const width = this.cameras.main.width;
-
-        // Health bar
-        this.healthBarBg = this.add.rectangle(120, 20, 200, 20, 0x000000);
-        this.healthBarBg.setOrigin(0.5, 0);
-        this.healthBarBg.setScrollFactor(0);
-
-        this.healthBar = this.add.rectangle(120, 20, 200, 20, 0x00ff00);
-        this.healthBar.setOrigin(0.5, 0);
-        this.healthBar.setScrollFactor(0);
-
-        this.healthText = this.add.text(120, 30, '100/100', {
-            font: '14px monospace',
-            fill: '#ffffff'
-        }).setOrigin(0.5).setScrollFactor(0);
-
-        // Stats
-        this.statsText = this.add.text(20, 50, '', {
-            font: '12px monospace',
-            fill: '#00ffff'
-        }).setScrollFactor(0);
-
-        // Kill counter
-        this.killsText = this.add.text(width - 20, 20, 'Kills: 0', {
-            font: '14px monospace',
-            fill: '#ffff00'
-        }).setOrigin(1, 0).setScrollFactor(0);
+        // Create modern HUD system
+        this.modernHUD = new ModernHUD(this, this.localPlayer);
     }
 
     setupControls() {
@@ -927,7 +902,6 @@ class GameScene extends Phaser.Scene {
     healPlayer() {
         if (this.localPlayer) {
             this.localPlayer.health = this.localPlayer.maxHealth;
-            this.localPlayer.updateHealthBar();
             console.log('❤️ Player healed to full health');
         }
     }
@@ -987,6 +961,10 @@ class GameScene extends Phaser.Scene {
                 player.updateElements();
             });
         }
+            // Update modern HUD
+            if (this.modernHUD) {
+                this.modernHUD.update();
+            }
 
         // Infinite health
         if (this.devSettings.infiniteHealth && this.localPlayer) {
