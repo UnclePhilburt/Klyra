@@ -160,66 +160,141 @@ class Player {
         const nameX = x + offsetX;
         const nameY = this.sprite.y - yOffset + offsetY;
 
-        // Modern health bar (above name)
-        const healthBarWidth = 60;
-        const healthBarHeight = 8;
-        const healthBarY = nameY - 18;
+        // === ULTRA MODERN HEALTH BAR ===
+        const healthBarWidth = 70;
+        const healthBarHeight = 6;
+        const healthBarY = nameY - 20;
+        const barRadius = 3;
 
-        // Health bar background with border
-        this.healthBarBorder = this.scene.add.rectangle(
-            nameX,
-            healthBarY,
-            healthBarWidth + 2,
-            healthBarHeight + 2,
-            0x000000
-        );
-        this.healthBarBorder.setStrokeStyle(1, 0x333333);
-
-        // Health bar background (dark red)
-        this.healthBarBg = this.scene.add.rectangle(
-            nameX,
-            healthBarY,
+        // Subtle drop shadow for depth
+        this.healthBarShadow = this.scene.add.graphics();
+        this.healthBarShadow.fillStyle(0x000000, 0.3);
+        this.healthBarShadow.fillRoundedRect(
+            nameX - healthBarWidth/2 + 1,
+            healthBarY - healthBarHeight/2 + 2,
             healthBarWidth,
             healthBarHeight,
-            0x440000
+            barRadius
         );
 
-        // Health bar fill (bright green to red gradient)
-        this.healthBar = this.scene.add.rectangle(
-            nameX,
-            healthBarY,
+        // Health bar container/background (glass effect)
+        this.healthBarContainer = this.scene.add.graphics();
+        this.healthBarContainer.fillStyle(0x000000, 0.6);
+        this.healthBarContainer.fillRoundedRect(
+            nameX - healthBarWidth/2,
+            healthBarY - healthBarHeight/2,
             healthBarWidth,
             healthBarHeight,
-            0x00ff00
+            barRadius
+        );
+        this.healthBarContainer.lineStyle(1, 0x444444, 0.8);
+        this.healthBarContainer.strokeRoundedRect(
+            nameX - healthBarWidth/2,
+            healthBarY - healthBarHeight/2,
+            healthBarWidth,
+            healthBarHeight,
+            barRadius
         );
 
-        // Modern name tag background
+        // Health bar fill (will be updated dynamically)
+        this.healthBar = this.scene.add.graphics();
+        
+        // Glossy overlay for that AAA polish
+        this.healthBarGloss = this.scene.add.graphics();
+        this.healthBarGloss.fillStyle(0xffffff, 0.15);
+        this.healthBarGloss.fillRoundedRect(
+            nameX - healthBarWidth/2,
+            healthBarY - healthBarHeight/2,
+            healthBarWidth,
+            healthBarHeight * 0.4,
+            barRadius
+        );
+
+        // === SLEEK NAME TAG ===
+        const nameWidth = Math.max(80, this.data.username.length * 8 + 20);
+        const nameHeight = 20;
+        
+        // Drop shadow for name tag
+        this.nameTagShadow = this.scene.add.graphics();
+        this.nameTagShadow.fillStyle(0x000000, 0.4);
+        this.nameTagShadow.fillRoundedRect(
+            nameX - nameWidth/2 + 1,
+            nameY - nameHeight/2 + 2,
+            nameWidth,
+            nameHeight,
+            6
+        );
+
+        // Name tag background (glass morphism style)
         this.nameTagBg = this.scene.add.graphics();
-        this.nameTagBg.fillStyle(0x000000, 0.7);
+        this.nameTagBg.fillStyle(0x0a0a0a, 0.85);
         this.nameTagBg.fillRoundedRect(
-            nameX - 40,
-            nameY - 10,
-            80,
-            18,
-            4
+            nameX - nameWidth/2,
+            nameY - nameHeight/2,
+            nameWidth,
+            nameHeight,
+            6
         );
-        this.nameTagBg.lineStyle(1, 0x444444, 1);
+        
+        // Subtle gradient overlay
+        this.nameTagBg.lineStyle(1, 0x555555, 0.6);
         this.nameTagBg.strokeRoundedRect(
-            nameX - 40,
-            nameY - 10,
-            80,
-            18,
-            4
+            nameX - nameWidth/2,
+            nameY - nameHeight/2,
+            nameWidth,
+            nameHeight,
+            6
         );
 
-        // Name text (modern font, slightly larger)
+        // Level badge (optional - only if level > 1)
+        if (this.level && this.level > 1) {
+            this.levelBadge = this.scene.add.graphics();
+            this.levelBadge.fillStyle(0x6366f1, 0.9);
+            this.levelBadge.fillRoundedRect(
+                nameX - nameWidth/2 + 4,
+                nameY - nameHeight/2 + 4,
+                22,
+                12,
+                4
+            );
+            
+            this.levelText = this.scene.add.text(
+                nameX - nameWidth/2 + 15,
+                nameY,
+                `${this.level}`,
+                {
+                    font: 'bold 9px Arial',
+                    fill: '#ffffff'
+                }
+            ).setOrigin(0.5);
+        }
+
+        // Name text (clean, modern typography)
         this.nameTag = this.scene.add.text(nameX, nameY, this.data.username, {
-            font: 'bold 11px Arial',
+            font: 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial',
             fill: '#ffffff',
             stroke: '#000000',
-            strokeThickness: 2
+            strokeThickness: 3,
+            shadow: {
+                offsetX: 0,
+                offsetY: 1,
+                color: '#000000',
+                blur: 2,
+                fill: true
+            }
         }).setOrigin(0.5);
+
+        // Store dimensions for updates
+        this.healthBarWidth = healthBarWidth;
+        this.healthBarHeight = healthBarHeight;
+        this.healthBarY = healthBarY;
+        this.nameX = nameX;
+        this.barRadius = barRadius;
+
+        // Initial health bar draw
+        this.updateHealthBar();
     }
+
 
     move(velocityX, velocityY) {
         const speed = GameConfig.PLAYER.SPEED;
@@ -381,6 +456,159 @@ class Player {
 
         // Update name tag and health bar
         const yOffset = this.usingSprite ? 105 : 25;
+        const offsetX = this.usingSprite ? 32 : 0;
+        const offsetY = this.usingSprite ? 55 : 0;
+        const nameX = this.sprite.x + offsetX;
+        const nameY = this.sprite.y - yOffset + offsetY;
+        
+        const healthBarY = nameY - 20;
+        const nameWidth = Math.max(80, this.data.username.length * 8 + 20);
+        const nameHeight = 20;
+
+        // Update health bar shadow
+        if (this.healthBarShadow) {
+            this.healthBarShadow.clear();
+            this.healthBarShadow.fillStyle(0x000000, 0.3);
+            this.healthBarShadow.fillRoundedRect(
+                nameX - this.healthBarWidth/2 + 1,
+                healthBarY - this.healthBarHeight/2 + 2,
+                this.healthBarWidth,
+                this.healthBarHeight,
+                this.barRadius
+            );
+            this.healthBarShadow.setDepth(spriteDepth);
+        }
+
+        // Update health bar container
+        if (this.healthBarContainer) {
+            this.healthBarContainer.clear();
+            this.healthBarContainer.fillStyle(0x000000, 0.6);
+            this.healthBarContainer.fillRoundedRect(
+                nameX - this.healthBarWidth/2,
+                healthBarY - this.healthBarHeight/2,
+                this.healthBarWidth,
+                this.healthBarHeight,
+                this.barRadius
+            );
+            this.healthBarContainer.lineStyle(1, 0x444444, 0.8);
+            this.healthBarContainer.strokeRoundedRect(
+                nameX - this.healthBarWidth/2,
+                healthBarY - this.healthBarHeight/2,
+                this.healthBarWidth,
+                this.healthBarHeight,
+                this.barRadius
+            );
+            this.healthBarContainer.setDepth(spriteDepth + 1);
+        }
+
+        // Update stored position for health bar
+        this.nameX = nameX;
+        this.healthBarY = healthBarY;
+
+        // Update health bar (redraws with current health)
+        if (this.healthBar) {
+            this.healthBar.setDepth(spriteDepth + 2);
+        }
+
+        // Update glossy overlay
+        if (this.healthBarGloss) {
+            this.healthBarGloss.clear();
+            this.healthBarGloss.fillStyle(0xffffff, 0.15);
+            this.healthBarGloss.fillRoundedRect(
+                nameX - this.healthBarWidth/2,
+                healthBarY - this.healthBarHeight/2,
+                this.healthBarWidth,
+                this.healthBarHeight * 0.4,
+                this.barRadius
+            );
+            this.healthBarGloss.setDepth(spriteDepth + 3);
+        }
+
+        // Update name tag shadow
+        if (this.nameTagShadow) {
+            this.nameTagShadow.clear();
+            this.nameTagShadow.fillStyle(0x000000, 0.4);
+            this.nameTagShadow.fillRoundedRect(
+                nameX - nameWidth/2 + 1,
+                nameY - nameHeight/2 + 2,
+                nameWidth,
+                nameHeight,
+                6
+            );
+            this.nameTagShadow.setDepth(spriteDepth + 1);
+        }
+
+        // Update name tag background
+        if (this.nameTagBg) {
+            this.nameTagBg.clear();
+            this.nameTagBg.fillStyle(0x0a0a0a, 0.85);
+            this.nameTagBg.fillRoundedRect(
+                nameX - nameWidth/2,
+                nameY - nameHeight/2,
+                nameWidth,
+                nameHeight,
+                6
+            );
+            this.nameTagBg.lineStyle(1, 0x555555, 0.6);
+            this.nameTagBg.strokeRoundedRect(
+                nameX - nameWidth/2,
+                nameY - nameHeight/2,
+                nameWidth,
+                nameHeight,
+                6
+            );
+            this.nameTagBg.setDepth(spriteDepth + 2);
+        }
+
+        // Update level badge
+        if (this.levelBadge && this.level > 1) {
+            this.levelBadge.clear();
+            this.levelBadge.fillStyle(0x6366f1, 0.9);
+            this.levelBadge.fillRoundedRect(
+                nameX - nameWidth/2 + 4,
+                nameY - nameHeight/2 + 4,
+                22,
+                12,
+                4
+            );
+            this.levelBadge.setDepth(spriteDepth + 3);
+        }
+
+        // Update level text
+        if (this.levelText && this.level > 1) {
+            this.levelText.setPosition(nameX - nameWidth/2 + 15, nameY);
+            this.levelText.setDepth(spriteDepth + 4);
+        }
+
+        // Update name tag text
+        this.nameTag.setPosition(nameX, nameY);
+        this.nameTag.setDepth(spriteDepth + 4);
+
+        this.updateHealthBar();
+    }
+
+
+        // Update depth for Y-sorting
+        const spriteDepth = this.sprite.y + 1000;
+        this.sprite.setDepth(spriteDepth);
+
+        if (!this.usingSprite && this.glow && this.weapon) {
+            // Update glow position for circle placeholder
+            this.glow.setPosition(this.sprite.x, this.sprite.y);
+            this.glow.setDepth(spriteDepth - 1);
+
+            // Update weapon position
+            const angle = this.weapon.rotation;
+            const distance = 15;
+            this.weapon.setPosition(
+                this.sprite.x + Math.cos(angle) * distance,
+                this.sprite.y + Math.sin(angle) * distance
+            );
+            this.weapon.setDepth(spriteDepth);
+        }
+
+        // Update name tag and health bar
+        const yOffset = this.usingSprite ? 105 : 25;
 
         // Apply same offset as sprite (down 55, right 32)
         const offsetX = this.usingSprite ? 32 : 0;
@@ -441,20 +669,62 @@ class Player {
     }
 
     updateHealthBar() {
-        const healthBarWidth = 60;
-        const healthPercent = this.health / this.maxHealth;
-        this.healthBar.width = healthBarWidth * healthPercent;
+        if (!this.healthBar) return;
 
-        // Color gradient: green -> yellow -> orange -> red
-        let color;
+        const healthPercent = this.health / this.maxHealth;
+        const currentWidth = this.healthBarWidth * healthPercent;
+        
+        // Clear and redraw health bar with smooth color transitions
+        this.healthBar.clear();
+        
+        // Determine color with smooth gradient
+        let color, glowColor;
         if (healthPercent > 0.6) {
-            color = 0x00ff00; // Green
+            color = 0x10b981; // Modern emerald green
+            glowColor = 0x34d399;
         } else if (healthPercent > 0.4) {
-            color = 0xaaff00; // Yellow-green
+            color = 0xfbbf24; // Modern amber
+            glowColor = 0xfcd34d;
         } else if (healthPercent > 0.25) {
-            color = 0xffaa00; // Orange
+            color = 0xf97316; // Modern orange
+            glowColor = 0xfb923c;
         } else {
-            color = 0xff0000; // Red
+            color = 0xef4444; // Modern red
+            glowColor = 0xf87171;
+        }
+        
+        // Draw subtle glow underneath
+        this.healthBar.fillStyle(glowColor, 0.3);
+        this.healthBar.fillRoundedRect(
+            this.nameX - this.healthBarWidth/2 - 1,
+            this.healthBarY - this.healthBarHeight/2 - 1,
+            currentWidth + 2,
+            this.healthBarHeight + 2,
+            this.barRadius
+        );
+        
+        // Draw main health bar
+        this.healthBar.fillStyle(color, 1);
+        this.healthBar.fillRoundedRect(
+            this.nameX - this.healthBarWidth/2,
+            this.healthBarY - this.healthBarHeight/2,
+            currentWidth,
+            this.healthBarHeight,
+            this.barRadius
+        );
+        
+        // Add animated pulse on low health
+        if (healthPercent <= 0.25) {
+            this.scene.tweens.add({
+                targets: this.healthBar,
+                alpha: 0.7,
+                duration: 500,
+                yoyo: true,
+                repeat: 0
+            });
+        }
+    }
+
         }
         this.healthBar.setFillStyle(color);
     }
