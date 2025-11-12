@@ -334,8 +334,8 @@ class GameScene extends Phaser.Scene {
                         // Different Y offsets for different tree types
                         let collisionYOffset;
                         if (TREE_TILES === TREE_TWO) {
-                            // Tree 2: move down 35 pixels from base position
-                            collisionYOffset = tilePy - (tileSize / 4) + 35;
+                            // Tree 2: move down 20 pixels from base position (was 35, moved up 15)
+                            collisionYOffset = tilePy - (tileSize / 4) + 20;
                         } else {
                             // Tree 1: move down 20 pixels from base position
                             collisionYOffset = tilePy - (tileSize / 4) + 20;
@@ -354,6 +354,8 @@ class GameScene extends Phaser.Scene {
                         // Debug: visualize tree collision box with red outline
                         collisionRect.setStrokeStyle(2, 0xff0000, 1);
                         collisionRect.setDepth(9999); // Always on top
+                        // Respect dev settings visibility (will be set later in setupControls)
+                        collisionRect.setVisible(true); // Default visible, will be updated by dev menu
 
                         // Store for later collision setup (after player is created)
                         this.treeCollisions.push(collisionRect);
@@ -438,12 +440,25 @@ class GameScene extends Phaser.Scene {
         });
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
+        // Tilda key for dev menu
+        this.tildaKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.BACKTICK);
+        this.tildaKey.on('down', () => {
+            this.toggleDevMenu();
+        });
+
         // Mouse click to attack
         this.input.on('pointerdown', (pointer) => {
             if (pointer.leftButtonDown() && this.localPlayer) {
                 this.localPlayer.attack(pointer.worldX, pointer.worldY);
             }
         });
+
+        // Initialize dev settings
+        this.devSettings = {
+            showCollisionBoxes: true // Start with collision boxes visible
+        };
+
+        this.createDevMenu();
     }
 
     setupNetworkListeners() {
@@ -541,6 +556,83 @@ class GameScene extends Phaser.Scene {
         networkManager.on('chat:message', (data) => {
             this.showChatMessage(data.username, data.message);
         });
+    }
+
+    createDevMenu() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Dev menu container
+        this.devMenuContainer = this.add.container(width / 2, height / 2);
+        this.devMenuContainer.setScrollFactor(0);
+        this.devMenuContainer.setDepth(10000);
+        this.devMenuContainer.setVisible(false);
+
+        // Background
+        const bg = this.add.rectangle(0, 0, 400, 200, 0x000000, 0.9);
+        bg.setStrokeStyle(2, 0x00ff00);
+
+        // Title
+        const title = this.add.text(0, -80, 'DEV SETTINGS', {
+            font: '20px monospace',
+            fill: '#00ff00'
+        }).setOrigin(0.5);
+
+        // Collision boxes toggle
+        this.collisionToggleText = this.add.text(0, -30, 'Collision Boxes: ON', {
+            font: '16px monospace',
+            fill: '#ffffff'
+        }).setOrigin(0.5);
+
+        // Make it interactive
+        this.collisionToggleText.setInteractive({ useHandCursor: true });
+        this.collisionToggleText.on('pointerdown', () => {
+            this.toggleCollisionBoxes();
+        });
+
+        // Instructions
+        const instructions = this.add.text(0, 20, 'Click options to toggle\nPress ` to close', {
+            font: '12px monospace',
+            fill: '#888888',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        this.devMenuContainer.add([bg, title, this.collisionToggleText, instructions]);
+    }
+
+    toggleDevMenu() {
+        if (this.devMenuContainer) {
+            this.devMenuContainer.setVisible(!this.devMenuContainer.visible);
+        }
+    }
+
+    toggleCollisionBoxes() {
+        this.devSettings.showCollisionBoxes = !this.devSettings.showCollisionBoxes;
+
+        // Update text
+        this.collisionToggleText.setText(
+            `Collision Boxes: ${this.devSettings.showCollisionBoxes ? 'ON' : 'OFF'}`
+        );
+
+        // Update visibility of collision boxes
+        // Player collision box
+        if (this.localPlayer && this.localPlayer.collisionDebug) {
+            this.localPlayer.collisionDebug.setVisible(this.devSettings.showCollisionBoxes);
+        }
+
+        // Other players collision boxes
+        Object.values(this.otherPlayers).forEach(player => {
+            if (player.collisionDebug) {
+                player.collisionDebug.setVisible(this.devSettings.showCollisionBoxes);
+            }
+        });
+
+        // Tree collision boxes
+        if (this.treeCollisions) {
+            this.treeCollisions.forEach(collisionRect => {
+                collisionRect.setVisible(this.devSettings.showCollisionBoxes);
+            });
+        }
     }
 
     update(time, delta) {

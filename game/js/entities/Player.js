@@ -51,6 +51,10 @@ class Player {
             this.collisionDebug = this.scene.add.rectangle(x, y, collisionSize, collisionSize, 0x00ff00, 0);
             this.collisionDebug.setStrokeStyle(2, 0x00ff00, 1);
             this.collisionDebug.setDepth(9999); // Always on top
+            // Respect dev settings visibility
+            if (this.scene.devSettings) {
+                this.collisionDebug.setVisible(this.scene.devSettings.showCollisionBoxes);
+            }
 
             // This is our main "sprite" reference
             this.sprite = this.physicsBody;
@@ -111,7 +115,7 @@ class Player {
 
         // Offset to center character in collision box
         const offsetX = 32; // Move right 32px
-        const offsetY = 48; // Move down 48px
+        const offsetY = 55; // Move down 55px (was 48, moved down 7 more)
 
         // Calculate positions
         // Character is 96x96 total (2x2 @ 48px each)
@@ -147,9 +151,9 @@ class Player {
         const x = this.sprite.x;
         const yOffset = this.usingSprite ? 105 : 25; // 25% smaller than 140
 
-        // Apply same offset as sprite (down 48, right 32)
+        // Apply same offset as sprite (down 55, right 32)
         const offsetX = this.usingSprite ? 32 : 0;
-        const offsetY = this.usingSprite ? 48 : 0;
+        const offsetY = this.usingSprite ? 55 : 0;
 
         const nameX = x + offsetX;
         const nameY = this.sprite.y - yOffset + offsetY;
@@ -327,9 +331,9 @@ class Player {
         // Update name tag and health bar
         const yOffset = this.usingSprite ? 105 : 25; // 25% smaller than 140
 
-        // Apply same offset as sprite (down 48, right 32)
+        // Apply same offset as sprite (down 55, right 32)
         const offsetX = this.usingSprite ? 32 : 0;
-        const offsetY = this.usingSprite ? 48 : 0;
+        const offsetY = this.usingSprite ? 55 : 0;
 
         const nameX = this.sprite.x + offsetX;
         const nameY = this.sprite.y - yOffset + offsetY;
