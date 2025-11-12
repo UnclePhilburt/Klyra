@@ -20,19 +20,19 @@ class Player {
         const x = this.data.position.x * tileSize + tileSize / 2;
         const y = this.data.position.y * tileSize + tileSize / 2;
 
-        // Get character config from new system
+        // Get character config
         const character = CHARACTERS[this.class] || CHARACTERS.ALDRIC;
         const classConfig = { color: character.display.color };
-
-        // Convert class to lowercase for texture key (sprites are loaded as lowercase)
         const textureKey = this.class.toLowerCase();
 
         // Check if sprite sheet exists for this character
         if (this.scene.textures.exists(textureKey)) {
-            // User's original frame numbers (113 - 57 = 56 frames per row)
-            // Going back to what the user specified originally:
+            console.log(`✅ Creating 2x2 sprite character: ${this.data.username} (${textureKey})`);
+
+            // Frame configuration (56 frames per row)
             const FRAMES_PER_ROW = 56;
 
+            // Idle animation frames (8 frames total)
             this.idleFrames = [
                 { topLeft: 57, topRight: 58, bottomLeft: 113, bottomRight: 114 },
                 { topLeft: 60, topRight: 61, bottomLeft: 116, bottomRight: 117 },
@@ -44,63 +44,62 @@ class Player {
                 { topLeft: 80, topRight: 81, bottomLeft: 136, bottomRight: 137 }
             ];
 
-            console.log('✅ Using original user frame numbers (56 frames/row):', this.idleFrames[0]);
+            // Each frame is 48x48, we want 32x32 (one game tile per sprite)
+            const scale = 32 / 48; // 0.667
 
-            // Create 2x2 tile character (multi-sprite)
-            // Frames are 48x48, scale to 32x32 to match tile size
-            const spriteSize = 32; // Target size per sprite (one game tile)
-            const scale = spriteSize / 48; // 32/48 = 0.667
+            // Create 4 sprites for 2x2 character
+            // Position them relative to origin (0, 0) within the container
+            this.topLeft = this.scene.add.sprite(0, 0, textureKey, this.idleFrames[0].topLeft);
+            this.topRight = this.scene.add.sprite(32, 0, textureKey, this.idleFrames[0].topRight);
+            this.bottomLeft = this.scene.add.sprite(0, 32, textureKey, this.idleFrames[0].bottomLeft);
+            this.bottomRight = this.scene.add.sprite(32, 32, textureKey, this.idleFrames[0].bottomRight);
 
-            // Create 4 sprites for 2x2 grid
-            // Anchor at center-bottom (0.5, 1.0) for stable foot position
-            this.topLeft = this.scene.add.sprite(x - spriteSize/2, y - spriteSize, textureKey, 0);
-            this.topRight = this.scene.add.sprite(x + spriteSize/2, y - spriteSize, textureKey, 0);
-            this.bottomLeft = this.scene.add.sprite(x - spriteSize/2, y, textureKey, 0);
-            this.bottomRight = this.scene.add.sprite(x + spriteSize/2, y, textureKey, 0);
-
-            // Set origin to (0, 0) for precise pixel control
-            // This prevents origin-based positioning confusion
+            // Set origin to top-left for all sprites
             [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight].forEach(s => {
                 s.setOrigin(0, 0);
                 s.setScale(scale);
-                s.setDepth(y + 1000);
             });
 
-            console.log(`🔍 Sprite positioning:`, {
-                center: { x, y },
-                topLeft: { x: x - spriteSize/2, y: y - spriteSize },
-                topRight: { x: x + spriteSize/2, y: y - spriteSize },
-                bottomLeft: { x: x - spriteSize/2, y: y },
-                bottomRight: { x: x + spriteSize/2, y: y },
-                spriteSize: spriteSize,
-                scale: scale,
-                origin: '(0.5, 1.0) - center-bottom'
-            });
+            // Create container to hold all 4 sprites as one unit
+            this.container = this.scene.add.container(x, y, [
+                this.topLeft,
+                this.topRight,
+                this.bottomLeft,
+                this.bottomRight
+            ]);
 
-            // Use main sprite reference (center point for physics)
-            this.sprite = this.scene.add.rectangle(x, y, tileSize, tileSize, 0x000000, 0);
+            // Container origin is center-bottom for proper foot position
+            // Offset container position so bottom-center is at (x, y)
+            this.container.x = x - 32; // Move left by half width (64/2)
+            this.container.y = y - 64; // Move up by full height
+
+            // Add physics to the container
+            this.scene.physics.add.existing(this.container);
+            this.container.body.setSize(32, 32); // Physics body is 1 tile
+            this.container.body.setOffset(16, 32); // Center bottom of the visual sprite
+
+            // The container IS our main sprite now
+            this.sprite = this.container;
             this.sprite.setDepth(y + 1000);
-            this.scene.physics.add.existing(this.sprite);
 
             // Animation state
             this.currentAnimFrame = 0;
             this.animTimer = 0;
             this.animState = 'idle';
 
-            console.log(`✅ Created 2x2 sprite for ${this.data.username} using ${textureKey}, depth: ${y + 1000}`);
-            console.log(`  - Frame 1: TL=${this.idleFrames[0].topLeft} TR=${this.idleFrames[0].topRight} BL=${this.idleFrames[0].bottomLeft} BR=${this.idleFrames[0].bottomRight}`);
-            console.log(`  - Verify layout: TR should be TL+1 (${this.idleFrames[0].topLeft + 1}), BR should be BL+1 (${this.idleFrames[0].bottomLeft + 1})`);
-            console.log(`  - Verify rows: BL should be TL+56 (${this.idleFrames[0].topLeft + 56}), BR should be TR+56 (${this.idleFrames[0].topRight + 56})`);
-            console.log(`  - Actual: BL=${this.idleFrames[0].bottomLeft}, BR=${this.idleFrames[0].bottomRight}`);
             this.usingSprite = true;
 
-            // Set initial animation frame
-            this.updateSpriteFrames(this.idleFrames[0]);
+            console.log(`✅ Container-based 2x2 sprite created at (${x}, ${y})`);
+            console.log(`  - Container size: 64x64 (2x2 tiles @ 32px each)`);
+            console.log(`  - Physics body: 32x32 with offset (16, 32)`);
+            console.log(`  - Scale: ${scale}, Frames/row: ${FRAMES_PER_ROW}`);
+
         } else {
             // Fallback to circle placeholder
             console.log(`⚠️ No sprite for ${textureKey}, using placeholder for ${this.data.username}`);
+
             this.sprite = this.scene.add.circle(x, y, 12, classConfig.color);
-            this.sprite.setDepth(y + 1000); // Set initial depth with offset
+            this.sprite.setDepth(y + 1000);
             this.scene.physics.add.existing(this.sprite);
 
             // Add glow effect
@@ -122,45 +121,17 @@ class Player {
     updateSpriteFrames(frameData) {
         if (!this.usingSprite || !this.topLeft) return;
 
-        try {
-            // Get current positions before frame change
-            const beforePos = {
-                tl: { x: this.topLeft.x, y: this.topLeft.y },
-                tr: { x: this.topRight.x, y: this.topRight.y },
-                bl: { x: this.bottomLeft.x, y: this.bottomLeft.y },
-                br: { x: this.bottomRight.x, y: this.bottomRight.y }
-            };
-
-            this.topLeft.setFrame(frameData.topLeft);
-            this.topRight.setFrame(frameData.topRight);
-            this.bottomLeft.setFrame(frameData.bottomLeft);
-            this.bottomRight.setFrame(frameData.bottomRight);
-
-            // Check if positions changed (they shouldn't!)
-            const afterPos = {
-                tl: { x: this.topLeft.x, y: this.topLeft.y },
-                tr: { x: this.topRight.x, y: this.topRight.y },
-                bl: { x: this.bottomLeft.x, y: this.bottomLeft.y },
-                br: { x: this.bottomRight.x, y: this.bottomRight.y }
-            };
-
-            if (beforePos.tl.x !== afterPos.tl.x || beforePos.tl.y !== afterPos.tl.y) {
-                console.warn('⚠️ POSITION CHANGED ON FRAME UPDATE!', {
-                    frame: frameData,
-                    before: beforePos.tl,
-                    after: afterPos.tl
-                });
-            }
-        } catch (e) {
-            console.error('❌ Error setting frames:', frameData, e.message);
-        }
+        this.topLeft.setFrame(frameData.topLeft);
+        this.topRight.setFrame(frameData.topRight);
+        this.bottomLeft.setFrame(frameData.bottomLeft);
+        this.bottomRight.setFrame(frameData.bottomRight);
     }
 
     updateAnimation(delta) {
         if (!this.usingSprite || !this.topLeft) return;
 
         this.animTimer += delta;
-        const frameTime = 125; // milliseconds per frame (8 fps)
+        const frameTime = 125; // 8 fps
 
         if (this.animTimer >= frameTime) {
             this.animTimer = 0;
@@ -198,7 +169,7 @@ class Player {
         if (velocityX !== 0 || velocityY !== 0) {
             this.animState = 'moving';
 
-            if (!this.usingSprite) {
+            if (!this.usingSprite && this.weapon) {
                 // Update weapon rotation for circle placeholder
                 const angle = Math.atan2(velocityY, velocityX);
                 this.weapon.setRotation(angle);
@@ -217,8 +188,6 @@ class Player {
         } else {
             this.animState = 'idle';
         }
-
-        // Don't call updateElements() here - scene handles syncSpriteGroup()
     }
 
     moveToPosition(position) {
@@ -226,7 +195,7 @@ class Player {
         const targetX = position.x * tileSize + tileSize / 2;
         const targetY = position.y * tileSize + tileSize / 2;
 
-        // Use physics velocity for consistent movement (no tweens)
+        // Use physics velocity for movement
         const dx = targetX - this.sprite.x;
         const dy = targetY - this.sprite.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -247,7 +216,7 @@ class Player {
     }
 
     attack(targetX, targetY) {
-        if (!this.usingSprite) {
+        if (!this.usingSprite && this.weapon) {
             // Point weapon at target for circle placeholder
             const angle = Phaser.Math.Angle.Between(
                 this.sprite.x,
@@ -267,24 +236,17 @@ class Player {
             });
         }
 
-        // Flash effect for multi-sprite character
-        if (this.usingSprite && this.topLeft) {
-            const targets = [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight];
-            this.scene.tweens.add({
-                targets: targets,
-                alpha: 0.5,
-                duration: 50,
-                yoyo: true
-            });
-        } else if (!this.usingSprite) {
-            // Flash effect for placeholder
-            this.scene.tweens.add({
-                targets: this.sprite,
-                alpha: 0.5,
-                duration: 50,
-                yoyo: true
-            });
-        }
+        // Flash effect
+        const targets = this.usingSprite && this.topLeft
+            ? [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight]
+            : [this.sprite];
+
+        this.scene.tweens.add({
+            targets: targets,
+            alpha: 0.5,
+            duration: 50,
+            yoyo: true
+        });
     }
 
     takeDamage(amount) {
@@ -295,21 +257,14 @@ class Player {
         }
 
         // Damage flash
-        if (this.usingSprite && this.topLeft) {
-            [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight].forEach(s => {
-                s.setTint(0xff0000);
-            });
-            this.scene.time.delayedCall(100, () => {
-                [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight].forEach(s => {
-                    s.clearTint();
-                });
-            });
-        } else if (!this.usingSprite) {
-            this.sprite.setTint(0xff0000);
-            this.scene.time.delayedCall(100, () => {
-                this.sprite.clearTint();
-            });
-        }
+        const targets = this.usingSprite && this.topLeft
+            ? [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight]
+            : [this.sprite];
+
+        targets.forEach(s => s.setTint(0xff0000));
+        this.scene.time.delayedCall(100, () => {
+            targets.forEach(s => s.clearTint());
+        });
 
         this.updateHealthBar();
     }
@@ -318,66 +273,28 @@ class Player {
         this.isAlive = false;
 
         // Death animation
-        if (this.usingSprite && this.topLeft) {
-            const targets = [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight];
-            this.scene.tweens.add({
-                targets: targets,
-                alpha: 0,
-                duration: 500,
-                onComplete: () => {
-                    targets.forEach(s => s.setVisible(false));
-                }
-            });
-        } else if (!this.usingSprite) {
-            this.scene.tweens.add({
-                targets: [this.sprite, this.glow, this.weapon],
-                alpha: 0,
-                duration: 500,
-                onComplete: () => {
-                    this.sprite.setVisible(false);
-                    if (this.glow) this.glow.setVisible(false);
-                    if (this.weapon) this.weapon.setVisible(false);
-                }
-            });
-        }
+        const targets = this.usingSprite && this.topLeft
+            ? [this.topLeft, this.topRight, this.bottomLeft, this.bottomRight]
+            : [this.sprite, this.glow, this.weapon].filter(x => x);
+
+        this.scene.tweens.add({
+            targets: targets,
+            alpha: 0,
+            duration: 500,
+            onComplete: () => {
+                targets.forEach(s => s.setVisible(false));
+            }
+        });
 
         this.nameTag.setAlpha(0.5);
     }
 
-    syncSpriteGroup() {
-        // Lightweight helper to sync 4 sub-sprites to main sprite position
-        // Called once per frame from scene update
-        if (!this.usingSprite || !this.topLeft) return;
-
-        const spriteSize = 32;
-        const x = this.sprite.x;
-        const y = this.sprite.y;
-        const depth = y + 1000;
-
-        // Round each sprite position individually for pixel-perfect rendering
-        this.topLeft.x = Math.round(x - spriteSize/2);
-        this.topLeft.y = Math.round(y - spriteSize);
-        this.topLeft.setDepth(depth);
-
-        this.topRight.x = Math.round(x + spriteSize/2);
-        this.topRight.y = Math.round(y - spriteSize);
-        this.topRight.setDepth(depth);
-
-        this.bottomLeft.x = Math.round(x - spriteSize/2);
-        this.bottomLeft.y = Math.round(y);
-        this.bottomLeft.setDepth(depth);
-
-        this.bottomRight.x = Math.round(x + spriteSize/2);
-        this.bottomRight.y = Math.round(y);
-        this.bottomRight.setDepth(depth);
-    }
-
     updateElements() {
-        // Update sprite depth for proper Y-sorting
+        // Update depth for Y-sorting
         const spriteDepth = this.sprite.y + 1000;
         this.sprite.setDepth(spriteDepth);
 
-        if (!this.usingSprite) {
+        if (!this.usingSprite && this.glow && this.weapon) {
             // Update glow position for circle placeholder
             this.glow.setPosition(this.sprite.x, this.sprite.y);
             this.glow.setDepth(spriteDepth - 1);
@@ -392,13 +309,20 @@ class Player {
             this.weapon.setDepth(spriteDepth);
         }
 
-        // Update name tag and health bar (for all sprite types)
-        this.nameTag.setPosition(this.sprite.x, this.sprite.y - 35);
-        this.nameTag.setDepth(spriteDepth + 1); // Above player
-        this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 25);
-        this.healthBarBg.setDepth(spriteDepth + 1); // Above player
-        this.healthBar.setPosition(this.sprite.x - 20 + (40 * (this.health / this.maxHealth) / 2), this.sprite.y - 25);
-        this.healthBar.setDepth(spriteDepth + 2); // Above health bar bg
+        // Update name tag and health bar
+        const yOffset = this.usingSprite ? 35 : 25;
+        this.nameTag.setPosition(this.sprite.x, this.sprite.y - yOffset);
+        this.nameTag.setDepth(spriteDepth + 1);
+
+        this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - (yOffset - 10));
+        this.healthBarBg.setDepth(spriteDepth + 1);
+
+        const healthPercent = this.health / this.maxHealth;
+        this.healthBar.setPosition(
+            this.sprite.x - 20 + (40 * healthPercent / 2),
+            this.sprite.y - (yOffset - 10)
+        );
+        this.healthBar.setDepth(spriteDepth + 2);
 
         this.updateHealthBar();
     }

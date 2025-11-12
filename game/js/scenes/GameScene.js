@@ -563,12 +563,6 @@ class GameScene extends Phaser.Scene {
             player.updateAnimation(delta);
         });
 
-        // Sync sprite groups (once per frame, lightweight)
-        this.localPlayer.syncSpriteGroup();
-        Object.values(this.otherPlayers).forEach(player => {
-            player.syncSpriteGroup();
-        });
-
         // Update UI elements (name tags, health bars) less frequently
         if (!this.uiUpdateCounter) this.uiUpdateCounter = 0;
         this.uiUpdateCounter++;
