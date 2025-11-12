@@ -154,16 +154,16 @@
     <script src="js/config/characters.js"></script>
 
     <!-- Game Scripts -->
-    <script src="js/config.js"></script>
-    <script src="js/utils/BiomeGenerator.js"></script>
-    <script src="js/utils/MobileControls.js"></script>
-    <script src="js/managers/NetworkManager.js"></script>
+    <script src="js/config.js?v=2.0"></script>
+    <script src="js/utils/BiomeGenerator.js?v=2.0"></script>
+    <script src="js/utils/MobileControls.js?v=2.0"></script>
+    <script src="js/managers/NetworkManager.js?v=2.0"></script>
     <!-- Player Modules (Load before Player.js) -->
-    <script src="js/entities/PlayerSprite.js"></script>
-    <script src="js/entities/PlayerUI.js"></script>
-    <script src="js/entities/Player.js"></script>
-    <script src="js/entities/Enemy.js"></script>
-    <script src="js/entities/Item.js"></script>
+    <script src="js/entities/PlayerSprite.js?v=2.0"></script>
+    <script src="js/entities/PlayerUI.js?v=2.0"></script>
+    <script src="js/entities/Player.js?v=2.0"></script>
+    <script src="js/entities/Enemy.js?v=2.0"></script>
+    <script src="js/entities/Item.js?v=2.0"></script>
     <script src="js/scenes/BootScene.js"></script>
     <script src="js/scenes/MenuScene.js"></script>
     <script src="js/scenes/CharacterSelectScene.js"></script>
@@ -182,6 +182,18 @@
         console.log('📦 Character System:', window.CharacterSystem ? 'Loaded' : 'Missing');
         console.log('🎨 Main Menu:', window.mainMenuInstance ? 'Loaded' : 'Missing');
         console.log('⚔️ Character Manager:', window.characterSelectManager ? 'Loaded' : 'Missing');
+
+        // Verify modular entity classes are loaded
+        console.log('\n🔧 Module Status:');
+        console.log('  PlayerSprite:', typeof PlayerSprite !== 'undefined' ? '✅ Loaded' : '❌ Missing');
+        console.log('  PlayerUI:', typeof PlayerUI !== 'undefined' ? '✅ Loaded' : '❌ Missing');
+        console.log('  Player:', typeof Player !== 'undefined' ? '✅ Loaded' : '❌ Missing');
+
+        if (typeof PlayerSprite === 'undefined' || typeof PlayerUI === 'undefined') {
+            console.error('❌ CRITICAL: Player modules not loaded! Hard refresh (Ctrl+Shift+R) may be needed.');
+        } else {
+            console.log('✅ All player modules loaded successfully');
+        }
     </script>
 </body>
 </html>

@@ -1,6 +1,16 @@
 // Player Entity - Core player logic and state management
 class Player {
     constructor(scene, data) {
+        // Defensive checks for required dependencies
+        if (typeof PlayerSprite === 'undefined') {
+            console.error('❌ PlayerSprite is not defined! Make sure PlayerSprite.js is loaded before Player.js');
+            throw new Error('PlayerSprite class not found. Check script loading order in index.html');
+        }
+        if (typeof PlayerUI === 'undefined') {
+            console.error('❌ PlayerUI is not defined! Make sure PlayerUI.js is loaded before Player.js');
+            throw new Error('PlayerUI class not found. Check script loading order in index.html');
+        }
+
         this.scene = scene;
         this.data = data;
 
