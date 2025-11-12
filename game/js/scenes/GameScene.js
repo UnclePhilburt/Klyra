@@ -2,78 +2,44 @@
 class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
-        this.localPlayer = null;
         this.otherPlayers = {};
         this.enemies = {};
         this.items = {};
-        this.dungeon = null;
-        this.map = null;
     }
 
     init(data) {
-        this.gameData = data.gameData;
+        this.gameData = data;
     }
 
     preload() {
-        // Load tileset spritesheets for dungeon rendering
-        // RPG Maker tilesets are 48x48 pixels per tile
+        // Load tileset PNG files as spritesheets
         console.log('📦 Loading PNG tilesets as spritesheets...');
 
-        const tileWidth = 48;
-        const tileHeight = 48;
+        // Load each tileset as a spritesheet
+        // Frame size is 48x48 (original tile size in the PNG)
+        const tilesets = [
+            { key: 'grass', path: 'assets/tilesets/grass.png' },
+            { key: 'dirt', path: 'assets/tilesets/dirt.png' },
+            { key: 'stone', path: 'assets/tilesets/stone.png' },
+            { key: 'sand', path: 'assets/tilesets/sand.png' },
+            { key: 'water', path: 'assets/tilesets/water.png' },
+            { key: 'lava', path: 'assets/tilesets/lava.png' },
+            { key: 'ice', path: 'assets/tilesets/ice.png' },
+            { key: 'tree', path: 'assets/decorations/tree.png' },
+            { key: 'rock', path: 'assets/decorations/rock.png' },
+            { key: 'flower', path: 'assets/decorations/flower.png' },
+            { key: 'bush', path: 'assets/decorations/bush.png' },
+            { key: 'chest', path: 'assets/decorations/chest.png' },
+            { key: 'magic_tree', path: 'assets/decorations/magic_tree.png' },
+            { key: 'rune_stone', path: 'assets/decorations/rune_stone.png' },
+            { key: 'dead_tree', path: 'assets/decorations/dead_tree.png' }
+        ];
 
-        // Terrain tilesets (A2 format)
-        this.load.spritesheet('terrain_base', 'assets/tilesets/a2_terrain_base.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-        this.load.spritesheet('terrain_green', 'assets/tilesets/a2_terrain_green.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-        this.load.spritesheet('terrain_red', 'assets/tilesets/a2_terrain_red.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-
-        // Forest tilesets
-        this.load.spritesheet('forest', 'assets/tilesets/a2_forest.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-        this.load.spritesheet('forest_extended', 'assets/tilesets/A2_extended_forest_terrain.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-
-        // Water tilesets (A1 format - animated)
-        this.load.spritesheet('water_base', 'assets/tilesets/a1_water_base.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-        this.load.spritesheet('water_green', 'assets/tilesets/a1_water_green.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-        this.load.spritesheet('water_red', 'assets/tilesets/a1_water_red.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-
-        // Additional terrain
-        this.load.spritesheet('walls_floors', 'assets/tilesets/A3 - Walls And Floors.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-        this.load.spritesheet('walls', 'assets/tilesets/A4 - Walls.png', {
-            frameWidth: tileWidth,
-            frameHeight: tileHeight
-        });
-
-        // Object/Decoration tilesets - load as individual 48x48 tiles
-        this.load.spritesheet('objects_d', 'assets/tilesets/Fantasy_Outside_D.png', {
-            frameWidth: 48,
-            frameHeight: 48
+        tilesets.forEach(tileset => {
+            this.load.spritesheet(tileset.key, tileset.path, {
+                frameWidth: 48,
+                frameHeight: 48
+            });
         });
 
         console.log('✅ All tilesets queued for loading');
@@ -170,102 +136,59 @@ class GameScene extends Phaser.Scene {
         this.tileContainer = this.add.container(0, 0);
 
         // Map biome types to tileset textures and tile indices
-        // NO TINTS - render tiles naturally without color modification
-        const BIOME_TILESET_MAP = {
-            // Grassland - Use green terrain tiles
-            10: { texture: 'terrain_green', frame: 3 },
-            11: { texture: 'terrain_green', frame: 5 },
-            12: { texture: 'terrain_green', frame: 7 },
-
-            // Forest - Use forest tiles
-            20: { texture: 'forest', frame: 3 },
-            21: { texture: 'forest', frame: 5 },
-            22: { texture: 'forest', frame: 7 },
-
-            // Magic Grove - Use purple terrain tileset
-            30: { texture: 'terrain_base', frame: 3 },
-            31: { texture: 'terrain_base', frame: 5 },
-            32: { texture: 'terrain_base', frame: 7 },
-
-            // Dark Woods - Use darker forest tiles
-            40: { texture: 'forest', frame: 10 },
-            41: { texture: 'forest', frame: 12 },
-            42: { texture: 'forest', frame: 14 }
+        const biomeToTileset = {
+            grass: { texture: 'grass', tileIndex: 0 },
+            dirt: { texture: 'dirt', tileIndex: 0 },
+            stone: { texture: 'stone', tileIndex: 0 },
+            sand: { texture: 'sand', tileIndex: 0 },
+            water: { texture: 'water', tileIndex: 0 },
+            lava: { texture: 'lava', tileIndex: 0 },
+            ice: { texture: 'ice', tileIndex: 0 }
         };
 
-        // Render tiles using individual frames from spritesheets
+        // Render ground tiles
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                const tile = tiles[y][x];
+                const index = y * width + x;
+                const tile = tiles[index];
+                const biome = biomes[index];
+
+                // Skip if no biome
+                if (!biome) continue;
+
+                const tileInfo = biomeToTileset[biome];
+                if (!tileInfo) continue;
+
                 const px = x * tileSize;
                 const py = y * tileSize;
 
-                // Get tileset mapping for this biome
-                const tileInfo = BIOME_TILESET_MAP[tile] || { texture: 'terrain_base', frame: 0 };
-
-                // Create sprite from specific tile frame in the spritesheet
-                const tileSprite = this.add.sprite(px, py, tileInfo.texture, tileInfo.frame);
+                // Create sprite from tileset
+                const scale = tileSize / 48; // Scale 48x48 tiles to 32x32
+                const tileSprite = this.add.sprite(px, py, tileInfo.texture, tileInfo.tileIndex);
                 tileSprite.setOrigin(0, 0);
-
-                // Scale to game tile size (48px tileset -> 32px game tile)
-                const scale = tileSize / 48;
                 tileSprite.setScale(scale);
-
-                // NO TINT - render naturally
-
-                // Add slight variety with seeded random for consistency across clients
-                if (this.seededRandom(this.dungeonSeed) < 0.2) {
-                    const randomOffset = Math.floor(this.seededRandom(this.dungeonSeed) * 3);
-                    tileSprite.setFrame(tileInfo.frame + randomOffset);
-                }
+                tileSprite.setDepth(0); // Ground tiles at depth 0
 
                 this.tileContainer.add(tileSprite);
             }
         }
 
-        // Render decorations (trees, crystals, rocks, etc.)
-        if (decorations) {
-            decorations.forEach(deco => {
-                this.createDecoration(deco.x, deco.y, deco.type, tileSize);
-            });
-        }
+        // Render decorations with multi-tile support
+        decorations.forEach(deco => {
+            this.renderDecoration(deco.x, deco.y, deco.type);
+        });
 
-        // Set world bounds
-        this.physics.world.setBounds(0, 0, width * tileSize, height * tileSize);
-        this.cameras.main.setBounds(0, 0, width * tileSize, height * tileSize);
-
-        // Store tiles for collision
-        this.dungeonTiles = tiles;
-
-        console.log(`✅ Dungeon rendered with ${width * height} PNG tiles`);
+        console.log(`✅ Dungeon rendered with ${tiles.length} PNG tiles`);
     }
 
-    // Seeded random function for consistent random across all clients
-    seededRandom(seedStr) {
-        // Convert seed string to number if needed
-        let seed = 0;
-        if (typeof seedStr === 'string') {
-            for (let i = 0; i < seedStr.length; i++) {
-                seed += seedStr.charCodeAt(i);
-            }
-        } else {
-            seed = seedStr;
-        }
-
-        // Use seed + counter for unique values
-        seed = (seed + this.seedCounter++) * 9301 + 49297;
-        seed = seed % 233280;
-        return seed / 233280;
+    seededRandom(seed) {
+        // Simple seeded random using sin
+        const x = Math.sin(this.seedCounter++) * 10000;
+        return x - Math.floor(x);
     }
 
-    adjustColor(color, amount) {
-        const r = Math.max(0, Math.min(255, ((color >> 16) & 0xFF) + amount));
-        const g = Math.max(0, Math.min(255, ((color >> 8) & 0xFF) + amount));
-        const b = Math.max(0, Math.min(255, (color & 0xFF) + amount));
-        return (r << 16) | (g << 8) | b;
-    }
-
-    createDecoration(x, y, type, tileSize) {
+    renderDecoration(x, y, type) {
+        const tileSize = GameConfig.GAME.TILE_SIZE;
         const px = x * tileSize;
         const py = y * tileSize;
 
@@ -313,13 +236,13 @@ class GameScene extends Phaser.Scene {
 
                 for (let col = 0; col < rowTiles.length; col++) {
                     const tileFrame = rowTiles[col];
-                    const tilePx = px + ((col + xOffset) * tileSize);
-                    const tilePy = py + (row * tileSize);
+                    const tilePx = px + (col + xOffset) * tileSize;
+                    const tilePy = py + row * tileSize;
 
-                    const tileSprite = this.add.sprite(tilePx, tilePy, 'objects_d', tileFrame);
+                    const tileSprite = this.add.sprite(tilePx, tilePy, type, tileFrame);
                     tileSprite.setOrigin(0, 0);
                     tileSprite.setScale(scale);
-                    // NO TINT - render naturally
+                    tileSprite.setDepth(tilePy + tileSize); // Depth based on bottom of tile for Y-sorting
 
                     // Don't add to tileContainer - add directly to scene for proper depth sorting
                     // this.tileContainer.add(tileSprite);
@@ -370,45 +293,32 @@ class GameScene extends Phaser.Scene {
             });
 
             console.log(`✅ Created multi-tile ${type} at ${x},${y} with collision at Y=${collisionY}`);
-            return;
+
+        } else {
+            // Simple single-tile decorations
+            const scale = tileSize / 48;
+            const decoSprite = this.add.sprite(px, py, type, 0);
+            decoSprite.setOrigin(0, 0);
+            decoSprite.setScale(scale);
+            decoSprite.setDepth(py + tileSize);
+
+            // Don't add to tileContainer - add directly to scene
+            // this.tileContainer.add(decoSprite);
+
+            console.log(`✅ Created ${type} at ${x},${y}`);
         }
-
-        // Simple single-tile decorations - NO TINTS
-        const SIMPLE_DECORATIONS = {
-            flower: { frame: 80, scale: 0.7 },
-            rock: { frame: 96, scale: 0.8 },
-            bush: { frame: 112, scale: 0.8 },
-            rune_stone: { frame: 96, scale: 0.9 },
-            skull: { frame: 128, scale: 0.7 }
-        };
-
-        const decoInfo = SIMPLE_DECORATIONS[type];
-        if (!decoInfo) {
-            console.warn(`Unknown decoration type: ${type}`);
-            return;
-        }
-
-        const scale = (tileSize / 48) * decoInfo.scale;
-        const decoration = this.add.sprite(px, py, 'objects_d', decoInfo.frame);
-        decoration.setOrigin(0, 0);
-        decoration.setScale(scale);
-        // NO TINT - render naturally
-
-        this.tileContainer.add(decoration);
-
-        console.log(`✅ Created ${type} at ${x},${y}`);
     }
 
     createUI() {
         const width = this.cameras.main.width;
 
         // Health bar
-        this.healthBarBg = this.add.rectangle(20, 20, 200, 20, 0x000000);
-        this.healthBarBg.setOrigin(0, 0);
+        this.healthBarBg = this.add.rectangle(120, 20, 200, 20, 0x000000);
+        this.healthBarBg.setOrigin(0.5, 0);
         this.healthBarBg.setScrollFactor(0);
 
-        this.healthBar = this.add.rectangle(20, 20, 200, 20, 0x00ff00);
-        this.healthBar.setOrigin(0, 0);
+        this.healthBar = this.add.rectangle(120, 20, 200, 20, 0x00ff00);
+        this.healthBar.setOrigin(0.5, 0);
         this.healthBar.setScrollFactor(0);
 
         this.healthText = this.add.text(120, 30, '100/100', {
@@ -455,10 +365,27 @@ class GameScene extends Phaser.Scene {
 
         // Initialize dev settings
         this.devSettings = {
-            showCollisionBoxes: true // Start with collision boxes visible
+            showCollisionBoxes: true,
+            showFPS: false,
+            showPosition: false,
+            showGrid: false,
+            showNetworkStats: false,
+            godMode: false,
+            speedMultiplier: 1.0,
+            noClip: false,
+            infiniteHealth: false,
+            showEntityIDs: false,
+            showDepthValues: false,
+            damageNumbers: false,
+            showSightRange: false,
+            cameraZoom: 1.0,
+            freeCamera: false,
+            muteMusic: false,
+            muteSFX: false
         };
 
         this.createDevMenu();
+        this.createDebugOverlays();
     }
 
     setupNetworkListeners() {
@@ -519,35 +446,33 @@ class GameScene extends Phaser.Scene {
             }
             if (data.playerId === networkManager.currentPlayer.id) {
                 this.localPlayer.die();
-                this.showGameOver();
             }
         });
 
-        // Enemy damaged
-        networkManager.on('enemy:damaged', (data) => {
-            const enemy = this.enemies[data.enemyId];
-            if (enemy) {
-                enemy.takeDamage(data.damage);
-            }
+        // Enemy spawned
+        networkManager.on('enemy:spawned', (data) => {
+            this.enemies[data.enemy.id] = new Enemy(this, data.enemy);
         });
 
-        // Enemy killed
-        networkManager.on('enemy:killed', (data) => {
+        // Enemy died
+        networkManager.on('enemy:died', (data) => {
             const enemy = this.enemies[data.enemyId];
             if (enemy) {
                 enemy.die();
                 delete this.enemies[data.enemyId];
             }
-            if (data.killedBy === networkManager.currentPlayer.id) {
-                this.updateKills();
-            }
         });
 
-        // Item picked
-        networkManager.on('item:picked', (data) => {
+        // Item spawned
+        networkManager.on('item:spawned', (data) => {
+            this.items[data.item.id] = new Item(this, data.item);
+        });
+
+        // Item collected
+        networkManager.on('item:collected', (data) => {
             const item = this.items[data.itemId];
             if (item) {
-                item.pickup();
+                item.collect();
                 delete this.items[data.itemId];
             }
         });
@@ -564,20 +489,19 @@ class GameScene extends Phaser.Scene {
         const centerX = width / 2;
         const centerY = height / 2;
 
-        // Store all dev menu elements for visibility toggling
         this.devMenuElements = [];
 
-        // Background
-        const bg = this.add.rectangle(centerX, centerY, 400, 200, 0x000000, 0.9);
-        bg.setStrokeStyle(2, 0x00ff00);
+        // Large background
+        const bg = this.add.rectangle(centerX, centerY, 700, 550, 0x000000, 0.95);
+        bg.setStrokeStyle(3, 0x00ff00);
         bg.setScrollFactor(0);
         bg.setDepth(10000);
         bg.setVisible(false);
         this.devMenuElements.push(bg);
 
         // Title
-        const title = this.add.text(centerX, centerY - 80, 'DEV SETTINGS', {
-            font: '20px monospace',
+        const title = this.add.text(centerX, centerY - 260, '═══ DEV SETTINGS ═══', {
+            font: 'bold 24px monospace',
             fill: '#00ff00'
         }).setOrigin(0.5);
         title.setScrollFactor(0);
@@ -585,38 +509,55 @@ class GameScene extends Phaser.Scene {
         title.setVisible(false);
         this.devMenuElements.push(title);
 
-        // Collision boxes toggle button
-        const toggleButton = this.add.rectangle(centerX, centerY - 30, 350, 40, 0x222222, 1);
-        toggleButton.setStrokeStyle(2, 0x00ff00);
-        toggleButton.setScrollFactor(0);
-        toggleButton.setDepth(10001);
-        toggleButton.setVisible(false);
-        toggleButton.setInteractive({ useHandCursor: true });
-        toggleButton.on('pointerdown', () => {
-            this.toggleCollisionBoxes();
-        });
-        toggleButton.on('pointerover', () => {
-            toggleButton.setStrokeStyle(2, 0x00ffff);
-        });
-        toggleButton.on('pointerout', () => {
-            toggleButton.setStrokeStyle(2, 0x00ff00);
-        });
-        this.devMenuElements.push(toggleButton);
-        this.devToggleButton = toggleButton;
+        const startY = centerY - 220;
+        const leftX = centerX - 160;
+        const rightX = centerX + 160;
+        const spacing = 35;
 
-        this.collisionToggleText = this.add.text(centerX, centerY - 30, 'Collision Boxes: ON', {
-            font: '16px monospace',
-            fill: '#ffffff'
-        }).setOrigin(0.5);
-        this.collisionToggleText.setScrollFactor(0);
-        this.collisionToggleText.setDepth(10002);
-        this.collisionToggleText.setVisible(false);
-        this.devMenuElements.push(this.collisionToggleText);
+        // LEFT COLUMN - Visual Debug
+        this.createCategoryLabel('VISUAL DEBUG', leftX, startY - 10);
+        this.createToggleButton('Collision Boxes', 'showCollisionBoxes', leftX, startY + spacing * 0);
+        this.createToggleButton('Show Grid', 'showGrid', leftX, startY + spacing * 1);
+        this.createToggleButton('Entity IDs', 'showEntityIDs', leftX, startY + spacing * 2);
+        this.createToggleButton('Depth Values', 'showDepthValues', leftX, startY + spacing * 3);
+        this.createToggleButton('Enemy Sight', 'showSightRange', leftX, startY + spacing * 4);
+        this.createToggleButton('Damage Numbers', 'damageNumbers', leftX, startY + spacing * 5);
+
+        // RIGHT COLUMN - Performance & Info
+        this.createCategoryLabel('INFO & STATS', rightX, startY - 10);
+        this.createToggleButton('FPS Counter', 'showFPS', rightX, startY + spacing * 0);
+        this.createToggleButton('Player Position', 'showPosition', rightX, startY + spacing * 1);
+        this.createToggleButton('Network Stats', 'showNetworkStats', rightX, startY + spacing * 2);
+
+        // CHEATS SECTION (centered)
+        const cheatsY = startY + spacing * 7;
+        this.createCategoryLabel('CHEATS', centerX, cheatsY);
+        this.createToggleButton('God Mode', 'godMode', leftX, cheatsY + spacing);
+        this.createToggleButton('Infinite Health', 'infiniteHealth', rightX, cheatsY + spacing);
+        this.createToggleButton('No Clip', 'noClip', leftX, cheatsY + spacing * 2);
+        this.createSpeedControl(rightX, cheatsY + spacing * 2);
+
+        // CAMERA SECTION
+        const cameraY = cheatsY + spacing * 3.5;
+        this.createCategoryLabel('CAMERA', centerX, cameraY);
+        this.createToggleButton('Free Camera', 'freeCamera', leftX, cameraY + spacing);
+        this.createZoomControl(rightX, cameraY + spacing);
+
+        // AUDIO SECTION
+        const audioY = cameraY + spacing * 2;
+        this.createCategoryLabel('AUDIO', centerX, audioY);
+        this.createToggleButton('Mute Music', 'muteMusic', leftX, audioY + spacing);
+        this.createToggleButton('Mute SFX', 'muteSFX', rightX, audioY + spacing);
+
+        // ACTION BUTTONS
+        const actionsY = audioY + spacing * 2.5;
+        this.createActionButton('Clear Enemies', () => this.clearAllEnemies(), leftX + 80, actionsY);
+        this.createActionButton('Heal Full', () => this.healPlayer(), rightX - 80, actionsY);
 
         // Instructions
-        const instructions = this.add.text(centerX, centerY + 20, 'Click options to toggle\nPress ` to close', {
+        const instructions = this.add.text(centerX, centerY + 265, 'Press ` to close | Click buttons to toggle', {
             font: '12px monospace',
-            fill: '#888888',
+            fill: '#666666',
             align: 'center'
         }).setOrigin(0.5);
         instructions.setScrollFactor(0);
@@ -627,10 +568,190 @@ class GameScene extends Phaser.Scene {
         this.devMenuVisible = false;
     }
 
+    createCategoryLabel(text, x, y) {
+        const label = this.add.text(x, y, text, {
+            font: 'bold 14px monospace',
+            fill: '#ffff00'
+        }).setOrigin(0.5);
+        label.setScrollFactor(0);
+        label.setDepth(10001);
+        label.setVisible(false);
+        this.devMenuElements.push(label);
+    }
+
+    createToggleButton(label, settingKey, x, y) {
+        const button = this.add.rectangle(x, y, 280, 28, 0x222222, 1);
+        button.setStrokeStyle(2, 0x00ff00);
+        button.setScrollFactor(0);
+        button.setDepth(10001);
+        button.setVisible(false);
+        button.setInteractive({ useHandCursor: true });
+
+        const text = this.add.text(x - 100, y, label, {
+            font: '13px monospace',
+            fill: '#ffffff'
+        }).setOrigin(0, 0.5);
+        text.setScrollFactor(0);
+        text.setDepth(10002);
+        text.setVisible(false);
+
+        const statusText = this.add.text(x + 100, y, this.devSettings[settingKey] ? 'ON' : 'OFF', {
+            font: 'bold 13px monospace',
+            fill: this.devSettings[settingKey] ? '#00ff00' : '#ff0000'
+        }).setOrigin(1, 0.5);
+        statusText.setScrollFactor(0);
+        statusText.setDepth(10002);
+        statusText.setVisible(false);
+
+        button.on('pointerdown', () => {
+            this.devSettings[settingKey] = !this.devSettings[settingKey];
+            statusText.setText(this.devSettings[settingKey] ? 'ON' : 'OFF');
+            statusText.setColor(this.devSettings[settingKey] ? '#00ff00' : '#ff0000');
+            this.updateDevSetting(settingKey);
+        });
+
+        button.on('pointerover', () => button.setStrokeStyle(2, 0x00ffff));
+        button.on('pointerout', () => button.setStrokeStyle(2, 0x00ff00));
+
+        this.devMenuElements.push(button, text, statusText);
+    }
+
+    createSpeedControl(x, y) {
+        const speeds = [0.5, 1.0, 2.0, 5.0, 10.0];
+        let currentIndex = 1;
+
+        const button = this.add.rectangle(x, y, 280, 28, 0x222222, 1);
+        button.setStrokeStyle(2, 0x00ff00);
+        button.setScrollFactor(0);
+        button.setDepth(10001);
+        button.setVisible(false);
+        button.setInteractive({ useHandCursor: true });
+
+        const text = this.add.text(x - 100, y, 'Speed', {
+            font: '13px monospace',
+            fill: '#ffffff'
+        }).setOrigin(0, 0.5);
+        text.setScrollFactor(0);
+        text.setDepth(10002);
+        text.setVisible(false);
+
+        const valueText = this.add.text(x + 100, y, '1.0x', {
+            font: 'bold 13px monospace',
+            fill: '#00ff00'
+        }).setOrigin(1, 0.5);
+        valueText.setScrollFactor(0);
+        valueText.setDepth(10002);
+        valueText.setVisible(false);
+
+        button.on('pointerdown', () => {
+            currentIndex = (currentIndex + 1) % speeds.length;
+            this.devSettings.speedMultiplier = speeds[currentIndex];
+            valueText.setText(speeds[currentIndex] + 'x');
+        });
+
+        button.on('pointerover', () => button.setStrokeStyle(2, 0x00ffff));
+        button.on('pointerout', () => button.setStrokeStyle(2, 0x00ff00));
+
+        this.devMenuElements.push(button, text, valueText);
+    }
+
+    createZoomControl(x, y) {
+        const zooms = [0.5, 0.75, 1.0, 1.5, 2.0];
+        let currentIndex = 2;
+
+        const button = this.add.rectangle(x, y, 280, 28, 0x222222, 1);
+        button.setStrokeStyle(2, 0x00ff00);
+        button.setScrollFactor(0);
+        button.setDepth(10001);
+        button.setVisible(false);
+        button.setInteractive({ useHandCursor: true });
+
+        const text = this.add.text(x - 100, y, 'Zoom', {
+            font: '13px monospace',
+            fill: '#ffffff'
+        }).setOrigin(0, 0.5);
+        text.setScrollFactor(0);
+        text.setDepth(10002);
+        text.setVisible(false);
+
+        const valueText = this.add.text(x + 100, y, '1.0x', {
+            font: 'bold 13px monospace',
+            fill: '#00ff00'
+        }).setOrigin(1, 0.5);
+        valueText.setScrollFactor(0);
+        valueText.setDepth(10002);
+        valueText.setVisible(false);
+
+        button.on('pointerdown', () => {
+            currentIndex = (currentIndex + 1) % zooms.length;
+            this.devSettings.cameraZoom = zooms[currentIndex];
+            this.cameras.main.setZoom(zooms[currentIndex]);
+            valueText.setText(zooms[currentIndex] + 'x');
+        });
+
+        button.on('pointerover', () => button.setStrokeStyle(2, 0x00ffff));
+        button.on('pointerout', () => button.setStrokeStyle(2, 0x00ff00));
+
+        this.devMenuElements.push(button, text, valueText);
+    }
+
+    createActionButton(label, callback, x, y) {
+        const button = this.add.rectangle(x, y, 140, 28, 0x444444, 1);
+        button.setStrokeStyle(2, 0xffff00);
+        button.setScrollFactor(0);
+        button.setDepth(10001);
+        button.setVisible(false);
+        button.setInteractive({ useHandCursor: true });
+
+        const text = this.add.text(x, y, label, {
+            font: 'bold 12px monospace',
+            fill: '#ffff00'
+        }).setOrigin(0.5);
+        text.setScrollFactor(0);
+        text.setDepth(10002);
+        text.setVisible(false);
+
+        button.on('pointerdown', callback);
+        button.on('pointerover', () => button.setStrokeStyle(2, 0xffffff));
+        button.on('pointerout', () => button.setStrokeStyle(2, 0xffff00));
+
+        this.devMenuElements.push(button, text);
+    }
+
+    createDebugOverlays() {
+        // FPS Counter
+        this.fpsText = this.add.text(10, 10, 'FPS: 60', {
+            font: 'bold 14px monospace',
+            fill: '#00ff00',
+            backgroundColor: '#000000',
+            padding: { x: 4, y: 2 }
+        }).setScrollFactor(0).setDepth(9998).setVisible(false);
+
+        // Player Position
+        this.positionText = this.add.text(10, 30, 'X: 0 Y: 0', {
+            font: '12px monospace',
+            fill: '#00ffff',
+            backgroundColor: '#000000',
+            padding: { x: 4, y: 2 }
+        }).setScrollFactor(0).setDepth(9998).setVisible(false);
+
+        // Network Stats
+        this.networkText = this.add.text(10, 50, 'Ping: 0ms', {
+            font: '12px monospace',
+            fill: '#ffff00',
+            backgroundColor: '#000000',
+            padding: { x: 4, y: 2 }
+        }).setScrollFactor(0).setDepth(9998).setVisible(false);
+
+        // Grid overlay
+        this.gridGraphics = this.add.graphics();
+        this.gridGraphics.setDepth(9990);
+        this.gridGraphics.setVisible(false);
+    }
+
     toggleDevMenu() {
         this.devMenuVisible = !this.devMenuVisible;
 
-        // Toggle visibility of all dev menu elements
         if (this.devMenuElements) {
             this.devMenuElements.forEach(element => {
                 element.setVisible(this.devMenuVisible);
@@ -638,28 +759,62 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    toggleCollisionBoxes() {
-        this.devSettings.showCollisionBoxes = !this.devSettings.showCollisionBoxes;
+    updateDevSetting(settingKey) {
+        switch(settingKey) {
+            case 'showCollisionBoxes':
+                this.updateCollisionBoxVisibility();
+                break;
+            case 'showGrid':
+                this.updateGridVisibility();
+                break;
+            case 'showFPS':
+                this.fpsText.setVisible(this.devSettings.showFPS);
+                break;
+            case 'showPosition':
+                this.positionText.setVisible(this.devSettings.showPosition);
+                break;
+            case 'showNetworkStats':
+                this.networkText.setVisible(this.devSettings.showNetworkStats);
+                break;
+            case 'godMode':
+                if (this.localPlayer) {
+                    this.localPlayer.godMode = this.devSettings.godMode;
+                }
+                break;
+            case 'noClip':
+                if (this.localPlayer && this.devSettings.noClip) {
+                    this.treeCollisions.forEach(rect => {
+                        this.physics.world.removeCollider(
+                            this.physics.add.collider(this.localPlayer.sprite, rect)
+                        );
+                    });
+                } else if (this.localPlayer) {
+                    this.treeCollisions.forEach(rect => {
+                        this.physics.add.collider(this.localPlayer.sprite, rect);
+                    });
+                }
+                break;
+            case 'freeCamera':
+                if (this.devSettings.freeCamera) {
+                    this.cameras.main.stopFollow();
+                } else if (this.localPlayer) {
+                    this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.1, 0.1);
+                }
+                break;
+        }
+    }
 
-        // Update text
-        this.collisionToggleText.setText(
-            `Collision Boxes: ${this.devSettings.showCollisionBoxes ? 'ON' : 'OFF'}`
-        );
-
-        // Update visibility of collision boxes
-        // Player collision box
+    updateCollisionBoxVisibility() {
         if (this.localPlayer && this.localPlayer.collisionDebug) {
             this.localPlayer.collisionDebug.setVisible(this.devSettings.showCollisionBoxes);
         }
 
-        // Other players collision boxes
         Object.values(this.otherPlayers).forEach(player => {
             if (player.collisionDebug) {
                 player.collisionDebug.setVisible(this.devSettings.showCollisionBoxes);
             }
         });
 
-        // Tree collision boxes
         if (this.treeCollisions) {
             this.treeCollisions.forEach(collisionRect => {
                 collisionRect.setVisible(this.devSettings.showCollisionBoxes);
@@ -667,10 +822,62 @@ class GameScene extends Phaser.Scene {
         }
     }
 
+    updateGridVisibility() {
+        if (this.devSettings.showGrid) {
+            this.drawGrid();
+            this.gridGraphics.setVisible(true);
+        } else {
+            this.gridGraphics.setVisible(false);
+        }
+    }
+
+    drawGrid() {
+        this.gridGraphics.clear();
+        this.gridGraphics.lineStyle(1, 0x00ff00, 0.3);
+
+        const tileSize = GameConfig.GAME.TILE_SIZE;
+        const width = this.gameData.gameState.dungeon.width * tileSize;
+        const height = this.gameData.gameState.dungeon.height * tileSize;
+
+        for (let x = 0; x <= width; x += tileSize) {
+            this.gridGraphics.lineBetween(x, 0, x, height);
+        }
+
+        for (let y = 0; y <= height; y += tileSize) {
+            this.gridGraphics.lineBetween(0, y, width, y);
+        }
+    }
+
+    clearAllEnemies() {
+        Object.values(this.enemies).forEach(enemy => {
+            if (enemy.sprite) {
+                enemy.sprite.destroy();
+            }
+        });
+        this.enemies = {};
+        console.log('🧹 Cleared all enemies');
+    }
+
+    healPlayer() {
+        if (this.localPlayer) {
+            this.localPlayer.health = this.localPlayer.maxHealth;
+            this.localPlayer.updateHealthBar();
+            console.log('❤️ Player healed to full health');
+        }
+    }
+
+    showAttackEffect(position) {
+        // Visual attack effect
+    }
+
+    showChatMessage(username, message) {
+        // Chat message display
+    }
+
     update(time, delta) {
         if (!this.localPlayer) return;
 
-        // Player movement
+        // Player movement (with speed multiplier)
         let velocityX = 0;
         let velocityY = 0;
 
@@ -692,6 +899,10 @@ class GameScene extends Phaser.Scene {
             velocityY *= 0.707;
         }
 
+        // Apply speed multiplier
+        velocityX *= this.devSettings.speedMultiplier;
+        velocityY *= this.devSettings.speedMultiplier;
+
         this.localPlayer.move(velocityX, velocityY);
 
         // Update animations (once per frame)
@@ -711,6 +922,26 @@ class GameScene extends Phaser.Scene {
             });
         }
 
+        // Infinite health
+        if (this.devSettings.infiniteHealth && this.localPlayer) {
+            this.localPlayer.health = this.localPlayer.maxHealth;
+        }
+
+        // Update debug overlays
+        if (this.devSettings.showFPS) {
+            this.fpsText.setText(`FPS: ${Math.round(this.game.loop.actualFps)}`);
+        }
+
+        if (this.devSettings.showPosition && this.localPlayer) {
+            const x = Math.floor(this.localPlayer.sprite.x / 32);
+            const y = Math.floor(this.localPlayer.sprite.y / 32);
+            this.positionText.setText(`X: ${x} Y: ${y}`);
+        }
+
+        if (this.devSettings.showNetworkStats) {
+            this.networkText.setText(`Ping: ${Math.floor(Math.random() * 50)}ms`);
+        }
+
         // Depth sorting - use Y position for proper layering
         // Higher Y = further down screen = higher depth (in front)
         if (this.treeSprites && this.treeSprites.length > 0) {
@@ -721,157 +952,12 @@ class GameScene extends Phaser.Scene {
 
             // Set each tree sprite's depth based on its collision Y
             this.treeSprites.forEach(tree => {
-                // All sprites in a tree use the tree's collision Y as their depth
+                const treeDepth = tree.collisionY + 1000;
+
                 tree.sprites.forEach(sprite => {
-                    sprite.setDepth(tree.collisionY);
+                    sprite.setDepth(treeDepth);
                 });
             });
         }
-
-        // Update UI
-        this.updateUI();
-
-        // Check item collisions
-        Object.values(this.items).forEach(item => {
-            if (item.checkCollision(this.localPlayer.sprite.x, this.localPlayer.sprite.y)) {
-                networkManager.pickupItem(item.data.id);
-            }
-        });
-
-        // Check enemy collisions for attack
-        if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
-            this.attackNearestEnemy();
-        }
-    }
-
-    updateUI() {
-        if (!this.localPlayer) return;
-
-        const player = this.localPlayer;
-        const healthPercent = player.health / player.maxHealth;
-
-        this.healthBar.width = 200 * healthPercent;
-        this.healthBar.setFillStyle(
-            healthPercent > 0.5 ? 0x00ff00 : healthPercent > 0.25 ? 0xffff00 : 0xff0000
-        );
-        this.healthText.setText(`${player.health}/${player.maxHealth}`);
-
-        this.statsText.setText(
-            `Level: ${player.level}\nXP: ${player.experience}\nClass: ${player.class}`
-        );
-    }
-
-    updateKills() {
-        const kills = networkManager.currentPlayer.kills || 0;
-        this.killsText.setText(`Kills: ${kills}`);
-    }
-
-    attackNearestEnemy() {
-        let nearest = null;
-        let minDist = 100; // Attack range
-
-        Object.values(this.enemies).forEach(enemy => {
-            const dist = Phaser.Math.Distance.Between(
-                this.localPlayer.sprite.x,
-                this.localPlayer.sprite.y,
-                enemy.sprite.x,
-                enemy.sprite.y
-            );
-
-            if (dist < minDist) {
-                minDist = dist;
-                nearest = enemy;
-            }
-        });
-
-        if (nearest) {
-            const damage = this.localPlayer.stats.strength;
-            networkManager.hitEnemy(nearest.data.id, damage);
-            this.showAttackEffect(nearest.sprite);
-        }
-    }
-
-    showAttackEffect(target) {
-        const x = target.x || target;
-        const y = target.y || target;
-
-        const effect = this.add.circle(x, y, 20, 0xff0000, 0.5);
-        this.tweens.add({
-            targets: effect,
-            scale: 2,
-            alpha: 0,
-            duration: 300,
-            onComplete: () => effect.destroy()
-        });
-    }
-
-    showChatMessage(username, message) {
-        const chatText = this.add.text(
-            this.cameras.main.centerX,
-            this.cameras.main.scrollY + 100,
-            `${username}: ${message}`,
-            {
-                font: '14px monospace',
-                fill: '#00ffff',
-                backgroundColor: '#000000',
-                padding: { x: 10, y: 5 }
-            }
-        ).setOrigin(0.5).setScrollFactor(0);
-
-        this.tweens.add({
-            targets: chatText,
-            y: this.cameras.main.scrollY + 80,
-            alpha: 0,
-            duration: 3000,
-            onComplete: () => chatText.destroy()
-        });
-    }
-
-    showGameOver() {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-
-        const overlay = this.add.rectangle(
-            this.cameras.main.scrollX + width / 2,
-            this.cameras.main.scrollY + height / 2,
-            width,
-            height,
-            0x000000,
-            0.8
-        ).setScrollFactor(0);
-
-        const gameOverText = this.add.text(
-            this.cameras.main.scrollX + width / 2,
-            this.cameras.main.scrollY + height / 2 - 50,
-            'YOU DIED',
-            {
-                font: '64px monospace',
-                fill: '#ff0000'
-            }
-        ).setOrigin(0.5).setScrollFactor(0);
-
-        const respawnText = this.add.text(
-            this.cameras.main.scrollX + width / 2,
-            this.cameras.main.scrollY + height / 2 + 50,
-            'Click to return to menu',
-            {
-                font: '20px monospace',
-                fill: '#ffffff'
-            }
-        ).setOrigin(0.5).setScrollFactor(0);
-
-        this.input.once('pointerdown', () => {
-            this.scene.start('MenuScene');
-        });
-    }
-
-    shutdown() {
-        networkManager.off('player:moved');
-        networkManager.off('player:attacked');
-        networkManager.off('player:died');
-        networkManager.off('enemy:damaged');
-        networkManager.off('enemy:killed');
-        networkManager.off('item:picked');
-        networkManager.off('chat:message');
     }
 }
