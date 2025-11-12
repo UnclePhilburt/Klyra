@@ -393,13 +393,17 @@ class GameScene extends Phaser.Scene {
                 { frames: [94, 95], scale: 0.8, horizontal: true } // Log four (1x2 horizontal)
             ];
 
-            // Other decorations
+            // Tree stump variants (2 types)
+            const TREE_STUMP_VARIANTS = [
+                { frames: [4], scale: 0.8 },      // Stump one
+                { frames: [20], scale: 0.8 }      // Stump two
+            ];
+
+            // Other single decorations
             const OTHER_DECORATIONS = {
                 rune_stone: { frames: [96], scale: 0.9 },
                 skull: { frames: [128], scale: 0.7 },
                 baby_tree: { frames: [87, 103], scale: 0.9 },      // 2x1 vertical
-                tree_stump: { frames: [4], scale: 0.8 },           // Stump one
-                tree_stump2: { frames: [20], scale: 0.8 },         // Stump two
                 hollow_trunk: { frames: [96, 112], scale: 0.9 }    // 2x1 vertical
             };
 
@@ -421,6 +425,9 @@ class GameScene extends Phaser.Scene {
             } else if (type === 'log') {
                 const variant = Math.floor(this.seededRandom(this.dungeonSeed) * LOG_VARIANTS.length);
                 decoInfo = LOG_VARIANTS[variant];
+            } else if (type === 'tree_stump') {
+                const variant = Math.floor(this.seededRandom(this.dungeonSeed) * TREE_STUMP_VARIANTS.length);
+                decoInfo = TREE_STUMP_VARIANTS[variant];
             } else {
                 decoInfo = OTHER_DECORATIONS[type];
             }
