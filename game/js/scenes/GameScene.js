@@ -331,10 +331,19 @@ class GameScene extends Phaser.Scene {
 
                         // Create collision rectangle at the tile's actual position
                         // Use tilePx which already has xOffset applied for TREE_TWO
-                        // Shift Y up by quarter tile to better match visual trunk position
+                        // Different Y offsets for different tree types
+                        let collisionYOffset;
+                        if (TREE_TILES === TREE_TWO) {
+                            // Tree 2: move down 35 pixels from base position
+                            collisionYOffset = tilePy - (tileSize / 4) + 35;
+                        } else {
+                            // Tree 1: move down 20 pixels from base position
+                            collisionYOffset = tilePy - (tileSize / 4) + 20;
+                        }
+
                         const collisionRect = this.add.rectangle(
                             tilePx + (tileSize / 2),  // Center X of tile
-                            tilePy - (tileSize / 4),  // Shift up by 1/4 tile
+                            collisionYOffset,
                             tileSize,
                             tileSize,
                             0xff0000,
