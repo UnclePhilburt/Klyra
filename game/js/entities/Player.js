@@ -1,6 +1,6 @@
 // Player Entity - Core player logic and state management
 class Player {
-    constructor(scene, data) {
+    constructor(scene, data, isLocalPlayer = false) {
         // Defensive checks for required dependencies
         if (typeof PlayerSprite === 'undefined') {
             console.error('❌ PlayerSprite is not defined! Make sure PlayerSprite.js is loaded before Player.js');
@@ -40,6 +40,7 @@ class Player {
             visualOffsetX: 32,
             visualOffsetY: 55,
             yOffset: 105
+            isLocalPlayer: isLocalPlayer
         });
     }
 

@@ -11,7 +11,8 @@ class PlayerUI {
             yOffset: config.yOffset || 105,
             visualOffsetX: config.visualOffsetX || 32,
             visualOffsetY: config.visualOffsetY || 55,
-            useSprite: config.useSprite || false
+            useSprite: config.useSprite || false,
+            isLocalPlayer: config.isLocalPlayer || false
         };
 
         // Graphics objects
@@ -35,6 +36,11 @@ class PlayerUI {
     }
 
     create() {
+        // Skip UI creation for local player (has HUD in top right)
+        if (this.config.isLocalPlayer) {
+            return;
+        }
+
         const pos = this.getUIPosition();
         const healthBarY = pos.nameY - 20;
 
@@ -186,6 +192,11 @@ class PlayerUI {
     }
 
     update(spriteDepth) {
+        // Skip UI updates for local player
+        if (this.config.isLocalPlayer) {
+            return;
+        }
+
         const pos = this.getUIPosition();
         const healthBarY = pos.nameY - 20;
 

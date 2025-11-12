@@ -118,7 +118,7 @@ class GameScene extends Phaser.Scene {
         // Create local player
         const myData = this.gameData.players.find(p => p.id === networkManager.currentPlayer.id);
         if (myData) {
-            this.localPlayer = new Player(this, myData);
+            this.localPlayer = new Player(this, myData, true);
             this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.1, 0.1);
         }
 
