@@ -91,7 +91,16 @@ class Minion {
             ? this.scene.localPlayer
             : this.scene.otherPlayers[this.ownerId];
 
-        if (!owner || !owner.isAlive) {
+        // Safety check: Don't despawn permanent minions if owner not found yet
+        if (!owner) {
+            if (!this.isPermanent) {
+                this.despawn();
+            }
+            return;
+        }
+
+        // Only despawn if owner is dead (not just undefined)
+        if (owner && owner.isAlive === false) {
             this.despawn();
             return;
         }

@@ -147,6 +147,13 @@ class GameScene extends Phaser.Scene {
             this.localPlayer = new Player(this, myData, true);
             this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.1, 0.1);
 
+            // Send initial position immediately
+            const tileSize = GameConfig.GAME.TILE_SIZE;
+            networkManager.movePlayer({
+                x: Math.floor(this.localPlayer.sprite.x / tileSize),
+                y: Math.floor(this.localPlayer.sprite.y / tileSize)
+            });
+
             // Spawn permanent minion if player is Malachar
             if (myData.class === 'MALACHAR') {
                 this.spawnMinion(

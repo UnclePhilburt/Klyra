@@ -488,18 +488,8 @@ class Lobby {
             let target = null;
             let maxAggro = 0; // Track highest aggro value (not infinity!)
 
-            // Debug: Check if we have players
-            if (this.players.size === 0) {
-                console.log('⚠️  No players in lobby for enemy AI');
-                return;
-            }
-
-            // Debug: Log player positions occasionally
-            if (Math.random() < 0.01) { // Log 1% of the time
-                this.players.forEach(p => {
-                    console.log(`👤 Player ${p.username} at (${p.position.x}, ${p.position.y})`);
-                });
-            }
+            // Skip if no players in lobby
+            if (this.players.size === 0) return;
 
             // Check all players
             this.players.forEach(player => {
@@ -525,12 +515,8 @@ class Lobby {
                 }
             });
 
-            if (!target) {
-                if (Math.random() < 0.05) { // Log 5% of the time
-                    console.log(`⚠️  Enemy ${enemy.type} at (${enemy.position.x.toFixed(1)}, ${enemy.position.y.toFixed(1)}) has no target`);
-                }
-                return;
-            }
+            // Skip if no target found
+            if (!target) return;
 
             // Move toward target
             const dx = target.position.x - enemy.position.x;
@@ -577,11 +563,6 @@ class Lobby {
                 }
             }
         });
-
-        // Debug log (only if enemies moved)
-        if (movedCount > 0 && Math.random() < 0.01) { // Log 1% of the time
-            console.log(`🎯 Updated ${movedCount} enemies in lobby ${this.id.slice(0, 8)}`);
-        }
     }
 
     toJSON() {
