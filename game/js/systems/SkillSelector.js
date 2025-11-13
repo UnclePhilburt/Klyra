@@ -537,9 +537,9 @@ class SkillSelector {
                           playerClass === 'Necromancer' ||
                           (this.scene.localPlayer && this.scene.localPlayer.data && this.scene.localPlayer.data.characterId === 'MALACHAR');
 
-        if (isMalachar && typeof MalacharSkillTree !== 'undefined') {
+        if (isMalachar && typeof MalacharSkillTree !== 'undefined' && typeof window.getSkillsForLevel === 'function') {
             // Get skills for this specific level
-            const levelSkills = getSkillsForLevel(currentLevel);
+            const levelSkills = window.getSkillsForLevel(currentLevel);
             console.log(`✅ Found ${levelSkills ? levelSkills.length : 0} skills for level ${currentLevel}`);
 
             if (levelSkills && levelSkills.length > 0) {
