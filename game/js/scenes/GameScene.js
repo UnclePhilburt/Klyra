@@ -8,6 +8,10 @@ class GameScene extends Phaser.Scene {
         this.items = {};
         this.minions = {};
         this.minionIdCounter = 0;
+
+        // Map transition system
+        this.currentMap = 'exterior'; // 'exterior' or 'interior'
+        this.doorCooldown = 0; // Prevent rapid door triggers
     }
 
     init(data) {
@@ -23,7 +27,7 @@ class GameScene extends Phaser.Scene {
         console.log('🧹 GameScene shutting down - cleaning up listeners');
 
         const eventsToClear = [
-            'player:joined', 'player:left', 'player:moved', 'player:attacked',
+            'player:joined', 'player:left', 'player:moved', 'player:changedMap', 'player:attacked',
             'player:damaged', 'player:levelup', 'player:died',
             'enemy:spawned', 'enemy:damaged', 'enemy:moved', 'enemy:killed',
             'minion:damaged',
@@ -1182,6 +1186,14 @@ class GameScene extends Phaser.Scene {
                 layer.setScale(scale);
                 layer.setDepth(depth);
                 createdLayers.push(layer);
+
+                // Store door layer for interaction
+                if (name === 'door') {
+                    this.doorLayer = layer;
+                    this.doorLayerOffset = { x: mapOffsetX, y: mapOffsetY };
+                    this.doorLayerScale = scale;
+                }
+
                 console.log(`  ✅ Created layer: ${name} (depth: ${depth})`);
             }
         });
@@ -1380,7 +1392,7 @@ class GameScene extends Phaser.Scene {
         // Clear any existing listeners to prevent duplicates
         // This is critical when reconnecting with the same username
         const eventsToClear = [
-            'player:joined', 'player:left', 'player:moved', 'player:attacked',
+            'player:joined', 'player:left', 'player:moved', 'player:changedMap', 'player:attacked',
             'player:damaged', 'player:levelup', 'player:died',
             'enemy:spawned', 'enemy:damaged', 'enemy:moved', 'enemy:killed',
             'minion:damaged',
@@ -1453,6 +1465,21 @@ class GameScene extends Phaser.Scene {
             const player = this.otherPlayers[data.playerId];
             if (player) {
                 player.moveToPosition(data.position);
+            }
+        });
+
+        // Player changed map
+        networkManager.on('player:changedMap', (data) => {
+            const player = this.otherPlayers[data.playerId];
+            if (player) {
+                player.currentMap = data.mapName;
+                // Hide/show player based on whether they're on the same map as local player
+                const onSameMap = data.mapName === this.currentMap;
+                player.sprite.setVisible(onSameMap);
+                if (player.ui) {
+                    player.ui.setVisible(onSameMap);
+                }
+                console.log(`👤 ${player.data.username} is now on ${data.mapName} map (visible: ${onSameMap})`);
             }
         });
 
@@ -2131,6 +2158,136 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    // ==================== MAP TRANSITION SYSTEM ====================
+
+    checkDoorInteraction() {
+        if (!this.localPlayer) return;
+        if (Date.now() - this.doorCooldown < 1000) return; // 1 second cooldown
+
+        const playerX = this.localPlayer.sprite.x;
+        const playerY = this.localPlayer.sprite.y;
+
+        // Check exit door if in interior
+        if (this.currentMap === 'interior' && this.exitDoorZone) {
+            const exitBounds = this.exitDoorZone.getBounds();
+            if (exitBounds.contains(playerX, playerY)) {
+                this.transitionToExterior();
+                this.doorCooldown = Date.now();
+                return;
+            }
+        }
+
+        // Check entrance door if in exterior
+        if (this.currentMap === 'exterior' && this.doorLayer) {
+            // Convert player position to tile coordinates
+            const tileX = Math.floor((playerX - this.doorLayerOffset.x) / (48 * this.doorLayerScale));
+            const tileY = Math.floor((playerY - this.doorLayerOffset.y) / (48 * this.doorLayerScale));
+
+            // Get tile at player position
+            const tile = this.doorLayer.getTileAt(tileX, tileY);
+
+            if (tile && tile.index > 0) {
+                // Player is on a door tile
+                this.transitionToInterior();
+                this.doorCooldown = Date.now();
+            }
+        }
+    }
+
+    transitionToInterior() {
+        console.log('🚪 Transitioning to castle interior...');
+
+        // Notify server of map change
+        networkManager.changeMap('interior');
+
+        // Hide exterior-specific elements
+        this.currentMap = 'interior';
+
+        // Clear and rebuild interior map
+        this.loadInteriorMap();
+
+        // Show transition effect
+        this.cameras.main.fadeOut(200, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+            this.cameras.main.fadeIn(200);
+        });
+    }
+
+    transitionToExterior() {
+        console.log('🚪 Transitioning to castle exterior...');
+
+        // Notify server of map change
+        networkManager.changeMap('exterior');
+
+        // Hide interior elements
+        if (this.interiorLayers) {
+            this.interiorLayers.forEach(layer => layer.destroy());
+            this.interiorLayers = null;
+        }
+
+        this.currentMap = 'exterior';
+
+        // Move player to exit position (just outside door)
+        const worldSize = this.gameData.world.size;
+        const tileSize = GameConfig.GAME.TILE_SIZE;
+        const worldCenterX = (worldSize / 2) * tileSize;
+        const worldCenterY = (worldSize / 2) * tileSize;
+
+        this.localPlayer.sprite.setPosition(worldCenterX, worldCenterY + 100);
+
+        // Show transition effect
+        this.cameras.main.fadeOut(200, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+            this.cameras.main.fadeIn(200);
+        });
+    }
+
+    loadInteriorMap() {
+        // For now, create a simple interior room
+        // TODO: Replace with actual Tiled map later
+
+        const worldSize = this.gameData.world.size;
+        const tileSize = GameConfig.GAME.TILE_SIZE;
+        const worldCenterX = (worldSize / 2) * tileSize;
+        const worldCenterY = (worldSize / 2) * tileSize;
+
+        // Create simple interior floor (10x10 room)
+        const roomSize = 10 * tileSize;
+        const roomX = worldCenterX - roomSize / 2;
+        const roomY = worldCenterY - roomSize / 2;
+
+        this.interiorLayers = [];
+
+        // Floor
+        const floor = this.add.graphics();
+        floor.fillStyle(0x4a4a4a, 1);
+        floor.fillRect(roomX, roomY, roomSize, roomSize);
+        floor.setDepth(0);
+        this.interiorLayers.push(floor);
+
+        // Walls
+        const walls = this.add.graphics();
+        walls.lineStyle(32, 0x8B4513, 1);
+        walls.strokeRect(roomX, roomY, roomSize, roomSize);
+        walls.setDepth(2);
+        this.interiorLayers.push(walls);
+
+        // Exit door (at bottom)
+        const exitDoor = this.add.rectangle(worldCenterX, roomY + roomSize - 16, 64, 32, 0x654321);
+        exitDoor.setDepth(3);
+        this.interiorLayers.push(exitDoor);
+
+        // Create exit door trigger zone
+        this.exitDoorZone = this.add.zone(worldCenterX, roomY + roomSize - 16, 64, 32);
+        this.physics.add.existing(this.exitDoorZone);
+        this.exitDoorZone.body.setAllowGravity(false);
+
+        // Position player in center of room
+        this.localPlayer.sprite.setPosition(worldCenterX, worldCenterY);
+
+        console.log('✅ Interior map loaded (placeholder)');
+    }
+
     // Level up effect removed - was causing FPS drops
     // Stats update silently now, check console for level up notifications
 
@@ -2276,6 +2433,9 @@ class GameScene extends Phaser.Scene {
         if (this.devSettings.infiniteHealth && this.localPlayer) {
             this.localPlayer.health = this.localPlayer.maxHealth;
         }
+
+        // Check for door interactions
+        this.checkDoorInteraction();
 
         // Update debug overlays
         if (this.devSettings.showFPS) {

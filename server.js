@@ -67,6 +67,7 @@ class Player {
         this.lastActivity = Date.now();
         this.isReconnecting = false;
         this.disconnectedAt = null;
+        this.currentMap = 'exterior'; // Track which map instance player is in
     }
 
     sanitizeUsername(username) {
@@ -912,6 +913,31 @@ io.on('connection', (socket) => {
             });
         } catch (error) {
             console.error('Error in player:move:', error);
+        }
+    });
+
+    // Handle map change (interior/exterior)
+    socket.on('player:changeMap', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby || lobby.status !== 'active') return;
+
+            const { mapName } = data;
+            if (mapName !== 'interior' && mapName !== 'exterior') return;
+
+            player.currentMap = mapName;
+            console.log(`🚪 ${player.username} moved to ${mapName}`);
+
+            // Broadcast map change to other players
+            socket.to(lobby.id).emit('player:changedMap', {
+                playerId: player.id,
+                mapName: mapName
+            });
+        } catch (error) {
+            console.error('Error in player:changeMap:', error);
         }
     });
 

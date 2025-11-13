@@ -253,6 +253,12 @@ class NetworkManager {
         this.socket.emit('minion:position', { minionId, position });
     }
 
+    // Change map (interior/exterior)
+    changeMap(mapName) {
+        this.socket.emit('player:changeMap', { mapName });
+        console.log(`📍 Requested map change to: ${mapName}`);
+    }
+
     // Event emitter
     on(event, callback) {
         if (!this.callbacks[event]) {
