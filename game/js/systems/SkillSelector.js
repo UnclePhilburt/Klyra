@@ -153,21 +153,33 @@ class SkillSelector {
 
             if (isSelected) {
                 // Selected card: raise up, glow effect
-                this.scene.tweens.add({
-                    targets: card.elements,
-                    y: card.baseY - 80, // Raise up by 80px
-                    duration: 200,
-                    ease: 'Power2'
+                card.elements.forEach((element, i) => {
+                    const targetY = i === 0 ? card.baseY - 80 : // background
+                                   i === 1 ? card.baseY - 80 - 130 : // name (130px above bg)
+                                   card.baseY - 80; // description (at bg position)
+
+                    this.scene.tweens.add({
+                        targets: element,
+                        y: targetY,
+                        duration: 200,
+                        ease: 'Power2'
+                    });
                 });
                 card.background.setStrokeStyle(5, 0xfbbf24, 1);
                 card.background.setScale(1.05);
             } else {
                 // Unselected card: lower down, normal style
-                this.scene.tweens.add({
-                    targets: card.elements,
-                    y: card.baseY,
-                    duration: 200,
-                    ease: 'Power2'
+                card.elements.forEach((element, i) => {
+                    const targetY = i === 0 ? card.baseY : // background
+                                   i === 1 ? card.baseY - 130 : // name (130px above bg)
+                                   card.baseY; // description (at bg position)
+
+                    this.scene.tweens.add({
+                        targets: element,
+                        y: targetY,
+                        duration: 200,
+                        ease: 'Power2'
+                    });
                 });
                 card.background.setStrokeStyle(3, 0x6366f1, 1);
                 card.background.setScale(1.0);
