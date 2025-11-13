@@ -320,6 +320,7 @@ class Lobby {
     // Check and generate chunks around active players
     updateChunks() {
         const playerChunks = new Set();
+        const newChunks = new Set(); // Track newly generated chunks
         const startingChunkCount = this.chunks.size;
 
         // Get all player chunk positions
@@ -343,6 +344,7 @@ class Lobby {
 
                     if (!this.chunks.has(key)) {
                         this.generateChunk(nearChunkX, nearChunkY);
+                        newChunks.add(key); // Track this as newly generated
                     }
                 }
             }
@@ -355,16 +357,24 @@ class Lobby {
 
         // Optional: Unload distant chunks (commented out for now to keep all generated chunks)
         // this.unloadDistantChunks(playerChunks);
+
+        return newChunks; // Return set of newly generated chunk keys
     }
 
     // Get all currently loaded chunks for sending to clients
-    getLoadedChunksData() {
+    // If chunkKeys is provided, only return those specific chunks
+    getLoadedChunksData(chunkKeys = null) {
         const chunksData = {
             chunkSize: this.CHUNK_SIZE,
             chunks: []
         };
 
         this.chunks.forEach((chunk, key) => {
+            // If chunkKeys filter is provided, only include chunks in that set
+            if (chunkKeys && !chunkKeys.has(key)) {
+                return; // Skip this chunk
+            }
+
             chunksData.chunks.push({
                 chunkX: chunk.chunkX,
                 chunkY: chunk.chunkY,
@@ -849,17 +859,14 @@ io.on('connection', (socket) => {
             player.updateActivity();
 
             // Check and generate new chunks based on player movement
-            const beforeChunkCount = lobby.chunks.size;
-            lobby.updateChunks();
-            const afterChunkCount = lobby.chunks.size;
+            const newChunkKeys = lobby.updateChunks();
 
-            // If new chunks were generated, send them to all players
-            if (afterChunkCount > beforeChunkCount) {
-                const newChunks = afterChunkCount - beforeChunkCount;
-                console.log(`✨ Generated ${newChunks} new chunks! Total: ${afterChunkCount}`);
-                const chunksData = lobby.getLoadedChunksData();
+            // If new chunks were generated, send ONLY the new chunks to all players
+            if (newChunkKeys.size > 0) {
+                console.log(`✨ Generated ${newChunkKeys.size} new chunks! Total: ${lobby.chunks.size}`);
+                const chunksData = lobby.getLoadedChunksData(newChunkKeys);
                 lobby.broadcast('chunks:updated', chunksData);
-                console.log(`📡 Broadcasted ${chunksData.chunks.length} chunks to all players`);
+                console.log(`📡 Broadcasted ${chunksData.chunks.length} NEW chunks to all players (not all ${lobby.chunks.size} chunks)`);
             }
 
             socket.to(lobby.id).emit('player:moved', {
