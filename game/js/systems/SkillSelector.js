@@ -79,51 +79,28 @@ class SkillSelector {
         card.elements.push(bg);
         card.background = bg;
 
-        // Skill icon/emoji
-        const icon = this.scene.add.text(x, y - 120, skill.icon, {
-            fontSize: '64px'
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(2002);
-        card.elements.push(icon);
-
-        // Skill name
-        const name = this.scene.add.text(x, y - 40, skill.name, {
+        // Skill name at TOP of card
+        const name = this.scene.add.text(x, y - 130, skill.name, {
             fontFamily: 'Arial',
-            fontSize: '20px',
+            fontSize: '18px',
             fontStyle: 'bold',
-            fill: '#ffffff',
+            fill: '#fbbf24',
             stroke: '#000000',
             strokeThickness: 3,
-            wordWrap: { width: width - 20 }
+            wordWrap: { width: width - 20 },
+            align: 'center'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(2002);
         card.elements.push(name);
 
-        // Skill description
-        const desc = this.scene.add.text(x, y + 40, skill.description, {
+        // Skill description in CENTER of card
+        const desc = this.scene.add.text(x, y, skill.description, {
             fontFamily: 'Arial',
-            fontSize: '14px',
+            fontSize: '13px',
             fill: '#cccccc',
             wordWrap: { width: width - 30 },
             align: 'center'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(2002);
         card.elements.push(desc);
-
-        // Rarity indicator
-        const rarityColors = {
-            common: '#ffffff',
-            uncommon: '#10b981',
-            rare: '#3b82f6',
-            epic: '#a855f7',
-            legendary: '#f59e0b'
-        };
-        const rarityText = this.scene.add.text(x, y + 130, skill.rarity.toUpperCase(), {
-            fontFamily: 'Arial',
-            fontSize: '12px',
-            fontStyle: 'bold',
-            fill: rarityColors[skill.rarity] || '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 2
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(2002);
-        card.elements.push(rarityText);
 
         return card;
     }
