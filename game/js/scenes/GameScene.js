@@ -38,26 +38,8 @@ class GameScene extends Phaser.Scene {
         // Destroy HUD to prevent multiple instances
         if (this.modernHUD) {
             console.log('🧹 Destroying ModernHUD');
-            // ModernHUD doesn't have destroy method, so destroy all its elements manually
-            if (this.modernHUD.healthOrb) this.modernHUD.healthOrb.destroy();
-            if (this.modernHUD.healthGlow) this.modernHUD.healthGlow.destroy();
-            if (this.modernHUD.healthText) this.modernHUD.healthText.destroy();
-            if (this.modernHUD.healthPercentText) this.modernHUD.healthPercentText.destroy();
-            if (this.modernHUD.portraitFrame) this.modernHUD.portraitFrame.destroy();
-            if (this.modernHUD.levelBadge) this.modernHUD.levelBadge.destroy();
-            if (this.modernHUD.levelText) this.modernHUD.levelText.destroy();
-            if (this.modernHUD.xpBar) this.modernHUD.xpBar.destroy();
-            if (this.modernHUD.xpBarFill) this.modernHUD.xpBarFill.destroy();
-            if (this.modernHUD.xpText) this.modernHUD.xpText.destroy();
-            if (this.modernHUD.statsPanel) this.modernHUD.statsPanel.destroy();
-            if (this.modernHUD.statsText) this.modernHUD.statsText.destroy();
-            if (this.modernHUD.killCounter) this.modernHUD.killCounter.destroy();
-            if (this.modernHUD.killCounterText) this.modernHUD.killCounterText.destroy();
-
-            // Stop tweens
-            if (this.modernHUD.healthPulseTween) this.modernHUD.healthPulseTween.remove();
-            if (this.modernHUD.xpShimmerTween) this.modernHUD.xpShimmerTween.remove();
-
+            // Use the proper destroy method
+            this.modernHUD.destroy();
             this.modernHUD = null;
         }
 
@@ -753,6 +735,10 @@ class GameScene extends Phaser.Scene {
                 : this.otherPlayers[data.playerId];
 
             if (player) {
+                // DIAGNOSTIC: Count objects BEFORE level up processing
+                const tweensBefore = this.tweens.getTweens().length;
+                const graphicsBefore = this.children.list.filter(c => c.type === 'Graphics').length;
+
                 // Update player stats silently
                 player.level = data.level;
                 player.experience = data.experience;
@@ -765,9 +751,15 @@ class GameScene extends Phaser.Scene {
                     player.ui.updateHealthBar();
                 }
 
+                // DIAGNOSTIC: Count objects AFTER level up processing
+                const tweensAfter = this.tweens.getTweens().length;
+                const graphicsAfter = this.children.list.filter(c => c.type === 'Graphics').length;
+
                 // Console log only - NO visual effects
                 if (data.playerId === networkManager.currentPlayer.id) {
                     console.log(`🎉 LEVEL UP! Level ${data.level} | HP: ${data.health}/${data.maxHealth} | STR: ${data.stats.strength} | DEF: ${data.stats.defense}`);
+                    console.log(`📊 DIAGNOSTIC - Tweens: ${tweensBefore} → ${tweensAfter} (Δ${tweensAfter - tweensBefore})`);
+                    console.log(`📊 DIAGNOSTIC - Graphics: ${graphicsBefore} → ${graphicsAfter} (Δ${graphicsAfter - graphicsBefore})`);
                 }
             }
         });
@@ -1370,6 +1362,18 @@ class GameScene extends Phaser.Scene {
             if (this.modernHUD) {
                 this.modernHUD.update();
             }
+
+        // DIAGNOSTIC: Log FPS and object counts every 60 frames (1 second at 60fps)
+        if (!this.diagnosticCounter) this.diagnosticCounter = 0;
+        this.diagnosticCounter++;
+        if (this.diagnosticCounter >= 60) {
+            this.diagnosticCounter = 0;
+            const fps = Math.round(this.game.loop.actualFps);
+            const tweens = this.tweens.getTweens().length;
+            const graphics = this.children.list.filter(c => c.type === 'Graphics').length;
+            const totalChildren = this.children.list.length;
+            console.log(`📊 FPS: ${fps} | Tweens: ${tweens} | Graphics: ${graphics} | Total Children: ${totalChildren}`);
+        }
 
         // Update minions
         Object.values(this.minions).forEach(minion => {
