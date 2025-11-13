@@ -720,29 +720,26 @@ class GameScene extends Phaser.Scene {
 
         // Player leveled up
         networkManager.on('player:levelup', (data) => {
-            console.log(`🔔 player:levelup event fired (total listeners: ${networkManager.callbacks['player:levelup']?.length || 0})`);
-
             const player = data.playerId === networkManager.currentPlayer.id
                 ? this.localPlayer
                 : this.otherPlayers[data.playerId];
 
             if (player) {
-                // Update player stats
+                // Update player stats silently
                 player.level = data.level;
                 player.experience = data.experience;
                 player.maxHealth = data.maxHealth;
                 player.health = data.health;
                 player.stats = data.stats;
 
-                // Update UI
+                // Update UI (health bar only)
                 if (player.ui) {
                     player.ui.updateHealthBar();
                 }
 
-                // Show level up effect for local player
+                // Console log only - NO visual effects
                 if (data.playerId === networkManager.currentPlayer.id) {
-                    console.log(`📊 Showing level up effect for level ${data.level}`);
-                    this.showLevelUpEffect(data.level);
+                    console.log(`🎉 LEVEL UP! Level ${data.level} | HP: ${data.health}/${data.maxHealth} | STR: ${data.stats.strength} | DEF: ${data.stats.defense}`);
                 }
             }
         });
@@ -1283,32 +1280,8 @@ class GameScene extends Phaser.Scene {
         });
     }
 
-    showLevelUpEffect(level) {
-        // Simple level up text only - no particles, no flash
-        const levelUpText = this.add.text(
-            this.localPlayer.sprite.x,
-            this.localPlayer.sprite.y - 50,
-            `LEVEL ${level}!`,
-            {
-                font: 'bold 24px monospace',
-                fill: '#ffff00',
-                stroke: '#000000',
-                strokeThickness: 3
-            }
-        ).setOrigin(0.5);
-        levelUpText.setDepth(10001);
-
-        this.tweens.add({
-            targets: levelUpText,
-            y: levelUpText.y - 50,
-            alpha: 0,
-            duration: 1500,
-            ease: 'Power2',
-            onComplete: () => levelUpText.destroy()
-        });
-
-        console.log(`🎉 LEVEL UP! You are now level ${level}!`);
-    }
+    // Level up effect removed - was causing FPS drops
+    // Stats update silently now, check console for level up notifications
 
     showAttackEffect(position) {
         // Visual attack effect
