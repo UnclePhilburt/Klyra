@@ -100,6 +100,10 @@ class NetworkManager {
             this.emit('player:attacked', data);
         });
 
+        this.socket.on('player:damaged', (data) => {
+            this.emit('player:damaged', data);
+        });
+
         this.socket.on('player:died', (data) => {
             const player = this.players.get(data.playerId);
             if (player) player.isAlive = false;
@@ -107,6 +111,14 @@ class NetworkManager {
         });
 
         // Enemy events
+        this.socket.on('enemy:moved', (data) => {
+            this.emit('enemy:moved', data);
+        });
+
+        this.socket.on('enemy:spawned', (data) => {
+            this.emit('enemy:spawned', data);
+        });
+
         this.socket.on('enemy:damaged', (data) => {
             this.emit('enemy:damaged', data);
         });
