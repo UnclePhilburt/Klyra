@@ -149,10 +149,12 @@ class GameScene extends Phaser.Scene {
 
             // Send initial position immediately
             const tileSize = GameConfig.GAME.TILE_SIZE;
-            networkManager.movePlayer({
+            const gridPos = {
                 x: Math.floor(this.localPlayer.sprite.x / tileSize),
                 y: Math.floor(this.localPlayer.sprite.y / tileSize)
-            });
+            };
+            console.log(`📍 Sending initial position: pixel(${this.localPlayer.sprite.x.toFixed(0)}, ${this.localPlayer.sprite.y.toFixed(0)}) -> grid(${gridPos.x}, ${gridPos.y})`);
+            networkManager.movePlayer(gridPos);
 
             // Spawn permanent minion if player is Malachar
             if (myData.class === 'MALACHAR') {

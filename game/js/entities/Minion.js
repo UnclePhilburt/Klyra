@@ -94,6 +94,7 @@ class Minion {
         // Safety check: Don't despawn permanent minions if owner not found yet
         if (!owner) {
             if (!this.isPermanent) {
+                console.log(`🔮 Minion despawning: owner not found (permanent: ${this.isPermanent})`);
                 this.despawn();
             }
             return;
@@ -101,6 +102,7 @@ class Minion {
 
         // Only despawn if owner is dead (not just undefined)
         if (owner && owner.isAlive === false) {
+            console.log(`🔮 Minion despawning: owner is dead (isAlive: ${owner.isAlive})`);
             this.despawn();
             return;
         }

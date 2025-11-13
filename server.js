@@ -491,6 +491,13 @@ class Lobby {
             // Skip if no players in lobby
             if (this.players.size === 0) return;
 
+            // Debug: Log player positions for first enemy occasionally
+            if (movedCount === 0 && Math.random() < 0.1) { // 10% chance for first enemy
+                this.players.forEach(p => {
+                    console.log(`👤 Player ${p.username} at (${p.position.x}, ${p.position.y}) for enemy targeting`);
+                });
+            }
+
             // Check all players
             this.players.forEach(player => {
                 if (!player.isAlive) return;
@@ -711,6 +718,12 @@ io.on('connection', (socket) => {
             if (!lobby || lobby.status !== 'active') return;
 
             if (!isValidPosition(data.position)) return;
+
+            // Debug: Log first position update for each player
+            if (!player.hasLoggedPosition) {
+                console.log(`📍 Received initial position for ${player.username}: (${data.position.x}, ${data.position.y})`);
+                player.hasLoggedPosition = true;
+            }
 
             player.position = data.position;
             player.updateActivity();
