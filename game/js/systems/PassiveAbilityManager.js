@@ -469,33 +469,75 @@ class PassiveAbilityManager {
         // Leave a damaging zone where player walks
         const x = this.player.sprite.x;
         const y = this.player.sprite.y;
+        const now = Date.now();
 
-        // Create visual effect (simple circle)
-        const zone = this.scene.add.circle(x, y, 16, 0x4a1a4a, 0.5);
-        zone.setDepth(0);
+        // Only create new zone every 200ms to avoid spam
+        if (!this.lastTrailTime || now - this.lastTrailTime >= 200) {
+            // Create enhanced visual effect - purple pulsing circle
+            const zone = this.scene.add.circle(x, y, 24, 0x8b5cf6, 0.3);
+            zone.setDepth(0);
+            zone.setStrokeStyle(2, 0x8b5cf6, 0.6);
 
-        // Store zone data
-        if (!this.cursedZones) this.cursedZones = [];
-        this.cursedZones.push({
-            x, y,
-            createdAt: Date.now(),
-            duration: cursedTrail.duration || 5000,
-            dps: cursedTrail.dps || 20,
-            graphics: zone
-        });
+            // Pulsing animation
+            this.scene.tweens.add({
+                targets: zone,
+                alpha: 0.1,
+                scaleX: 1.2,
+                scaleY: 1.2,
+                duration: 1000,
+                yoyo: true,
+                repeat: Math.floor((cursedTrail.duration || 5000) / 2000),
+                ease: 'Sine.easeInOut'
+            });
+
+            // Add purple particles
+            const particles = this.scene.add.particles(x, y, 'particle', {
+                speed: { min: 5, max: 15 },
+                scale: { start: 0.2, end: 0 },
+                alpha: { start: 0.6, end: 0 },
+                tint: [0x8b5cf6, 0x5b21b6],
+                lifespan: 1500,
+                frequency: 100,
+                quantity: 1
+            });
+            particles.setDepth(1);
+
+            // Store zone data
+            if (!this.cursedZones) this.cursedZones = [];
+            this.cursedZones.push({
+                x, y,
+                createdAt: now,
+                duration: cursedTrail.duration || 5000,
+                dps: cursedTrail.dps || 20,
+                graphics: zone,
+                particles: particles,
+                lastDamageTime: 0
+            });
+
+            this.lastTrailTime = now;
+        }
 
         // Damage enemies in zones
         this.cursedZones.forEach(zone => {
-            const enemies = this.getEnemiesNear(zone.x, zone.y, 16);
-            enemies.forEach(enemy => {
-                if (enemy.health) {
-                    enemy.health -= Math.floor(zone.dps / 10);
-                }
-            });
+            // Check if zone should deal damage (once per second)
+            if (now - zone.lastDamageTime >= 1000) {
+                const enemies = this.getEnemiesNear(zone.x, zone.y, 24);
+                enemies.forEach(enemy => {
+                    if (enemy.data && enemy.data.id && typeof networkManager !== 'undefined') {
+                        const playerPosition = {
+                            x: Math.floor(this.player.sprite.x / 32),
+                            y: Math.floor(this.player.sprite.y / 32)
+                        };
+                        networkManager.hitEnemy(enemy.data.id, zone.dps, this.player.data.id, playerPosition);
+                    }
+                });
+                zone.lastDamageTime = now;
+            }
 
             // Remove expired zones
-            if (Date.now() - zone.createdAt > zone.duration) {
-                zone.graphics.destroy();
+            if (now - zone.createdAt > zone.duration) {
+                if (zone.graphics) zone.graphics.destroy();
+                if (zone.particles) zone.particles.destroy();
                 this.cursedZones = this.cursedZones.filter(z => z !== zone);
             }
         });
@@ -505,15 +547,36 @@ class PassiveAbilityManager {
         const enemies = this.getEnemiesInRadius(plagueAura.radius || 5);
         const dps = plagueAura.dps || 10;
         const damagePerTick = Math.floor(dps / 10);
+        const now = Date.now();
+        const vfx = this.getVisualEffects();
 
         enemies.forEach(enemy => {
-            if (enemy.health) {
-                enemy.health -= damagePerTick;
-                // Visual effect for plagued enemies
-                if (enemy.sprite && !enemy.plagueEffect) {
-                    enemy.plagueEffect = true;
-                    enemy.sprite.setTint(0x00ff00);
+            if (!enemy.data || !enemy.data.id) return;
+
+            const cooldownKey = `${enemy.data.id}_plagueAura`;
+            const lastDamage = this.auraDamageCooldowns.get(cooldownKey) || 0;
+
+            // Deal damage once per second per enemy
+            if (now - lastDamage >= 1000) {
+                // Send damage through network
+                if (typeof networkManager !== 'undefined') {
+                    const playerPosition = {
+                        x: Math.floor(this.player.sprite.x / 32),
+                        y: Math.floor(this.player.sprite.y / 32)
+                    };
+                    networkManager.hitEnemy(enemy.data.id, dps, this.player.data.id, playerPosition);
                 }
+
+                // Visual effect for plagued enemies
+                if (enemy.sprite) {
+                    if (!enemy.plagueEffect) {
+                        enemy.plagueEffect = true;
+                        enemy.sprite.setTint(0x84cc16);
+                        vfx.createStatusEffect(enemy.sprite, 'poison');
+                    }
+                }
+
+                this.auraDamageCooldowns.set(cooldownKey, now);
             }
         });
     }
@@ -527,8 +590,26 @@ class PassiveAbilityManager {
             const radius = ability.effect.deathSpiral.radius || 6;
             const damage = ability.effect.deathSpiral.damage || 100;
 
-            // Spin attack visual
-            this.createExplosion(this.player.sprite.x, this.player.sprite.y, radius, damage, 0x8b00ff);
+            // Use new spinning slash visual effect
+            const vfx = this.getVisualEffects();
+            vfx.createDeathSpiralEffect(
+                this.player.sprite.x,
+                this.player.sprite.y,
+                radius * 32
+            );
+
+            // Deal damage to enemies in radius
+            const enemies = this.getEnemiesInRadius(radius);
+            enemies.forEach(enemy => {
+                if (enemy.data && enemy.data.id && typeof networkManager !== 'undefined') {
+                    const playerPosition = {
+                        x: Math.floor(this.player.sprite.x / 32),
+                        y: Math.floor(this.player.sprite.y / 32)
+                    };
+                    networkManager.hitEnemy(enemy.data.id, damage, this.player.data.id, playerPosition);
+                }
+            });
+
             this.cooldowns.set(cooldownKey, now);
         }
     }
@@ -540,21 +621,27 @@ class PassiveAbilityManager {
 
         if (now - lastCast >= interval) {
             const enemies = this.getEnemiesInRadius(ability.effect.hexAura.radius || 6);
+            const vfx = this.getVisualEffects();
 
             enemies.forEach(enemy => {
                 // Apply random curse
-                const curses = ['slow', 'weak', 'vulnerable'];
+                const curses = ['slow', 'stun', 'curse'];
                 const curse = curses[Math.floor(Math.random() * curses.length)];
 
                 if (curse === 'slow' && enemy.speed) {
                     enemy.speed *= 0.5;
-                } else if (curse === 'weak') {
+                } else if (curse === 'stun') {
                     enemy.damage = Math.floor(enemy.damage * 0.7);
-                } else if (curse === 'vulnerable') {
+                } else if (curse === 'curse') {
                     enemy.defense = Math.floor((enemy.defense || 0) * 0.5);
                 }
 
                 enemy.hexed = curse;
+
+                // Visual status effect indicator
+                if (enemy.sprite) {
+                    vfx.createStatusEffect(enemy.sprite, curse);
+                }
             });
 
             this.cooldowns.set(cooldownKey, now);
@@ -585,7 +672,27 @@ class PassiveAbilityManager {
             const radius = ability.effect.periodicExplosion.radius || 10;
             const damage = ability.effect.periodicExplosion.damage || 150;
 
-            this.createExplosion(this.player.sprite.x, this.player.sprite.y, radius, damage, 0xff0000);
+            // Use enhanced void explosion visual
+            const vfx = this.getVisualEffects();
+            vfx.createVoidExplosion(
+                this.player.sprite.x,
+                this.player.sprite.y,
+                radius * 32,
+                damage
+            );
+
+            // Deal damage to all enemies in radius
+            const enemies = this.getEnemiesInRadius(radius);
+            enemies.forEach(enemy => {
+                if (enemy.data && enemy.data.id && typeof networkManager !== 'undefined') {
+                    const playerPosition = {
+                        x: Math.floor(this.player.sprite.x / 32),
+                        y: Math.floor(this.player.sprite.y / 32)
+                    };
+                    networkManager.hitEnemy(enemy.data.id, damage, this.player.data.id, playerPosition);
+                }
+            });
+
             this.cooldowns.set(cooldownKey, now);
         }
     }
@@ -596,13 +703,15 @@ class PassiveAbilityManager {
         const interval = ability.effect.autoSpawnInterval || 2000;
 
         if (now - lastCast >= interval) {
+            const spawnX = this.player.sprite.x + Phaser.Math.Between(-50, 50);
+            const spawnY = this.player.sprite.y + Phaser.Math.Between(-50, 50);
+
+            // Visual summon effect
+            const vfx = this.getVisualEffects();
+            vfx.createMinionSummonEffect(spawnX, spawnY);
+
             // Spawn a temporary minion
-            this.scene.spawnMinion(
-                this.player.sprite.x + Phaser.Math.Between(-50, 50),
-                this.player.sprite.y + Phaser.Math.Between(-50, 50),
-                this.player.data.id,
-                false // temporary
-            );
+            this.scene.spawnMinion(spawnX, spawnY, this.player.data.id, false);
             this.cooldowns.set(cooldownKey, now);
         }
     }
@@ -638,14 +747,19 @@ class PassiveAbilityManager {
 
         if (now - lastCast >= interval) {
             const count = ability.effect.autoSummon.count || 3;
+            const vfx = this.getVisualEffects();
 
             for (let i = 0; i < count; i++) {
-                this.scene.spawnMinion(
-                    this.player.sprite.x + Phaser.Math.Between(-100, 100),
-                    this.player.sprite.y + Phaser.Math.Between(-100, 100),
-                    this.player.data.id,
-                    false // temporary
-                );
+                const spawnX = this.player.sprite.x + Phaser.Math.Between(-100, 100);
+                const spawnY = this.player.sprite.y + Phaser.Math.Between(-100, 100);
+
+                // Visual summon effect
+                vfx.createMinionSummonEffect(spawnX, spawnY);
+
+                // Spawn minion after short delay for visual effect
+                this.scene.time.delayedCall(300, () => {
+                    this.scene.spawnMinion(spawnX, spawnY, this.player.data.id, false);
+                });
             }
 
             this.cooldowns.set(cooldownKey, now);
@@ -659,16 +773,28 @@ class PassiveAbilityManager {
 
         if (now - lastCast >= cooldown) {
             const count = ability.effect.raiseUndead.count || 5;
+            const vfx = this.getVisualEffects();
 
-            // Spawn skeleton warriors
+            // Spawn skeleton warriors with dramatic visual effects
             for (let i = 0; i < count; i++) {
-                this.scene.spawnMinion(
-                    this.player.sprite.x + Phaser.Math.Between(-150, 150),
-                    this.player.sprite.y + Phaser.Math.Between(-150, 150),
-                    this.player.data.id,
-                    false, // temporary
-                    `skeleton_${Date.now()}_${i}`
-                );
+                const spawnX = this.player.sprite.x + Phaser.Math.Between(-150, 150);
+                const spawnY = this.player.sprite.y + Phaser.Math.Between(-150, 150);
+
+                // Visual summon effect (delayed for dramatic effect)
+                this.scene.time.delayedCall(i * 150, () => {
+                    vfx.createMinionSummonEffect(spawnX, spawnY);
+
+                    // Spawn skeleton after visual
+                    this.scene.time.delayedCall(300, () => {
+                        this.scene.spawnMinion(
+                            spawnX,
+                            spawnY,
+                            this.player.data.id,
+                            false,
+                            `skeleton_${Date.now()}_${i}`
+                        );
+                    });
+                });
             }
 
             this.cooldowns.set(cooldownKey, now);
@@ -817,6 +943,8 @@ class PassiveAbilityManager {
     }
 
     onKill(enemy) {
+        const vfx = this.getVisualEffects();
+
         this.passiveAbilities.forEach(ability => {
             const effect = ability.effect;
 
@@ -827,6 +955,39 @@ class PassiveAbilityManager {
                 if (this.player.souls < maxSouls) {
                     this.player.souls++;
                     this.player.soulDamageBonus = this.player.souls * (effect.soulCollector.damagePerSoul || 5);
+
+                    // Visual soul orb collection effect
+                    if (enemy.sprite) {
+                        const soulOrb = this.scene.add.circle(
+                            enemy.sprite.x,
+                            enemy.sprite.y,
+                            8,
+                            0x8b5cf6,
+                            0.8
+                        );
+                        soulOrb.setDepth(1000);
+                        soulOrb.setStrokeStyle(2, 0xec4899, 1);
+
+                        // Float to player
+                        this.scene.tweens.add({
+                            targets: soulOrb,
+                            x: this.player.sprite.x,
+                            y: this.player.sprite.y,
+                            scale: 0.5,
+                            duration: 500,
+                            ease: 'Power2',
+                            onComplete: () => {
+                                soulOrb.destroy();
+                                // Show soul count buff
+                                vfx.createBuffEffect(
+                                    this.player.sprite.x,
+                                    this.player.sprite.y,
+                                    0x8b5cf6,
+                                    `💀 ${this.player.souls}`
+                                );
+                            }
+                        });
+                    }
                 }
             }
 
@@ -836,16 +997,54 @@ class PassiveAbilityManager {
                 this.player.furyMode = true;
                 this.player.furyDamageBonus = effect.furyOnKill.damageBonus || 2.0;
 
+                // Visual fury mode effect - red buff aura
+                vfx.createBuffEffect(
+                    this.player.sprite.x,
+                    this.player.sprite.y,
+                    0xef4444,
+                    '⚔️ FURY'
+                );
+
                 // Clear fury after duration
                 setTimeout(() => {
                     this.player.furyMode = false;
                     this.player.furyDamageBonus = 1.0;
                 }, effect.furyOnKill.duration || 5000);
             }
+
+            // Corpse Explosion - Explode on enemy death
+            if (effect.corpseExplosion) {
+                if (enemy.sprite) {
+                    const radius = effect.corpseExplosion.radius || 4;
+                    const damage = effect.corpseExplosion.damage || 50;
+
+                    // Visual corpse explosion
+                    vfx.createCorpseExplosion(
+                        enemy.sprite.x,
+                        enemy.sprite.y,
+                        radius * 32,
+                        damage
+                    );
+
+                    // Deal damage to nearby enemies
+                    const nearbyEnemies = this.getEnemiesNear(enemy.sprite.x, enemy.sprite.y, radius * 32);
+                    nearbyEnemies.forEach(nearbyEnemy => {
+                        if (nearbyEnemy.data && nearbyEnemy.data.id && typeof networkManager !== 'undefined') {
+                            const playerPosition = {
+                                x: Math.floor(this.player.sprite.x / 32),
+                                y: Math.floor(this.player.sprite.y / 32)
+                            };
+                            networkManager.hitEnemy(nearbyEnemy.data.id, damage, this.player.data.id, playerPosition);
+                        }
+                    });
+                }
+            }
         });
     }
 
     onDamaged(damage) {
+        const vfx = this.getVisualEffects();
+
         this.passiveAbilities.forEach(ability => {
             const effect = ability.effect;
 
@@ -857,13 +1056,29 @@ class PassiveAbilityManager {
                 const cooldown = effect.retaliationNova.cooldown || 8000;
 
                 if (now - lastCast >= cooldown) {
-                    this.createExplosion(
+                    const radius = effect.retaliationNova.radius || 5;
+                    const dmg = effect.retaliationNova.damage || 50;
+
+                    // Visual retaliation explosion (red/orange)
+                    vfx.createCorpseExplosion(
                         this.player.sprite.x,
                         this.player.sprite.y,
-                        effect.retaliationNova.radius || 5,
-                        effect.retaliationNova.damage || 50,
-                        0xff6b6b
+                        radius * 32,
+                        dmg
                     );
+
+                    // Deal damage to all nearby enemies
+                    const enemies = this.getEnemiesInRadius(radius);
+                    enemies.forEach(enemy => {
+                        if (enemy.data && enemy.data.id && typeof networkManager !== 'undefined') {
+                            const playerPosition = {
+                                x: Math.floor(this.player.sprite.x / 32),
+                                y: Math.floor(this.player.sprite.y / 32)
+                            };
+                            networkManager.hitEnemy(enemy.data.id, dmg, this.player.data.id, playerPosition);
+                        }
+                    });
+
                     this.cooldowns.set(cooldownKey, now);
                 }
             }
