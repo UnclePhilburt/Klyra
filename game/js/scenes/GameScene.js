@@ -256,14 +256,28 @@ class GameScene extends Phaser.Scene {
         // Create other players
         this.gameData.players.forEach(playerData => {
             if (playerData.id !== networkManager.currentPlayer.id) {
-                this.otherPlayers[playerData.id] = new Player(this, playerData);
+                const otherPlayer = new Player(this, playerData);
+                this.otherPlayers[playerData.id] = otherPlayer;
+
+                // Add tree collisions to other player
+                if (this.treeCollisions) {
+                    this.treeCollisions.forEach(collisionRect => {
+                        this.physics.add.collider(otherPlayer.sprite, collisionRect);
+                    });
+                }
+
+                // Add castle collision layers to other player
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(otherPlayer.sprite, layer);
+                    });
+                }
 
                 // Spawn permanent minion if player is Malachar
                 if (playerData.class === 'MALACHAR') {
-                    const player = this.otherPlayers[playerData.id];
                     this.spawnMinion(
-                        player.sprite.x + 40,
-                        player.sprite.y,
+                        otherPlayer.sprite.x + 40,
+                        otherPlayer.sprite.y,
                         playerData.id,
                         true // permanent
                     );
@@ -278,13 +292,38 @@ class GameScene extends Phaser.Scene {
             });
         }
 
+        // Add castle collision layers to player
+        if (this.localPlayer && this.castleCollisionLayers) {
+            this.castleCollisionLayers.forEach(layer => {
+                this.physics.add.collider(this.localPlayer.sprite, layer);
+            });
+            console.log(`🏰 Added ${this.castleCollisionLayers.length} castle collision layers to local player`);
+        }
+
         // Create enemies
         this.gameData.gameState.enemies.forEach(enemyData => {
             if (enemyData.type === 'wolf') {
-                this.wolves[enemyData.id] = new Wolf(this, enemyData);
+                const wolf = new Wolf(this, enemyData);
+                this.wolves[enemyData.id] = wolf;
+
+                // Add castle collision to wolf
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(wolf.sprite, layer);
+                    });
+                }
+
                 console.log(`🐺 Created wolf ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
             } else {
-                this.enemies[enemyData.id] = new Enemy(this, enemyData);
+                const enemy = new Enemy(this, enemyData);
+                this.enemies[enemyData.id] = enemy;
+
+                // Add castle collision to enemy
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(enemy.sprite, layer);
+                    });
+                }
             }
         });
 
@@ -1134,12 +1173,40 @@ class GameScene extends Phaser.Scene {
             { name: 'fence', depth: 6 }
         ];
 
+        // Store layers for collision setup
+        const createdLayers = [];
+
         layerConfig.forEach(({ name, depth }) => {
             const layer = map.createLayer(name, tilesets, mapOffsetX, mapOffsetY);
             if (layer) {
                 layer.setScale(scale);
                 layer.setDepth(depth);
+                createdLayers.push(layer);
                 console.log(`  ✅ Created layer: ${name} (depth: ${depth})`);
+            }
+        });
+
+        // === SETUP COLLISION FOR LAYERS WITH CUSTOM PROPERTIES ===
+        console.log('🔒 Setting up collision for castle layers...');
+        createdLayers.forEach(layer => {
+            // Check if layer has collision property set to true
+            const layerData = map.getLayer(layer.layer.name);
+            if (layerData && layerData.properties) {
+                const collisionProp = layerData.properties.find(p =>
+                    (p.name === 'collision' || p.name === 'collides') && p.value === true
+                );
+
+                if (collisionProp) {
+                    // Enable collision on all tiles in this layer
+                    layer.setCollisionByExclusion([-1]);
+                    console.log(`  🔒 Enabled collision for layer: ${layer.layer.name}`);
+
+                    // Store this layer for later collision setup with player
+                    if (!this.castleCollisionLayers) {
+                        this.castleCollisionLayers = [];
+                    }
+                    this.castleCollisionLayers.push(layer);
+                }
             }
         });
 
@@ -1352,6 +1419,13 @@ class GameScene extends Phaser.Scene {
                     });
                 }
 
+                // Add castle collision layers to new player
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(newPlayer.sprite, layer);
+                    });
+                }
+
             }
         });
 
@@ -1454,9 +1528,25 @@ class GameScene extends Phaser.Scene {
         // Enemy spawned
         networkManager.on('enemy:spawned', (data) => {
             if (data.enemy.type === 'wolf') {
-                this.wolves[data.enemy.id] = new Wolf(this, data.enemy);
+                const wolf = new Wolf(this, data.enemy);
+                this.wolves[data.enemy.id] = wolf;
+
+                // Add castle collision to wolf
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(wolf.sprite, layer);
+                    });
+                }
             } else {
-                this.enemies[data.enemy.id] = new Enemy(this, data.enemy);
+                const enemy = new Enemy(this, data.enemy);
+                this.enemies[data.enemy.id] = enemy;
+
+                // Add castle collision to enemy
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(enemy.sprite, layer);
+                    });
+                }
             }
         });
 
@@ -2012,6 +2102,13 @@ class GameScene extends Phaser.Scene {
         const minionId = `minion_${this.minionIdCounter++}`;
         const minion = new Minion(this, x, y, ownerId, isPermanent, minionId);
         this.minions[minionId] = minion;
+
+        // Add castle collision to minion
+        if (this.castleCollisionLayers) {
+            this.castleCollisionLayers.forEach(layer => {
+                this.physics.add.collider(minion.sprite, layer);
+            });
+        }
 
         // Apply damage multiplier from skills (if local player owns this minion)
         if (ownerId === networkManager.currentPlayer.id && this.localPlayer && this.localPlayer.minionDamageMultiplier) {
