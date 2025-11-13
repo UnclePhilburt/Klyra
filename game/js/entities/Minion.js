@@ -9,7 +9,7 @@ class Minion {
         this.maxHealth = 50;
         this.damage = 15;
         this.isAlive = true;
-        this.moveSpeed = 150;
+        this.moveSpeed = 240; // Increased from 150 for faster response
         this.attackRange = 100;
         this.attackCooldown = 1000; // 1 second between attacks
         this.lastAttackTime = 0;
@@ -256,8 +256,8 @@ class Minion {
             // Check for nearby minions and steer away slightly
             this.avoidNearbyMinions();
 
-            // Move at 70% speed when wandering (more casual)
-            const wanderSpeed = this.moveSpeed * 0.7;
+            // Move at 85% speed when wandering (faster to keep up)
+            const wanderSpeed = this.moveSpeed * 0.85;
             this.scene.physics.moveToObject(this.sprite, this.wanderTarget, wanderSpeed);
 
             // Play walk animation
