@@ -174,35 +174,39 @@ class GameScene extends Phaser.Scene {
         // Create container for tiles
         this.tileContainer = this.add.container(0, 0);
 
-        // Smooth noise function for gradient-based tile selection
+        // Simple noise function for tile selection
         const noise2D = (x, y, seed) => {
             const n = x * 374761393 + y * 668265263 + seed * 1013904223;
             const noise = (n ^ (n >> 13)) * 1274126177;
             return ((noise ^ (noise >> 16)) & 0x7fffffff) / 0x7fffffff;
         };
 
-        // Tile pools from A2 - Terrain And Misc, divided into groups for smooth transitions
-        const GRASS_TILE_GROUPS = [
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],           // Group A
-            [52, 53, 54, 55, 56, 57, 58, 59, 60, 61],         // Group B
-            [104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115], // Group C
-            [156, 157, 559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570], // Group D
-            [611, 612, 613, 614, 615, 616, 617, 618, 619, 620], // Group E
-            [663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674], // Group F
-            [715, 716, 717, 718, 719, 720, 721, 722, 723, 724, 725, 726]  // Group G
+        // Tile pools from A2 - Terrain And Misc (all tiles in one pool per terrain type)
+        const GRASS_TILES = [
+            // All grass variations
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+            52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
+            104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115,
+            156, 157,
+            559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570,
+            611, 612, 613, 614, 615, 616, 617, 618, 619, 620,
+            663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674,
+            715, 716, 717, 718, 719, 720, 721, 722, 723, 724, 725, 726
         ];
 
-        const DIRT_TILE_GROUPS = [
-            [520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 531], // Group A
-            [624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635], // Group B
-            [676, 677, 678, 679, 680, 681, 682, 683, 684, 685, 686, 687]  // Group C
+        const DIRT_TILES = [
+            // All dirt variations
+            520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 531,
+            624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635,
+            676, 677, 678, 679, 680, 681, 682, 683, 684, 685, 686, 687
         ];
 
-        const DIRT_GRASS_MIX_GROUPS = [
-            [533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544], // Group A
-            [585, 586, 587, 588, 589, 590, 591, 592, 593, 594],           // Group B
-            [637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648], // Group C
-            [689, 690, 691, 692, 693, 694, 695, 696, 697, 698, 699, 700]  // Group D
+        const DIRT_GRASS_MIX_TILES = [
+            // All dirt/grass mix variations
+            533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544,
+            585, 586, 587, 588, 589, 590, 591, 592, 593, 594,
+            637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648,
+            689, 690, 691, 692, 693, 694, 695, 696, 697, 698, 699, 700
         ];
 
         const FLOWER_PATCHES = [
@@ -211,55 +215,36 @@ class GameScene extends Phaser.Scene {
             936, 937, 938, 939, 940, 941, 942, 943, 944, 945, 946, 947
         ];
 
-        // Weighted tile selection based on smooth noise gradient
-        const selectTileFromGroups = (x, y, tileGroups, seed) => {
-            // Generate smooth noise value (0.0 to 1.0)
-            const noiseValue = noise2D(Math.floor(x / 4), Math.floor(y / 4), seed);
-
-            // Map noise value to preferred group
-            const groupIndex = Math.floor(noiseValue * tileGroups.length);
-            const preferredGroup = tileGroups[groupIndex];
-
-            // 70% chance to pick from preferred group, 30% from any group (for variety)
-            const usePreferred = noise2D(x, y, seed + 1000) < 0.7;
-
-            if (usePreferred) {
-                // Pick random tile from preferred group
-                const tileIndex = Math.floor(noise2D(x, y, seed + 2000) * preferredGroup.length);
-                return preferredGroup[tileIndex];
-            } else {
-                // Pick random tile from any group (variety)
-                const randomGroupIndex = Math.floor(noise2D(x, y, seed + 3000) * tileGroups.length);
-                const randomGroup = tileGroups[randomGroupIndex];
-                const tileIndex = Math.floor(noise2D(x, y, seed + 4000) * randomGroup.length);
-                return randomGroup[tileIndex];
-            }
+        // Simple random tile selection from pool
+        const selectTileFromPool = (x, y, tilePool, seed) => {
+            const tileIndex = Math.floor(noise2D(x, y, seed) * tilePool.length);
+            return tilePool[tileIndex];
         };
 
-        // Map biome types to tile groups
+        // Map biome types to tile pools
         const BIOME_TILESET_MAP = {
-            // Grassland - Use grass tile groups
-            10: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
-            11: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
-            12: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
+            // Grassland - Use grass tiles
+            10: { texture: 'terrain_misc', tilePool: GRASS_TILES },
+            11: { texture: 'terrain_misc', tilePool: GRASS_TILES },
+            12: { texture: 'terrain_misc', tilePool: GRASS_TILES },
 
-            // Forest - Use dirt/grass mix groups
-            20: { texture: 'terrain_misc', tileGroups: DIRT_GRASS_MIX_GROUPS },
-            21: { texture: 'terrain_misc', tileGroups: DIRT_GRASS_MIX_GROUPS },
-            22: { texture: 'terrain_misc', tileGroups: DIRT_GRASS_MIX_GROUPS },
+            // Forest - Use dirt/grass mix tiles
+            20: { texture: 'terrain_misc', tilePool: DIRT_GRASS_MIX_TILES },
+            21: { texture: 'terrain_misc', tilePool: DIRT_GRASS_MIX_TILES },
+            22: { texture: 'terrain_misc', tilePool: DIRT_GRASS_MIX_TILES },
 
-            // Magic Grove - Use grass tile groups
-            30: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
-            31: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
-            32: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
+            // Magic Grove - Use grass tiles
+            30: { texture: 'terrain_misc', tilePool: GRASS_TILES },
+            31: { texture: 'terrain_misc', tilePool: GRASS_TILES },
+            32: { texture: 'terrain_misc', tilePool: GRASS_TILES },
 
-            // Dark Woods - Use dirt tile groups
-            40: { texture: 'terrain_misc', tileGroups: DIRT_TILE_GROUPS },
-            41: { texture: 'terrain_misc', tileGroups: DIRT_TILE_GROUPS },
-            42: { texture: 'terrain_misc', tileGroups: DIRT_TILE_GROUPS }
+            // Dark Woods - Use dirt tiles
+            40: { texture: 'terrain_misc', tilePool: DIRT_TILES },
+            41: { texture: 'terrain_misc', tilePool: DIRT_TILES },
+            42: { texture: 'terrain_misc', tilePool: DIRT_TILES }
         };
 
-        // Render tiles using smooth noise gradient selection
+        // Render tiles using simple random selection from pools
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const tile = tiles[y][x];
@@ -269,9 +254,9 @@ class GameScene extends Phaser.Scene {
                 // Get tileset mapping for this biome
                 const tileInfo = BIOME_TILESET_MAP[tile];
 
-                if (tileInfo && tileInfo.tileGroups) {
-                    // Use smooth noise gradient selection
-                    const selectedFrame = selectTileFromGroups(x, y, tileInfo.tileGroups, seed);
+                if (tileInfo && tileInfo.tilePool) {
+                    // Randomly select tile from pool
+                    const selectedFrame = selectTileFromPool(x, y, tileInfo.tilePool, seed);
 
                     // Create sprite from selected tile frame
                     const tileSprite = this.add.sprite(px, py, tileInfo.texture, selectedFrame);
@@ -283,7 +268,7 @@ class GameScene extends Phaser.Scene {
 
                     this.tileContainer.add(tileSprite);
 
-                    // Add flower patch overlays to grassland tiles (5% chance, clustered)
+                    // Add flower patch overlays to grassland tiles (5% chance)
                     if ((tile === 10 || tile === 11 || tile === 12)) {
                         const flowerNoise = noise2D(x, y, seed + 5000);
                         if (flowerNoise < 0.05) {
