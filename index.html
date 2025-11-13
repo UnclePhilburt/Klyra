@@ -636,80 +636,328 @@
             }
         }
 
-        /* Responsive */
+        /* Responsive Design - Tablet */
         @media (max-width: 1024px) {
-            .bento-large,
-            .bento-medium,
-            .bento-small {
+            header {
+                padding: 1.25rem 3rem;
+            }
+
+            .bento-large {
                 grid-column: span 12;
+            }
+
+            .bento-medium {
+                grid-column: span 6;
+            }
+
+            .bento-small {
+                grid-column: span 6;
+            }
+
+            .features {
+                padding: 8rem 3rem;
+            }
+
+            .cta-section {
+                padding: 6rem 3rem;
             }
         }
 
+        /* Mobile Optimization */
         @media (max-width: 768px) {
+            /* Header - Mobile Optimized */
             header {
-                padding: 1rem 2rem;
+                padding: 1rem 1.25rem;
+            }
+
+            .logo {
+                font-size: 1.25rem;
             }
 
             .mobile-menu-toggle {
                 display: flex;
+                cursor: pointer;
+                z-index: 1001;
+            }
+
+            .mobile-menu-toggle.active span:nth-child(1) {
+                transform: rotate(45deg) translateY(8px);
+            }
+
+            .mobile-menu-toggle.active span:nth-child(2) {
+                opacity: 0;
+            }
+
+            .mobile-menu-toggle.active span:nth-child(3) {
+                transform: rotate(-45deg) translateY(-8px);
             }
 
             nav ul {
                 position: fixed;
-                top: 70px;
+                top: 0;
                 left: 0;
                 right: 0;
+                bottom: 0;
                 background: rgba(10, 10, 15, 0.98);
+                backdrop-filter: blur(20px);
                 flex-direction: column;
-                padding: 2rem;
-                gap: 1.5rem;
+                padding: 6rem 2rem 2rem;
+                gap: 2rem;
                 transform: translateX(-100%);
-                transition: transform 0.3s ease;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                border: none;
+                justify-content: flex-start;
+                overflow-y: auto;
             }
 
             nav ul.active {
                 transform: translateX(0);
             }
 
-            .hero {
-                padding: 6rem 1.5rem 3rem;
+            nav a {
+                font-size: 1.25rem;
+                text-align: center;
+                padding: 0.75rem;
             }
 
+            .cta-nav {
+                padding: 1rem 2rem !important;
+                width: 100%;
+                text-align: center;
+                margin-top: 1rem;
+            }
+
+            /* Hero Section - Mobile */
+            .hero {
+                padding: 5rem 1.25rem 3rem;
+                min-height: 90vh;
+            }
+
+            .hero-badge {
+                font-size: 0.75rem;
+                padding: 0.5rem 1rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .badge-dot {
+                width: 6px;
+                height: 6px;
+            }
+
+            .hero-title {
+                font-size: clamp(2rem, 12vw, 3.5rem);
+                margin-bottom: 1rem;
+                line-height: 1.2;
+            }
+
+            .hero-subtitle {
+                font-size: 1rem;
+                margin: 0 auto 2rem;
+                line-height: 1.6;
+            }
+
+            .hero-cta {
+                flex-direction: column;
+                gap: 1rem;
+                width: 100%;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+
+            .btn {
+                width: 100%;
+                padding: 1rem 2rem;
+                font-size: 1rem;
+                /* Larger touch targets for mobile */
+                min-height: 48px;
+            }
+
+            /* Stats Section - Mobile Grid */
             .stats {
-                gap: 2rem;
+                gap: 1.5rem;
+                margin-top: 4rem;
+                width: 100%;
+                max-width: 400px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .stat {
+                flex: 1;
+                min-width: 0;
             }
 
             .stat::after {
                 display: none;
             }
 
-            .features {
-                padding: 6rem 1.5rem;
+            .stat-number {
+                font-size: 2rem;
             }
 
+            .stat-label {
+                font-size: 0.75rem;
+            }
+
+            /* Features Section - Mobile */
+            .features {
+                padding: 5rem 1.25rem;
+            }
+
+            .section-tag {
+                font-size: 0.75rem;
+                padding: 0.4rem 0.9rem;
+            }
+
+            .section-title {
+                font-size: clamp(2rem, 8vw, 2.5rem);
+                margin-bottom: 1rem;
+            }
+
+            .section-subtitle {
+                font-size: 1rem;
+                padding: 0 0.5rem;
+            }
+
+            /* Bento Grid - Mobile Stack */
             .bento-grid {
                 gap: 1rem;
+                grid-template-columns: 1fr;
+            }
+
+            .bento-large,
+            .bento-medium,
+            .bento-small {
+                grid-column: span 1;
             }
 
             .bento-item {
-                padding: 2rem;
+                padding: 1.75rem;
             }
 
+            .feature-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .feature-title {
+                font-size: 1.25rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .feature-description {
+                font-size: 0.95rem;
+                line-height: 1.6;
+            }
+
+            /* CTA Section - Mobile */
             .cta-section {
-                padding: 4rem 1.5rem;
+                padding: 4rem 1.25rem;
             }
 
             .cta-container {
-                padding: 3rem 2rem;
+                padding: 2.5rem 1.5rem;
+                border-radius: 24px;
             }
 
-            .hero-cta {
-                flex-direction: column;
+            .cta-title {
+                font-size: clamp(1.75rem, 7vw, 2.25rem);
+                margin-bottom: 1rem;
+            }
+
+            .cta-description {
+                font-size: 1rem;
+                margin-bottom: 2rem;
+            }
+
+            /* Footer - Mobile */
+            footer {
+                padding: 3rem 1.25rem;
+            }
+
+            footer p {
+                font-size: 0.85rem;
+            }
+
+            /* Gradient Blobs - Smaller on Mobile */
+            .blob-1,
+            .blob-2,
+            .blob-3 {
+                width: 300px;
+                height: 300px;
+                filter: blur(80px);
+            }
+        }
+
+        /* Small Mobile (< 375px) */
+        @media (max-width: 375px) {
+            header {
+                padding: 0.875rem 1rem;
+            }
+
+            .hero {
+                padding: 4rem 1rem 2rem;
+            }
+
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .hero-subtitle {
+                font-size: 0.95rem;
             }
 
             .btn {
-                width: 100%;
+                padding: 0.875rem 1.5rem;
+                font-size: 0.95rem;
+            }
+
+            .stat-number {
+                font-size: 1.75rem;
+            }
+
+            .features,
+            .cta-section {
+                padding: 4rem 1rem;
+            }
+
+            .bento-item {
+                padding: 1.5rem;
+            }
+
+            .section-title {
+                font-size: 1.75rem;
+            }
+
+            .cta-container {
+                padding: 2rem 1.25rem;
+            }
+        }
+
+        /* Landscape Mobile */
+        @media (max-width: 900px) and (orientation: landscape) {
+            .hero {
+                min-height: auto;
+                padding: 4rem 2rem 3rem;
+            }
+
+            .stats {
+                margin-top: 3rem;
+            }
+        }
+
+        /* Prevent horizontal scroll on mobile */
+        @media (max-width: 768px) {
+            body {
+                overflow-x: hidden;
+            }
+
+            * {
+                /* Prevent text from causing overflow */
+                overflow-wrap: break-word;
+                word-wrap: break-word;
             }
         }
     </style>
