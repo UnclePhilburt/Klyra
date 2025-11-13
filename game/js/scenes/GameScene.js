@@ -850,20 +850,23 @@ class GameScene extends Phaser.Scene {
             const variant = variants[variantIndex];
 
             // Render decoration tiles
+            // Calculate actual rendered tile size to avoid gaps in multi-tile decorations
+            const scaledTileSize = 48 * scale * variant.scale;
+
             for (let i = 0; i < variant.frames.length; i++) {
                 const frame = variant.frames[i];
                 let tilePx = px;
                 let tilePy = py;
 
-                // Handle multi-tile positioning
+                // Handle multi-tile positioning - use scaled size to avoid gaps
                 if (variant.frames.length === 2) {
                     // Check if it's 2x1 (horizontal) or 1x2 (vertical)
                     if (type === 'red_log' && frame === 95) {
                         // Red log 3 is 2x1 (horizontal)
-                        tilePx = px + (i * tileSize);
+                        tilePx = px + (i * scaledTileSize);
                     } else {
                         // All others are 1x2 (vertical)
-                        tilePy = py + (i * tileSize);
+                        tilePy = py + (i * scaledTileSize);
                     }
                 }
 
