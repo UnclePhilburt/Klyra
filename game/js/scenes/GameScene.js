@@ -170,28 +170,63 @@ class GameScene extends Phaser.Scene {
         // Create container for tiles
         this.tileContainer = this.add.container(0, 0);
 
-        // Map biome types to tileset textures and tile indices
+        // Tile variation arrays from A2 - terrain and misc
+        const GRASS_VARIATIONS = [
+            // Basic grass variations
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+            52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
+            104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115,
+            156, 157,
+            559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570,
+            611, 612, 613, 614, 615, 616, 617, 618, 619, 620,
+            663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674,
+            715, 716, 717, 718, 719, 720, 721, 722, 723, 724, 725, 726
+        ];
+
+        const DIRT_VARIATIONS = [
+            // Basic dirty variations
+            520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 531,
+            624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635,
+            676, 677, 678, 679, 680, 681, 682, 683, 684, 685, 686, 687
+        ];
+
+        const DIRT_GRASS_MIX_VARIATIONS = [
+            // Dirty patch with grass tile variations
+            533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544,
+            585, 586, 587, 588, 589, 590, 591, 592, 593, 594,
+            637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648,
+            689, 690, 691, 692, 693, 694, 695, 696, 697, 698, 699, 700
+        ];
+
+        // Map biome types to tileset textures and tile variation arrays
         const BIOME_TILESET_MAP = {
-            // Grassland - Use green terrain tiles
-            10: { texture: 'terrain_green', frame: 3 },
-            11: { texture: 'terrain_green', frame: 5 },
-            12: { texture: 'terrain_green', frame: 7 },
+            // Grassland - Use grass variations from A2
+            10: { texture: 'forest_extended', variations: GRASS_VARIATIONS },
+            11: { texture: 'forest_extended', variations: GRASS_VARIATIONS },
+            12: { texture: 'forest_extended', variations: GRASS_VARIATIONS },
 
-            // Forest - Use forest tiles
-            20: { texture: 'forest', frame: 3 },
-            21: { texture: 'forest', frame: 5 },
-            22: { texture: 'forest', frame: 7 },
+            // Forest - Use dirt/grass mix variations
+            20: { texture: 'forest_extended', variations: DIRT_GRASS_MIX_VARIATIONS },
+            21: { texture: 'forest_extended', variations: DIRT_GRASS_MIX_VARIATIONS },
+            22: { texture: 'forest_extended', variations: DIRT_GRASS_MIX_VARIATIONS },
 
-            // Magic Grove - Use purple terrain tileset
-            30: { texture: 'terrain_base', frame: 3 },
-            31: { texture: 'terrain_base', frame: 5 },
-            32: { texture: 'terrain_base', frame: 7 },
+            // Magic Grove - Use grass variations
+            30: { texture: 'forest_extended', variations: GRASS_VARIATIONS },
+            31: { texture: 'forest_extended', variations: GRASS_VARIATIONS },
+            32: { texture: 'forest_extended', variations: GRASS_VARIATIONS },
 
-            // Dark Woods - Use darker forest tiles
-            40: { texture: 'forest', frame: 10 },
-            41: { texture: 'forest', frame: 12 },
-            42: { texture: 'forest', frame: 14 }
+            // Dark Woods - Use dirt variations
+            40: { texture: 'forest_extended', variations: DIRT_VARIATIONS },
+            41: { texture: 'forest_extended', variations: DIRT_VARIATIONS },
+            42: { texture: 'forest_extended', variations: DIRT_VARIATIONS }
         };
+
+        // Flower patch variations (overlays placed on top of grass tiles)
+        const FLOWER_PATCH_VARIATIONS = [
+            780, 781, 782, 783, 784, 785, 786, 787, 788, 789, 790, 791,
+            884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895,
+            936, 937, 938, 939, 940, 941, 942, 943, 944, 945, 946, 947
+        ];
 
         // Render tiles using individual frames from spritesheets
         for (let y = 0; y < height; y++) {
@@ -201,23 +236,32 @@ class GameScene extends Phaser.Scene {
                 const py = y * tileSize;
 
                 // Get tileset mapping for this biome
-                const tileInfo = BIOME_TILESET_MAP[tile] || { texture: 'terrain_base', frame: 0 };
+                const tileInfo = BIOME_TILESET_MAP[tile] || { texture: 'forest_extended', variations: GRASS_VARIATIONS };
 
-                // Create sprite from specific tile frame in the spritesheet
-                const tileSprite = this.add.sprite(px, py, tileInfo.texture, tileInfo.frame);
+                // Randomly select a tile variation from the array
+                const variationIndex = Math.floor(this.seededRandom(this.dungeonSeed) * tileInfo.variations.length);
+                const selectedFrame = tileInfo.variations[variationIndex];
+
+                // Create sprite from randomly selected tile frame
+                const tileSprite = this.add.sprite(px, py, tileInfo.texture, selectedFrame);
                 tileSprite.setOrigin(0, 0);
 
                 // Scale to game tile size (48px tileset -> 32px game tile)
                 const scale = tileSize / 48;
                 tileSprite.setScale(scale);
 
-                // Add slight variety with seeded random for consistency across clients
-                if (this.seededRandom(this.dungeonSeed) < 0.2) {
-                    const randomOffset = Math.floor(this.seededRandom(this.dungeonSeed) * 3);
-                    tileSprite.setFrame(tileInfo.frame + randomOffset);
-                }
-
                 this.tileContainer.add(tileSprite);
+
+                // Add flower patch overlays to grassland tiles (5% chance)
+                if ((tile === 10 || tile === 11 || tile === 12) && this.seededRandom(this.dungeonSeed) < 0.05) {
+                    const patchIndex = Math.floor(this.seededRandom(this.dungeonSeed) * FLOWER_PATCH_VARIATIONS.length);
+                    const patchFrame = FLOWER_PATCH_VARIATIONS[patchIndex];
+
+                    const patchSprite = this.add.sprite(px, py, 'forest_extended', patchFrame);
+                    patchSprite.setOrigin(0, 0);
+                    patchSprite.setScale(scale);
+                    this.tileContainer.add(patchSprite);
+                }
             }
         }
 
