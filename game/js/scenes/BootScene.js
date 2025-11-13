@@ -63,7 +63,16 @@ class BootScene extends Phaser.Scene {
             spacing: 0
         });
 
+        // Malachar's Minion sprite sheet (5 rows x 13 columns, 64x64px)
+        this.load.spritesheet('malacharminion', 'assets/sprites/malacharminion.png', {
+            frameWidth: 64,
+            frameHeight: 64,
+            spacing: 0,
+            margin: 0
+        });
+
         console.log('📦 Loading sprite: malachar from assets/sprites/malachar.png');
+        console.log('📦 Loading sprite: malacharminion from assets/sprites/malacharminion.png');
 
         // Debug: Log spritesheet info after load
         this.load.once('complete', () => {
@@ -89,6 +98,27 @@ class BootScene extends Phaser.Scene {
 
         // Malachar uses manual frame animation (2x2 tile character)
         // No Phaser animations needed
+
+        // Create minion animations
+        // 5 rows x 13 columns, 64x64px
+        // Row 4 (index 3): idle animation, 4 frames (frames 39-42)
+        // Row 3 (index 2): walking animation, 12 frames (frames 26-37)
+
+        this.anims.create({
+            key: 'minion_idle',
+            frames: this.anims.generateFrameNumbers('malacharminion', { start: 39, end: 42 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'minion_walk',
+            frames: this.anims.generateFrameNumbers('malacharminion', { start: 26, end: 37 }),
+            frameRate: 12,
+            repeat: -1
+        });
+
+        console.log('✅ Created minion animations: idle (frames 39-42), walk (frames 26-37)');
 
         // Don't connect to server - custom menu handles that
         // Just load assets and wait for custom menu to call game.connect()

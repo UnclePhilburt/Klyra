@@ -5,6 +5,8 @@ class GameScene extends Phaser.Scene {
         this.otherPlayers = {};
         this.enemies = {};
         this.items = {};
+        this.minions = {};
+        this.minionIdCounter = 0;
     }
 
     init(data) {
@@ -120,12 +122,33 @@ class GameScene extends Phaser.Scene {
         if (myData) {
             this.localPlayer = new Player(this, myData, true);
             this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.1, 0.1);
+
+            // Spawn permanent minion if player is Malachar
+            if (myData.class === 'MALACHAR') {
+                this.spawnMinion(
+                    this.localPlayer.sprite.x + 40,
+                    this.localPlayer.sprite.y,
+                    myData.id,
+                    true // permanent
+                );
+            }
         }
 
         // Create other players
         this.gameData.players.forEach(playerData => {
             if (playerData.id !== networkManager.currentPlayer.id) {
                 this.otherPlayers[playerData.id] = new Player(this, playerData);
+
+                // Spawn permanent minion if player is Malachar
+                if (playerData.class === 'MALACHAR') {
+                    const player = this.otherPlayers[playerData.id];
+                    this.spawnMinion(
+                        player.sprite.x + 40,
+                        player.sprite.y,
+                        playerData.id,
+                        true // permanent
+                    );
+                }
             }
         });
 
@@ -548,6 +571,16 @@ class GameScene extends Phaser.Scene {
                 const newPlayer = new Player(this, data.player);
                 this.otherPlayers[data.player.id] = newPlayer;
 
+                // Spawn permanent minion if player is Malachar
+                if (data.player.class === 'MALACHAR') {
+                    this.spawnMinion(
+                        newPlayer.sprite.x + 40,
+                        newPlayer.sprite.y,
+                        data.player.id,
+                        true // permanent
+                    );
+                }
+
                 // Add tree collisions to new player
                 if (this.treeCollisions) {
                     this.treeCollisions.forEach(collisionRect => {
@@ -567,6 +600,15 @@ class GameScene extends Phaser.Scene {
             if (player) {
                 player.sprite.destroy();
                 delete this.otherPlayers[data.playerId];
+
+                // Remove all minions owned by this player
+                Object.keys(this.minions).forEach(minionId => {
+                    const minion = this.minions[minionId];
+                    if (minion.ownerId === data.playerId) {
+                        minion.destroy();
+                        delete this.minions[minionId];
+                    }
+                });
             }
         });
 
@@ -607,8 +649,25 @@ class GameScene extends Phaser.Scene {
         networkManager.on('enemy:died', (data) => {
             const enemy = this.enemies[data.enemyId];
             if (enemy) {
+                const deathX = enemy.sprite.x;
+                const deathY = enemy.sprite.y;
+
                 enemy.die();
                 delete this.enemies[data.enemyId];
+
+                // Check if killer is Malachar with dark_harvest passive
+                if (data.killerId) {
+                    const killer = data.killerId === networkManager.currentPlayer.id
+                        ? this.localPlayer
+                        : this.otherPlayers[data.killerId];
+
+                    if (killer && killer.class === 'MALACHAR') {
+                        // 15% chance to summon minion (dark_harvest passive)
+                        if (Math.random() < 0.15) {
+                            this.spawnMinion(deathX, deathY, data.killerId);
+                        }
+                    }
+                }
             }
         });
 
@@ -1014,6 +1073,25 @@ class GameScene extends Phaser.Scene {
         }
     }
 
+    spawnMinion(x, y, ownerId, isPermanent = false) {
+        const minionId = `minion_${this.minionIdCounter++}`;
+        this.minions[minionId] = new Minion(this, x, y, ownerId, isPermanent);
+
+        const minionType = isPermanent ? 'permanent companion' : 'temporary minion';
+        console.log(`🔮 Malachar summoned ${minionType} at ${x}, ${y}`);
+
+        // Show spawn effect
+        const spawnCircle = this.add.circle(x, y, 30, 0x8B008B, 0.6);
+        this.tweens.add({
+            targets: spawnCircle,
+            scale: 2,
+            alpha: 0,
+            duration: 400,
+            ease: 'Power2',
+            onComplete: () => spawnCircle.destroy()
+        });
+    }
+
     showAttackEffect(position) {
         // Visual attack effect
     }
@@ -1073,6 +1151,13 @@ class GameScene extends Phaser.Scene {
             if (this.modernHUD) {
                 this.modernHUD.update();
             }
+
+        // Update minions
+        Object.values(this.minions).forEach(minion => {
+            if (minion.isAlive) {
+                minion.update();
+            }
+        });
 
         // Infinite health
         if (this.devSettings.infiniteHealth && this.localPlayer) {
