@@ -473,6 +473,9 @@ class Lobby {
         const now = Date.now();
         let movedCount = 0;
 
+        // Debug: Check if we have enemies
+        if (this.gameState.enemies.length === 0) return;
+
         this.gameState.enemies.forEach(enemy => {
             if (!enemy.isAlive) return;
 
@@ -484,6 +487,19 @@ class Lobby {
             // Find nearest target (player or minion being attacked by)
             let target = null;
             let targetDistance = Infinity;
+
+            // Debug: Check if we have players
+            if (this.players.size === 0) {
+                console.log('⚠️  No players in lobby for enemy AI');
+                return;
+            }
+
+            // Debug: Log player positions occasionally
+            if (Math.random() < 0.01) { // Log 1% of the time
+                this.players.forEach(p => {
+                    console.log(`👤 Player ${p.username} at (${p.position.x}, ${p.position.y})`);
+                });
+            }
 
             // Check all players
             this.players.forEach(player => {
@@ -508,7 +524,12 @@ class Lobby {
                 }
             });
 
-            if (!target) return;
+            if (!target) {
+                if (Math.random() < 0.05) { // Log 5% of the time
+                    console.log(`⚠️  Enemy ${enemy.type} at (${enemy.position.x.toFixed(1)}, ${enemy.position.y.toFixed(1)}) has no target`);
+                }
+                return;
+            }
 
             // Move toward target
             const dx = target.position.x - enemy.position.x;
