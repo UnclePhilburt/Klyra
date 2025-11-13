@@ -272,22 +272,22 @@ class GameScene extends Phaser.Scene {
 
         // Map biome types to tileset textures and tile indices
         this.BIOME_TILESET_MAP = {
-            // Grassland - Use green terrain tiles with variety
+            // Grassland - Pure green only
             10: { texture: 'terrain_green', frame: 0 },
             11: { texture: 'terrain_green', frame: 1 },
             12: { texture: 'terrain_green', frame: 2 },
 
-            // Forest - Use forest tiles with variety
+            // Forest - Dark green forest tiles
             20: { texture: 'forest', frame: 0 },
             21: { texture: 'forest', frame: 1 },
             22: { texture: 'forest', frame: 2 },
 
-            // Magic Grove - Use red/purple terrain tileset with variety
+            // Desert/Volcanic - Red/orange terrain (separate from grassland)
             30: { texture: 'terrain_red', frame: 0 },
             31: { texture: 'terrain_red', frame: 1 },
             32: { texture: 'terrain_red', frame: 2 },
 
-            // Dark Woods - Use extended forest tiles with variety
+            // Dark Woods - Extended forest (dark/spooky)
             40: { texture: 'forest_extended', frame: 0 },
             41: { texture: 'forest_extended', frame: 1 },
             42: { texture: 'forest_extended', frame: 2 }
@@ -322,12 +322,12 @@ class GameScene extends Phaser.Scene {
         // Convert seed string to number
         const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
-        // Biome definitions
+        // Biome definitions - distinct and separate
         const BIOMES = {
-            GRASSLAND: { tiles: [10, 11, 12], id: 'grassland' },
-            FOREST: { tiles: [20, 21, 22], id: 'forest' },
-            MAGIC_GROVE: { tiles: [30, 31, 32], id: 'magic' },
-            DARK_WOODS: { tiles: [40, 41, 42], id: 'dark' }
+            GRASSLAND: { tiles: [10, 11, 12], id: 'grassland' },      // Pure green
+            FOREST: { tiles: [20, 21, 22], id: 'forest' },            // Dark green
+            DESERT: { tiles: [30, 31, 32], id: 'desert' },            // Red/orange
+            DARK_WOODS: { tiles: [40, 41, 42], id: 'dark' }           // Dark/spooky
         };
 
         // Generate biome using noise
@@ -336,12 +336,12 @@ class GameScene extends Phaser.Scene {
         const noise3 = this.noise2D(x * 0.08, y * 0.08, seed + 2000);
         const combinedNoise = (noise1 * 0.6 + noise2 * 0.3 + noise3 * 0.1);
 
-        // Determine biome
+        // Determine biome - clear boundaries to prevent mixing
         let selectedBiome;
-        if (combinedNoise < 0.35) selectedBiome = BIOMES.GRASSLAND;
-        else if (combinedNoise < 0.7) selectedBiome = BIOMES.FOREST;
-        else if (combinedNoise < 0.85) selectedBiome = BIOMES.MAGIC_GROVE;
-        else selectedBiome = BIOMES.DARK_WOODS;
+        if (combinedNoise < 0.4) selectedBiome = BIOMES.GRASSLAND;        // 40% grassland (green only)
+        else if (combinedNoise < 0.7) selectedBiome = BIOMES.FOREST;      // 30% forest
+        else if (combinedNoise < 0.85) selectedBiome = BIOMES.DESERT;     // 15% desert (red)
+        else selectedBiome = BIOMES.DARK_WOODS;                           // 15% dark woods
 
         // Select tile variation
         const tileVariation = Math.floor(this.seededRandom(seed + x * 100 + y) * selectedBiome.tiles.length);
@@ -366,8 +366,8 @@ class GameScene extends Phaser.Scene {
         let spawnChance;
         if (biome === 'grassland') spawnChance = 0.03; // 3% - lots of flowers/grass
         else if (biome === 'forest') spawnChance = 0.04; // 4% - dense forest
-        else if (biome === 'magic') spawnChance = 0.025; // 2.5% - mysterious
-        else if (biome === 'dark') spawnChance = 0.02; // 2% - sparse
+        else if (biome === 'desert') spawnChance = 0.015; // 1.5% - sparse desert
+        else if (biome === 'dark') spawnChance = 0.02; // 2% - sparse dark woods
 
         if (decoChance > spawnChance) return null;
 
@@ -375,24 +375,24 @@ class GameScene extends Phaser.Scene {
 
         let decorationType;
         if (biome === 'grassland') {
-            // Grassland: lots of flowers and grass
+            // Grassland: lots of flowers and grass (GREEN ONLY)
             if (rand < 0.5) decorationType = 'flower';
             else if (rand < 0.8) decorationType = 'grass';
             else if (rand < 0.95) decorationType = 'rock';
             else decorationType = 'baby_tree';
         } else if (biome === 'forest') {
-            // Forest: lots of trees and vegetation
+            // Forest: lots of trees and vegetation (DARK GREEN)
             if (rand < 0.4) decorationType = 'tree';
             else if (rand < 0.6) decorationType = 'bush';
             else if (rand < 0.75) decorationType = 'log';
             else if (rand < 0.9) decorationType = 'tree_stump';
             else decorationType = 'grass';
-        } else if (biome === 'magic') {
-            // Magic Grove: mystical decorations
-            if (rand < 0.35) decorationType = 'magic_tree';
-            else if (rand < 0.6) decorationType = 'rune_stone';
-            else if (rand < 0.85) decorationType = 'flower';
-            else decorationType = 'hollow_trunk';
+        } else if (biome === 'desert') {
+            // Desert: sparse red/orange terrain with rocks and dead trees
+            if (rand < 0.4) decorationType = 'rock';
+            else if (rand < 0.7) decorationType = 'dead_tree';
+            else if (rand < 0.9) decorationType = 'log';
+            else decorationType = 'skull';
         } else if (biome === 'dark') {
             // Dark Woods: spooky stuff
             if (rand < 0.4) decorationType = 'dead_tree';

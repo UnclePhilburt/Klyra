@@ -285,12 +285,12 @@ class Lobby {
         const biomes = Array(height).fill(null).map(() => Array(width).fill(null));
         const decorations = [];
 
-        // Biome definitions with tile types (removed water-based crystal plains)
+        // Biome definitions - distinct and separate (matches client)
         const BIOMES = {
-            GRASSLAND: { id: 'grassland', tiles: [10, 11, 12], weight: 0.35 },
-            FOREST: { id: 'forest', tiles: [20, 21, 22], weight: 0.35 },
-            MAGIC_GROVE: { id: 'magic', tiles: [30, 31, 32], weight: 0.15 },
-            DARK_WOODS: { id: 'dark', tiles: [40, 41, 42], weight: 0.15 }
+            GRASSLAND: { id: 'grassland', tiles: [10, 11, 12], weight: 0.4 },  // Green only
+            FOREST: { id: 'forest', tiles: [20, 21, 22], weight: 0.3 },        // Dark green
+            DESERT: { id: 'desert', tiles: [30, 31, 32], weight: 0.15 },       // Red/orange
+            DARK_WOODS: { id: 'dark', tiles: [40, 41, 42], weight: 0.15 }      // Dark/spooky
         };
 
         const biomeStats = {};
@@ -305,12 +305,12 @@ class Lobby {
 
                 const combinedNoise = (noise1 * 0.6 + noise2 * 0.3 + noise3 * 0.1);
 
-                // Determine biome based on noise value - creates larger distinct regions
+                // Determine biome based on noise value - clear boundaries to prevent mixing
                 let selectedBiome;
-                if (combinedNoise < 0.35) selectedBiome = BIOMES.GRASSLAND;
-                else if (combinedNoise < 0.7) selectedBiome = BIOMES.FOREST;
-                else if (combinedNoise < 0.85) selectedBiome = BIOMES.MAGIC_GROVE;
-                else selectedBiome = BIOMES.DARK_WOODS;
+                if (combinedNoise < 0.4) selectedBiome = BIOMES.GRASSLAND;      // 40% grassland (green only)
+                else if (combinedNoise < 0.7) selectedBiome = BIOMES.FOREST;    // 30% forest
+                else if (combinedNoise < 0.85) selectedBiome = BIOMES.DESERT;   // 15% desert (red)
+                else selectedBiome = BIOMES.DARK_WOODS;                         // 15% dark woods
 
                 biomes[y][x] = selectedBiome.id;
 
@@ -334,32 +334,32 @@ class Lobby {
             const rand = this.seededRandom(seed + i);
 
             if (biome === 'grassland') {
-                // Grassland: flowers (40%), grass (30%), rocks (20%), baby trees (10%)
-                if (rand < 0.4) decorationType = 'flower';
-                else if (rand < 0.7) decorationType = 'grass';
-                else if (rand < 0.9) decorationType = 'rock';
+                // Grassland: lots of flowers and grass (GREEN ONLY)
+                if (rand < 0.5) decorationType = 'flower';
+                else if (rand < 0.8) decorationType = 'grass';
+                else if (rand < 0.95) decorationType = 'rock';
                 else decorationType = 'baby_tree';
             }
             else if (biome === 'forest') {
-                // Forest: trees (50%), bushes (20%), logs (15%), stumps (10%), grass (5%)
-                if (rand < 0.5) decorationType = 'tree';
-                else if (rand < 0.7) decorationType = 'bush';
-                else if (rand < 0.85) decorationType = 'log';
-                else if (rand < 0.95) decorationType = 'tree_stump';
+                // Forest: lots of trees and vegetation (DARK GREEN)
+                if (rand < 0.4) decorationType = 'tree';
+                else if (rand < 0.6) decorationType = 'bush';
+                else if (rand < 0.75) decorationType = 'log';
+                else if (rand < 0.9) decorationType = 'tree_stump';
                 else decorationType = 'grass';
             }
-            else if (biome === 'magic') {
-                // Magic Grove: magic trees (40%), rune stones (30%), flowers (20%), hollow trunks (10%)
-                if (rand < 0.4) decorationType = 'magic_tree';
-                else if (rand < 0.7) decorationType = 'rune_stone';
-                else if (rand < 0.9) decorationType = 'flower';
-                else decorationType = 'hollow_trunk';
+            else if (biome === 'desert') {
+                // Desert: sparse red/orange terrain with rocks and dead trees
+                if (rand < 0.4) decorationType = 'rock';
+                else if (rand < 0.7) decorationType = 'dead_tree';
+                else if (rand < 0.9) decorationType = 'log';
+                else decorationType = 'skull';
             }
             else if (biome === 'dark') {
-                // Dark Woods: dead trees (50%), skulls (20%), logs (20%), rocks (10%)
-                if (rand < 0.5) decorationType = 'dead_tree';
-                else if (rand < 0.7) decorationType = 'skull';
-                else if (rand < 0.9) decorationType = 'log';
+                // Dark Woods: spooky stuff
+                if (rand < 0.4) decorationType = 'dead_tree';
+                else if (rand < 0.6) decorationType = 'skull';
+                else if (rand < 0.85) decorationType = 'log';
                 else decorationType = 'rock';
             }
             else {
