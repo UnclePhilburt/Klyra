@@ -155,6 +155,13 @@ class Lobby {
             return { success: false, error: 'Game is full' };
         }
 
+        // Ensure player is alive when joining
+        if (!player.isAlive) {
+            console.log(`⚠️ Resetting ${player.username} to alive (was dead when joining)`);
+            player.isAlive = true;
+            player.health = player.maxHealth;
+        }
+
         this.players.set(player.id, player);
         player.lobbyId = this.id;
 
@@ -654,13 +661,15 @@ io.on('connection', (socket) => {
             let player;
 
             if (disconnectedPlayer && Date.now() - disconnectedPlayer.disconnectedAt < RECONNECT_TIMEOUT) {
-                // Reconnection
+                // Reconnection - restore player but reset vital stats
                 player = disconnectedPlayer;
                 player.id = socket.id;
                 player.isReconnecting = false;
                 player.disconnectedAt = null;
+                player.isAlive = true; // Reset to alive on reconnect
+                player.health = player.maxHealth; // Restore full health
                 disconnectedPlayers.delete(username);
-                console.log(`🔄 ${username} reconnected`);
+                console.log(`🔄 ${username} reconnected (restored to full health)`);
             } else {
                 // New player
                 player = new Player(socket.id, username);
