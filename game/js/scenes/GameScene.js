@@ -457,7 +457,8 @@ class GameScene extends Phaser.Scene {
                 sprite1.setDepth(py + tileSize);
                 this.tileContainer.add(sprite1);
 
-                const sprite2 = this.add.sprite(px + tileSize, py, 'objects_d', frames[1]);
+                // Position sprite2 based on actual width of sprite1 to avoid gaps
+                const sprite2 = this.add.sprite(px + sprite1.displayWidth, py, 'objects_d', frames[1]);
                 sprite2.setOrigin(0, 0);
                 sprite2.setScale(finalScale);
                 sprite2.setDepth(py + tileSize);
@@ -471,7 +472,8 @@ class GameScene extends Phaser.Scene {
                 topSprite.setDepth(py + tileSize * 2);
                 this.tileContainer.add(topSprite);
 
-                const bottomSprite = this.add.sprite(px, py + tileSize, 'objects_d', frames[1]);
+                // Position bottomSprite based on actual height of topSprite to avoid gaps
+                const bottomSprite = this.add.sprite(px, py + topSprite.displayHeight, 'objects_d', frames[1]);
                 bottomSprite.setOrigin(0, 0);
                 bottomSprite.setScale(finalScale);
                 bottomSprite.setDepth(py + tileSize * 2);
