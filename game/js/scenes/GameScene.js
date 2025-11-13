@@ -653,6 +653,29 @@ class GameScene extends Phaser.Scene {
             }
         });
 
+        // Enemy moved
+        networkManager.on('enemy:moved', (data) => {
+            const enemy = this.enemies[data.enemyId];
+            if (enemy && enemy.sprite) {
+                const tileSize = GameConfig.GAME.TILE_SIZE;
+                const targetX = data.position.x * tileSize + tileSize / 2;
+                const targetY = data.position.y * tileSize + tileSize / 2;
+
+                // Smooth movement
+                enemy.sprite.x = targetX;
+                enemy.sprite.y = targetY;
+            }
+        });
+
+        // Player damaged by enemy
+        networkManager.on('player:damaged', (data) => {
+            if (data.playerId === networkManager.currentPlayer.id && this.localPlayer) {
+                this.localPlayer.health = data.health;
+                // Show damage effect
+                this.cameras.main.shake(100, 0.005);
+            }
+        });
+
         // Enemy killed
         networkManager.on('enemy:killed', (data) => {
             const enemy = this.enemies[data.enemyId];

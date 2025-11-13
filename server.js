@@ -362,29 +362,57 @@ class Lobby {
         return points;
     }
 
+    getEdgeSpawnPosition() {
+        const { width, height } = this.getDungeonSize();
+        const edge = Math.floor(Math.random() * 4); // 0=top, 1=right, 2=bottom, 3=left
+
+        let x, y;
+        switch(edge) {
+            case 0: // Top edge
+                x = Math.floor(Math.random() * width);
+                y = -2;
+                break;
+            case 1: // Right edge
+                x = width + 2;
+                y = Math.floor(Math.random() * height);
+                break;
+            case 2: // Bottom edge
+                x = Math.floor(Math.random() * width);
+                y = height + 2;
+                break;
+            case 3: // Left edge
+                x = -2;
+                y = Math.floor(Math.random() * height);
+                break;
+        }
+
+        return { x, y };
+    }
+
     spawnEnemies(count) {
         const enemyTypes = [
-            { type: 'goblin', health: 50, damage: 10, speed: 5 },
-            { type: 'orc', health: 80, damage: 15, speed: 3 },
-            { type: 'skeleton', health: 40, damage: 12, speed: 6 },
-            { type: 'troll', health: 120, damage: 20, speed: 2 },
-            { type: 'demon', health: 150, damage: 25, speed: 4 }
+            { type: 'goblin', speed: 80 },
+            { type: 'orc', speed: 60 },
+            { type: 'skeleton', speed: 100 },
+            { type: 'troll', speed: 50 },
+            { type: 'demon', speed: 70 }
         ];
 
         for (let i = 0; i < count; i++) {
             const enemyTemplate = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-            const difficultyMultiplier = { easy: 0.7, normal: 1, hard: 1.3, nightmare: 1.6 }[this.difficulty] || 1;
 
             this.gameState.enemies.push({
                 id: uuidv4(),
                 type: enemyTemplate.type,
-                position: this.getRandomFloorPosition(),
-                health: Math.floor(enemyTemplate.health * difficultyMultiplier * (1 + this.gameState.floor * 0.15)),
-                maxHealth: Math.floor(enemyTemplate.health * difficultyMultiplier * (1 + this.gameState.floor * 0.15)),
-                damage: Math.floor(enemyTemplate.damage * difficultyMultiplier),
+                position: this.getEdgeSpawnPosition(),
+                health: 25,
+                maxHealth: 25,
+                damage: 10,
                 speed: enemyTemplate.speed,
                 isAlive: true,
-                lastMove: Date.now()
+                lastMove: Date.now(),
+                target: null, // Current target (player or minion)
+                aggro: new Map() // Track aggro from different sources
             });
         }
     }
@@ -433,6 +461,93 @@ class Lobby {
     broadcast(event, data) {
         this.players.forEach(player => {
             io.to(player.id).emit(event, data);
+        });
+    }
+
+    updateEnemies() {
+        const tileSize = 32;
+        const now = Date.now();
+
+        this.gameState.enemies.forEach(enemy => {
+            if (!enemy.isAlive) return;
+
+            // Update every 100ms
+            if (now - enemy.lastMove < 100) return;
+            enemy.lastMove = now;
+
+            // Find nearest target (player or minion being attacked by)
+            let target = null;
+            let targetDistance = Infinity;
+
+            // Check all players
+            this.players.forEach(player => {
+                if (!player.isAlive) return;
+
+                const dist = Math.sqrt(
+                    Math.pow(player.position.x - enemy.position.x, 2) +
+                    Math.pow(player.position.y - enemy.position.y, 2)
+                );
+
+                // Base aggro
+                let aggroValue = 100 / (dist + 1);
+
+                // Add bonus aggro from damage taken
+                if (enemy.aggro && enemy.aggro.has(player.id)) {
+                    aggroValue += enemy.aggro.get(player.id);
+                }
+
+                if (aggroValue > targetDistance) {
+                    targetDistance = aggroValue;
+                    target = { position: player.position, id: player.id };
+                }
+            });
+
+            if (!target) return;
+
+            // Move toward target
+            const dx = target.position.x - enemy.position.x;
+            const dy = target.position.y - enemy.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 1) {
+                const moveDistance = enemy.speed / 1000; // Pixels per update tick
+                enemy.position.x += (dx / distance) * moveDistance;
+                enemy.position.y += (dy / distance) * moveDistance;
+
+                // Broadcast enemy movement
+                this.broadcast('enemy:moved', {
+                    enemyId: enemy.id,
+                    position: enemy.position
+                });
+            }
+
+            // Attack if close enough (1 tile)
+            if (distance < 1.5) {
+                // Attack target
+                const damageTarget = Array.from(this.players.values()).find(p => p.id === target.id);
+                if (damageTarget && damageTarget.isAlive) {
+                    damageTarget.health -= enemy.damage;
+                    if (damageTarget.health <= 0) {
+                        damageTarget.isAlive = false;
+                        damageTarget.health = 0;
+                        damageTarget.deaths++;
+
+                        this.broadcast('player:died', {
+                            playerId: damageTarget.id,
+                            playerName: damageTarget.username,
+                            killedBy: enemy.id
+                        });
+                    } else {
+                        this.broadcast('player:damaged', {
+                            playerId: damageTarget.id,
+                            health: damageTarget.health,
+                            maxHealth: damageTarget.maxHealth,
+                            damage: enemy.damage,
+                            attackerId: enemy.id
+                        });
+                    }
+                }
+            }
         });
     }
 
@@ -629,6 +744,11 @@ io.on('connection', (socket) => {
             const damage = data.damage || player.stats.strength;
             enemy.health -= damage;
             player.updateActivity();
+
+            // Add aggro for the attacker
+            if (!enemy.aggro) enemy.aggro = new Map();
+            const currentAggro = enemy.aggro.get(player.id) || 0;
+            enemy.aggro.set(player.id, currentAggro + damage * 2); // Damage generates 2x aggro
 
             if (enemy.health <= 0) {
                 enemy.isAlive = false;
@@ -850,6 +970,15 @@ setInterval(() => {
         }
     });
 }, 60000); // Check every minute
+
+// Game loop - update enemy AI
+setInterval(() => {
+    lobbies.forEach((lobby) => {
+        if (lobby.status === 'active') {
+            lobby.updateEnemies();
+        }
+    });
+}, 100); // Update every 100ms
 
 // Cleanup old lobbies
 setInterval(() => {
