@@ -126,6 +126,12 @@ class GameScene extends Phaser.Scene {
             frameHeight: 48
         });
 
+        // Red biome decorations - 48x48 tiles
+        this.load.spritesheet('red_decorations', 'assets/tilesets/redbiome/Fantasy_Outside_D_red.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+
         // Enemy sprites
         this.load.spritesheet('skullwolf', 'assets/sprites/skullwolf.png', {
             frameWidth: 64,
@@ -436,8 +442,17 @@ class GameScene extends Phaser.Scene {
             else if (rand < 0.9) decorationType = 'tree_stump';
             else decorationType = 'grass';
         } else if (biome === 'red') {
-            // Red: ONLY red trees from Big_Trees_red.png
-            decorationType = 'red_tree';
+            // Red biome: red trees + red decorations
+            if (rand < 0.20) decorationType = 'red_tree';           // 20% - big trees
+            else if (rand < 0.35) decorationType = 'red_flower';    // 15% - flowers
+            else if (rand < 0.50) decorationType = 'red_grass';     // 15% - grass
+            else if (rand < 0.63) decorationType = 'red_bush';      // 13% - bushes
+            else if (rand < 0.73) decorationType = 'red_mushroom';  // 10% - mushrooms
+            else if (rand < 0.81) decorationType = 'red_log';       // 8% - logs
+            else if (rand < 0.88) decorationType = 'red_stone';     // 7% - stones
+            else if (rand < 0.93) decorationType = 'red_stump';     // 5% - stumps
+            else if (rand < 0.97) decorationType = 'red_trunk';     // 4% - tree trunks
+            else decorationType = 'red_baby_tree';                  // 3% - baby trees
         }
 
         return decorationType;
@@ -752,6 +767,111 @@ class GameScene extends Phaser.Scene {
                 sprites: treeGroup,
                 collisionY: collisionY
             });
+
+        } else if (type === 'red_flower' || type === 'red_grass' || type === 'red_bush' ||
+                   type === 'red_mushroom' || type === 'red_log' || type === 'red_stone' ||
+                   type === 'red_stump' || type === 'red_trunk' || type === 'red_baby_tree') {
+            // RED BIOME DECORATIONS from Fantasy_Outside_D_red.png
+            const scale = tileSize / 48;
+            const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const variantSeed = seed + x * 3001 + y * 7001;
+            const variantRand = this.seededRandom(variantSeed);
+
+            // Define all red decoration variants
+            const RED_FLOWER_VARIANTS = [
+                { frames: [120], scale: 0.7 },   // Red flowers 1
+                { frames: [136], scale: 0.7 },   // Red flowers 2
+                { frames: [124], scale: 0.7 },   // Red tulip 1
+                { frames: [125], scale: 0.7 },   // Red tulip 2
+                { frames: [156], scale: 0.7 },   // Red small flower 1
+                { frames: [172], scale: 0.7 }    // Red small flower 2
+            ];
+
+            const RED_GRASS_VARIANTS = [
+                { frames: [173], scale: 0.7 },       // Red grass blade 1
+                { frames: [188, 204], scale: 0.7 },  // Red grass blade 2 (1x2)
+                { frames: [189, 205], scale: 0.7 }   // Red grass blade 3 (1x2)
+            ];
+
+            const RED_BUSH_VARIANTS = [
+                { frames: [121], scale: 0.8 },   // Red bush 1
+                { frames: [122], scale: 0.8 },   // Red bush 2
+                { frames: [123], scale: 0.8 }    // Red bush 3
+            ];
+
+            const RED_MUSHROOM_VARIANTS = [
+                { frames: [157], scale: 0.8 },   // Red large mushroom
+                { frames: [174], scale: 0.7 },   // Red purple mushrooms 1
+                { frames: [175], scale: 0.7 },   // Red purple mushrooms 2
+                { frames: [206], scale: 0.7 },   // Red mushroom 1
+                { frames: [207], scale: 0.7 }    // Red mushroom 2
+            ];
+
+            const RED_LOG_VARIANTS = [
+                { frames: [107], scale: 0.8 },       // Red small log 1
+                { frames: [78], scale: 0.8 },        // Red small log 2
+                { frames: [92, 108], scale: 0.8 },   // Red log 1 (1x2)
+                { frames: [93, 109], scale: 0.8 },   // Red log 2 (1x2)
+                { frames: [94, 95], scale: 0.8 }     // Red log 3 (2x1)
+            ];
+
+            const RED_STONE_VARIANTS = [
+                { frames: [88], scale: 0.8 },    // Red stone 1
+                { frames: [90], scale: 0.8 }     // Red stone 2
+            ];
+
+            const RED_STUMP_VARIANTS = [
+                { frames: [4], scale: 0.8 },     // Tree stump
+                { frames: [20], scale: 0.8 }     // Tree stump with moss
+            ];
+
+            const RED_TRUNK_VARIANTS = [
+                { frames: [96, 112], scale: 0.9 },   // Red hollow tree trunk (1x2)
+                { frames: [80, 96], scale: 0.9 }     // Red solid tree trunk (1x2)
+            ];
+
+            const RED_BABY_TREE_VARIANTS = [
+                { frames: [87, 103], scale: 0.9 }    // Red baby tree (1x2)
+            ];
+
+            // Select variant based on type
+            let variants;
+            if (type === 'red_flower') variants = RED_FLOWER_VARIANTS;
+            else if (type === 'red_grass') variants = RED_GRASS_VARIANTS;
+            else if (type === 'red_bush') variants = RED_BUSH_VARIANTS;
+            else if (type === 'red_mushroom') variants = RED_MUSHROOM_VARIANTS;
+            else if (type === 'red_log') variants = RED_LOG_VARIANTS;
+            else if (type === 'red_stone') variants = RED_STONE_VARIANTS;
+            else if (type === 'red_stump') variants = RED_STUMP_VARIANTS;
+            else if (type === 'red_trunk') variants = RED_TRUNK_VARIANTS;
+            else if (type === 'red_baby_tree') variants = RED_BABY_TREE_VARIANTS;
+
+            const variantIndex = Math.floor(variantRand * variants.length);
+            const variant = variants[variantIndex];
+
+            // Render decoration tiles
+            for (let i = 0; i < variant.frames.length; i++) {
+                const frame = variant.frames[i];
+                let tilePx = px;
+                let tilePy = py;
+
+                // Handle multi-tile positioning
+                if (variant.frames.length === 2) {
+                    // Check if it's 2x1 (horizontal) or 1x2 (vertical)
+                    if (type === 'red_log' && frame === 95) {
+                        // Red log 3 is 2x1 (horizontal)
+                        tilePx = px + (i * tileSize);
+                    } else {
+                        // All others are 1x2 (vertical)
+                        tilePy = py + (i * tileSize);
+                    }
+                }
+
+                const sprite = this.add.sprite(tilePx, tilePy, 'red_decorations', frame);
+                sprite.setOrigin(0, 0);
+                sprite.setScale(scale * variant.scale);
+                sprite.setDepth(tilePy + tileSize);
+            }
 
         } else {
             // Enhanced decoration system with variety
