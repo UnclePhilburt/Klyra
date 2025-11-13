@@ -10,6 +10,10 @@ class PassiveAbilityManager {
         // Cooldown tracking
         this.cooldowns = new Map();
 
+        // Aura damage tracking (to avoid spamming network)
+        // Format: "enemyId_auraType" -> lastDamageTime
+        this.auraDamageCooldowns = new Map();
+
         // Combat state tracking
         this.inCombat = false;
         this.lastCombatTime = 0;
@@ -225,12 +229,39 @@ class PassiveAbilityManager {
     processLifeDrainAura(lifeDrainAura) {
         const enemies = this.getEnemiesInRadius(lifeDrainAura.radius || 4);
         const dps = lifeDrainAura.dps || 10;
-        const damagePerTick = Math.floor(dps / 10); // Divide by 10 since we update every 100ms
+        const now = Date.now();
+        const auraCooldown = 1000; // Deal damage once per second per enemy
 
         enemies.forEach(enemy => {
-            if (enemy.health) {
-                enemy.health -= damagePerTick;
-                this.player.health = Math.min(this.player.maxHealth, this.player.health + damagePerTick);
+            if (!enemy.data || !enemy.data.id) return;
+
+            const cooldownKey = `${enemy.data.id}_lifeDrain`;
+            const lastDamage = this.auraDamageCooldowns.get(cooldownKey) || 0;
+
+            // Only damage each enemy once per second
+            if (now - lastDamage >= auraCooldown) {
+                // Deal 1 second worth of damage
+                const damage = dps;
+
+                // Send damage through network
+                if (typeof networkManager !== 'undefined') {
+                    const playerPosition = {
+                        x: Math.floor(this.player.sprite.x / 32),
+                        y: Math.floor(this.player.sprite.y / 32)
+                    };
+                    networkManager.hitEnemy(enemy.data.id, damage, this.player.data.id, playerPosition);
+                }
+
+                // Heal player
+                this.player.health = Math.min(this.player.maxHealth, this.player.health + damage);
+                if (this.player.ui) {
+                    this.player.ui.updateHealthBar();
+                }
+
+                // Visual feedback - green healing effect
+                this.createAuraHitEffect(enemy.sprite.x, enemy.sprite.y, 0x00ff00);
+
+                this.auraDamageCooldowns.set(cooldownKey, now);
             }
         });
     }
@@ -238,11 +269,33 @@ class PassiveAbilityManager {
     processDamageAura(damageAura) {
         const enemies = this.getEnemiesInRadius(damageAura.radius || 4);
         const dps = damageAura.dps || 5;
-        const damagePerTick = Math.floor(dps / 10);
+        const now = Date.now();
+        const auraCooldown = 1000; // Deal damage once per second per enemy
 
         enemies.forEach(enemy => {
-            if (enemy.health) {
-                enemy.health -= damagePerTick;
+            if (!enemy.data || !enemy.data.id) return;
+
+            const cooldownKey = `${enemy.data.id}_damageAura`;
+            const lastDamage = this.auraDamageCooldowns.get(cooldownKey) || 0;
+
+            // Only damage each enemy once per second
+            if (now - lastDamage >= auraCooldown) {
+                // Deal 1 second worth of damage
+                const damage = dps;
+
+                // Send damage through network
+                if (typeof networkManager !== 'undefined') {
+                    const playerPosition = {
+                        x: Math.floor(this.player.sprite.x / 32),
+                        y: Math.floor(this.player.sprite.y / 32)
+                    };
+                    networkManager.hitEnemy(enemy.data.id, damage, this.player.data.id, playerPosition);
+                }
+
+                // Visual feedback - red damage effect
+                this.createAuraHitEffect(enemy.sprite.x, enemy.sprite.y, 0xff0000);
+
+                this.auraDamageCooldowns.set(cooldownKey, now);
             }
         });
     }
@@ -473,7 +526,7 @@ class PassiveAbilityManager {
 
     // Utility functions
 
-    findNearestEnemy() {
+    findNearestEnemy(maxRange = 400) {
         // Combine both enemies and wolves
         const enemies = [
             ...Object.values(this.scene.enemies || {}),
@@ -491,7 +544,8 @@ class PassiveAbilityManager {
                 enemy.sprite.x,
                 enemy.sprite.y
             );
-            if (dist < minDist) {
+            // Only consider enemies within max range
+            if (dist < minDist && dist <= maxRange) {
                 minDist = dist;
                 nearest = enemy;
             }
@@ -592,6 +646,21 @@ class PassiveAbilityManager {
             scaleY: 2,
             alpha: 0,
             duration: 200,
+            onComplete: () => effect.destroy()
+        });
+    }
+
+    createAuraHitEffect(x, y, color) {
+        // Smaller, more subtle effect for aura damage
+        const effect = this.scene.add.circle(x, y, 8, color, 0.6);
+        effect.setDepth(99);
+
+        this.scene.tweens.add({
+            targets: effect,
+            scaleX: 1.5,
+            scaleY: 1.5,
+            alpha: 0,
+            duration: 300,
             onComplete: () => effect.destroy()
         });
     }
