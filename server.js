@@ -441,7 +441,7 @@ class Lobby {
         }
 
         // Add decorations (trees, rocks, flowers, grass, logs, etc.)
-        const decorationCount = Math.floor(width * height * 0.05); // 5% coverage
+        const decorationCount = Math.floor(width * height * 0.005); // 0.5% coverage for better performance
         for (let i = 0; i < decorationCount; i++) {
             const x = Math.floor(this.seededRandom(seed + i * 1000) * width);
             const y = Math.floor(this.seededRandom(seed + i * 1001) * height);
