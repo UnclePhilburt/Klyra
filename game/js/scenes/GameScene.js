@@ -126,6 +126,28 @@ class GameScene extends Phaser.Scene {
             frameHeight: 48
         });
 
+        // Additional tilesets for spawn building
+        this.load.spritesheet('liquids_misc', 'assets/tilesets/A1_Liquids_And_Misc.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+        this.load.spritesheet('fantasy_door1', 'assets/tilesets/Fantasy_door1.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+        this.load.spritesheet('fantasy_door2', 'assets/tilesets/Fantasy_door2.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+        this.load.spritesheet('gate_cathedral1', 'assets/tilesets/Gate_Cathedral1.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+        this.load.spritesheet('fantasy_outside_c', 'assets/tilesets/Fantasy_Outside_C.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+
         // Load spawn point building Tiled map
         this.load.tilemapTiledJSON('spawnMap', 'assets/spawnpointbuilding.tmj');
 
@@ -1061,26 +1083,45 @@ class GameScene extends Phaser.Scene {
         console.log(`📍 Spawn map: ${mapWidthTiles}x${mapHeightTiles} tiles (${mapWidthPx}x${mapHeightPx}px)`);
         console.log(`📍 Map positioned at offset (${mapOffsetX}, ${mapOffsetY})`);
 
-        // Add tilesets (order matters - must match TMJ file order)
-        const tileset1 = map.addTilesetImage('A2 - Terrain And Misc', 'terrain_misc');
-        const tileset2 = map.addTilesetImage('Fantasy_Outside_A5', 'fantasy_outside_a5');
+        // Add ALL tilesets used in the map (must match TMJ embedded tileset names)
+        const tilesets = [
+            map.addTilesetImage('A2 - Terrain And Misc', 'terrain_misc'),
+            map.addTilesetImage('Fantasy_Outside_A5', 'fantasy_outside_a5'),
+            map.addTilesetImage('a2_terrain_base', 'terrain_base'),
+            map.addTilesetImage('A1 - Liquids And Misc', 'liquids_misc'),
+            map.addTilesetImage('A3 - Walls And Floors', 'walls_floors'),
+            map.addTilesetImage('A4 - Walls', 'walls'),
+            map.addTilesetImage('Fantasy_door1', 'fantasy_door1'),
+            map.addTilesetImage('Fantasy_door2', 'fantasy_door2'),
+            map.addTilesetImage('Gate_Cathedral1', 'gate_cathedral1'),
+            map.addTilesetImage('Fantasy_Outside_D', 'objects_d'),
+            map.addTilesetImage('Fantasy_Outside_C', 'fantasy_outside_c'),
+            map.addTilesetImage('A2_extended_forest_terrain', 'forest_extended'),
+            map.addTilesetImage('Big_Trees_red', 'red_trees'),
+            map.addTilesetImage('Fantasy_Outside_D_red', 'red_decorations')
+        ];
 
-        // Create layers from the map
-        const groundLayer = map.createLayer('Ground', [tileset1, tileset2], mapOffsetX, mapOffsetY);
-        if (groundLayer) {
-            const scale = tileSize / 48; // Scale from 48px tileset to 32px game tiles
-            groundLayer.setScale(scale);
-            groundLayer.setDepth(-1); // Ground layer
-        }
+        console.log(`✅ Loaded ${tilesets.filter(t => t).length} tilesets for spawn building`);
 
-        // Check for other layers and create them
-        const layerNames = ['Decorations', 'Objects', 'Collision'];
-        layerNames.forEach(layerName => {
-            const layer = map.createLayer(layerName, [tileset1, tileset2], mapOffsetX, mapOffsetY);
+        // Create all layers from the map (actual layer names from TMJ)
+        const scale = tileSize / 48; // Scale from 48px tileset to 32px game tiles
+        const layerConfig = [
+            { name: 'Ground', depth: -1 },
+            { name: 'water', depth: 0 },
+            { name: 'walkway', depth: 1 },
+            { name: 'walls', depth: 2 },
+            { name: 'door', depth: 3 },
+            { name: 'roof', depth: 4 },
+            { name: 'roof decor', depth: 5 },
+            { name: 'fence', depth: 6 }
+        ];
+
+        layerConfig.forEach(({ name, depth }) => {
+            const layer = map.createLayer(name, tilesets, mapOffsetX, mapOffsetY);
             if (layer) {
-                const scale = tileSize / 48;
                 layer.setScale(scale);
-                layer.setDepth(layerName === 'Collision' ? 100 : 1); // Collision on top for debugging
+                layer.setDepth(depth);
+                console.log(`  ✅ Created layer: ${name} (depth: ${depth})`);
             }
         });
 
