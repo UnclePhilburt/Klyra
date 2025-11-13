@@ -46,6 +46,10 @@ class GameScene extends Phaser.Scene {
             frameWidth: tileWidth,
             frameHeight: tileHeight
         });
+        this.load.spritesheet('terrain_misc', 'assets/tilesets/A2 - Terrain And Misc.png', {
+            frameWidth: tileWidth,
+            frameHeight: tileHeight
+        });
 
         // Water tilesets (A1 format - animated)
         this.load.spritesheet('water_base', 'assets/tilesets/a1_water_base.png', {
@@ -170,30 +174,92 @@ class GameScene extends Phaser.Scene {
         // Create container for tiles
         this.tileContainer = this.add.container(0, 0);
 
-        // Map biome types to tileset textures and tile indices
-        const BIOME_TILESET_MAP = {
-            // Grassland - Use green terrain tiles
-            10: { texture: 'terrain_green', frame: 3 },
-            11: { texture: 'terrain_green', frame: 5 },
-            12: { texture: 'terrain_green', frame: 7 },
-
-            // Forest - Use forest tiles
-            20: { texture: 'forest', frame: 3 },
-            21: { texture: 'forest', frame: 5 },
-            22: { texture: 'forest', frame: 7 },
-
-            // Magic Grove - Use purple terrain tileset
-            30: { texture: 'terrain_base', frame: 3 },
-            31: { texture: 'terrain_base', frame: 5 },
-            32: { texture: 'terrain_base', frame: 7 },
-
-            // Dark Woods - Use darker forest tiles
-            40: { texture: 'forest', frame: 10 },
-            41: { texture: 'forest', frame: 12 },
-            42: { texture: 'forest', frame: 14 }
+        // Smooth noise function for gradient-based tile selection
+        const noise2D = (x, y, seed) => {
+            const n = x * 374761393 + y * 668265263 + seed * 1013904223;
+            const noise = (n ^ (n >> 13)) * 1274126177;
+            return ((noise ^ (noise >> 16)) & 0x7fffffff) / 0x7fffffff;
         };
 
-        // Render tiles using individual frames from spritesheets
+        // Tile pools from A2 - Terrain And Misc, divided into groups for smooth transitions
+        const GRASS_TILE_GROUPS = [
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],           // Group A
+            [52, 53, 54, 55, 56, 57, 58, 59, 60, 61],         // Group B
+            [104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115], // Group C
+            [156, 157, 559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570], // Group D
+            [611, 612, 613, 614, 615, 616, 617, 618, 619, 620], // Group E
+            [663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674], // Group F
+            [715, 716, 717, 718, 719, 720, 721, 722, 723, 724, 725, 726]  // Group G
+        ];
+
+        const DIRT_TILE_GROUPS = [
+            [520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 531], // Group A
+            [624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635], // Group B
+            [676, 677, 678, 679, 680, 681, 682, 683, 684, 685, 686, 687]  // Group C
+        ];
+
+        const DIRT_GRASS_MIX_GROUPS = [
+            [533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544], // Group A
+            [585, 586, 587, 588, 589, 590, 591, 592, 593, 594],           // Group B
+            [637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648], // Group C
+            [689, 690, 691, 692, 693, 694, 695, 696, 697, 698, 699, 700]  // Group D
+        ];
+
+        const FLOWER_PATCHES = [
+            780, 781, 782, 783, 784, 785, 786, 787, 788, 789, 790, 791,
+            884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895,
+            936, 937, 938, 939, 940, 941, 942, 943, 944, 945, 946, 947
+        ];
+
+        // Weighted tile selection based on smooth noise gradient
+        const selectTileFromGroups = (x, y, tileGroups, seed) => {
+            // Generate smooth noise value (0.0 to 1.0)
+            const noiseValue = noise2D(Math.floor(x / 4), Math.floor(y / 4), seed);
+
+            // Map noise value to preferred group
+            const groupIndex = Math.floor(noiseValue * tileGroups.length);
+            const preferredGroup = tileGroups[groupIndex];
+
+            // 70% chance to pick from preferred group, 30% from any group (for variety)
+            const usePreferred = noise2D(x, y, seed + 1000) < 0.7;
+
+            if (usePreferred) {
+                // Pick random tile from preferred group
+                const tileIndex = Math.floor(noise2D(x, y, seed + 2000) * preferredGroup.length);
+                return preferredGroup[tileIndex];
+            } else {
+                // Pick random tile from any group (variety)
+                const randomGroupIndex = Math.floor(noise2D(x, y, seed + 3000) * tileGroups.length);
+                const randomGroup = tileGroups[randomGroupIndex];
+                const tileIndex = Math.floor(noise2D(x, y, seed + 4000) * randomGroup.length);
+                return randomGroup[tileIndex];
+            }
+        };
+
+        // Map biome types to tile groups
+        const BIOME_TILESET_MAP = {
+            // Grassland - Use grass tile groups
+            10: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
+            11: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
+            12: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
+
+            // Forest - Use dirt/grass mix groups
+            20: { texture: 'terrain_misc', tileGroups: DIRT_GRASS_MIX_GROUPS },
+            21: { texture: 'terrain_misc', tileGroups: DIRT_GRASS_MIX_GROUPS },
+            22: { texture: 'terrain_misc', tileGroups: DIRT_GRASS_MIX_GROUPS },
+
+            // Magic Grove - Use grass tile groups
+            30: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
+            31: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
+            32: { texture: 'terrain_misc', tileGroups: GRASS_TILE_GROUPS },
+
+            // Dark Woods - Use dirt tile groups
+            40: { texture: 'terrain_misc', tileGroups: DIRT_TILE_GROUPS },
+            41: { texture: 'terrain_misc', tileGroups: DIRT_TILE_GROUPS },
+            42: { texture: 'terrain_misc', tileGroups: DIRT_TILE_GROUPS }
+        };
+
+        // Render tiles using smooth noise gradient selection
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const tile = tiles[y][x];
@@ -201,23 +267,42 @@ class GameScene extends Phaser.Scene {
                 const py = y * tileSize;
 
                 // Get tileset mapping for this biome
-                const tileInfo = BIOME_TILESET_MAP[tile] || { texture: 'terrain_base', frame: 0 };
+                const tileInfo = BIOME_TILESET_MAP[tile];
 
-                // Create sprite from specific tile frame in the spritesheet
-                const tileSprite = this.add.sprite(px, py, tileInfo.texture, tileInfo.frame);
-                tileSprite.setOrigin(0, 0);
+                if (tileInfo && tileInfo.tileGroups) {
+                    // Use smooth noise gradient selection
+                    const selectedFrame = selectTileFromGroups(x, y, tileInfo.tileGroups, seed);
 
-                // Scale to game tile size (48px tileset -> 32px game tile)
-                const scale = tileSize / 48;
-                tileSprite.setScale(scale);
+                    // Create sprite from selected tile frame
+                    const tileSprite = this.add.sprite(px, py, tileInfo.texture, selectedFrame);
+                    tileSprite.setOrigin(0, 0);
 
-                // Add slight variety with seeded random for consistency across clients
-                if (this.seededRandom(this.dungeonSeed) < 0.2) {
-                    const randomOffset = Math.floor(this.seededRandom(this.dungeonSeed) * 3);
-                    tileSprite.setFrame(tileInfo.frame + randomOffset);
+                    // Scale to game tile size (48px tileset -> 32px game tile)
+                    const scale = tileSize / 48;
+                    tileSprite.setScale(scale);
+
+                    this.tileContainer.add(tileSprite);
+
+                    // Add flower patch overlays to grassland tiles (5% chance, clustered)
+                    if ((tile === 10 || tile === 11 || tile === 12)) {
+                        const flowerNoise = noise2D(x, y, seed + 5000);
+                        if (flowerNoise < 0.05) {
+                            const patchIndex = Math.floor(noise2D(x, y, seed + 6000) * FLOWER_PATCHES.length);
+                            const patchFrame = FLOWER_PATCHES[patchIndex];
+
+                            const patchSprite = this.add.sprite(px, py, 'terrain_misc', patchFrame);
+                            patchSprite.setOrigin(0, 0);
+                            patchSprite.setScale(scale);
+                            this.tileContainer.add(patchSprite);
+                        }
+                    }
+                } else {
+                    // Fallback for unmapped tiles
+                    const tileSprite = this.add.sprite(px, py, 'terrain_base', 0);
+                    tileSprite.setOrigin(0, 0);
+                    tileSprite.setScale(tileSize / 48);
+                    this.tileContainer.add(tileSprite);
                 }
-
-                this.tileContainer.add(tileSprite);
             }
         }
 
