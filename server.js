@@ -693,10 +693,15 @@ io.on('connection', (socket) => {
             socket.join(lobby.id);
 
             // Send game start immediately (no lobby waiting!)
+            // Filter out disconnected/reconnecting players (ghost players)
+            const activePlayers = Array.from(lobby.players.values())
+                .filter(p => !p.isReconnecting)
+                .map(p => p.toJSON());
+
             socket.emit('game:start', {
                 lobbyId: lobby.id,
                 player: player.toJSON(),
-                players: Array.from(lobby.players.values()).map(p => p.toJSON()),
+                players: activePlayers,
                 gameState: lobby.gameState,
                 difficulty: lobby.difficulty,
                 playerCount: lobby.players.size,
