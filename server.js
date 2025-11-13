@@ -306,23 +306,22 @@ class Lobby {
 
         console.log(`🌍 Server biome distribution: Green=${(greenThreshold*100).toFixed(1)}% DarkGreen=${((darkGreenThreshold-greenThreshold)*100).toFixed(1)}% Red=${((1-darkGreenThreshold)*100).toFixed(1)}%`);
 
-        // Generate biome map using noise - MASSIVE regions with hard boundaries
-        // Add buffer zones to thresholds for clearer separation
-        const bufferedGreenThreshold = greenThreshold - 0.025;
-        const bufferedDarkGreenThreshold = darkGreenThreshold + 0.025;
+        // CHUNK-BASED BIOMES: Assign biome per large chunk instead of per tile
+        const CHUNK_SIZE = 100; // 100x100 tile chunks = large biome regions
 
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                // Huge regions with minimal variation to prevent mixing
-                const noise1 = this.noise2D(x * 0.001, y * 0.001, seed);        // Huge regions
-                const noise2 = this.noise2D(x * 0.003, y * 0.003, seed + 1000); // Large variation
+                // Determine chunk coordinates
+                const chunkX = Math.floor(x / CHUNK_SIZE);
+                const chunkY = Math.floor(y / CHUNK_SIZE);
 
-                const combinedNoise = (noise1 * 0.85 + noise2 * 0.15); // Mostly use huge regions
+                // Use chunk coordinates to determine biome (one biome per chunk)
+                const chunkHash = this.seededRandom(seed + chunkX * 1000 + chunkY);
 
-                // Determine biome with buffered thresholds for clearer separation
+                // Determine biome based on chunk hash and distribution
                 let selectedBiome;
-                if (combinedNoise < bufferedGreenThreshold) selectedBiome = BIOMES.GREEN;
-                else if (combinedNoise < bufferedDarkGreenThreshold) selectedBiome = BIOMES.DARK_GREEN;
+                if (chunkHash < greenThreshold) selectedBiome = BIOMES.GREEN;
+                else if (chunkHash < darkGreenThreshold) selectedBiome = BIOMES.DARK_GREEN;
                 else selectedBiome = BIOMES.RED;
 
                 biomes[y][x] = selectedBiome.id;

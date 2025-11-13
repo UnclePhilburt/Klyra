@@ -346,45 +346,46 @@ class GameScene extends Phaser.Scene {
 
         // Biome definitions with 12 tile variations each
         const BIOMES = {
-            GREEN: { tiles: [10,11,12,13,14,15,16,17,18,19,20,21], id: 'green' },           // terrain_green 104-115
+            GREEN: { tiles: [10,11,12,13,14,15,16,17,18,19,20,21], id: 'green' },           // terrain_misc 104-115
             DARK_GREEN: { tiles: [30,31,32,33,34,35,36,37,38,39,40,41], id: 'dark_green' }, // forest_extended 78-89
             RED: { tiles: [50,51,52,53,54,55,56,57,58,59,60,61], id: 'red' }                // forest_extended 468-479
         };
 
-        // Generate biome using noise - MASSIVE regions with hard boundaries
-        const noise1 = this.noise2D(x * 0.001, y * 0.001, seed);        // Huge regions
-        const noise2 = this.noise2D(x * 0.003, y * 0.003, seed + 1000); // Large variation
-        const combinedNoise = (noise1 * 0.85 + noise2 * 0.15); // Mostly use huge regions
+        // CHUNK-BASED BIOMES: Assign biome per large chunk instead of per tile
+        const CHUNK_SIZE = 100; // 100x100 tile chunks = large biome regions
+        const chunkX = Math.floor(x / CHUNK_SIZE);
+        const chunkY = Math.floor(y / CHUNK_SIZE);
 
-        // Add buffer zones to thresholds to create clearer boundaries (0.05 buffer)
-        const greenThreshold = this.biomeDistribution.green - 0.025;
-        const darkGreenThreshold = this.biomeDistribution.darkGreen + 0.025;
+        // Use chunk coordinates to determine biome (one biome per chunk)
+        const chunkHash = this.seededRandom(seed + chunkX * 1000 + chunkY);
 
-        // DEBUG: Log thresholds once
-        if (!this.debugThresholdLogged) {
-            console.log(`🎯 Buffered thresholds: green<${greenThreshold.toFixed(3)}, darkGreen<${darkGreenThreshold.toFixed(3)}, red>=${darkGreenThreshold.toFixed(3)}`);
-            this.debugThresholdLogged = true;
-        }
-
-        // Determine biome with buffered thresholds for clearer separation
+        // Determine biome based on chunk hash and distribution
         let selectedBiome;
-        if (combinedNoise < greenThreshold) {
+        if (chunkHash < this.biomeDistribution.green) {
             selectedBiome = BIOMES.GREEN;
-        } else if (combinedNoise < darkGreenThreshold) {
+        } else if (chunkHash < this.biomeDistribution.darkGreen) {
             selectedBiome = BIOMES.DARK_GREEN;
         } else {
             selectedBiome = BIOMES.RED;
+        }
+
+        // DEBUG: Log first 5 chunks
+        if (!this.debugChunks) this.debugChunks = new Set();
+        const chunkKey = `${chunkX},${chunkY}`;
+        if (this.debugChunks.size < 5 && !this.debugChunks.has(chunkKey)) {
+            console.log(`🗺️ Chunk (${chunkX},${chunkY}): hash=${chunkHash.toFixed(3)}, biome=${selectedBiome.id}`);
+            this.debugChunks.add(chunkKey);
         }
 
         // Select tile variation (12 variations per biome)
         const tileVariation = Math.floor(this.seededRandom(seed + x * 100 + y) * selectedBiome.tiles.length);
         const tileId = selectedBiome.tiles[tileVariation];
 
-        // DEBUG: Log first 20 tiles to see what's happening
+        // DEBUG: Log first 10 tiles to verify chunk system
         if (!this.debugTileCount) this.debugTileCount = 0;
-        if (this.debugTileCount < 20) {
+        if (this.debugTileCount < 10) {
             const tileMapping = this.BIOME_TILESET_MAP[tileId];
-            console.log(`🔍 Tile (${x},${y}): noise=${combinedNoise.toFixed(3)}, biome=${selectedBiome.id}, tileId=${tileId}, texture=${tileMapping?.texture}, frame=${tileMapping?.frame}`);
+            console.log(`🔍 Tile (${x},${y}) in chunk (${chunkX},${chunkY}): biome=${selectedBiome.id}, tileId=${tileId}, texture=${tileMapping?.texture}, frame=${tileMapping?.frame}`);
             this.debugTileCount++;
         }
 
