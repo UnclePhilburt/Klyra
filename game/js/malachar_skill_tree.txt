@@ -1,0 +1,1339 @@
+================================================================================
+                    MALACHAR'S ASCENSION - 100 LEVEL SKILL TREE
+                     Mobile-Friendly Auto-Attack Roguelike
+================================================================================
+
+DESIGN PHILOSOPHY:
+- All abilities are PASSIVE and trigger automatically
+- Player only controls movement (virtual joystick or tap-to-move)
+- Three build paths that synergize together
+- Choose ONE upgrade per level
+
+BUILD PATHS:
+🔵 LEGION   - Build a massive army of minions (quantity)
+🔴 CHAMPION - Empower your minions to be individually strong (quality)
+🟣 REAPER   - Enhance Malachar's own dark powers (self-buffs)
+
+================================================================================
+                           EARLY GAME (Levels 1-25)
+================================================================================
+
+LEVEL 1: First Steps
+--------------------------------------------------------------------------------
+🔵 Summon Shade
+   Gain a 2nd permanent minion
+
+🔴 Dark Empowerment
+   All minions gain +50% HP and damage
+
+🟣 Siphon Life
+   Malachar heals 5 HP per enemy kill
+
+
+LEVEL 2: Growing Power
+--------------------------------------------------------------------------------
+🔵 Pack Mentality
+   All minions deal +5% damage per nearby minion
+
+🔴 Titan's Constitution
+   All minions gain +100% HP
+
+🟣 Shadow Volley
+   Auto-fire shadow bolts at nearest enemy every 3s (15 damage)
+
+
+LEVEL 3: Third Force
+--------------------------------------------------------------------------------
+🔵 Third Shadow
+   Gain a 3rd permanent minion
+
+🔴 Crushing Blows
+   All minions deal +40% damage
+
+🟣 Blood Pact
+   Malachar gains +2 HP regen per living minion
+
+
+LEVEL 4: Tactical Edge
+--------------------------------------------------------------------------------
+🔵 Coordinated Assault
+   All minions focus the same target automatically, +15% damage
+
+🔴 Guardian's Resolve
+   All minions take 20% less damage
+
+🟣 Death's Embrace
+   Killing blows restore 8% of Malachar's max HP
+
+
+LEVEL 5: Swift Strike
+--------------------------------------------------------------------------------
+🔵 Swift Swarm
+   All minions gain +20% movement speed
+
+🔴 Colossal Form
+   All minions grow 50% larger, +30% all stats
+
+🟣 Curse Aura
+   Enemies near Malachar are slowed by 30%
+
+
+LEVEL 6: Fourth Shadow
+--------------------------------------------------------------------------------
+🔵 Fourth Minion
+   Gain a 4th permanent minion
+
+🔴 Regenerating Flesh
+   All minions regenerate 2% HP per second
+
+🟣 Soul Harvest
+   Gain +10% XP from all kills
+
+
+LEVEL 7: Relentless Assault
+--------------------------------------------------------------------------------
+🔵 Swarming Tactics
+   All minions attack 15% faster
+
+🔴 Berserker Rage
+   All minions gain +50% damage when below 40% HP
+
+🟣 Dark Resilience
+   Malachar gains +25 max HP
+
+
+LEVEL 8: Overwhelming Force
+--------------------------------------------------------------------------------
+🔵 Strength in Numbers
+   +10% damage and defense per minion alive (max 200%)
+
+🔴 Unstoppable Force
+   All minions cannot be slowed or stunned
+
+🟣 Withering Aura
+   Enemies near Malachar lose 5 HP/sec
+
+
+LEVEL 9: Fifth Legion
+--------------------------------------------------------------------------------
+🔵 Fifth Minion
+   Gain a 5th permanent minion
+
+🔴 Cleaving Strikes
+   All minions' attacks hit multiple enemies in a cone
+
+🟣 Shadow Dash
+   Automatically dash away when hit by melee attack (5s cooldown)
+
+
+LEVEL 10: Defensive Tactics
+--------------------------------------------------------------------------------
+🔵 Unified Front
+   All minions gain +30% defense when grouped together
+
+🔴 Bloodlust
+   All minions gain +3% damage per kill (stacks to +60%)
+
+🟣 Reaper's Mark
+   Automatically mark low-HP enemies to take +25% damage from all sources
+
+
+LEVEL 11: Accelerated Growth
+--------------------------------------------------------------------------------
+🔵 Rapid Deployment
+   Dark Harvest spawns minions 50% more often (15% → 22.5% chance)
+
+🔴 Vampiric Strikes
+   All minions heal 25% of damage dealt
+
+🟣 Piercing Bolts
+   Shadow Volley now pierces enemies and deals +10 damage
+
+
+LEVEL 12: Resilience
+--------------------------------------------------------------------------------
+🔵 Expendable Forces
+   Temporary minions from Dark Harvest last 50% longer
+
+🔴 Iron Hide
+   All minions gain +15 armor (flat damage reduction)
+
+🟣 Corpse Detonation
+   Enemies automatically explode on death (30 AOE damage, 4 tile radius)
+
+
+LEVEL 13: Sixth Shadow
+--------------------------------------------------------------------------------
+🔵 Sixth Minion
+   Gain a 6th permanent minion
+
+🔴 Stunning Blows
+   All minions' attacks stun enemies for 0.5s (3s cooldown per minion)
+
+🟣 Dark Mastery
+   Shadow Volley fires 20% faster
+
+
+LEVEL 14: Tactical Superiority
+--------------------------------------------------------------------------------
+🔵 Overwhelming Numbers
+   Enemies are slowed by 5% per nearby minion (stacks)
+
+🔴 Immovable Object
+   All minions gain +100% knockback resistance
+
+🟣 Life Drain Aura
+   Malachar drains 10 HP/sec from nearby enemies (4 tile radius)
+
+
+LEVEL 15: Battle Fury
+--------------------------------------------------------------------------------
+🔵 Frenzied Attack
+   All minions gain +25% attack speed
+
+🔴 Critical Mass
+   All minions have 20% chance for critical hits (3x damage)
+
+🟣 Shadow Veil
+   Become invisible for 2s after killing an enemy (5s cooldown)
+
+
+LEVEL 16: Seventh Legion
+--------------------------------------------------------------------------------
+🔵 Seventh Minion
+   Gain a 7th permanent minion
+
+🔴 Executioner
+   All minions deal +100% damage to enemies below 25% HP
+
+🟣 Necromantic Surge
+   Malachar gains +5% damage per dead minion this run (permanent)
+
+
+LEVEL 17: Flanking Strike
+--------------------------------------------------------------------------------
+🔵 Flanking Maneuvers
+   All minions deal +30% damage when attacking from behind
+
+🔴 Siege Breaker
+   All minions deal +50% damage to bosses and elites
+
+🟣 Soul Barrier
+   Automatically absorb 100 damage when hit (10s cooldown)
+
+
+LEVEL 18: Fortification
+--------------------------------------------------------------------------------
+🔵 Resilient Horde
+   All minions gain +50% max HP
+
+🔴 Behemoth
+   All minions become massive (+100% size), +50% all stats
+
+🟣 Plague Spreader
+   Spread disease dealing 10 damage/sec in 5 tile radius
+
+
+LEVEL 19: Eighth Shadow
+--------------------------------------------------------------------------------
+🔵 Eighth Minion
+   Gain an 8th permanent minion
+
+🔴 Last Stand
+   All minions cannot drop below 1 HP for 5s (60s cooldown per minion)
+
+🟣 Blood Sacrifice
+   Sacrifice 20% max HP for +50% damage (permanent trade-off)
+
+
+LEVEL 20: Commander's Presence
+--------------------------------------------------------------------------------
+🔵 Legion Commander
+   All minions gain +20% all stats when near Malachar (6 tile radius)
+
+🔴 Apex Predator
+   All minions gain +10% all stats per unique enemy type killed (max 50%)
+
+🟣 Shadow Form
+   Automatically transform into shadow for 5s when below 30% HP
+   (60s cooldown, invulnerable, +100% damage)
+
+
+LEVEL 21: Ninth Legion
+--------------------------------------------------------------------------------
+🔵 Ninth Minion
+   Gain a 9th permanent minion
+
+🔴 Impact Strikes
+   All minions' attacks knock enemies back
+
+🟣 Void Eruption
+   Periodically release AOE explosion (every 15s, 8 tile radius, 200 damage)
+
+
+LEVEL 22: Hive Mind
+--------------------------------------------------------------------------------
+🔵 Swarm Intelligence
+   All minions share vision and target priority threats automatically
+   (+20% accuracy)
+
+🔴 Lifesteal Mastery
+   Minion lifesteal increased to 40% of damage dealt
+
+🟣 Cursed Ground
+   Leave damaging trail behind Malachar (20 damage/sec, lasts 5s)
+
+
+LEVEL 23: Sacrifice
+--------------------------------------------------------------------------------
+🔵 Sacrifice Play
+   Minions automatically body-block projectiles aimed at Malachar
+
+🔴 Demon Form
+   All minions grow horns/wings, +40% all stats, gain flight over obstacles
+
+🟣 Soul Collector
+   Souls automatically orbit Malachar (+5 damage each, max 10 souls,
+   collect on kill)
+
+
+LEVEL 24: Tenth Shadow
+--------------------------------------------------------------------------------
+🔵 Tenth Minion
+   Gain a 10th permanent minion
+
+🔴 Shockwave Strikes
+   All minions create shockwaves on attack (4 tile radius, 20 damage)
+
+🟣 Lich Form
+   Become undead (immune to poison/disease/bleed, -50% healing received)
+
+
+LEVEL 25: Power Surge
+--------------------------------------------------------------------------------
+🔵 Synchronized Strikes
+   All minions attack in perfect sync every 5 seconds (coordinated burst)
+
+🔴 Juggernaut
+   All minions gain +200% HP, -20% movement speed, unstoppable
+
+🟣 Essence Theft
+   Steal 5% of enemy max HP on hit (max 50 damage per hit)
+
+
+================================================================================
+                           MID GAME (Levels 26-60)
+================================================================================
+
+LEVEL 26: Mass Resurrection
+--------------------------------------------------------------------------------
+🔵 Phoenix Legion
+   All dead minions automatically return to life after 10 seconds
+
+🔴 Elemental Weapons
+   All minions gain flaming/frost/poison weapons (+30 elemental damage)
+
+🟣 Retaliatory Nova
+   Automatically emit explosion when damaged
+   (50 damage, 5 tile radius, 8s cooldown)
+
+
+LEVEL 27: Eleventh Legion
+--------------------------------------------------------------------------------
+🔵 Eleventh Minion
+   Gain an 11th permanent minion
+
+🔴 Brutal Efficiency
+   All minions have 25% chance to instantly kill enemies below 30% HP
+
+🟣 Shadow Evasion
+   Gain +50% evasion when in shadows/darkness
+
+
+LEVEL 28: Regeneration
+--------------------------------------------------------------------------------
+🔵 Pack Regeneration
+   All minions heal 3% HP/sec when grouped (3+ minions within 4 tiles)
+
+🔴 Boss Killer
+   All minions deal +150% damage to boss enemies
+
+🟣 Hex Master
+   Automatically apply random curse to nearby enemies
+   (every 8s, 6 tile radius)
+
+
+LEVEL 29: Tactical Retreat
+--------------------------------------------------------------------------------
+🔵 Hit and Run
+   Minions below 30% HP automatically flee and heal 5% HP/sec
+
+🔴 Dragon's Breath
+   All minions breathe fire in a cone (6 tile length, 40 damage, 10s cooldown)
+
+🟣 Life for Power
+   Passively convert 1% HP per second to +2% damage (stops at 50% HP)
+
+
+LEVEL 30: Twelfth Shadow
+--------------------------------------------------------------------------------
+🔵 Twelfth Minion
+   Gain a 12th permanent minion
+
+🔴 Armor Penetration
+   All minions ignore 50% of enemy armor
+
+🟣 Reaper's Fury
+   Automatically enter fury mode when enemy dies nearby
+   (+100% damage for 5s, 10s cooldown)
+
+
+LEVEL 31: Formation Fighting
+--------------------------------------------------------------------------------
+🔵 Phalanx Formation
+   Minions automatically form defensive formation,
+   take -30% damage when grouped
+
+🔴 Rapid Strikes
+   All minions attack 50% faster
+
+🟣 Cooldown Reduction
+   Damaging enemies reduces all passive cooldowns by 0.5s
+
+
+LEVEL 32: Summoning Power
+--------------------------------------------------------------------------------
+🔵 Expendable Army
+   Automatically summon 3 temporary weak minions every 30s
+
+🔴 Impenetrable Hide
+   All minions gain +50 armor (flat damage reduction)
+
+🟣 Shadow Barrage
+   Shadow Volley fires 5 bolts in spread pattern (instead of 1)
+
+
+LEVEL 33: Thirteenth Legion
+--------------------------------------------------------------------------------
+🔵 Thirteenth Minion
+   Gain a 13th permanent minion
+
+🔴 Leap Attack
+   All minions periodically leap to distant enemies
+   (8 tile range, stuns on landing, 15s cooldown)
+
+🟣 Mind Control
+   Periodically control a random enemy for 5s (60s cooldown)
+
+
+LEVEL 34: Shared Pain
+--------------------------------------------------------------------------------
+🔵 Hive Retaliation
+   When one minion takes damage, all gain +20% damage for 5s
+
+🔴 Apocalypse Form
+   All minions wreathed in dark energy (+80% all stats, leave burning trail)
+
+🟣 Pain Link
+   Automatically link to damaged enemy, both share 50% of damage taken
+   (15s duration)
+
+
+LEVEL 35: Blitz
+--------------------------------------------------------------------------------
+🔵 Charge Formation
+   All minions automatically charge at distant enemies
+   (stuns on hit, 20s cooldown)
+
+🔴 Savage Frenzy
+   Below 30% HP, all minions gain +100% attack speed and lifesteal
+
+🟣 Doom Mark
+   Periodically mark enemy for death (instant kill in 10s if mark
+   not removed, 90s cooldown)
+
+
+LEVEL 36: Fourteenth Shadow
+--------------------------------------------------------------------------------
+🔵 Fourteenth Minion
+   Gain a 14th permanent minion
+
+🔴 Chain Lightning
+   All minions' attacks chain to 3 nearby enemies
+   (50% damage to chained)
+
+🟣 Second Chance
+   Automatically survive lethal damage once per run (full heal when triggered)
+
+
+LEVEL 37: Wall of Flesh
+--------------------------------------------------------------------------------
+🔵 Living Barrier
+   Minions automatically form protective barrier around Malachar
+   (-50% damage taken)
+
+🔴 Momentum
+   All minions gain +5% damage per consecutive hit on same target
+   (max +100%)
+
+🟣 Dark Pact
+   Permanently sacrifice 50 max HP for +25% permanent damage
+
+
+LEVEL 38: Replication
+--------------------------------------------------------------------------------
+🔵 Split Legion
+   10% chance to spawn an extra temporary minion on kill (15s duration)
+
+🔴 Dispel Strikes
+   All minions automatically dispel enemy buffs on hit
+
+🟣 Phase Walk
+   Passively phase through enemies while moving
+
+
+LEVEL 39: Fifteenth Legion
+--------------------------------------------------------------------------------
+🔵 Fifteenth Minion
+   Gain a 15th permanent minion
+
+🔴 Meteor Rain
+   All minions automatically call meteors around themselves
+   (6 tile radius, 80 damage, 20s cooldown)
+
+🟣 Soulbound
+   Cannot die while any minion is alive (damage transfers to minions instead)
+
+
+LEVEL 40: Harmony
+--------------------------------------------------------------------------------
+🔵 Perfect Harmony
+   All legion-specific buffs increased by 50%
+
+🔴 Mythic Ascension
+   All minions become legendary tier (glowing aura, +60% all stats)
+
+🟣 Dark Sovereign
+   Automatically command nearby undead enemies (6 tile radius, 15s control)
+
+
+LEVEL 41: Sixteenth Shadow
+--------------------------------------------------------------------------------
+🔵 Sixteenth Minion
+   Gain a 16th permanent minion
+
+🔴 Crater Strikes
+   All minions' attacks create craters that slow enemies (3s duration)
+
+🟣 Fear Aura
+   Enemies near Malachar have 50% chance to flee (4 tile radius)
+
+
+LEVEL 42: Intelligence
+--------------------------------------------------------------------------------
+🔵 Advanced Tactics
+   Minions automatically prioritize wounded enemies and protect Malachar
+
+🔴 Adaptive Defense
+   All minions gain 30% resistance to last damage type they took
+
+🟣 Lunar Power
+   All passive abilities trigger 200% faster during nighttime/darkness
+
+
+LEVEL 43: Deployment
+--------------------------------------------------------------------------------
+🔵 Tactical Summon
+   New minions spawn at optimal combat positions
+
+🔴 Auto-Resurrection
+   All minions automatically resurrect once (120s cooldown per minion)
+
+🟣 Corpse Army
+   Automatically raise 5 skeleton warriors from nearby corpses
+   (30s duration, 40s cooldown)
+
+
+LEVEL 44: Seventeenth Shadow
+--------------------------------------------------------------------------------
+🔵 Seventeenth Minion
+   Gain a 17th permanent minion
+
+🔴 Dual Wield
+   All minions dual-wield weapons, attacks hit twice
+
+🟣 Immortal Moment
+   Automatically gain invulnerability at 1 HP for 3 seconds
+   (once per encounter)
+
+
+LEVEL 45: Capstone Powers
+--------------------------------------------------------------------------------
+🔵 Endless Horde
+   Automatically summon 10 weak minions when outnumbered
+   (20s duration, 90s cooldown)
+
+🔴 Colossus Core
+   All minions become raid-boss size (+200% all stats, +150% size)
+
+🟣 Eclipse Zone
+   Automatically create darkness zone when surrounded
+   (10 tile radius, +100% damage inside, 20s duration, 60s cooldown)
+
+
+LEVEL 46: Execution
+--------------------------------------------------------------------------------
+🔵 Synchronized Kill
+   All minions perform automatic execution on enemies below 15% HP
+
+🔴 Guardian Shield
+   Strongest minion automatically intercepts damage to Malachar
+   (5s duration, 60s cooldown)
+
+🟣 Soul Rend
+   Automatically rip soul from low-HP enemy
+   (instant kill if below 40% HP, 45s cooldown)
+
+
+LEVEL 47: Eighteenth Shadow
+--------------------------------------------------------------------------------
+🔵 Eighteenth Minion
+   Gain an 18th permanent minion
+
+🔴 Instant Death
+   All minions' attacks have 10% chance to instantly kill non-boss enemies
+
+🟣 Dread Aura
+   Malachar's presence reduces enemy damage by 30% (8 tile radius)
+
+
+LEVEL 48: Rampage
+--------------------------------------------------------------------------------
+🔵 Killing Spree
+   Each minion kill gives all minions +5% damage for 10s (stacks to +100%)
+
+🔴 Massacre
+   All minions gain +10% damage for each enemy killed in last 5s
+   (max +200%)
+
+🟣 Death Spiral
+   Automatically spin attack periodically (6 tile radius, 100 damage,
+   12s cooldown)
+
+
+LEVEL 49: Nineteenth Shadow
+--------------------------------------------------------------------------------
+🔵 Nineteenth Minion
+   Gain a 19th permanent minion
+
+🔴 Unbreakable Fury
+   All minions enter auto-berserk below 50% HP
+   (+150% damage, cannot be stopped)
+
+🟣 Pain Empowerment
+   Malachar gains +3% damage per 1% missing HP (max +300%)
+
+
+LEVEL 50: Overwhelming Power
+--------------------------------------------------------------------------------
+🔵 Unstoppable Legion
+   All minions immune to crowd control, gain +40% movement speed
+
+🔴 Titan's Reach
+   All minions gain double attack range and +100% attack size
+
+🟣 Apocalypse Wave
+   Automatically pulse massive AOE damage when at low HP
+   (activates at 25% HP, immune during, 120s cooldown)
+
+
+LEVEL 51: Twentieth Shadow
+--------------------------------------------------------------------------------
+🔵 Twentieth Minion
+   Gain a 20th permanent minion
+
+🔴 Perfect Accuracy
+   All minions gain +100% accuracy and cannot miss
+
+🟣 Vampire Lord
+   Malachar heals for 50% of all damage dealt (personal and minion damage)
+
+
+LEVEL 52: Supremacy
+--------------------------------------------------------------------------------
+🔵 Supreme Legion
+   All minions gain +5% all stats per character level (retroactive)
+
+🔴 Immortal Champions
+   All minions automatically resurrect after 5 seconds (no cooldown)
+
+🟣 Shadow Dominion
+   Malachar gains +100% damage in darkness,
+   creates permanent darkness aura (10 tile radius)
+
+
+LEVEL 53: Domination
+--------------------------------------------------------------------------------
+🔵 Instant Teleport
+   Minions instantly teleport to targets, ignore pathing
+
+🔴 True Damage
+   All minions deal true damage (ignores all resistances/armor)
+
+🟣 Life Eater
+   Malachar steals 10% max HP from enemies on hit (max 100 per hit)
+
+
+LEVEL 54: Mastery
+--------------------------------------------------------------------------------
+🔵 Legion Mastery
+   Pack Mentality bonus doubled (10% per minion instead of 5%)
+
+🔴 Champion Mastery
+   All stat bonuses to minions increased by 50%
+
+🟣 Reaper Mastery
+   All Malachar's passive abilities trigger 50% faster and are
+   50% more effective
+
+
+LEVEL 55: Transcendence
+--------------------------------------------------------------------------------
+🔵 Transcendent Army
+   Minions phase through each other and obstacles
+
+🔴 Ascended Form
+   All minions gain wings, flight, and +80% all stats
+
+🟣 Shadow God
+   Malachar becomes semi-transparent, gains 75% evasion
+
+
+LEVEL 56: Retribution
+--------------------------------------------------------------------------------
+🔵 Vengeful Swarm
+   When a minion dies, all others automatically gain +50% damage for 10s
+
+🔴 Retribution Aura
+   All minions automatically reflect 50% of damage taken back to attackers
+
+🟣 Death's Vengeance
+   When Malachar is hit, automatically unleash 3 homing shadow bolts
+
+
+LEVEL 57: Amplification
+--------------------------------------------------------------------------------
+🔵 Exponential Growth
+   Every 5th minion spawned from Dark Harvest automatically becomes permanent
+
+🔴 Exponential Power
+   All minion buffs stack multiplicatively instead of additively
+
+🟣 Exponential Dark
+   Malachar's damage automatically doubles every 10 seconds in combat
+   (resets out of combat)
+
+
+LEVEL 58: Unity
+--------------------------------------------------------------------------------
+🔵 Legion Unity
+   All minions share HP pool (damage distributed evenly among living minions)
+
+🔴 Champion Unity
+   All minions automatically gain the highest stat value among them
+   (HP, damage, etc.)
+
+🟣 Master Unity
+   Malachar and all minions gain +20% all stats
+
+
+LEVEL 59: Devastation
+--------------------------------------------------------------------------------
+🔵 Explosive Death
+   Minions automatically explode on death
+   (damage equal to their max HP, 6 tile radius)
+
+🔴 Splash Damage
+   All minion attacks automatically deal AOE splash
+   (4 tile radius, 50% of attack)
+
+🟣 Void Zones
+   Malachar's attacks automatically create void zones (last 5s, 30 damage/sec)
+
+
+LEVEL 60: Ultimate Power
+--------------------------------------------------------------------------------
+🔵 Infinite Legion
+   No cap on minion count, Dark Harvest chance increased to 25%
+
+🔴 Divine Champions
+   All minions gain +300% all stats, become massive
+
+🟣 True Reaper
+   Malachar automatically kills any enemy below 50% HP (10s cooldown)
+
+
+================================================================================
+                          LATE GAME (Levels 61-80)
+================================================================================
+
+LEVEL 61: Reality Bending
+--------------------------------------------------------------------------------
+🔵 Endless Spawn
+   Automatically spawn 1 temporary minion every 2 seconds during combat
+
+🔴 Reality Break
+   All minions ignore game physics (fly, phase, teleport freely)
+
+🟣 Time Dilation
+   Passively slow time for enemies by 50% around Malachar (10 tile radius)
+
+
+LEVEL 62: Overwhelming Might
+--------------------------------------------------------------------------------
+🔵 Tidal Wave
+   All minions automatically charge in wave formation when far from enemies
+   (stuns all hit, 30s cooldown)
+
+🔴 Invincible Offense
+   All minions cannot be damaged while attacking
+
+🟣 Gravity Well
+   Malachar's attacks automatically create singularities that pull enemies in
+
+
+LEVEL 63: Perfection
+--------------------------------------------------------------------------------
+🔵 Perfect Legion
+   All minions automatically dodge attacks (50% chance)
+
+🔴 Perfect Champions
+   All minions have guaranteed critical hits on every attack
+
+🟣 Perfect Reaper
+   Malachar cannot take more than 10% max HP damage from a single hit
+
+
+LEVEL 64: Chaos
+--------------------------------------------------------------------------------
+🔵 Chaotic Swarm
+   Minions randomly gain buffs every 5s (+100% to random stat)
+
+🔴 Chaotic Champions
+   Minions' attacks have random powerful effects (freeze, burn, explode, etc.)
+
+🟣 Chaos Magic
+   Malachar's passive abilities have random bonus effects
+
+
+LEVEL 65: Eternity
+--------------------------------------------------------------------------------
+🔵 Eternal Legion
+   Minions never truly die (ghost form for 5s, then resurrect)
+
+🔴 Eternal Champions
+   Minions become immortal during boss fights
+
+🟣 Eternal Reaper
+   Malachar gains +1% all stats per second alive (caps at +500%)
+
+
+LEVEL 66: Synergy
+--------------------------------------------------------------------------------
+🔵 Legion Synergy
+   Each different minion buff multiplies with others
+   (+50% effectiveness per unique buff)
+
+🔴 Champion Synergy
+   Minions grant each other their buffs
+
+🟣 Reaper Synergy
+   Malachar gains 10% of all minion stats
+
+
+LEVEL 67: Nova
+--------------------------------------------------------------------------------
+🔵 Legion Nova
+   All minions simultaneously emit shockwave
+   (8 tile radius, 200 damage, 45s cooldown)
+
+🔴 Champion Nova
+   All minions release energy burst when damaged (6 tile radius, 80 damage)
+
+🟣 Reaper Nova
+   Malachar explodes periodically
+   (10s interval, 10 tile radius, 150 damage, doesn't hurt self)
+
+
+LEVEL 68: Adaptation
+--------------------------------------------------------------------------------
+🔵 Adaptive Legion
+   Minions automatically counter enemy types (+100% damage to their counter)
+
+🔴 Adaptive Champions
+   Minions evolve based on enemies killed (gain their abilities)
+
+🟣 Adaptive Reaper
+   Malachar becomes immune to damage types after being hit 3 times
+
+
+LEVEL 69: Cosmic
+--------------------------------------------------------------------------------
+🔵 Cosmic Legion
+   Minions attack from orbit (ranged attacks from anywhere on map)
+
+🔴 Cosmic Champions
+   Minions grow to screen-filling size (+500% all stats)
+
+🟣 Cosmic Reaper
+   Malachar bends space (teleport anywhere on map automatically when hit,
+   8s cooldown)
+
+
+LEVEL 70: Singularity
+--------------------------------------------------------------------------------
+🔵 Legion Singularity
+   All minions can combine into one mega-minion temporarily
+   (combined stats of all, 20s duration, 90s cooldown)
+
+🔴 Champion Singularity
+   All buffs focus on strongest minion (+1000% all stats)
+
+🟣 Reaper Singularity
+   Malachar can absorb all minions temporarily, gaining their combined power
+   (30s duration, 120s cooldown)
+
+
+LEVEL 71: Overflow
+--------------------------------------------------------------------------------
+🔵 Overflow Legion
+   Minions can stack infinitely in same position (no collision with each other)
+
+🔴 Overflow Power
+   Minion stats have no maximum cap (infinite scaling)
+
+🟣 Overflow Magic
+   Malachar's passive abilities have no cooldown limits
+
+
+LEVEL 72: Dominion
+--------------------------------------------------------------------------------
+🔵 Total Dominion
+   Automatically control all entities on screen (enemies fight each other)
+
+🔴 Champion Dominion
+   Minions automatically command their own mini-armies
+
+🟣 Reaper Dominion
+   Malachar controls life and death (auto-revive allies/kill enemies, 20s cooldown)
+
+
+LEVEL 73: Multiplication
+--------------------------------------------------------------------------------
+🔵 Legion Multiplication
+   Minions duplicate on kill (50% chance, temporary duplicates, 15s duration)
+
+🔴 Champion Multiplication
+   Minions attack multiple times per swing (x5 attacks)
+
+🟣 Reaper Multiplication
+   Malachar's attacks hit 10 times simultaneously
+
+
+LEVEL 74: Resonance
+--------------------------------------------------------------------------------
+🔵 Legion Resonance
+   Minions create chain reactions (kills trigger explosions that trigger more)
+
+🔴 Champion Resonance
+   Minion attacks resonate, dealing damage again after 1s (echo attacks)
+
+🟣 Reaper Resonance
+   Malachar's abilities bounce between enemies infinitely until all are dead
+
+
+LEVEL 75: Nexus
+--------------------------------------------------------------------------------
+🔵 Legion Nexus
+   Create nexus that spawns minions automatically
+   (1 per second, permanent structure)
+
+🔴 Champion Nexus
+   Minions orbit around nexus point, gaining +200% all stats
+
+🟣 Reaper Nexus
+   Malachar becomes a nexus of death (10 tile instant-kill aura)
+
+
+LEVEL 76: Ascendance
+--------------------------------------------------------------------------------
+🔵 Divine Legion
+   Minions become divine entities (immune to all negative effects)
+
+🔴 Divine Champions
+   Minions gain holy powers (auto-heal allies, smite enemies for true damage)
+
+🟣 Divine Reaper
+   Malachar ascends to godhood (+200% all stats, golden aura, flight)
+
+
+LEVEL 77: Storm
+--------------------------------------------------------------------------------
+🔵 Legion Storm
+   Minions move like a hurricane (massive AOE damage while moving)
+
+🔴 Champion Storm
+   Minions summon lightning strikes (auto-targeting, 100 damage, 2s interval)
+
+🟣 Reaper Storm
+   Malachar summons permanent dark storm
+   (covers entire map, 20 damage/sec to enemies)
+
+
+LEVEL 78: Fusion
+--------------------------------------------------------------------------------
+🔵 Legion Fusion
+   Minions can temporarily fuse
+   (2 minions = 1 mega minion with combined stats, 30s duration, 60s cooldown)
+
+🔴 Champion Fusion
+   Minions fuse all buffs together (multiplicative stacking on all buffs)
+
+🟣 Reaper Fusion
+   Malachar fuses with shadow realm (phase between dimensions freely,
+   immune while phased)
+
+
+LEVEL 79: Infinite
+--------------------------------------------------------------------------------
+🔵 Infinite Swarm
+   Minion visual count becomes infinite (100 active minions shown as thousands)
+
+🔴 Infinite Power
+   Minion damage scales infinitely with time (+10% per second in combat)
+
+🟣 Infinite Death
+   Malachar's kills grant permanent stacking damage (+1% per kill, no cap)
+
+
+LEVEL 80: Omega Forms
+--------------------------------------------------------------------------------
+🔵 Omega Legion
+   All minions gain all legion buffs simultaneously (+50% effectiveness each)
+
+🔴 Omega Champions
+   All minions become raid-boss tier (+300% all stats, immunity to stuns)
+
+🟣 Omega Reaper
+   Malachar becomes death incarnate (death aura 8 tiles, 50 damage/sec)
+
+
+================================================================================
+                         END GAME (Levels 81-100)
+================================================================================
+
+LEVEL 81: Quantum Strikes
+--------------------------------------------------------------------------------
+🔵 Quantum Legion
+   Minions attack from multiple angles simultaneously (attacks hit 3 times)
+
+🔴 Quantum Champions
+   Minions' attacks ignore 75% armor and resistances
+
+🟣 Quantum Reaper
+   Malachar automatically rewinds position 3s back when taking lethal damage
+   (10s cooldown)
+
+
+LEVEL 82: Absolute Mastery
+--------------------------------------------------------------------------------
+🔵 Absolute Numbers
+   Gain 5 additional permanent minions immediately
+
+🔴 Absolute Power
+   All minions deal true damage (cannot be reduced)
+
+🟣 Absolute Death
+   Malachar's attacks deal +10% of enemy max HP as bonus damage
+
+
+LEVEL 83: Stellar Forms
+--------------------------------------------------------------------------------
+🔵 Star Legion
+   Minions leave burning trails (30 damage/sec, 3s duration)
+
+🔴 Star Champions
+   Minions explode on death (screen-wide 200 damage)
+
+🟣 Star Reaper
+   Malachar creates gravity well (pulls all enemies in 10 tile radius)
+
+
+LEVEL 84: Paradox Power
+--------------------------------------------------------------------------------
+🔵 Paradox Legion
+   When a minion dies, automatically summon 2 temporary copies (15s duration)
+
+🔴 Paradox Champions
+   Minions below 1 HP become invulnerable for 5s, then fully heal
+   (60s cooldown per minion)
+
+🟣 Paradox Reaper
+   Malachar survives lethal damage 3 times per encounter (auto-trigger)
+
+
+LEVEL 85: Mythic Evolution
+--------------------------------------------------------------------------------
+🔵 Mythic Legion
+   Minions evolve into legendary creatures
+   (dragons, phoenixes - +150% all stats, flight)
+
+🔴 Mythic Champions
+   Minions gain mythical weapons (chain lightning, frost nova, flame waves)
+
+🟣 Mythic Reaper
+   Malachar phases through enemies (50% evasion, phase through units)
+
+
+LEVEL 86: Genesis Power
+--------------------------------------------------------------------------------
+🔵 Legion Genesis
+   Automatically spawn 1 elite minion every 30s (double stats, permanent)
+
+🔴 Champion Genesis
+   Each minion spawns a smaller minion that inherits 50% of their stats
+
+🟣 Reaper Genesis
+   Malachar can reshape terrain (destroy obstacles, 20s cooldown)
+
+
+LEVEL 87: Eternal Might
+--------------------------------------------------------------------------------
+🔵 Eternal Army
+   Minions respawn instantly (no death timer)
+
+🔴 Eternal Champions
+   Minions gain +1% all stats per second alive (caps at +200%)
+
+🟣 Eternal Reaper
+   Malachar gains +1% damage per kill this session (caps at +500%)
+
+
+LEVEL 88: Void Touched
+--------------------------------------------------------------------------------
+🔵 Void Legion
+   Minions become shadow entities (50% damage reduction, phase through units)
+
+🔴 Void Champions
+   Minions deal void damage (ignores shields, bypasses invulnerability)
+
+🟣 Void Reaper
+   Malachar creates void zones on hit
+   (5 tile radius, 40 damage/sec, 5s duration)
+
+
+LEVEL 89: Multiverse Connection
+--------------------------------------------------------------------------------
+🔵 Multiverse Legion
+   Summon alternate versions of your minions
+   (duplicate current army for 20s, 120s cooldown)
+
+🔴 Multiverse Champions
+   Minions gain random legendary effects each attack
+   (freeze, burn, stun, explode, etc.)
+
+🟣 Multiverse Reaper
+   Malachar splits into 3 copies for 10s (90s cooldown)
+
+
+LEVEL 90: Zenith
+--------------------------------------------------------------------------------
+🔵 Zenith Legion
+   Minions gain +10% stats per unique buff they have (retroactive)
+
+🔴 Zenith Champions
+   Minions become unstoppable (immune to damage while attacking)
+
+🟣 Zenith Reaper
+   Malachar gains +100% damage, +100% HP, +50% movement speed permanently
+
+
+LEVEL 91: Master Tactician
+--------------------------------------------------------------------------------
+🔵 Legion Tactician
+   Command minions with perfect precision (instant target switching,
+   no collision)
+
+🔴 Champion Tactician
+   Minions gain combat intelligence (auto-dodge attacks, block projectiles,
+   counter-attack)
+
+🟣 Reaper Tactician
+   Malachar's abilities cost no cooldowns for 10s after a kill
+
+
+LEVEL 92: Manifest Destiny
+--------------------------------------------------------------------------------
+🔵 Manifest Legion
+   Automatically summon 10 temporary minions at optimal locations
+   (30s duration, 45s cooldown)
+
+🔴 Manifest Champions
+   Minions can instantly teleport to enemies (6s cooldown per minion)
+
+🟣 Manifest Reaper
+   Malachar automatically teleports away from danger (5s cooldown)
+
+
+LEVEL 93: Primordial Fury
+--------------------------------------------------------------------------------
+🔵 Primordial Swarm
+   Dark Harvest chance increased to 30%, spawned minions are 50% stronger
+
+🔴 Primordial Champions
+   Minions enter primal rage (double size, +200% damage, AOE attacks)
+
+🟣 Primordial Reaper
+   Malachar channels primordial death
+   (10 tile instant-kill aura for 8s, 90s cooldown)
+
+
+LEVEL 94: Path Convergence
+--------------------------------------------------------------------------------
+🔵 Legion Convergence
+   Gain 3 random Champion and 3 random Reaper upgrades you don't have
+
+🔴 Champion Convergence
+   Gain 3 random Legion and 3 random Reaper upgrades you don't have
+
+🟣 Reaper Convergence
+   Gain 3 random Legion and 3 random Champion upgrades you don't have
+
+
+LEVEL 95: Unfathomable Power
+--------------------------------------------------------------------------------
+🔵 Unfathomable Legion
+   Minions phase between reality (+75% evasion, can't be targeted)
+
+🔴 Unfathomable Champions
+   Minions break damage cap (no maximum damage limit)
+
+🟣 Unfathomable Reaper
+   Malachar ignores all debuffs and crowd control permanently
+
+
+LEVEL 96: Inevitability
+--------------------------------------------------------------------------------
+🔵 Inevitable Legion
+   Minions cannot be stopped (immune to knockback, stuns, slows, roots)
+
+🔴 Inevitable Champions
+   Minions gain +50% damage for each second in combat (caps at +500%)
+
+🟣 Inevitable Death
+   Enemies near death (below 20% HP) are automatically marked
+   (take +100% damage from all sources)
+
+
+LEVEL 97: Supreme Authority
+--------------------------------------------------------------------------------
+🔵 Supreme Legion
+   Command 30 minions total (increased cap), all gain +100% stats
+
+🔴 Supreme Champions
+   All minions gain supremacy aura
+   (8 tile radius, allies gain +50% damage)
+
+🟣 Supreme Reaper
+   Malachar gains supreme dominion
+   (control enemy units for 10s, 45s cooldown)
+
+
+LEVEL 98: Transcendent Form
+--------------------------------------------------------------------------------
+🔵 Transcendent Legion
+   Minions ascend to higher plane (+200% all stats, ethereal glow)
+
+🔴 Transcendent Champions
+   Minions achieve perfection (guaranteed crits, cannot miss, 100% lifesteal)
+
+🟣 Transcendent Reaper
+   Malachar transcends mortality (death aura doubled, immune to death
+   once per 30s)
+
+
+LEVEL 99: Finality
+--------------------------------------------------------------------------------
+🔵 Final Legion
+   The ultimate army (all minion stats +300%, army size +10)
+
+🔴 Final Champions
+   The ultimate warriors (minions become immortal for 30s after taking
+   lethal damage, 60s cooldown per minion)
+
+🟣 Final Reaper
+   The true death (Malachar's damage +500%, all kills heal full HP)
+
+
+LEVEL 100: APOTHEOSIS
+--------------------------------------------------------------------------------
+🔵 LEGION GOD
+   Unlock max 40 permanent minions
+   All legion buffs doubled
+   Minions respawn instantly at full power
+
+🔴 CHAMPION GOD
+   All minions gain +1000% all stats
+   Become massive titans
+   Attacks create shockwaves (10 tile AOE)
+
+🟣 REAPER GOD
+   Malachar becomes a god of death
+   +500% all stats
+   15 tile death aura (100 damage/sec)
+   Cannot die for 10s after taking lethal damage (60s cooldown)
+
+
+================================================================================
+                              DESIGN NOTES
+================================================================================
+
+BALANCE PHILOSOPHY:
+- Levels 1-25:  Normal power curve, establishing build identity
+- Levels 26-50: Strong power spike, build comes together
+- Levels 51-75: God-tier powers emerge, dominant in most content
+- Levels 76-100: Reality-breaking endgame powers, tackle hardest content
+
+REACHING HIGH LEVELS:
+- Most runs end at level 20-30 (balanced, fun gameplay)
+- Level 50+ requires good build synergy and skill
+- Level 75+ requires near-perfect build and execution
+- Level 100 should feel incredible but achievable with practice
+
+CROSS-PATH SYNERGIES:
+- Legion + Champion = Massive army of powerful minions
+- Legion + Reaper = Army sustains Malachar, Malachar empowers army
+- Champion + Reaper = Quality over quantity, Malachar + strong minions
+- All Three Paths = Balanced, versatile, adaptable to any situation
+
+MOBILE CONTROLS:
+- Movement only (virtual joystick or tap-to-move)
+- Everything triggers automatically based on conditions
+- Build complexity comes from upgrade choices, not execution
+- Perfect for multiplayer coordination
+
+MULTIPLAYER CONSIDERATIONS:
+- Different players can specialize in different paths
+- Buffs and effects can benefit party members
+- Shared XP helps new players catch up
+- High-level players can carry but everyone contributes
+
+ENDLESS PROGRESSION:
+- No "win" state, world scales infinitely
+- Level 100 is a milestone, not the end
+- Each run feels different based on upgrade choices
+- Always something to push for
+
+================================================================================
+                                END OF FILE
+================================================================================

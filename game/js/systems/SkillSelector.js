@@ -157,50 +157,359 @@ class SkillSelector {
         const player = this.scene.localPlayer;
         if (!player) return;
 
-        console.log(`🔮 Applying skill: ${skill.id}`);
+        console.log(`🔮 Applying skill: ${skill.id} (${skill.name})`);
 
+        // Initialize passive ability manager if needed
+        if (!this.scene.passiveAbilityManager) {
+            this.scene.passiveAbilityManager = new PassiveAbilityManager(this.scene, player);
+        }
+
+        // Handle special case for spawn_minion effect (used throughout skill tree)
+        if (skill.effect === 'spawn_minion') {
+            // Spawn another permanent minion
+            this.scene.spawnMinion(
+                player.sprite.x + 60,
+                player.sprite.y,
+                player.data.id,
+                true // permanent
+            );
+            console.log(`👹 ${skill.name}: Summoned additional permanent minion!`);
+            return;
+        }
+
+        // Handle complex effect objects
+        if (typeof skill.effect === 'object') {
+            const effect = skill.effect;
+
+            // ==== MINION STAT MULTIPLIERS ====
+            if (effect.minionHealth) {
+                if (!player.minionHealthMultiplier) player.minionHealthMultiplier = 1;
+                player.minionHealthMultiplier *= effect.minionHealth;
+                // Update existing minions
+                Object.values(this.scene.minions).forEach(minion => {
+                    minion.maxHealth = Math.floor(minion.maxHealth * effect.minionHealth);
+                    minion.health = Math.floor(minion.health * effect.minionHealth);
+                });
+                console.log(`💚 Minion health: ${player.minionHealthMultiplier}x`);
+            }
+
+            if (effect.minionDamage) {
+                if (!player.minionDamageMultiplier) player.minionDamageMultiplier = 1;
+                player.minionDamageMultiplier *= effect.minionDamage;
+                Object.values(this.scene.minions).forEach(minion => {
+                    minion.damage *= effect.minionDamage;
+                });
+                console.log(`⚔️ Minion damage: ${player.minionDamageMultiplier}x`);
+            }
+
+            if (effect.minionSpeed) {
+                if (!player.minionSpeedMultiplier) player.minionSpeedMultiplier = 1;
+                player.minionSpeedMultiplier *= effect.minionSpeed;
+                console.log(`💨 Minion speed: ${player.minionSpeedMultiplier}x`);
+            }
+
+            if (effect.minionAttackSpeed) {
+                if (!player.minionAttackSpeedMultiplier) player.minionAttackSpeedMultiplier = 1;
+                player.minionAttackSpeedMultiplier *= effect.minionAttackSpeed;
+                console.log(`⚡ Minion attack speed: ${player.minionAttackSpeedMultiplier}x`);
+            }
+
+            if (effect.minionAllStats) {
+                if (!player.minionAllStatsMultiplier) player.minionAllStatsMultiplier = 1;
+                player.minionAllStatsMultiplier *= effect.minionAllStats;
+                // Apply to existing minions
+                Object.values(this.scene.minions).forEach(minion => {
+                    minion.damage *= effect.minionAllStats;
+                    minion.maxHealth = Math.floor(minion.maxHealth * effect.minionAllStats);
+                    minion.health = Math.floor(minion.health * effect.minionAllStats);
+                });
+                console.log(`⭐ Minion all stats: ${player.minionAllStatsMultiplier}x`);
+            }
+
+            if (effect.minionSize) {
+                if (!player.minionSizeMultiplier) player.minionSizeMultiplier = 1;
+                player.minionSizeMultiplier *= effect.minionSize;
+                Object.values(this.scene.minions).forEach(minion => {
+                    if (minion.sprite) {
+                        minion.sprite.setScale(player.minionSizeMultiplier);
+                    }
+                });
+                console.log(`📏 Minion size: ${player.minionSizeMultiplier}x`);
+            }
+
+            if (effect.minionDefense) {
+                if (!player.minionDefenseMultiplier) player.minionDefenseMultiplier = 1;
+                player.minionDefenseMultiplier *= effect.minionDefense;
+                console.log(`🛡️ Minion defense: ${player.minionDefenseMultiplier}x`);
+            }
+
+            if (effect.minionArmor) {
+                if (!player.minionArmor) player.minionArmor = 0;
+                player.minionArmor += effect.minionArmor;
+                console.log(`🛡️ Minion armor: +${player.minionArmor}`);
+            }
+
+            if (effect.minionLifesteal) {
+                player.minionLifesteal = effect.minionLifesteal;
+                console.log(`🩸 Minion lifesteal: ${(player.minionLifesteal * 100).toFixed(0)}%`);
+            }
+
+            if (effect.minionRegen) {
+                player.minionRegen = effect.minionRegen;
+                console.log(`💚 Minion regen: ${(player.minionRegen * 100).toFixed(0)}%/sec`);
+            }
+
+            // ==== MINION SPECIAL ABILITIES ====
+            if (effect.minionKnockback) {
+                player.minionKnockback = true;
+                console.log(`💥 Minions knock back enemies`);
+            }
+
+            if (effect.minionStun) {
+                player.minionStun = effect.minionStun;
+                console.log(`💫 Minions can stun enemies`);
+            }
+
+            if (effect.cleave) {
+                player.minionCleave = true;
+                console.log(`🌊 Minions cleave in a cone`);
+            }
+
+            if (effect.berserkerDamage) {
+                player.berserkerDamage = effect.berserkerDamage;
+                player.berserkerThreshold = effect.berserkerThreshold || 0.4;
+                console.log(`😡 Berserker rage when below ${(player.berserkerThreshold * 100).toFixed(0)}% HP`);
+            }
+
+            if (effect.unstoppable) {
+                player.minionUnstoppable = true;
+                console.log(`🚀 Minions are unstoppable`);
+            }
+
+            if (effect.executeThreshold) {
+                player.executeThreshold = effect.executeThreshold;
+                player.executeDamage = effect.executeDamage || 2.0;
+                console.log(`⚔️ Execute enemies below ${(player.executeThreshold * 100).toFixed(0)}% HP`);
+            }
+
+            if (effect.bossDamage) {
+                player.bossDamage = effect.bossDamage;
+                console.log(`👑 +${((effect.bossDamage - 1) * 100).toFixed(0)}% damage to bosses`);
+            }
+
+            if (effect.minionCritChance) {
+                player.minionCritChance = effect.minionCritChance;
+                player.minionCritDamage = effect.minionCritDamage || 3.0;
+                console.log(`💥 ${(effect.minionCritChance * 100).toFixed(0)}% crit chance`);
+            }
+
+            if (effect.armorPen) {
+                player.armorPen = effect.armorPen;
+                console.log(`🗡️ ${(effect.armorPen * 100).toFixed(0)}% armor penetration`);
+            }
+
+            if (effect.chainAttack) {
+                player.chainAttack = effect.chainAttack;
+                console.log(`⚡ Attacks chain to ${effect.chainAttack.targets} enemies`);
+            }
+
+            if (effect.splashDamage) {
+                player.splashDamage = effect.splashDamage;
+                console.log(`💧 ${(effect.splashDamage.percent * 100).toFixed(0)}% splash damage`);
+            }
+
+            if (effect.dualWield) {
+                player.dualWield = true;
+                player.attacksPerStrike = effect.attacksPerStrike || 2;
+                console.log(`⚔️ Dual wield - ${player.attacksPerStrike} attacks per strike`);
+            }
+
+            // ==== PLAYER STATS ====
+            if (effect.maxHealth) {
+                player.maxHealth += effect.maxHealth;
+                player.health += effect.maxHealth;
+                console.log(`❤️ Max health: +${effect.maxHealth}`);
+            }
+
+            if (effect.healPerKill) {
+                player.healPerKill = effect.healPerKill;
+                console.log(`🩸 Heal ${effect.healPerKill} HP per kill`);
+            }
+
+            if (effect.healOnKillPercent) {
+                player.healOnKillPercent = effect.healOnKillPercent;
+                console.log(`💚 Heal ${(effect.healOnKillPercent * 100).toFixed(0)}% max HP per kill`);
+            }
+
+            if (effect.regenPerMinion) {
+                player.regenPerMinion = effect.regenPerMinion;
+                console.log(`🔮 +${effect.regenPerMinion} HP/sec per minion`);
+            }
+
+            if (effect.xpBonus) {
+                if (!player.xpMultiplier) player.xpMultiplier = 1;
+                player.xpMultiplier *= effect.xpBonus;
+                console.log(`✨ XP multiplier: ${player.xpMultiplier}x`);
+            }
+
+            if (effect.sacrificeHealth) {
+                const sacrifice = typeof effect.sacrificeHealth === 'number' && effect.sacrificeHealth < 0 ?
+                    Math.abs(effect.sacrificeHealth) : effect.sacrificeHealth * player.maxHealth;
+                player.maxHealth -= sacrifice;
+                player.health = Math.min(player.health, player.maxHealth);
+                console.log(`🩸 Sacrificed ${sacrifice} max HP`);
+            }
+
+            if (effect.sacrificeDamage) {
+                if (!player.damageMultiplier) player.damageMultiplier = 1;
+                player.damageMultiplier *= effect.sacrificeDamage;
+                console.log(`💀 Damage multiplier: ${player.damageMultiplier}x`);
+            }
+
+            // ==== SPECIAL EFFECTS ====
+            if (effect.packDamageBonus) {
+                player.packDamageBonus = effect.packDamageBonus;
+                console.log(`🐺 +${(effect.packDamageBonus * 100).toFixed(0)}% damage per nearby minion`);
+            }
+
+            if (effect.groupedDefense) {
+                player.groupedDefense = effect.groupedDefense;
+                player.groupRadius = effect.groupRadius || 4;
+                console.log(`🛡️ +${((1 - effect.groupedDefense) * 100).toFixed(0)}% defense when grouped`);
+            }
+
+            if (effect.coordinatedDamage) {
+                player.coordinatedDamage = effect.coordinatedDamage;
+                console.log(`🎯 Coordinated assault: ${((effect.coordinatedDamage - 1) * 100).toFixed(0)}% bonus damage`);
+            }
+
+            if (effect.perMinionBonus) {
+                player.perMinionBonus = effect.perMinionBonus;
+                player.maxMinionBonus = effect.maxBonus || 2.0;
+                console.log(`💪 +${(effect.perMinionBonus * 100).toFixed(0)}% per minion (max ${(effect.maxBonus * 100).toFixed(0)}%)`);
+            }
+
+            if (effect.commandAura) {
+                player.commandAura = effect.commandAura;
+                console.log(`👑 Command aura: +${((effect.commandAura.bonus - 1) * 100).toFixed(0)}% all stats in ${effect.commandAura.radius} tiles`);
+            }
+
+            if (effect.flankDamage) {
+                player.flankDamage = effect.flankDamage;
+                console.log(`🗡️ +${((effect.flankDamage - 1) * 100).toFixed(0)}% damage from behind`);
+            }
+
+            if (effect.killDamageStack) {
+                player.killDamageStack = effect.killDamageStack;
+                player.maxKillStacks = effect.maxStacks || 20;
+                console.log(`🩸 +${(effect.killDamageStack * 100).toFixed(0)}% damage per kill (max ${effect.maxStacks} stacks)`);
+            }
+
+            if (effect.reapersMarkThreshold) {
+                player.reapersMarkThreshold = effect.reapersMarkThreshold;
+                player.reapersMarkDamage = effect.reapersMarkDamage;
+                console.log(`💀 Reaper's Mark: enemies below ${(effect.reapersMarkThreshold * 100).toFixed(0)}% HP take +${((effect.reapersMarkDamage - 1) * 100).toFixed(0)}% damage`);
+            }
+
+            // ==== PASSIVE ABILITIES (Handled by PassiveAbilityManager) ====
+            const passiveEffects = [
+                'shadowVolley', 'curseAura', 'lifeDrainAura', 'damageAura', 'corpseExplosion',
+                'voidEruption', 'cursedTrail', 'soulCollector', 'retaliationNova', 'plagueAura',
+                'shadowDash', 'invisOnKill', 'soulBarrier', 'mindControl', 'doomMark',
+                'secondChance', 'eclipseZone', 'darkSovereign', 'fearAura', 'lunarBonus',
+                'autoRevive', 'raiseUndead', 'lastStand', 'deathSpiral', 'hexAura',
+                'furyOnKill', 'cdrOnHit', 'autoSummon', 'shadowVolleyCount', 'leapAttack',
+                'hiveRetribution', 'apocalypseForm', 'painLink', 'chargeAttack', 'savageFrenzy',
+                'emergencySwarm', 'colossusCore', 'syncExecute', 'guardianShield', 'soulRend',
+                'instakillChance', 'dreadAura', 'killSpree', 'massacre', 'berserkThreshold',
+                'painEmpowerment', 'ccImmune', 'attackRange', 'attackSize', 'apocalypseWave',
+                'perfectAccuracy', 'vampireLord', 'statsPerLevel', 'instantRevive', 'shadowDominion',
+                'instantTeleport', 'trueDamage', 'lifeSteal', 'packMentalityBonus', 'championMastery',
+                'reaperMastery', 'phaseMovement', 'ascended', 'evasion', 'vengeance', 'reflectDamage',
+                'retaliationBolts', 'permanentConversion', 'multiplicativeStacking', 'exponentialDamage',
+                'sharedHP', 'statSharing', 'unityBonus', 'deathExplosion', 'voidZone', 'infiniteMinions',
+                'darkHarvestChance', 'executeThreshold', 'executeCooldown', 'autoSpawnInterval',
+                'ignorePhysics', 'timeSlow', 'tidalWave', 'invincibleWhileAttacking', 'gravityWell',
+                'dodgeChance', 'guaranteedCrit', 'maxDamagePercent', 'randomBuffs', 'randomEffects',
+                'chaosMagic', 'ghostRevive', 'bossImmortality', 'statsPerSecond', 'synergyBonus',
+                'shareBuffs', 'inheritMinionStats', 'legionNova', 'damageNova', 'periodicExplosion',
+                'autoCounter', 'absorbAbilities', 'adaptiveImmunity', 'orbitalStrikes', 'autoTeleport',
+                'megaMinion', 'focusBuffs', 'absorbMinions'
+            ];
+
+            // Check if this skill has any passive abilities
+            let hasPassive = false;
+            for (const passiveKey of passiveEffects) {
+                if (effect[passiveKey] !== undefined) {
+                    hasPassive = true;
+                    break;
+                }
+            }
+
+            if (hasPassive) {
+                this.scene.passiveAbilityManager.addPassiveAbility(skill);
+                console.log(`✨ Added passive ability: ${skill.name}`);
+            }
+
+            // ==== INSTANT EFFECTS ====
+            if (effect.instantMinions) {
+                for (let i = 0; i < effect.instantMinions; i++) {
+                    this.scene.spawnMinion(
+                        player.sprite.x + Phaser.Math.Between(-100, 100),
+                        player.sprite.y + Phaser.Math.Between(-100, 100),
+                        player.data.id,
+                        true // permanent
+                    );
+                }
+                console.log(`👥 Summoned ${effect.instantMinions} permanent minions`);
+            }
+
+            // ==== GOD-TIER CAPSTONE EFFECTS ====
+            if (effect.legionGod) {
+                player.minionCap = effect.legionGod.minionCap || 40;
+                player.legionBuffMultiplier = effect.legionGod.buffMultiplier || 2.0;
+                player.instantRevive = effect.legionGod.instantRevive || true;
+                console.log(`👑 LEGION GOD: Max ${player.minionCap} minions, all buffs x${player.legionBuffMultiplier}`);
+            }
+
+            if (effect.championGod) {
+                const bonus = effect.championGod.statsBonus || 11.0;
+                player.minionAllStatsMultiplier = (player.minionAllStatsMultiplier || 1) * bonus;
+                player.minionSizeMultiplier = (player.minionSizeMultiplier || 1) * (effect.championGod.size || 3.0);
+                player.shockwaveRadius = effect.championGod.shockwaveRadius || 10;
+                console.log(`⭐ CHAMPION GOD: +${((bonus - 1) * 100).toFixed(0)}% all stats, shockwaves`);
+            }
+
+            if (effect.reaperGod) {
+                player.damageMultiplier = (player.damageMultiplier || 1) * (effect.reaperGod.statsBonus || 6.0);
+                player.maxHealth = Math.floor(player.maxHealth * (effect.reaperGod.statsBonus || 6.0));
+                player.deathAura = effect.reaperGod.deathAura;
+                player.deathImmunity = effect.reaperGod.deathImmunity;
+                console.log(`💀 REAPER GOD: +${((effect.reaperGod.statsBonus - 1) * 100).toFixed(0)}% all stats, death aura`);
+            }
+        }
+
+        // Legacy skill IDs for backward compatibility
         switch(skill.id) {
-            case 'summon_minion':
-                // Spawn another permanent minion
-                this.scene.spawnMinion(
-                    player.sprite.x + 60,
-                    player.sprite.y,
-                    player.data.id,
-                    true // permanent
-                );
-                console.log('👹 Summoned additional permanent minion!');
-                break;
-
             case 'minion_power':
-                // Increase all minion damage by 100%
                 Object.values(this.scene.minions).forEach(minion => {
                     minion.damage *= 2;
-                    console.log(`💪 Minion ${minion.minionId} damage: ${minion.damage}`);
                 });
-
-                // Store multiplier for future minions
-                if (!player.minionDamageMultiplier) {
-                    player.minionDamageMultiplier = 1;
-                }
+                if (!player.minionDamageMultiplier) player.minionDamageMultiplier = 1;
                 player.minionDamageMultiplier *= 2;
                 console.log('⚡ All minion damage doubled!');
                 break;
 
             case 'health_boost':
-                // Increase max health by 50
                 player.maxHealth += 50;
                 player.health += 50;
                 console.log(`❤️ Max health increased to ${player.maxHealth}`);
                 break;
 
             case 'damage_boost':
-                // Increase player damage by 50%
                 player.stats.strength = Math.floor(player.stats.strength * 1.5);
                 console.log(`⚔️ Strength increased to ${player.stats.strength}`);
                 break;
-
-            default:
-                console.warn(`Unknown skill: ${skill.id}`);
         }
     }
 
@@ -217,7 +526,17 @@ class SkillSelector {
     }
 
     getAvailableSkills(playerClass, currentLevel) {
-        // Define all available skills
+        // Load skills from MalacharSkillTree (only for Malachar class)
+        if (playerClass === 'MALACHAR' && typeof MalacharSkillTree !== 'undefined') {
+            // Get skills for this specific level
+            const levelSkills = getSkillsForLevel(currentLevel);
+
+            if (levelSkills && levelSkills.length > 0) {
+                return levelSkills;
+            }
+        }
+
+        // Fallback to basic skills if no skill tree available
         const allSkills = {
             // Malachar-specific skills
             summon_minion: {
