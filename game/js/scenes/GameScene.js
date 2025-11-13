@@ -720,6 +720,8 @@ class GameScene extends Phaser.Scene {
 
         // Player leveled up
         networkManager.on('player:levelup', (data) => {
+            console.log(`🔔 player:levelup event fired (total listeners: ${networkManager.callbacks['player:levelup']?.length || 0})`);
+
             const player = data.playerId === networkManager.currentPlayer.id
                 ? this.localPlayer
                 : this.otherPlayers[data.playerId];
@@ -739,6 +741,7 @@ class GameScene extends Phaser.Scene {
 
                 // Show level up effect for local player
                 if (data.playerId === networkManager.currentPlayer.id) {
+                    console.log(`📊 Showing level up effect for level ${data.level}`);
                     this.showLevelUpEffect(data.level);
                 }
             }
@@ -765,20 +768,12 @@ class GameScene extends Phaser.Scene {
         // Enemy moved
         networkManager.on('enemy:moved', (data) => {
             const enemy = this.enemies[data.enemyId] || this.wolves[data.enemyId];
-            const isWolf = !!this.wolves[data.enemyId];
 
-            // Debug: Log ALL wolf movements (100%)
-            if (isWolf) {
-                console.log(`🐺 WOLF MOVEMENT EVENT: ${data.enemyId.substring(0,8)} -> grid(${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}), found wolf: ${!!enemy}`);
-            }
-
-            // Debug: Check if we're looking up the wrong collection
+            // Debug: Only log if enemy not found (removed excessive 100% logging)
             if (!enemy) {
                 const inEnemies = !!this.enemies[data.enemyId];
                 const inWolves = !!this.wolves[data.enemyId];
                 console.warn(`⚠️ enemy:moved event for ${data.enemyId.substring(0,8)} - inEnemies: ${inEnemies}, inWolves: ${inWolves}`);
-                console.warn(`Current wolves keys:`, Object.keys(this.wolves));
-                console.warn(`Current enemies keys:`, Object.keys(this.enemies));
                 return;
             }
 
@@ -787,18 +782,10 @@ class GameScene extends Phaser.Scene {
                 const targetX = data.position.x * tileSize + tileSize / 2;
                 const targetY = data.position.y * tileSize + tileSize / 2;
 
-                const oldX = enemy.sprite.x;
-                const oldY = enemy.sprite.y;
-
                 // Update position
                 enemy.data.position = data.position;
                 enemy.sprite.x = targetX;
                 enemy.sprite.y = targetY;
-
-                // Debug: Log wolf position changes
-                if (isWolf) {
-                    console.log(`🐺 WOLF SPRITE UPDATED: pixel(${oldX.toFixed(0)}, ${oldY.toFixed(0)}) -> pixel(${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
-                }
             }
         });
 
