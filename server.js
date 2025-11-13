@@ -196,58 +196,14 @@ class Lobby {
         console.log(`🗺️ Generating world metadata for room ${this.id.slice(0, 8)}...`);
         const startTime = Date.now();
 
-        // Spawn enemies throughout the world
-        const enemyCount = Math.floor(this.WORLD_SIZE * this.WORLD_SIZE * 0.01); // 1% of tiles have enemies
-        for (let i = 0; i < enemyCount; i++) {
-            const x = Math.floor(Math.random() * (this.WORLD_SIZE - 4)) + 2;
-            const y = Math.floor(Math.random() * (this.WORLD_SIZE - 4)) + 2;
-
-            const enemy = {
-                id: `${this.id}_enemy_${i}_${Date.now()}`,
-                type: 'wolf',
-                position: { x, y },
-                health: 100,
-                maxHealth: 100,
-                damage: 10,
-                speed: 80,
-                isAlive: true,
-                sightRange: 15
-            };
-
-            this.gameState.enemies.push(enemy);
-        }
-
-        // Spawn items throughout the world
-        const itemCount = Math.floor(this.WORLD_SIZE * this.WORLD_SIZE * 0.005); // 0.5% of tiles have items
-        const itemTypes = [
-            { type: 'health_potion', rarity: 'common', effect: { health: 30 } },
-            { type: 'mana_potion', rarity: 'common', effect: { mana: 50 } },
-            { type: 'strength_potion', rarity: 'uncommon', effect: { strength: 5 } },
-            { type: 'defense_potion', rarity: 'uncommon', effect: { defense: 5 } }
-        ];
-
-        for (let i = 0; i < itemCount; i++) {
-            const x = Math.floor(Math.random() * (this.WORLD_SIZE - 2)) + 1;
-            const y = Math.floor(Math.random() * (this.WORLD_SIZE - 2)) + 1;
-
-            const itemData = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-
-            const item = {
-                id: `${this.id}_item_${i}_${Date.now()}`,
-                type: itemData.type,
-                rarity: itemData.rarity,
-                effect: itemData.effect,
-                position: { x, y }
-            };
-
-            this.gameState.items.push(item);
-        }
+        // DON'T spawn all enemies upfront - way too laggy!
+        // Enemies will spawn dynamically as players explore
+        this.spawnedRegions = new Set(); // Track which regions have enemies
 
         const elapsed = Date.now() - startTime;
         console.log(`✅ World metadata generated in ${elapsed}ms`);
         console.log(`   Size: ${this.WORLD_SIZE}x${this.WORLD_SIZE} tiles`);
-        console.log(`   Enemies: ${enemyCount}`);
-        console.log(`   Items: ${itemCount}`);
+        console.log(`   Enemies: Spawned on-demand (dynamic)`);
         console.log(`   Seed: ${this.worldSeed} (client will generate terrain)`);
 
         // Don't send tiles/biomes/decorations - client generates them from seed
@@ -255,6 +211,53 @@ class Lobby {
             size: this.WORLD_SIZE,
             seed: this.worldSeed
         };
+    }
+
+    // Spawn enemies in a region (called when players explore new areas)
+    spawnEnemiesInRegion(regionX, regionY) {
+        const regionKey = `${regionX},${regionY}`;
+
+        // Skip if already spawned
+        if (this.spawnedRegions.has(regionKey)) return [];
+
+        this.spawnedRegions.add(regionKey);
+
+        const REGION_SIZE = 50; // 50x50 tile regions
+        const enemiesPerRegion = 5; // Much more reasonable!
+        const newEnemies = [];
+
+        // Use seed for consistent spawning
+        const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const regionSeed = seed + regionX * 7919 + regionY * 6563;
+
+        for (let i = 0; i < enemiesPerRegion; i++) {
+            // Seeded random for this enemy
+            const enemySeed = regionSeed + i * 1000;
+            const x = regionX * REGION_SIZE + Math.floor(this.seededRandom(enemySeed) * REGION_SIZE);
+            const y = regionY * REGION_SIZE + Math.floor(this.seededRandom(enemySeed + 1) * REGION_SIZE);
+
+            // Clamp to world bounds
+            if (x < 0 || x >= this.WORLD_SIZE || y < 0 || y >= this.WORLD_SIZE) continue;
+
+            const enemy = {
+                id: `${this.id}_enemy_${regionKey}_${i}`,
+                type: 'wolf',
+                position: { x, y },
+                health: 100,
+                maxHealth: 100,
+                damage: 10,
+                speed: 80,
+                isAlive: true,
+                sightRange: 15,
+                lastMove: 0
+            };
+
+            this.gameState.enemies.push(enemy);
+            newEnemies.push(enemy);
+        }
+
+        console.log(`✨ Spawned ${newEnemies.length} enemies in region (${regionX}, ${regionY})`);
+        return newEnemies;
     }
 
     getWorldData() {
@@ -402,10 +405,49 @@ class Lobby {
         });
     }
 
+    cleanupDistantEnemies() {
+        // Remove enemies that are >100 tiles from ALL players
+        const CLEANUP_DISTANCE = 100;
+
+        this.gameState.enemies = this.gameState.enemies.filter(enemy => {
+            // Check if ANY player is within range
+            let nearPlayer = false;
+            this.players.forEach(player => {
+                const dist = Math.sqrt(
+                    Math.pow(player.position.x - enemy.position.x, 2) +
+                    Math.pow(player.position.y - enemy.position.y, 2)
+                );
+                if (dist < CLEANUP_DISTANCE) {
+                    nearPlayer = true;
+                }
+            });
+
+            // If enemy is dead or far from all players, remove it
+            if (!nearPlayer && !enemy.isAlive) {
+                // Also clear the region so it can respawn later if player returns
+                const REGION_SIZE = 50;
+                const regionX = Math.floor(enemy.position.x / REGION_SIZE);
+                const regionY = Math.floor(enemy.position.y / REGION_SIZE);
+                const regionKey = `${regionX},${regionY}`;
+                this.spawnedRegions.delete(regionKey);
+                return false; // Remove
+            }
+
+            return nearPlayer || enemy.isAlive; // Keep if near player or still alive
+        });
+    }
+
     updateEnemies() {
         const tileSize = 32;
         const now = Date.now();
         let movedCount = 0;
+
+        // Cleanup distant enemies occasionally
+        if (!this.lastCleanup) this.lastCleanup = 0;
+        if (now - this.lastCleanup > 10000) { // Every 10 seconds
+            this.cleanupDistantEnemies();
+            this.lastCleanup = now;
+        }
 
         // Debug: Check if we have enemies
         if (this.gameState.enemies.length === 0) return;
@@ -694,6 +736,18 @@ io.on('connection', (socket) => {
             // Send world data
             const worldData = lobby.getWorldData();
 
+            // Spawn initial enemies around spawn point (center of world)
+            const REGION_SIZE = 50;
+            const spawnRegionX = Math.floor(lobby.WORLD_SIZE / 2 / REGION_SIZE);
+            const spawnRegionY = Math.floor(lobby.WORLD_SIZE / 2 / REGION_SIZE);
+
+            // Spawn enemies in 3x3 regions around spawn
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    lobby.spawnEnemiesInRegion(spawnRegionX + dx, spawnRegionY + dy);
+                }
+            }
+
             socket.emit('game:start', {
                 lobbyId: lobby.id,
                 player: player.toJSON(),
@@ -743,6 +797,24 @@ io.on('connection', (socket) => {
                     }
 
                     player.updateActivity();
+
+                    // Check if player entered new region - spawn enemies dynamically
+                    const REGION_SIZE = 50;
+                    const regionX = Math.floor(player.position.x / REGION_SIZE);
+                    const regionY = Math.floor(player.position.y / REGION_SIZE);
+
+                    // Check surrounding regions (player can see beyond current region)
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            const newEnemies = lobby.spawnEnemiesInRegion(regionX + dx, regionY + dy);
+                            if (newEnemies.length > 0) {
+                                // Broadcast new enemies to nearby players
+                                newEnemies.forEach(enemy => {
+                                    lobby.broadcast('enemy:spawned', { enemy });
+                                });
+                            }
+                        }
+                    }
 
                     // Interest management: only send to nearby players
                     lobby.broadcast('player:moved', {
