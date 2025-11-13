@@ -703,14 +703,19 @@ class GameScene extends Phaser.Scene {
             const enemy = this.enemies[data.enemyId] || this.wolves[data.enemyId];
             const isWolf = !!this.wolves[data.enemyId];
 
-            // Debug: Log wolf movements more frequently
-            if (isWolf && Math.random() < 0.1) {
-                console.log(`🐺 Wolf ${data.enemyId} moved to (${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}), found: ${!!enemy}`);
+            // Debug: Log ALL wolf movements (100%)
+            if (isWolf) {
+                console.log(`🐺 WOLF MOVEMENT EVENT: ${data.enemyId.substring(0,8)} -> grid(${data.position.x.toFixed(1)}, ${data.position.y.toFixed(1)}), found wolf: ${!!enemy}`);
             }
 
-            // Debug: Log occasionally to verify events are received
-            if (!isWolf && Math.random() < 0.01) {
-                console.log(`📡 Received enemy:moved for ${data.enemyId}, found enemy: ${!!enemy}`);
+            // Debug: Check if we're looking up the wrong collection
+            if (!enemy) {
+                const inEnemies = !!this.enemies[data.enemyId];
+                const inWolves = !!this.wolves[data.enemyId];
+                console.warn(`⚠️ enemy:moved event for ${data.enemyId.substring(0,8)} - inEnemies: ${inEnemies}, inWolves: ${inWolves}`);
+                console.warn(`Current wolves keys:`, Object.keys(this.wolves));
+                console.warn(`Current enemies keys:`, Object.keys(this.enemies));
+                return;
             }
 
             if (enemy && enemy.sprite) {
@@ -718,19 +723,17 @@ class GameScene extends Phaser.Scene {
                 const targetX = data.position.x * tileSize + tileSize / 2;
                 const targetY = data.position.y * tileSize + tileSize / 2;
 
-                // Debug: Log wolf position updates
-                if (isWolf && Math.random() < 0.05) {
-                    console.log(`🐺 Updating wolf sprite position to pixel (${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
-                }
+                const oldX = enemy.sprite.x;
+                const oldY = enemy.sprite.y;
 
                 // Update position
                 enemy.data.position = data.position;
                 enemy.sprite.x = targetX;
                 enemy.sprite.y = targetY;
-            } else if (!enemy) {
-                // Debug: Enemy not found
-                if (Math.random() < 0.02) {
-                    console.warn(`⚠️ enemy:moved event for unknown enemy ${data.enemyId}`);
+
+                // Debug: Log wolf position changes
+                if (isWolf) {
+                    console.log(`🐺 WOLF SPRITE UPDATED: pixel(${oldX.toFixed(0)}, ${oldY.toFixed(0)}) -> pixel(${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
                 }
             }
         });
