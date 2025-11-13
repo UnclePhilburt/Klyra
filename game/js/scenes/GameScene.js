@@ -34,6 +34,34 @@ class GameScene extends Phaser.Scene {
                 networkManager.callbacks[event] = [];
             }
         });
+
+        // Destroy HUD to prevent multiple instances
+        if (this.modernHUD) {
+            console.log('🧹 Destroying ModernHUD');
+            // ModernHUD doesn't have destroy method, so destroy all its elements manually
+            if (this.modernHUD.healthOrb) this.modernHUD.healthOrb.destroy();
+            if (this.modernHUD.healthGlow) this.modernHUD.healthGlow.destroy();
+            if (this.modernHUD.healthText) this.modernHUD.healthText.destroy();
+            if (this.modernHUD.healthPercentText) this.modernHUD.healthPercentText.destroy();
+            if (this.modernHUD.portraitFrame) this.modernHUD.portraitFrame.destroy();
+            if (this.modernHUD.levelBadge) this.modernHUD.levelBadge.destroy();
+            if (this.modernHUD.levelText) this.modernHUD.levelText.destroy();
+            if (this.modernHUD.xpBar) this.modernHUD.xpBar.destroy();
+            if (this.modernHUD.xpBarFill) this.modernHUD.xpBarFill.destroy();
+            if (this.modernHUD.xpText) this.modernHUD.xpText.destroy();
+            if (this.modernHUD.statsPanel) this.modernHUD.statsPanel.destroy();
+            if (this.modernHUD.statsText) this.modernHUD.statsText.destroy();
+            if (this.modernHUD.killCounter) this.modernHUD.killCounter.destroy();
+            if (this.modernHUD.killCounterText) this.modernHUD.killCounterText.destroy();
+
+            // Stop tweens
+            if (this.modernHUD.healthPulseTween) this.modernHUD.healthPulseTween.remove();
+            if (this.modernHUD.xpShimmerTween) this.modernHUD.xpShimmerTween.remove();
+
+            this.modernHUD = null;
+        }
+
+        console.log('🧹 GameScene cleanup complete');
     }
 
     preload() {
