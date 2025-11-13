@@ -29,22 +29,8 @@ class Wolf {
         // Track last position for movement detection
         this.lastX = x;
 
-        // Add red glow effect
+        // Add subtle red glow effect
         this.glow = this.scene.add.circle(x, y, 8, 0xff0000, 0.15);
-
-        // Wolf label
-        this.label = this.scene.add.text(x, y - 40, 'SKULLWOLF', {
-            font: '8px monospace',
-            fill: '#ff0000',
-            backgroundColor: '#000000',
-            padding: { x: 2, y: 1 }
-        }).setOrigin(0.5);
-
-        // Health bar
-        this.healthBarBg = this.scene.add.rectangle(x, y - 32, 30, 3, 0x000000);
-        this.healthBar = this.scene.add.rectangle(x, y - 32, 30, 3, 0xff0000);
-
-        this.updateHealthBar();
     }
 
     takeDamage(amount) {
@@ -61,7 +47,6 @@ class Wolf {
 
         // Damage number
         this.showDamageNumber(amount);
-        this.updateHealthBar();
     }
 
     showDamageNumber(amount) {
@@ -113,25 +98,14 @@ class Wolf {
 
         // Fade out main sprite
         this.scene.tweens.add({
-            targets: [this.sprite, this.glow, this.label, this.healthBar, this.healthBarBg],
+            targets: [this.sprite, this.glow],
             alpha: 0,
             duration: 300,
             onComplete: () => {
                 if (this.sprite) this.sprite.destroy();
                 if (this.glow) this.glow.destroy();
-                if (this.label) this.label.destroy();
-                if (this.healthBar) this.healthBar.destroy();
-                if (this.healthBarBg) this.healthBarBg.destroy();
             }
         });
-    }
-
-    updateHealthBar() {
-        const healthPercent = this.health / this.maxHealth;
-        this.healthBar.width = 30 * healthPercent;
-
-        const color = healthPercent > 0.5 ? 0x00ff00 : healthPercent > 0.25 ? 0xffff00 : 0xff0000;
-        this.healthBar.setFillStyle(color);
     }
 
     update() {
@@ -158,11 +132,8 @@ class Wolf {
 
             this.lastX = this.sprite.x;
 
-            // Update UI element positions
+            // Update glow position
             this.glow.setPosition(this.sprite.x, this.sprite.y);
-            this.label.setPosition(this.sprite.x, this.sprite.y - 40);
-            this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 32);
-            this.healthBar.setPosition(this.sprite.x - 15 + (30 * (this.health / this.maxHealth) / 2), this.sprite.y - 32);
         }
     }
 }

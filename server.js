@@ -397,35 +397,26 @@ class Lobby {
     }
 
     spawnEnemies(count) {
-        const enemyTypes = [
-            { type: 'goblin', speed: 80, sightRange: 10, damage: 8 },
-            { type: 'orc', speed: 60, sightRange: 8, damage: 12 },
-            { type: 'skeleton', speed: 100, sightRange: 12, damage: 10 },
-            { type: 'troll', speed: 50, sightRange: 6, damage: 15 },
-            { type: 'demon', speed: 70, sightRange: 15, damage: 14 },
-            { type: 'wolf', speed: 50, sightRange: 12, damage: 10 } // Reduced from 120 to 50
-        ];
-
+        // Only spawn wolves for now (other enemies will be added when sprites are ready)
         for (let i = 0; i < count; i++) {
-            const enemyTemplate = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
             const spawnPos = this.getEdgeSpawnPosition();
 
             this.gameState.enemies.push({
                 id: uuidv4(),
-                type: enemyTemplate.type,
+                type: 'wolf',
                 position: spawnPos,
                 health: 25,
                 maxHealth: 25,
-                damage: enemyTemplate.damage,
-                speed: enemyTemplate.speed,
-                sightRange: enemyTemplate.sightRange, // Sight range in tiles
+                damage: 10,
+                speed: 50,
+                sightRange: 12, // Sight range in tiles
                 isAlive: true,
                 lastMove: Date.now(),
                 target: null, // Current target (player or minion)
                 aggro: new Map() // Track aggro from different sources
             });
 
-            console.log(`🧟 Spawned ${enemyTemplate.type} at edge position:`, spawnPos);
+            console.log(`🐺 Spawned wolf at edge position:`, spawnPos);
         }
     }
 
