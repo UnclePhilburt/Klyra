@@ -239,6 +239,20 @@ class Lobby {
             // Clamp to world bounds
             if (x < 0 || x >= this.WORLD_SIZE || y < 0 || y >= this.WORLD_SIZE) continue;
 
+            // SAFE ZONE CHECK: Don't spawn enemies in 50x50 spawn building area
+            const worldCenterX = this.WORLD_SIZE / 2;
+            const worldCenterY = this.WORLD_SIZE / 2;
+            const safeZoneRadius = 25; // 50x50 tiles = 25 tiles from center in each direction
+
+            const isInSafeZone = (
+                x >= (worldCenterX - safeZoneRadius) &&
+                x < (worldCenterX + safeZoneRadius) &&
+                y >= (worldCenterY - safeZoneRadius) &&
+                y < (worldCenterY + safeZoneRadius)
+            );
+
+            if (isInSafeZone) continue; // Skip spawning in safe zone
+
             const enemy = {
                 id: `${this.id}_enemy_${regionKey}_${i}`,
                 type: 'wolf',
@@ -574,8 +588,31 @@ class Lobby {
 
             if (distance > 1) {
                 const moveDistance = enemy.speed / 100; // Grid tiles per update (100ms)
-                enemy.position.x += (dx / distance) * moveDistance;
-                enemy.position.y += (dy / distance) * moveDistance;
+                const newX = enemy.position.x + (dx / distance) * moveDistance;
+                const newY = enemy.position.y + (dy / distance) * moveDistance;
+
+                // SAFE ZONE CHECK: Prevent enemies from entering spawn building area
+                const worldCenterX = this.WORLD_SIZE / 2;
+                const worldCenterY = this.WORLD_SIZE / 2;
+                const safeZoneRadius = 25; // 50x50 tiles = 25 tiles from center in each direction
+
+                const wouldEnterSafeZone = (
+                    newX >= (worldCenterX - safeZoneRadius) &&
+                    newX < (worldCenterX + safeZoneRadius) &&
+                    newY >= (worldCenterY - safeZoneRadius) &&
+                    newY < (worldCenterY + safeZoneRadius)
+                );
+
+                // Only move if it doesn't enter the safe zone
+                if (!wouldEnterSafeZone) {
+                    enemy.position.x = newX;
+                    enemy.position.y = newY;
+                } else {
+                    // Enemy is blocked by safe zone - clear aggro so they wander away
+                    if (enemy.aggro) {
+                        enemy.aggro.clear();
+                    }
+                }
 
                 // Broadcast enemy movement (with interest management)
                 this.broadcast('enemy:moved', {
