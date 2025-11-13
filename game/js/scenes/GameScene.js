@@ -26,6 +26,7 @@ class GameScene extends Phaser.Scene {
             'player:joined', 'player:left', 'player:moved', 'player:attacked',
             'player:damaged', 'player:levelup', 'player:died',
             'enemy:spawned', 'enemy:damaged', 'enemy:moved', 'enemy:killed',
+            'minion:damaged',
             'item:spawned', 'item:collected', 'chat:message'
         ];
 
@@ -638,6 +639,7 @@ class GameScene extends Phaser.Scene {
             'player:joined', 'player:left', 'player:moved', 'player:attacked',
             'player:damaged', 'player:levelup', 'player:died',
             'enemy:spawned', 'enemy:damaged', 'enemy:moved', 'enemy:killed',
+            'minion:damaged',
             'item:spawned', 'item:collected', 'chat:message'
         ];
 
@@ -779,6 +781,14 @@ class GameScene extends Phaser.Scene {
             const enemy = this.enemies[data.enemyId] || this.wolves[data.enemyId];
             if (enemy) {
                 enemy.takeDamage(data.damage);
+            }
+        });
+
+        // Minion damaged by enemy
+        networkManager.on('minion:damaged', (data) => {
+            const minion = this.minions[data.minionId];
+            if (minion) {
+                minion.takeDamage(data.damage);
             }
         });
 
@@ -1283,7 +1293,7 @@ class GameScene extends Phaser.Scene {
 
     spawnMinion(x, y, ownerId, isPermanent = false) {
         const minionId = `minion_${this.minionIdCounter++}`;
-        this.minions[minionId] = new Minion(this, x, y, ownerId, isPermanent);
+        this.minions[minionId] = new Minion(this, x, y, ownerId, isPermanent, minionId);
 
         const minionType = isPermanent ? 'permanent companion' : 'temporary minion';
         console.log(`🔮 Spawned ${minionType} [${minionId}] for owner ${ownerId} at (${x.toFixed(0)}, ${y.toFixed(0)})`);

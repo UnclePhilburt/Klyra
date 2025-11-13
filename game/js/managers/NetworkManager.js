@@ -185,8 +185,8 @@ class NetworkManager {
     }
 
     // Hit enemy
-    hitEnemy(enemyId, damage) {
-        this.socket.emit('enemy:hit', { enemyId, damage });
+    hitEnemy(enemyId, damage, attackerId = null, attackerPosition = null) {
+        this.socket.emit('enemy:hit', { enemyId, damage, attackerId, attackerPosition });
     }
 
     // Pick up item

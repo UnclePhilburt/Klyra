@@ -483,7 +483,7 @@ class Lobby {
             enemy.lastMove = now;
             movedCount++;
 
-            // Find nearest target (player or minion being attacked by)
+            // Find nearest target (player or minion)
             let target = null;
             let maxAggro = 0; // Track highest aggro value (not infinity!)
 
@@ -494,6 +494,47 @@ class Lobby {
             if (movedCount === 0 && Math.random() < 0.1) { // 10% chance for first enemy
                 this.players.forEach(p => {
                     console.log(`👤 Player ${p.username} at (${p.position.x}, ${p.position.y}) for enemy targeting`);
+                });
+            }
+
+            // Check all minions first (they have higher priority if they have aggro)
+            if (this.gameState.minions) {
+                this.gameState.minions.forEach((minion, minionId) => {
+                    // Clean up stale minions (older than 5 seconds since last update)
+                    if (Date.now() - minion.lastUpdate > 5000) {
+                        this.gameState.minions.delete(minionId);
+                        return;
+                    }
+
+                    const dist = Math.sqrt(
+                        Math.pow(minion.position.x - enemy.position.x, 2) +
+                        Math.pow(minion.position.y - enemy.position.y, 2)
+                    );
+
+                    // Check if minion has aggro on this enemy
+                    const hasAggro = enemy.aggro && enemy.aggro.has(minionId);
+                    const inSightRange = dist <= enemy.sightRange;
+
+                    if (!hasAggro && !inSightRange) {
+                        return; // Minion is too far and hasn't attacked this enemy
+                    }
+
+                    // Base aggro (closer = higher aggro)
+                    let aggroValue = 100 / (dist + 1);
+
+                    // Add bonus aggro from damage taken
+                    if (hasAggro) {
+                        aggroValue += enemy.aggro.get(minionId);
+                    }
+
+                    // Minions get 1.5x aggro multiplier (tank role)
+                    aggroValue *= 1.5;
+
+                    // Target minion with highest aggro
+                    if (aggroValue > maxAggro) {
+                        maxAggro = aggroValue;
+                        target = { position: minion.position, id: minionId, isMinion: true };
+                    }
                 });
             }
 
@@ -556,28 +597,38 @@ class Lobby {
 
             // Attack if close enough (1 tile)
             if (distance < 1.5) {
-                // Attack target
-                const damageTarget = Array.from(this.players.values()).find(p => p.id === target.id);
-                if (damageTarget && damageTarget.isAlive) {
-                    damageTarget.health -= enemy.damage;
-                    if (damageTarget.health <= 0) {
-                        damageTarget.isAlive = false;
-                        damageTarget.health = 0;
-                        damageTarget.deaths++;
+                // Attack target (player or minion)
+                if (target.isMinion) {
+                    // Attack minion
+                    this.broadcast('minion:damaged', {
+                        minionId: target.id,
+                        damage: enemy.damage,
+                        attackerId: enemy.id
+                    });
+                } else {
+                    // Attack player
+                    const damageTarget = Array.from(this.players.values()).find(p => p.id === target.id);
+                    if (damageTarget && damageTarget.isAlive) {
+                        damageTarget.health -= enemy.damage;
+                        if (damageTarget.health <= 0) {
+                            damageTarget.isAlive = false;
+                            damageTarget.health = 0;
+                            damageTarget.deaths++;
 
-                        this.broadcast('player:died', {
-                            playerId: damageTarget.id,
-                            playerName: damageTarget.username,
-                            killedBy: enemy.id
-                        });
-                    } else {
-                        this.broadcast('player:damaged', {
-                            playerId: damageTarget.id,
-                            health: damageTarget.health,
-                            maxHealth: damageTarget.maxHealth,
-                            damage: enemy.damage,
-                            attackerId: enemy.id
-                        });
+                            this.broadcast('player:died', {
+                                playerId: damageTarget.id,
+                                playerName: damageTarget.username,
+                                killedBy: enemy.id
+                            });
+                        } else {
+                            this.broadcast('player:damaged', {
+                                playerId: damageTarget.id,
+                                health: damageTarget.health,
+                                maxHealth: damageTarget.maxHealth,
+                                damage: enemy.damage,
+                                attackerId: enemy.id
+                            });
+                        }
                     }
                 }
             }
@@ -791,10 +842,22 @@ io.on('connection', (socket) => {
             enemy.health -= damage;
             player.updateActivity();
 
-            // Add aggro for the attacker
+            // Add aggro for the attacker (could be player or minion)
+            const attackerId = data.attackerId || player.id;
             if (!enemy.aggro) enemy.aggro = new Map();
-            const currentAggro = enemy.aggro.get(player.id) || 0;
-            enemy.aggro.set(player.id, currentAggro + damage * 2); // Damage generates 2x aggro
+            const currentAggro = enemy.aggro.get(attackerId) || 0;
+            enemy.aggro.set(attackerId, currentAggro + damage * 2); // Damage generates 2x aggro
+
+            // If it's a minion attack, track the minion's position
+            if (data.attackerId && data.attackerId.startsWith('minion_') && data.attackerPosition) {
+                if (!lobby.gameState.minions) lobby.gameState.minions = new Map();
+                lobby.gameState.minions.set(data.attackerId, {
+                    id: data.attackerId,
+                    position: data.attackerPosition,
+                    ownerId: player.id,
+                    lastUpdate: Date.now()
+                });
+            }
 
             if (enemy.health <= 0) {
                 enemy.isAlive = false;

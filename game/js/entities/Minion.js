@@ -1,8 +1,9 @@
 // Minion Entity - Malachar's Summoned Minion
 class Minion {
-    constructor(scene, x, y, ownerId, isPermanent = false) {
+    constructor(scene, x, y, ownerId, isPermanent = false, minionId = null) {
         this.scene = scene;
         this.ownerId = ownerId; // The player who summoned this minion
+        this.minionId = minionId; // Unique ID for this minion
         this.isPermanent = isPermanent; // Permanent minions don't despawn
         this.health = 30;
         this.maxHealth = 30;
@@ -305,8 +306,13 @@ class Minion {
         });
 
         // Deal damage to enemy (emit to server)
+        // Send minion ID and position so server knows aggro should go to minion, not owner
         if (enemy.data && enemy.data.id) {
-            networkManager.hitEnemy(enemy.data.id, this.damage);
+            const minionPosition = {
+                x: Math.floor(this.sprite.x / 32), // Convert to grid coordinates
+                y: Math.floor(this.sprite.y / 32)
+            };
+            networkManager.hitEnemy(enemy.data.id, this.damage, this.minionId, minionPosition);
         }
     }
 
