@@ -174,55 +174,92 @@ class GameScene extends Phaser.Scene {
         // Create container for tiles
         this.tileContainer = this.add.container(0, 0);
 
-        // Tile variation arrays from A2 - terrain and misc
-        const GRASS_VARIATIONS = [
-            // Basic grass variations
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-            52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
-            104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115,
-            156, 157,
-            559, 560, 561, 562, 563, 564, 565, 566, 567, 568, 569, 570,
-            611, 612, 613, 614, 615, 616, 617, 618, 619, 620,
-            663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674,
-            715, 716, 717, 718, 719, 720, 721, 722, 723, 724, 725, 726
-        ];
+        // Organized tile sets from A2 - terrain and misc
+        // Each biome has: base fills (most common), details (occasional), and transitions (edges)
+        const GRASS_TILES = {
+            baseFills: [0, 1, 2, 3, 52, 53, 54, 55, 104, 105, 106, 107, 559, 560, 611, 612],
+            details: [4, 5, 6, 7, 56, 57, 58, 59, 108, 109, 110, 111, 561, 562, 613, 614],
+            transitions: [8, 9, 10, 11, 60, 61, 112, 113, 114, 115, 156, 157, 563, 564, 565, 566, 615, 616],
+            decorative: [567, 568, 569, 570, 617, 618, 619, 620, 663, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 674, 715, 716, 717, 718, 719, 720, 721, 722, 723, 724, 725, 726]
+        };
 
-        const DIRT_VARIATIONS = [
-            // Basic dirty variations
-            520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 531,
-            624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635,
-            676, 677, 678, 679, 680, 681, 682, 683, 684, 685, 686, 687
-        ];
+        const DIRT_TILES = {
+            baseFills: [520, 521, 522, 523, 624, 625, 626, 627, 676, 677, 678, 679],
+            details: [524, 525, 526, 527, 628, 629, 630, 631, 680, 681, 682, 683],
+            transitions: [528, 529, 530, 531, 632, 633, 634, 635, 684, 685, 686, 687]
+        };
 
-        const DIRT_GRASS_MIX_VARIATIONS = [
-            // Dirty patch with grass tile variations
-            533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544,
-            585, 586, 587, 588, 589, 590, 591, 592, 593, 594,
-            637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648,
-            689, 690, 691, 692, 693, 694, 695, 696, 697, 698, 699, 700
-        ];
+        const DIRT_GRASS_MIX_TILES = {
+            baseFills: [533, 534, 535, 536, 585, 586, 587, 588, 637, 638, 639, 640, 689, 690, 691, 692],
+            details: [537, 538, 539, 540, 589, 590, 591, 592, 641, 642, 643, 644, 693, 694, 695, 696],
+            transitions: [541, 542, 543, 544, 593, 594, 645, 646, 647, 648, 697, 698, 699, 700]
+        };
 
-        // Map biome types to tileset textures and tile variation arrays
+        // Map biome types to tileset textures and structured tile sets
         const BIOME_TILESET_MAP = {
             // Grassland - Use grass variations from A2
-            10: { texture: 'terrain_misc', variations: GRASS_VARIATIONS },
-            11: { texture: 'terrain_misc', variations: GRASS_VARIATIONS },
-            12: { texture: 'terrain_misc', variations: GRASS_VARIATIONS },
+            10: { texture: 'terrain_misc', tiles: GRASS_TILES },
+            11: { texture: 'terrain_misc', tiles: GRASS_TILES },
+            12: { texture: 'terrain_misc', tiles: GRASS_TILES },
 
             // Forest - Use dirt/grass mix variations
-            20: { texture: 'terrain_misc', variations: DIRT_GRASS_MIX_VARIATIONS },
-            21: { texture: 'terrain_misc', variations: DIRT_GRASS_MIX_VARIATIONS },
-            22: { texture: 'terrain_misc', variations: DIRT_GRASS_MIX_VARIATIONS },
+            20: { texture: 'terrain_misc', tiles: DIRT_GRASS_MIX_TILES },
+            21: { texture: 'terrain_misc', tiles: DIRT_GRASS_MIX_TILES },
+            22: { texture: 'terrain_misc', tiles: DIRT_GRASS_MIX_TILES },
 
             // Magic Grove - Use grass variations
-            30: { texture: 'terrain_misc', variations: GRASS_VARIATIONS },
-            31: { texture: 'terrain_misc', variations: GRASS_VARIATIONS },
-            32: { texture: 'terrain_misc', variations: GRASS_VARIATIONS },
+            30: { texture: 'terrain_misc', tiles: GRASS_TILES },
+            31: { texture: 'terrain_misc', tiles: GRASS_TILES },
+            32: { texture: 'terrain_misc', tiles: GRASS_TILES },
 
             // Dark Woods - Use dirt variations
-            40: { texture: 'terrain_misc', variations: DIRT_VARIATIONS },
-            41: { texture: 'terrain_misc', variations: DIRT_VARIATIONS },
-            42: { texture: 'terrain_misc', variations: DIRT_VARIATIONS }
+            40: { texture: 'terrain_misc', tiles: DIRT_TILES },
+            41: { texture: 'terrain_misc', tiles: DIRT_TILES },
+            42: { texture: 'terrain_misc', tiles: DIRT_TILES }
+        };
+
+        // Perlin-like noise function for natural patterns
+        const noise2D = (x, y, seed) => {
+            const n = x * 374761393 + y * 668265263 + seed * 1013904223;
+            const noise = (n ^ (n >> 13)) * 1274126177;
+            return ((noise ^ (noise >> 16)) & 0x7fffffff) / 0x7fffffff;
+        };
+
+        // Get smart tile based on position and noise patterns
+        const getSmartTile = (x, y, tileSet, seed) => {
+            // Create chunk-based patterns (8x8 regions share similar tile types)
+            const chunkX = Math.floor(x / 8);
+            const chunkY = Math.floor(y / 8);
+            const chunkNoise = noise2D(chunkX, chunkY, seed);
+
+            // Get local position within chunk
+            const localX = x % 8;
+            const localY = y % 8;
+            const isEdge = localX === 0 || localX === 7 || localY === 0 || localY === 7;
+            const isCorner = (localX === 0 || localX === 7) && (localY === 0 || localY === 7);
+
+            // Fine detail noise
+            const detailNoise = noise2D(x, y, seed + 1000);
+
+            // Select tile type based on position and noise
+            let tileArray;
+            if (isCorner || (isEdge && chunkNoise < 0.3)) {
+                // Use transitions at edges and corners
+                tileArray = tileSet.transitions || tileSet.baseFills;
+            } else if (detailNoise < 0.15 && tileSet.decorative) {
+                // Occasionally use decorative tiles
+                tileArray = tileSet.decorative;
+            } else if (detailNoise < 0.35) {
+                // Sometimes use detail tiles
+                tileArray = tileSet.details || tileSet.baseFills;
+            } else {
+                // Mostly use base fills (60%+ of tiles)
+                tileArray = tileSet.baseFills;
+            }
+
+            // Select specific tile using another noise layer for variety
+            const tileIndex = Math.floor(noise2D(x * 2, y * 2, seed + 2000) * tileArray.length);
+            return tileArray[tileIndex];
         };
 
         // Flower patch variations (overlays placed on top of grass tiles)
@@ -232,7 +269,7 @@ class GameScene extends Phaser.Scene {
             936, 937, 938, 939, 940, 941, 942, 943, 944, 945, 946, 947
         ];
 
-        // Render tiles using individual frames from spritesheets
+        // Render tiles using intelligent pattern-based selection
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const tile = tiles[y][x];
@@ -240,13 +277,12 @@ class GameScene extends Phaser.Scene {
                 const py = y * tileSize;
 
                 // Get tileset mapping for this biome
-                const tileInfo = BIOME_TILESET_MAP[tile] || { texture: 'terrain_misc', variations: GRASS_VARIATIONS };
+                const tileInfo = BIOME_TILESET_MAP[tile] || { texture: 'terrain_misc', tiles: GRASS_TILES };
 
-                // Randomly select a tile variation from the array
-                const variationIndex = Math.floor(this.seededRandom(this.dungeonSeed) * tileInfo.variations.length);
-                const selectedFrame = tileInfo.variations[variationIndex];
+                // Use smart tile selection based on position and patterns
+                const selectedFrame = getSmartTile(x, y, tileInfo.tiles, seed);
 
-                // Create sprite from randomly selected tile frame
+                // Create sprite from intelligently selected tile frame
                 const tileSprite = this.add.sprite(px, py, tileInfo.texture, selectedFrame);
                 tileSprite.setOrigin(0, 0);
 
@@ -256,15 +292,18 @@ class GameScene extends Phaser.Scene {
 
                 this.tileContainer.add(tileSprite);
 
-                // Add flower patch overlays to grassland tiles (5% chance)
-                if ((tile === 10 || tile === 11 || tile === 12) && this.seededRandom(this.dungeonSeed) < 0.05) {
-                    const patchIndex = Math.floor(this.seededRandom(this.dungeonSeed) * FLOWER_PATCH_VARIATIONS.length);
-                    const patchFrame = FLOWER_PATCH_VARIATIONS[patchIndex];
+                // Add flower patch overlays to grassland tiles (3% chance in clusters)
+                if ((tile === 10 || tile === 11 || tile === 12)) {
+                    const flowerNoise = noise2D(x, y, seed + 5000);
+                    if (flowerNoise < 0.03) {
+                        const patchIndex = Math.floor(noise2D(x, y, seed + 6000) * FLOWER_PATCH_VARIATIONS.length);
+                        const patchFrame = FLOWER_PATCH_VARIATIONS[patchIndex];
 
-                    const patchSprite = this.add.sprite(px, py, 'terrain_misc', patchFrame);
-                    patchSprite.setOrigin(0, 0);
-                    patchSprite.setScale(scale);
-                    this.tileContainer.add(patchSprite);
+                        const patchSprite = this.add.sprite(px, py, 'terrain_misc', patchFrame);
+                        patchSprite.setOrigin(0, 0);
+                        patchSprite.setScale(scale);
+                        this.tileContainer.add(patchSprite);
+                    }
                 }
             }
         }
