@@ -17,7 +17,17 @@ class Minion {
 
         // AI state
         this.target = null;
-        this.followDistance = 80; // Stay within this distance of owner
+        this.followDistance = 200; // Maximum distance from owner before returning
+        this.roamRadius = 150; // How far to wander when exploring
+        this.seekRadius = 250; // How far to look for enemies
+
+        // Wandering behavior
+        this.wanderTarget = null;
+        this.wanderCooldown = 0;
+        this.wanderDelay = 2000; // Change wander direction every 2 seconds
+
+        // State machine
+        this.state = 'idle'; // idle, wandering, seeking, attacking, following
 
         this.createSprite(x, y);
         this.setupAI();
@@ -86,23 +96,39 @@ class Minion {
             return;
         }
 
-        // Find nearest enemy
-        this.target = this.findNearestEnemy();
+        const distanceToOwner = Phaser.Math.Distance.Between(
+            this.sprite.x,
+            this.sprite.y,
+            owner.sprite.x,
+            owner.sprite.y
+        );
+
+        // Priority 1: Return to owner if too far away
+        if (distanceToOwner > this.followDistance) {
+            this.state = 'following';
+            this.returnToOwner(owner);
+            return;
+        }
+
+        // Priority 2: Find and attack enemies
+        this.target = this.findNearestEnemy(this.seekRadius);
 
         if (this.target) {
+            this.state = 'attacking';
             this.attackEnemy(this.target);
         } else {
-            this.followOwner(owner);
+            // Priority 3: Explore and wander
+            this.wanderAround(owner);
         }
     }
 
-    findNearestEnemy() {
+    findNearestEnemy(searchRadius) {
         if (!this.scene.enemies || Object.keys(this.scene.enemies).length === 0) {
             return null;
         }
 
         let nearestEnemy = null;
-        let nearestDistance = this.attackRange * 2; // Search in extended range
+        let nearestDistance = searchRadius;
 
         Object.values(this.scene.enemies).forEach(enemy => {
             if (!enemy.isAlive) return;
@@ -123,41 +149,61 @@ class Minion {
         return nearestEnemy;
     }
 
-    followOwner(owner) {
-        const distance = Phaser.Math.Distance.Between(
+    wanderAround(owner) {
+        const now = Date.now();
+
+        // Pick a new wander target periodically
+        if (!this.wanderTarget || now - this.wanderCooldown > this.wanderDelay) {
+            this.wanderCooldown = now;
+
+            // Random point near owner
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * this.roamRadius;
+
+            this.wanderTarget = {
+                x: owner.sprite.x + Math.cos(angle) * distance,
+                y: owner.sprite.y + Math.sin(angle) * distance
+            };
+
+            this.state = 'wandering';
+        }
+
+        // Move towards wander target
+        const distToTarget = Phaser.Math.Distance.Between(
             this.sprite.x,
             this.sprite.y,
-            owner.sprite.x,
-            owner.sprite.y
+            this.wanderTarget.x,
+            this.wanderTarget.y
         );
 
-        // Follow if too far from owner (with smaller threshold for stopping)
-        if (distance > this.followDistance) {
-            this.scene.physics.moveToObject(this.sprite, owner.sprite, this.moveSpeed);
+        if (distToTarget > 20) {
+            // Move at 70% speed when wandering (more casual)
+            const wanderSpeed = this.moveSpeed * 0.7;
+            this.scene.physics.moveToObject(this.sprite, this.wanderTarget, wanderSpeed);
+
             // Play walk animation
             if (this.sprite.anims.currentAnim?.key !== 'minion_walk') {
                 this.sprite.play('minion_walk');
             }
-        } else if (distance < 40) {
-            // Too close - stop completely
+        } else {
+            // Reached target, idle for a moment
             this.sprite.body.setVelocity(0, 0);
+            this.wanderTarget = null; // Will pick new target on next cycle
+
             // Play idle animation
             if (this.sprite.anims.currentAnim?.key !== 'minion_idle') {
                 this.sprite.play('minion_idle');
             }
-        } else {
-            // In sweet spot - match owner's velocity for smooth following
-            if (owner.sprite.body.velocity.x !== 0 || owner.sprite.body.velocity.y !== 0) {
-                this.sprite.body.setVelocity(owner.sprite.body.velocity.x * 0.9, owner.sprite.body.velocity.y * 0.9);
-                if (this.sprite.anims.currentAnim?.key !== 'minion_walk') {
-                    this.sprite.play('minion_walk');
-                }
-            } else {
-                this.sprite.body.setVelocity(0, 0);
-                if (this.sprite.anims.currentAnim?.key !== 'minion_idle') {
-                    this.sprite.play('minion_idle');
-                }
-            }
+        }
+    }
+
+    returnToOwner(owner) {
+        // Rush back to owner at full speed
+        this.scene.physics.moveToObject(this.sprite, owner.sprite, this.moveSpeed);
+
+        // Play walk animation
+        if (this.sprite.anims.currentAnim?.key !== 'minion_walk') {
+            this.sprite.play('minion_walk');
         }
     }
 
