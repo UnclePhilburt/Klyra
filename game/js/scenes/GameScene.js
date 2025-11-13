@@ -324,10 +324,10 @@ class GameScene extends Phaser.Scene {
 
         // Biome definitions
         const BIOMES = {
-            GRASSLAND: { tiles: [10, 11, 12] },
-            FOREST: { tiles: [20, 21, 22] },
-            MAGIC_GROVE: { tiles: [30, 31, 32] },
-            DARK_WOODS: { tiles: [40, 41, 42] }
+            GRASSLAND: { tiles: [10, 11, 12], id: 'grassland' },
+            FOREST: { tiles: [20, 21, 22], id: 'forest' },
+            MAGIC_GROVE: { tiles: [30, 31, 32], id: 'magic' },
+            DARK_WOODS: { tiles: [40, 41, 42], id: 'dark' }
         };
 
         // Generate biome using noise
@@ -345,7 +345,52 @@ class GameScene extends Phaser.Scene {
 
         // Select tile variation
         const tileVariation = Math.floor(this.seededRandom(seed + x * 100 + y) * selectedBiome.tiles.length);
+
+        // Store biome for decoration generation
+        if (!this.biomeCache) this.biomeCache = {};
+        this.biomeCache[`${x},${y}`] = selectedBiome.id;
+
         return selectedBiome.tiles[tileVariation];
+    }
+
+    // Generate decoration for tile (client-side procedural)
+    getDecoration(x, y) {
+        const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const decoSeed = seed + x * 7919 + y * 6563; // Prime numbers for distribution
+        const decoChance = this.seededRandom(decoSeed);
+
+        // 0.5% chance for decoration (same as server)
+        if (decoChance > 0.005) return null;
+
+        // Get biome for this tile
+        const biome = this.biomeCache[`${x},${y}`] || 'grassland';
+        const rand = this.seededRandom(decoSeed + 1000);
+
+        let decorationType;
+        if (biome === 'grassland') {
+            if (rand < 0.4) decorationType = 'flower';
+            else if (rand < 0.7) decorationType = 'grass';
+            else if (rand < 0.9) decorationType = 'rock';
+            else decorationType = 'baby_tree';
+        } else if (biome === 'forest') {
+            if (rand < 0.5) decorationType = 'tree';
+            else if (rand < 0.7) decorationType = 'bush';
+            else if (rand < 0.85) decorationType = 'log';
+            else if (rand < 0.95) decorationType = 'tree_stump';
+            else decorationType = 'grass';
+        } else if (biome === 'magic') {
+            if (rand < 0.4) decorationType = 'magic_tree';
+            else if (rand < 0.7) decorationType = 'rune_stone';
+            else if (rand < 0.9) decorationType = 'flower';
+            else decorationType = 'hollow_trunk';
+        } else if (biome === 'dark') {
+            if (rand < 0.5) decorationType = 'dead_tree';
+            else if (rand < 0.7) decorationType = 'skull';
+            else if (rand < 0.9) decorationType = 'log';
+            else decorationType = 'rock';
+        }
+
+        return decorationType;
     }
 
     updateVisibleTiles() {
@@ -395,6 +440,13 @@ class GameScene extends Phaser.Scene {
                     this.renderedTiles.set(key, tileSprite);
                 } catch (error) {
                     // Silent fail for performance
+                }
+
+                // Generate decorations on-demand
+                const decoration = this.getDecoration(x, y);
+                if (decoration && !this.renderedDecorations.has(key)) {
+                    this.renderDecoration(x, y, decoration);
+                    this.renderedDecorations.add(key);
                 }
             }
         }
@@ -899,10 +951,9 @@ class GameScene extends Phaser.Scene {
                 const targetX = data.position.x * tileSize + tileSize / 2;
                 const targetY = data.position.y * tileSize + tileSize / 2;
 
-                // Update position
+                // Update position with interpolation
                 enemy.data.position = data.position;
-                enemy.sprite.x = targetX;
-                enemy.sprite.y = targetY;
+                enemy.setTargetPosition(targetX, targetY);
             }
         });
 
@@ -1473,6 +1524,7 @@ class GameScene extends Phaser.Scene {
         this.localPlayer.updateAnimation(delta);
         Object.values(this.otherPlayers).forEach(player => {
             player.updateAnimation(delta);
+            player.updateInterpolation(); // Smooth movement
         });
         this.perfTimings.player += (performance.now() - t1);
 

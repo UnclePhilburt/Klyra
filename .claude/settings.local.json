@@ -16,7 +16,9 @@
       "Bash(git restore:*)",
       "Bash(cat:*)",
       "Bash(identify:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(git pull:*)",
+      "Bash(node server.js:*)"
     ],
     "deny": [],
     "ask": []

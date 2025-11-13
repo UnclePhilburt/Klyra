@@ -1,6 +1,6 @@
 // Player Entity - Core player logic and state management
 class Player {
-    constructor(scene, data, isLocalPlayer = false) {
+    constructor(scene, data) {
         // Defensive checks for required dependencies
         if (typeof PlayerSprite === 'undefined') {
             console.error('❌ PlayerSprite is not defined! Make sure PlayerSprite.js is loaded before Player.js');
@@ -21,32 +21,24 @@ class Player {
         this.experience = data.experience || 0;
         this.class = data.class;
         this.stats = data.stats;
-        this.isAlive = data.isAlive !== undefined ? data.isAlive : true; // Default to true
+        this.isAlive = data.isAlive;
         this.currentDirection = 'down';
-
-        // Debug: Log if isAlive is false on spawn
-        if (!this.isAlive && isLocalPlayer) {
-            console.warn(`⚠️ Player spawned with isAlive: false! Data:`, data);
-        }
 
         // Network throttling
         this.lastUpdate = 0;
 
         // Create modular components
         this.spriteRenderer = new PlayerSprite(scene, data.position, this.class);
-
-        // Expose sprite for backward compatibility (MUST be set before creating UI!)
-        this.sprite = this.spriteRenderer.getPhysicsBody();
-        this.usingSprite = this.spriteRenderer.isUsingSprite();
-
-        // Now create UI (needs this.sprite to exist first)
         this.ui = new PlayerUI(scene, this, {
             useSprite: this.spriteRenderer.isUsingSprite(),
             visualOffsetX: 32,
             visualOffsetY: 55,
-            yOffset: 105,
-            isLocalPlayer: isLocalPlayer
+            yOffset: 105
         });
+
+        // Expose sprite for backward compatibility
+        this.sprite = this.spriteRenderer.getPhysicsBody();
+        this.usingSprite = this.spriteRenderer.isUsingSprite();
     }
 
     // ==================== MOVEMENT ====================
@@ -79,29 +71,20 @@ class Player {
         const targetX = position.x * tileSize + tileSize / 2;
         const targetY = position.y * tileSize + tileSize / 2;
 
-        // Store target for interpolation
-        this.targetPosition = { x: targetX, y: targetY };
-    }
-
-    // Smooth interpolation instead of instant teleport
-    updateInterpolation() {
-        if (!this.targetPosition) return;
-
-        const lerpSpeed = 0.3; // Smooth interpolation
-        const dx = this.targetPosition.x - this.sprite.x;
-        const dy = this.targetPosition.y - this.sprite.y;
+        const dx = targetX - this.sprite.x;
+        const dy = targetY - this.sprite.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // If very close, snap to target
-        if (distance < 1) {
-            this.sprite.x = this.targetPosition.x;
-            this.sprite.y = this.targetPosition.y;
-            this.sprite.body.setVelocity(0, 0);
-            this.targetPosition = null;
+        if (distance > 1) {
+            const speed = GameConfig.PLAYER.SPEED;
+            this.sprite.body.setVelocity(
+                (dx / distance) * speed,
+                (dy / distance) * speed
+            );
         } else {
-            // Smooth interpolation
-            this.sprite.x += dx * lerpSpeed;
-            this.sprite.y += dy * lerpSpeed;
+            this.sprite.body.setVelocity(0, 0);
+            this.sprite.x = targetX;
+            this.sprite.y = targetY;
         }
 
         if (this.usingSprite) {
@@ -152,13 +135,6 @@ class Player {
     }
 
     // ==================== UPDATE LOOP ====================
-
-    updateAnimation(delta) {
-        // Stub for animation updates
-        // Current implementation uses static sprite frames
-        // Future: Implement walk/run animations here
-        // Could delegate to: this.spriteRenderer.updateAnimation(delta, velocityX, velocityY)
-    }
 
     updateElements() {
         // Update sprite rendering

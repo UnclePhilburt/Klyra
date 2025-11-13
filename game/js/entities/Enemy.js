@@ -144,7 +144,34 @@ class Enemy {
         this.healthBar.setFillStyle(color);
     }
 
+    setTargetPosition(x, y) {
+        this.targetPosition = { x, y };
+    }
+
+    updateInterpolation() {
+        if (!this.targetPosition) return;
+
+        const lerpSpeed = 0.2; // Smooth interpolation for enemies
+        const dx = this.targetPosition.x - this.sprite.x;
+        const dy = this.targetPosition.y - this.sprite.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // If very close, snap to target
+        if (distance < 1) {
+            this.sprite.x = this.targetPosition.x;
+            this.sprite.y = this.targetPosition.y;
+            this.targetPosition = null;
+        } else {
+            // Smooth interpolation
+            this.sprite.x += dx * lerpSpeed;
+            this.sprite.y += dy * lerpSpeed;
+        }
+    }
+
     update() {
+        // Interpolate to target position
+        this.updateInterpolation();
+
         // Update positions of UI elements
         if (this.sprite && this.sprite.active) {
             // Track movement and update animation
