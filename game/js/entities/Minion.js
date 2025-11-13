@@ -100,11 +100,16 @@ class Minion {
             return;
         }
 
-        // Only despawn if owner is dead (not just undefined)
+        // Only despawn if owner is explicitly dead
         if (owner && owner.isAlive === false) {
-            console.log(`🔮 Minion despawning: owner is dead (isAlive: ${owner.isAlive})`);
+            console.log(`🔮 Minion despawning: owner is dead (owner.isAlive: ${owner.isAlive}, owner.health: ${owner.health})`);
             this.despawn();
             return;
+        }
+
+        // Verify owner is alive
+        if (!owner.isAlive) {
+            console.warn(`⚠️ Minion owner has isAlive: ${owner.isAlive} (should be true). Owner data:`, owner.data);
         }
 
         const distanceToOwner = Phaser.Math.Distance.Between(

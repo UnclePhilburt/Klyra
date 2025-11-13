@@ -21,8 +21,13 @@ class Player {
         this.experience = data.experience || 0;
         this.class = data.class;
         this.stats = data.stats;
-        this.isAlive = data.isAlive;
+        this.isAlive = data.isAlive !== undefined ? data.isAlive : true; // Default to true
         this.currentDirection = 'down';
+
+        // Debug: Log if isAlive is false on spawn
+        if (!this.isAlive && isLocalPlayer) {
+            console.warn(`⚠️ Player spawned with isAlive: false! Data:`, data);
+        }
 
         // Network throttling
         this.lastUpdate = 0;
