@@ -123,14 +123,20 @@ class Minion {
     }
 
     findNearestEnemy(searchRadius) {
-        if (!this.scene.enemies || Object.keys(this.scene.enemies).length === 0) {
+        // Combine both enemies and wolves
+        const allEnemies = [
+            ...Object.values(this.scene.enemies || {}),
+            ...Object.values(this.scene.wolves || {})
+        ];
+
+        if (allEnemies.length === 0) {
             return null;
         }
 
         let nearestEnemy = null;
         let nearestDistance = searchRadius;
 
-        Object.values(this.scene.enemies).forEach(enemy => {
+        allEnemies.forEach(enemy => {
             if (!enemy.isAlive) return;
 
             const distance = Phaser.Math.Distance.Between(

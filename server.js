@@ -516,7 +516,7 @@ class Lobby {
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance > 1) {
-                const moveDistance = enemy.speed / 1000; // Pixels per update tick
+                const moveDistance = enemy.speed / 100; // Grid tiles per update (100ms)
                 enemy.position.x += (dx / distance) * moveDistance;
                 enemy.position.y += (dy / distance) * moveDistance;
 
