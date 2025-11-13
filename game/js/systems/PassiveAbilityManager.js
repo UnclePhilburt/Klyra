@@ -536,9 +536,14 @@ class PassiveAbilityManager {
             y: target.sprite.y,
             duration: 300,
             onComplete: () => {
-                // Deal damage
-                if (target.health) {
-                    target.health -= damage;
+                // Deal damage through network (proper multiplayer damage)
+                if (target.data && target.data.id && typeof networkManager !== 'undefined') {
+                    const playerPosition = {
+                        x: Math.floor(this.player.sprite.x / 32), // Convert to grid coordinates
+                        y: Math.floor(this.player.sprite.y / 32)
+                    };
+                    networkManager.hitEnemy(target.data.id, damage, this.player.data.id, playerPosition);
+                    console.log(`💥 Shadow Volley hit ${target.data.id} for ${damage} damage!`);
                 }
                 bolt.destroy();
 
@@ -564,11 +569,15 @@ class PassiveAbilityManager {
             onComplete: () => explosion.destroy()
         });
 
-        // Damage enemies
+        // Damage enemies through network
         const enemies = this.getEnemiesNear(x, y, pixelRadius);
         enemies.forEach(enemy => {
-            if (enemy.health) {
-                enemy.health -= damage;
+            if (enemy.data && enemy.data.id && typeof networkManager !== 'undefined') {
+                const playerPosition = {
+                    x: Math.floor(this.player.sprite.x / 32),
+                    y: Math.floor(this.player.sprite.y / 32)
+                };
+                networkManager.hitEnemy(enemy.data.id, damage, this.player.data.id, playerPosition);
             }
         });
     }
