@@ -248,6 +248,11 @@ class NetworkManager {
         this.socket.emit('player:death', { killedBy });
     }
 
+    // Update minion position (so enemies can target them)
+    updateMinionPosition(minionId, position) {
+        this.socket.emit('minion:position', { minionId, position });
+    }
+
     // Event emitter
     on(event, callback) {
         if (!this.callbacks[event]) {

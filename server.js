@@ -1038,6 +1038,29 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle minion position updates
+    socket.on('minion:position', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby || lobby.status !== 'active') return;
+
+            // Update minion position in game state so enemies can target it
+            if (!lobby.gameState.minions) lobby.gameState.minions = new Map();
+
+            lobby.gameState.minions.set(data.minionId, {
+                id: data.minionId,
+                position: data.position,
+                ownerId: player.id,
+                lastUpdate: Date.now()
+            });
+        } catch (error) {
+            console.error('Error in minion:position:', error);
+        }
+    });
+
     // Handle chat messages
     socket.on('chat:message', (data) => {
         try {

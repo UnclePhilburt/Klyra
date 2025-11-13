@@ -16,6 +16,10 @@ class Minion {
         this.lifespan = 30000; // 30 seconds (only for temporary minions)
         this.spawnTime = Date.now();
 
+        // Position update tracking for server
+        this.lastPositionUpdate = 0;
+        this.positionUpdateInterval = 500; // Send position to server every 500ms
+
         // AI state
         this.target = null;
         this.followDistance = 200; // Maximum distance from owner before returning
@@ -397,6 +401,13 @@ class Minion {
     update() {
         if (!this.isAlive) return;
 
+        // Send position updates to server so enemies can target this minion
+        const now = Date.now();
+        if (now - this.lastPositionUpdate > this.positionUpdateInterval) {
+            this.sendPositionUpdate();
+            this.lastPositionUpdate = now;
+        }
+
         // Update sprite facing direction based on velocity
         if (this.sprite && this.sprite.body) {
             if (this.sprite.body.velocity.x < -10) {
@@ -415,6 +426,16 @@ class Minion {
             this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 18);
             this.healthBar.setPosition(this.sprite.x - (24 - this.healthBar.width) / 2, this.sprite.y - 18);
         }
+    }
+
+    sendPositionUpdate() {
+        // Send minion position to server so enemies can target it
+        const gridPosition = {
+            x: Math.floor(this.sprite.x / 32),
+            y: Math.floor(this.sprite.y / 32)
+        };
+
+        networkManager.updateMinionPosition(this.minionId, gridPosition);
     }
 
     destroy() {
