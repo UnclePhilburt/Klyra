@@ -616,7 +616,7 @@ class Minion {
             const blockY = (ally.sprite.y + ally.target.sprite.y) / 2;
 
             const angle = Math.atan2(blockY - this.sprite.y, blockX - this.sprite.x);
-            this.sprite.setVelocity(
+            this.sprite.body.setVelocity(
                 Math.cos(angle) * this.moveSpeed,
                 Math.sin(angle) * this.moveSpeed
             );
@@ -656,7 +656,7 @@ class Minion {
         const safeY = playerY + Math.sin(retreatAngle) * 80;
 
         const angle = Math.atan2(safeY - this.sprite.y, safeX - this.sprite.x);
-        this.sprite.setVelocity(
+        this.sprite.body.setVelocity(
             Math.cos(angle) * (this.moveSpeed * 1.2), // Faster retreat
             Math.sin(angle) * (this.moveSpeed * 1.2)
         );
