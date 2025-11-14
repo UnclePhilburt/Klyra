@@ -70,17 +70,7 @@ class Minion {
         this.glow = this.scene.add.circle(x, y, glowSize, 0x8B008B, glowAlpha);
         this.glow.setDepth(2); // Same depth as sprite
 
-        // Minion label
-        const labelText = this.isPermanent ? 'COMPANION' : 'MINION';
-        this.label = this.scene.add.text(x, y - 25, labelText, {
-            font: '7px monospace',
-            fill: '#8B008B',
-            backgroundColor: '#000000',
-            padding: { x: 2, y: 1 }
-        }).setOrigin(0.5);
-        this.label.setDepth(2); // Same depth as sprite
-
-        // Health bar
+        // Health bar (no label - cleaner look)
         this.healthBarBg = this.scene.add.rectangle(x, y - 18, 24, 3, 0x000000);
         this.healthBarBg.setDepth(2); // Same depth as sprite
         this.healthBar = this.scene.add.rectangle(x, y - 18, 24, 3, 0x8B008B);
@@ -536,7 +526,7 @@ class Minion {
 
         // Death animation - fade out
         this.scene.tweens.add({
-            targets: [this.sprite, this.glow, this.label, this.healthBar, this.healthBarBg],
+            targets: [this.sprite, this.glow, this.healthBar, this.healthBarBg],
             alpha: 0,
             scale: 0.5,
             duration: 300,
@@ -553,7 +543,7 @@ class Minion {
         console.log(`🔮 Minion despawning (permanent: ${this.isPermanent})`);
 
         this.scene.tweens.add({
-            targets: [this.sprite, this.glow, this.label, this.healthBar, this.healthBarBg],
+            targets: [this.sprite, this.glow, this.healthBar, this.healthBarBg],
             alpha: 0,
             duration: 500,
             ease: 'Power2',
@@ -590,7 +580,6 @@ class Minion {
 
             if (this.sprite && this.sprite.active) {
                 this.glow.setPosition(this.sprite.x, this.sprite.y);
-                this.label.setPosition(this.sprite.x, this.sprite.y - 25);
                 this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 18);
                 this.healthBar.setPosition(this.sprite.x - (24 - this.healthBar.width) / 2, this.sprite.y - 18);
             }
@@ -614,7 +603,6 @@ class Minion {
 
         if (this.sprite) this.sprite.destroy();
         if (this.glow) this.glow.destroy();
-        if (this.label) this.label.destroy();
         if (this.healthBar) this.healthBar.destroy();
         if (this.healthBarBg) this.healthBarBg.destroy();
     }
