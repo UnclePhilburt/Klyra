@@ -163,7 +163,7 @@ class SkillSelector {
         const bottomY = height - 40; // Cards mostly off-screen, peeking up
 
         // Instruction text at bottom - modern glassmorphism style
-        this.instructionText = this.scene.add.text(width / 2, height - cardHeight - 50, 'LEVEL UP! [1/2/3] Select Card | [SPACE] Confirm', {
+        this.instructionText = this.scene.add.text(width / 2, height - cardHeight - 50, 'LEVEL UP! Press [1/2/3] to highlight, press again to select', {
             fontFamily: 'Inter, Arial, sans-serif',
             fontSize: '16px',
             fontStyle: '600',
@@ -275,34 +275,45 @@ class SkillSelector {
     }
 
     setupKeyboardControls() {
-        // Create keyboard inputs for 1, 2, 3 and Space
+        // Create keyboard inputs for 1, 2, 3
         this.key1 = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ONE);
         this.key2 = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TWO);
         this.key3 = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.THREE);
-        this.keySpace = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-        // Listen for key presses
+        // Listen for key presses - press once to highlight, press again to confirm
         this.key1.on('down', () => {
             if (this.isActive) {
-                this.selectCard(0); // Select first card
+                if (this.selectedIndex === 0) {
+                    // Already selected, confirm it
+                    this.confirmSelection();
+                } else {
+                    // Not selected, highlight it
+                    this.selectCard(0);
+                }
             }
         });
 
         this.key2.on('down', () => {
             if (this.isActive) {
-                this.selectCard(1); // Select second card
+                if (this.selectedIndex === 1) {
+                    // Already selected, confirm it
+                    this.confirmSelection();
+                } else {
+                    // Not selected, highlight it
+                    this.selectCard(1);
+                }
             }
         });
 
         this.key3.on('down', () => {
             if (this.isActive) {
-                this.selectCard(2); // Select third card
-            }
-        });
-
-        this.keySpace.on('down', () => {
-            if (this.isActive) {
-                this.confirmSelection();
+                if (this.selectedIndex === 2) {
+                    // Already selected, confirm it
+                    this.confirmSelection();
+                } else {
+                    // Not selected, highlight it
+                    this.selectCard(2);
+                }
             }
         });
     }
@@ -818,10 +829,6 @@ class SkillSelector {
         if (this.key3) {
             this.key3.removeAllListeners();
             this.key3 = null;
-        }
-        if (this.keySpace) {
-            this.keySpace.removeAllListeners();
-            this.keySpace = null;
         }
 
         this.cards = [];
