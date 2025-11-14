@@ -2,10 +2,19 @@
 // Type: runDiagnostic()
 
 function runDiagnostic() {
-    const scene = game.scene.scenes[0];
+    // Find the GameScene specifically (not MenuScene or BootScene)
+    const scene = game.scene.scenes.find(s => s.scene.key === 'GameScene');
 
     console.log('=== KLYRA FPS DIAGNOSTIC ===');
     console.log('');
+
+    if (!scene) {
+        console.log('❌ GameScene not found! Are you in the game yet?');
+        console.log('   Available scenes:', game.scene.scenes.map(s => s.scene.key));
+        console.log('=== END DIAGNOSTIC ===');
+        return;
+    }
+
     console.log('📊 PERFORMANCE:');
     console.log(`FPS: ${Math.round(game.loop.actualFps)}`);
     console.log(`Target FPS: ${game.loop.targetFps}`);
