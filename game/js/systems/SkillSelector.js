@@ -163,7 +163,7 @@ class SkillSelector {
         const bottomY = height - 40; // Cards mostly off-screen, peeking up
 
         // Instruction text at bottom - modern glassmorphism style
-        this.instructionText = this.scene.add.text(width / 2, height - cardHeight - 50, 'LEVEL UP! [Q/E] Move | [SPACE] Select', {
+        this.instructionText = this.scene.add.text(width / 2, height - cardHeight - 50, 'LEVEL UP! [1/2/3] Select Card | [SPACE] Confirm', {
             fontFamily: 'Inter, Arial, sans-serif',
             fontSize: '16px',
             fontStyle: '600',
@@ -275,21 +275,28 @@ class SkillSelector {
     }
 
     setupKeyboardControls() {
-        // Create keyboard inputs
-        this.keyQ = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
-        this.keyE = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        // Create keyboard inputs for 1, 2, 3 and Space
+        this.key1 = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ONE);
+        this.key2 = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TWO);
+        this.key3 = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.THREE);
         this.keySpace = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
         // Listen for key presses
-        this.keyQ.on('down', () => {
+        this.key1.on('down', () => {
             if (this.isActive) {
-                this.moveSelection(-1); // Move left
+                this.selectCard(0); // Select first card
             }
         });
 
-        this.keyE.on('down', () => {
+        this.key2.on('down', () => {
             if (this.isActive) {
-                this.moveSelection(1); // Move right
+                this.selectCard(1); // Select second card
+            }
+        });
+
+        this.key3.on('down', () => {
+            if (this.isActive) {
+                this.selectCard(2); // Select third card
             }
         });
 
@@ -300,19 +307,13 @@ class SkillSelector {
         });
     }
 
-    moveSelection(direction) {
-        // Update selected index
-        this.selectedIndex += direction;
-
-        // Wrap around
-        if (this.selectedIndex < 0) {
-            this.selectedIndex = this.cards.length - 1;
-        } else if (this.selectedIndex >= this.cards.length) {
-            this.selectedIndex = 0;
+    selectCard(index) {
+        // Directly select a card by index
+        if (index >= 0 && index < this.cards.length) {
+            this.selectedIndex = index;
+            // Update visuals
+            this.updateCardSelection();
         }
-
-        // Update visuals
-        this.updateCardSelection();
     }
 
     updateCardSelection() {
@@ -806,13 +807,17 @@ class SkillSelector {
         });
 
         // Cleanup keyboard controls
-        if (this.keyQ) {
-            this.keyQ.removeAllListeners();
-            this.keyQ = null;
+        if (this.key1) {
+            this.key1.removeAllListeners();
+            this.key1 = null;
         }
-        if (this.keyE) {
-            this.keyE.removeAllListeners();
-            this.keyE = null;
+        if (this.key2) {
+            this.key2.removeAllListeners();
+            this.key2 = null;
+        }
+        if (this.key3) {
+            this.key3.removeAllListeners();
+            this.key3 = null;
         }
         if (this.keySpace) {
             this.keySpace.removeAllListeners();
