@@ -530,6 +530,11 @@ class Minion {
         // Debug log death
         console.log(`💀 Minion died (permanent: ${this.isPermanent}, health: ${this.health})`);
 
+        // Notify server if this was a permanent minion
+        if (this.isPermanent && this.minionId) {
+            networkManager.trackPermanentMinion(this.minionId, 'remove');
+        }
+
         // Death animation - fade out
         this.scene.tweens.add({
             targets: [this.sprite, this.glow, this.label, this.healthBar, this.healthBarBg],

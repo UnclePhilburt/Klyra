@@ -10,6 +10,133 @@ class SkillSelector {
         this.selectedIndex = 1; // Start with middle card selected
         this.keyboardControls = null;
         this.instructionText = null;
+
+        // Initialize player multipliers
+        this.initializePlayerMultipliers();
+    }
+
+    initializePlayerMultipliers() {
+        const player = this.scene.localPlayer;
+        if (!player) return;
+
+        // Minion multipliers
+        if (!player.minionHealthMultiplier) player.minionHealthMultiplier = 1;
+        if (!player.minionDamageMultiplier) player.minionDamageMultiplier = 1;
+        if (!player.minionSpeedMultiplier) player.minionSpeedMultiplier = 1;
+        if (!player.minionAttackSpeedMultiplier) player.minionAttackSpeedMultiplier = 1;
+        if (!player.minionAllStatsMultiplier) player.minionAllStatsMultiplier = 1;
+        if (!player.minionSizeMultiplier) player.minionSizeMultiplier = 1;
+        if (!player.minionDefenseMultiplier) player.minionDefenseMultiplier = 1;
+        if (!player.minionArmor) player.minionArmor = 0;
+
+        // Minion special stats
+        if (!player.minionLifesteal) player.minionLifesteal = 0;
+        if (!player.minionRegen) player.minionRegen = 0;
+        if (!player.minionKnockback) player.minionKnockback = false;
+        if (!player.minionStun) player.minionStun = 0;
+        if (!player.minionCleave) player.minionCleave = false;
+        if (!player.minionUnstoppable) player.minionUnstoppable = false;
+        if (!player.minionCritChance) player.minionCritChance = 0;
+        if (!player.minionCritDamage) player.minionCritDamage = 2.0;
+
+        // Player multipliers
+        if (!player.damageMultiplier) player.damageMultiplier = 1;
+        if (!player.xpMultiplier) player.xpMultiplier = 1;
+
+        // Player special stats
+        if (!player.healPerKill) player.healPerKill = 0;
+        if (!player.healOnKillPercent) player.healOnKillPercent = 0;
+        if (!player.regenPerMinion) player.regenPerMinion = 0;
+        if (!player.packDamageBonus) player.packDamageBonus = 0;
+        if (!player.groupedDefense) player.groupedDefense = 0;
+        if (!player.coordinatedDamage) player.coordinatedDamage = 0;
+        if (!player.perMinionBonus) player.perMinionBonus = 0;
+        if (!player.maxMinionBonus) player.maxMinionBonus = 2.0;
+
+        // Special effects
+        if (!player.berserkerDamage) player.berserkerDamage = 0;
+        if (!player.berserkerThreshold) player.berserkerThreshold = 0.4;
+        if (!player.executeThreshold) player.executeThreshold = 0;
+        if (!player.executeDamage) player.executeDamage = 2.0;
+        if (!player.bossDamage) player.bossDamage = 1.0;
+        if (!player.armorPen) player.armorPen = 0;
+        if (!player.chainAttack) player.chainAttack = null;
+        if (!player.splashDamage) player.splashDamage = null;
+        if (!player.dualWield) player.dualWield = false;
+        if (!player.attacksPerStrike) player.attacksPerStrike = 1;
+        if (!player.commandAura) player.commandAura = null;
+        if (!player.flankDamage) player.flankDamage = 1.0;
+        if (!player.killDamageStack) player.killDamageStack = 0;
+        if (!player.maxKillStacks) player.maxKillStacks = 20;
+        if (!player.currentKillStacks) player.currentKillStacks = 0;
+        if (!player.reapersMarkThreshold) player.reapersMarkThreshold = 0;
+        if (!player.reapersMarkDamage) player.reapersMarkDamage = 1.0;
+
+        // God-tier effects
+        if (!player.minionCap) player.minionCap = 20;
+        if (!player.legionBuffMultiplier) player.legionBuffMultiplier = 1.0;
+        if (!player.instantRevive) player.instantRevive = false;
+        if (!player.shockwaveRadius) player.shockwaveRadius = 0;
+        if (!player.deathAura) player.deathAura = null;
+        if (!player.deathImmunity) player.deathImmunity = false;
+    }
+
+    // Get all current multipliers to send to server
+    getAllMultipliers() {
+        const player = this.scene.localPlayer;
+        if (!player) return {};
+
+        return {
+            minionHealthMultiplier: player.minionHealthMultiplier,
+            minionDamageMultiplier: player.minionDamageMultiplier,
+            minionSpeedMultiplier: player.minionSpeedMultiplier,
+            minionAttackSpeedMultiplier: player.minionAttackSpeedMultiplier,
+            minionAllStatsMultiplier: player.minionAllStatsMultiplier,
+            minionSizeMultiplier: player.minionSizeMultiplier,
+            minionDefenseMultiplier: player.minionDefenseMultiplier,
+            minionArmor: player.minionArmor,
+            minionLifesteal: player.minionLifesteal,
+            minionRegen: player.minionRegen,
+            minionKnockback: player.minionKnockback,
+            minionStun: player.minionStun,
+            minionCleave: player.minionCleave,
+            minionUnstoppable: player.minionUnstoppable,
+            minionCritChance: player.minionCritChance,
+            minionCritDamage: player.minionCritDamage,
+            damageMultiplier: player.damageMultiplier,
+            xpMultiplier: player.xpMultiplier,
+            healPerKill: player.healPerKill,
+            healOnKillPercent: player.healOnKillPercent,
+            regenPerMinion: player.regenPerMinion,
+            packDamageBonus: player.packDamageBonus,
+            groupedDefense: player.groupedDefense,
+            coordinatedDamage: player.coordinatedDamage,
+            perMinionBonus: player.perMinionBonus,
+            maxMinionBonus: player.maxMinionBonus,
+            berserkerDamage: player.berserkerDamage,
+            berserkerThreshold: player.berserkerThreshold,
+            executeThreshold: player.executeThreshold,
+            executeDamage: player.executeDamage,
+            bossDamage: player.bossDamage,
+            armorPen: player.armorPen,
+            chainAttack: player.chainAttack,
+            splashDamage: player.splashDamage,
+            dualWield: player.dualWield,
+            attacksPerStrike: player.attacksPerStrike,
+            commandAura: player.commandAura,
+            flankDamage: player.flankDamage,
+            killDamageStack: player.killDamageStack,
+            maxKillStacks: player.maxKillStacks,
+            currentKillStacks: player.currentKillStacks,
+            reapersMarkThreshold: player.reapersMarkThreshold,
+            reapersMarkDamage: player.reapersMarkDamage,
+            minionCap: player.minionCap,
+            legionBuffMultiplier: player.legionBuffMultiplier,
+            instantRevive: player.instantRevive,
+            shockwaveRadius: player.shockwaveRadius,
+            deathAura: player.deathAura,
+            deathImmunity: player.deathImmunity
+        };
     }
 
     show(playerClass, currentLevel) {
@@ -104,8 +231,36 @@ class SkillSelector {
         name.setShadow(0, 0, 15, '#8b5cf6', false, true); // Purple glow
         card.elements.push(name);
 
+        // Generate dynamic description for minion skills
+        let displayDescription = skill.description;
+        if (skill.effect === 'spawn_minion') {
+            // Only Malachar starts with minions
+            const player = this.scene.localPlayer;
+            const isMalachar = player && (
+                player.data.characterId === 'MALACHAR' ||
+                player.class === 'MALACHAR' ||
+                player.class === 'Malachar'
+            );
+
+            // Count how many minion skills have been taken
+            const minionSkillsTaken = this.selectedSkills.filter(s => s.effect === 'spawn_minion').length;
+
+            // Malachar starts with 1 minion, others start with 0
+            const startingMinions = isMalachar ? 1 : 0;
+            const nextMinionNumber = minionSkillsTaken + startingMinions + 1;
+
+            // Generate ordinal suffix (1st, 2nd, 3rd, 4th, etc.)
+            const getOrdinal = (n) => {
+                const s = ['th', 'st', 'nd', 'rd'];
+                const v = n % 100;
+                return n + (s[(v - 20) % 10] || s[v] || s[0]);
+            };
+
+            displayDescription = `Gain a ${getOrdinal(nextMinionNumber)} permanent minion`;
+        }
+
         // Skill description in CENTER of card
-        const desc = this.scene.add.text(x, y, skill.description, {
+        const desc = this.scene.add.text(x, y, displayDescription, {
             fontFamily: 'Inter, Arial, sans-serif',
             fontSize: '13px',
             fontStyle: '400',
@@ -244,6 +399,10 @@ class SkillSelector {
         // Apply skill effect
         this.applySkill(skill);
 
+        // Sync to server
+        const multipliers = this.getAllMultipliers();
+        networkManager.selectSkill(skill, multipliers);
+
         // Hide UI
         this.hide();
 
@@ -277,12 +436,18 @@ class SkillSelector {
             }
 
             // Spawn another permanent minion
-            this.scene.spawnMinion(
+            const minion = this.scene.spawnMinion(
                 spawnX,
                 spawnY,
                 player.data.id,
                 true // permanent
             );
+
+            // Track permanent minion on server
+            if (minion && minion.minionId) {
+                networkManager.trackPermanentMinion(minion.minionId, 'add');
+            }
+
             console.log(`👹 ${skill.name}: Summoned additional permanent minion!`);
             return;
         }
@@ -564,12 +729,17 @@ class SkillSelector {
             // ==== INSTANT EFFECTS ====
             if (effect.instantMinions) {
                 for (let i = 0; i < effect.instantMinions; i++) {
-                    this.scene.spawnMinion(
+                    const minion = this.scene.spawnMinion(
                         player.sprite.x + Phaser.Math.Between(-100, 100),
                         player.sprite.y + Phaser.Math.Between(-100, 100),
                         player.data.id,
                         true // permanent
                     );
+
+                    // Track permanent minion on server
+                    if (minion && minion.minionId) {
+                        networkManager.trackPermanentMinion(minion.minionId, 'add');
+                    }
                 }
                 console.log(`👥 Summoned ${effect.instantMinions} permanent minions`);
             }
@@ -761,8 +931,12 @@ class SkillSelector {
     }
 
     selectRandomSkills(skills, count) {
-        // Shuffle and take first N
-        const shuffled = [...skills].sort(() => Math.random() - 0.5);
+        // Fisher-Yates shuffle algorithm for unbiased randomization
+        const shuffled = [...skills];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
         return shuffled.slice(0, Math.min(count, skills.length));
     }
 

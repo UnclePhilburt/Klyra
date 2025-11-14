@@ -24,6 +24,12 @@ class Wolf {
         this.scene.physics.add.existing(this.sprite);
         this.sprite.body.setSize(32, 32);
 
+        // Prevent camera culling from making wolves flicker/disappear
+        this.sprite.setScrollFactor(1, 1); // Follow camera normally
+        // Increase cull padding so wolves don't disappear at screen edges
+        const cullPadding = 400; // Pixels beyond screen bounds before culling
+        this.sprite.setCullPadding(cullPadding, cullPadding);
+
         // Play idle animation
         this.sprite.play('skullwolf_idle');
 
@@ -32,7 +38,10 @@ class Wolf {
 
         // Add subtle red glow effect
         this.glow = this.scene.add.circle(x, y, 8, 0xff0000, 0.15);
-        this.glow.setDepth(2); // Same depth as sprite
+        this.glow.setDepth(1); // Below sprite to avoid z-fighting
+        this.glow.setScrollFactor(1, 1); // Make glow follow camera too
+        // Prevent culling on glow too
+        this.glow.visible = true;
     }
 
     takeDamage(amount) {
@@ -117,13 +126,13 @@ class Wolf {
     updateInterpolation() {
         if (!this.targetPosition) return;
 
-        const lerpSpeed = 0.2; // Smooth interpolation
+        const lerpSpeed = 0.3; // Smooth interpolation (increased from 0.2 for better sync)
         const dx = this.targetPosition.x - this.sprite.x;
         const dy = this.targetPosition.y - this.sprite.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // If very close, snap to target
-        if (distance < 1) {
+        if (distance < 2) {
             this.sprite.x = this.targetPosition.x;
             this.sprite.y = this.targetPosition.y;
             this.targetPosition = null;
@@ -144,25 +153,27 @@ class Wolf {
             const isMoving = Math.abs(this.sprite.x - this.lastX) > 0.5;
 
             if (isMoving) {
-                // Play walk animation when moving
+                // Play walk animation when moving (ignoreIfPlaying prevents restart flicker)
                 if (this.sprite.anims.currentAnim?.key !== 'skullwolf_walk') {
-                    this.sprite.play('skullwolf_walk');
+                    this.sprite.play('skullwolf_walk', true); // true = ignoreIfPlaying
                 }
 
                 // Flip sprite based on direction (defaults to left, flip when moving right)
                 const movingRight = this.sprite.x > this.lastX;
                 this.sprite.setFlipX(movingRight);
             } else {
-                // Play idle animation when not moving
+                // Play idle animation when not moving (ignoreIfPlaying prevents restart flicker)
                 if (this.sprite.anims.currentAnim?.key !== 'skullwolf_idle') {
-                    this.sprite.play('skullwolf_idle');
+                    this.sprite.play('skullwolf_idle', true); // true = ignoreIfPlaying
                 }
             }
 
             this.lastX = this.sprite.x;
 
             // Update glow position
-            this.glow.setPosition(this.sprite.x, this.sprite.y);
+            if (this.glow && this.glow.active) {
+                this.glow.setPosition(this.sprite.x, this.sprite.y);
+            }
         }
     }
 }

@@ -23,6 +23,11 @@ class Enemy {
         this.scene.physics.add.existing(this.sprite);
         this.sprite.body.setSize(32, 32);
 
+        // Prevent camera culling from making enemies flicker/disappear
+        this.sprite.setScrollFactor(1, 1); // Follow camera normally
+        const cullPadding = 400; // Pixels beyond screen bounds before culling
+        this.sprite.setCullPadding(cullPadding, cullPadding);
+
         // Play idle animation
         this.sprite.play('skullwolf_idle');
 
@@ -32,6 +37,7 @@ class Enemy {
         // Add glow effect
         this.glow = this.scene.add.circle(x, y, 8, 0xff0000, 0.1);
         this.glow.setDepth(2); // Same depth as sprite
+        this.glow.setScrollFactor(1, 1);
 
         // Enemy colors based on type (for health bar tinting)
         const enemyColors = {
@@ -52,12 +58,15 @@ class Enemy {
             padding: { x: 2, y: 1 }
         }).setOrigin(0.5);
         this.label.setDepth(2); // Same depth as sprite
+        this.label.setScrollFactor(1, 1);
 
         // Health bar
         this.healthBarBg = this.scene.add.rectangle(x, y - 32, 30, 3, 0x000000);
         this.healthBarBg.setDepth(2); // Same depth as sprite
+        this.healthBarBg.setScrollFactor(1, 1);
         this.healthBar = this.scene.add.rectangle(x, y - 32, 30, 3, 0xff0000);
         this.healthBar.setDepth(2); // Same depth as sprite
+        this.healthBar.setScrollFactor(1, 1);
 
         this.updateHealthBar();
     }
@@ -156,13 +165,13 @@ class Enemy {
     updateInterpolation() {
         if (!this.targetPosition) return;
 
-        const lerpSpeed = 0.2; // Smooth interpolation for enemies
+        const lerpSpeed = 0.3; // Smooth interpolation (increased from 0.2 for better sync)
         const dx = this.targetPosition.x - this.sprite.x;
         const dy = this.targetPosition.y - this.sprite.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // If very close, snap to target
-        if (distance < 1) {
+        if (distance < 2) {
             this.sprite.x = this.targetPosition.x;
             this.sprite.y = this.targetPosition.y;
             this.targetPosition = null;
@@ -183,28 +192,36 @@ class Enemy {
             const isMoving = Math.abs(this.sprite.x - this.lastX) > 0.5;
 
             if (isMoving) {
-                // Play walk animation when moving
+                // Play walk animation when moving (ignoreIfPlaying prevents restart flicker)
                 if (this.sprite.anims.currentAnim?.key !== 'skullwolf_walk') {
-                    this.sprite.play('skullwolf_walk');
+                    this.sprite.play('skullwolf_walk', true); // true = ignoreIfPlaying
                 }
 
                 // Flip sprite based on direction (defaults to left, flip when moving right)
                 const movingRight = this.sprite.x > this.lastX;
                 this.sprite.setFlipX(movingRight);
             } else {
-                // Play idle animation when not moving
+                // Play idle animation when not moving (ignoreIfPlaying prevents restart flicker)
                 if (this.sprite.anims.currentAnim?.key !== 'skullwolf_idle') {
-                    this.sprite.play('skullwolf_idle');
+                    this.sprite.play('skullwolf_idle', true); // true = ignoreIfPlaying
                 }
             }
 
             this.lastX = this.sprite.x;
 
-            // Update UI element positions
-            this.glow.setPosition(this.sprite.x, this.sprite.y);
-            this.label.setPosition(this.sprite.x, this.sprite.y - 40);
-            this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 32);
-            this.healthBar.setPosition(this.sprite.x - 15 + (30 * (this.health / this.maxHealth) / 2), this.sprite.y - 32);
+            // Update UI element positions with safety checks
+            if (this.glow && this.glow.active) {
+                this.glow.setPosition(this.sprite.x, this.sprite.y);
+            }
+            if (this.label && this.label.active) {
+                this.label.setPosition(this.sprite.x, this.sprite.y - 40);
+            }
+            if (this.healthBarBg && this.healthBarBg.active) {
+                this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 32);
+            }
+            if (this.healthBar && this.healthBar.active) {
+                this.healthBar.setPosition(this.sprite.x - 15 + (30 * (this.health / this.maxHealth) / 2), this.sprite.y - 32);
+            }
         }
     }
 }

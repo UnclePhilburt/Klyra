@@ -169,6 +169,22 @@ class NetworkManager {
             console.error('❌ Server error:', data.message);
             this.emit('error', data);
         });
+
+        // Skill system events
+        this.socket.on('player:skillUpdate', (data) => {
+            console.log(`✨ Player ${data.playerId} updated skills`);
+            this.emit('player:skillUpdate', data);
+        });
+
+        this.socket.on('player:respawned', (data) => {
+            console.log(`💚 Player respawned:`, data.playerName);
+            this.emit('player:respawned', data);
+        });
+
+        this.socket.on('skills:restored', (data) => {
+            console.log('🔄 Skills restored from server:', data);
+            this.emit('skills:restored', data);
+        });
     }
 
     // Send player join
@@ -257,6 +273,29 @@ class NetworkManager {
     changeMap(mapName) {
         this.socket.emit('player:changeMap', { mapName });
         console.log(`📍 Requested map change to: ${mapName}`);
+    }
+
+    // Send skill selection to server
+    selectSkill(skill, multipliers) {
+        this.socket.emit('skill:selected', { skill, multipliers });
+        console.log(`✨ Sent skill selection: ${skill.name}`);
+    }
+
+    // Track permanent minion
+    trackPermanentMinion(minionId, action = 'add') {
+        this.socket.emit('minion:permanent', { minionId, action });
+    }
+
+    // Request skill restoration from server
+    requestSkillRestore() {
+        this.socket.emit('skills:requestRestore');
+        console.log('🔄 Requesting skill restoration from server');
+    }
+
+    // Send respawn request
+    respawn() {
+        this.socket.emit('player:respawn');
+        console.log('💚 Requesting respawn');
     }
 
     // Event emitter

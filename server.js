@@ -68,6 +68,74 @@ class Player {
         this.isReconnecting = false;
         this.disconnectedAt = null;
         this.currentMap = 'exterior'; // Track which map instance player is in
+
+        // Skill system
+        this.selectedSkills = []; // Array of skill IDs/objects
+        this.permanentMinions = []; // Track permanent minion IDs for restoration
+        this.initializeMultipliers();
+    }
+
+    initializeMultipliers() {
+        // Minion multipliers
+        this.minionHealthMultiplier = 1;
+        this.minionDamageMultiplier = 1;
+        this.minionSpeedMultiplier = 1;
+        this.minionAttackSpeedMultiplier = 1;
+        this.minionAllStatsMultiplier = 1;
+        this.minionSizeMultiplier = 1;
+        this.minionDefenseMultiplier = 1;
+        this.minionArmor = 0;
+
+        // Minion special stats
+        this.minionLifesteal = 0;
+        this.minionRegen = 0;
+        this.minionKnockback = false;
+        this.minionStun = 0;
+        this.minionCleave = false;
+        this.minionUnstoppable = false;
+        this.minionCritChance = 0;
+        this.minionCritDamage = 2.0;
+
+        // Player multipliers
+        this.damageMultiplier = 1;
+        this.xpMultiplier = 1;
+
+        // Player special stats
+        this.healPerKill = 0;
+        this.healOnKillPercent = 0;
+        this.regenPerMinion = 0;
+        this.packDamageBonus = 0;
+        this.groupedDefense = 0;
+        this.coordinatedDamage = 0;
+        this.perMinionBonus = 0;
+        this.maxMinionBonus = 2.0;
+
+        // Special effects
+        this.berserkerDamage = 0;
+        this.berserkerThreshold = 0.4;
+        this.executeThreshold = 0;
+        this.executeDamage = 2.0;
+        this.bossDamage = 1.0;
+        this.armorPen = 0;
+        this.chainAttack = null;
+        this.splashDamage = null;
+        this.dualWield = false;
+        this.attacksPerStrike = 1;
+        this.commandAura = null;
+        this.flankDamage = 1.0;
+        this.killDamageStack = 0;
+        this.maxKillStacks = 20;
+        this.currentKillStacks = 0;
+        this.reapersMarkThreshold = 0;
+        this.reapersMarkDamage = 1.0;
+
+        // God-tier effects
+        this.minionCap = 20;
+        this.legionBuffMultiplier = 1.0;
+        this.instantRevive = false;
+        this.shockwaveRadius = 0;
+        this.deathAura = null;
+        this.deathImmunity = false;
     }
 
     sanitizeUsername(username) {
@@ -121,7 +189,59 @@ class Player {
             isReady: this.isReady,
             stats: this.stats,
             kills: this.kills,
-            itemsCollected: this.itemsCollected
+            itemsCollected: this.itemsCollected,
+            selectedSkills: this.selectedSkills,
+            permanentMinions: this.permanentMinions,
+            // Include all multipliers and special effects
+            minionHealthMultiplier: this.minionHealthMultiplier,
+            minionDamageMultiplier: this.minionDamageMultiplier,
+            minionSpeedMultiplier: this.minionSpeedMultiplier,
+            minionAttackSpeedMultiplier: this.minionAttackSpeedMultiplier,
+            minionAllStatsMultiplier: this.minionAllStatsMultiplier,
+            minionSizeMultiplier: this.minionSizeMultiplier,
+            minionDefenseMultiplier: this.minionDefenseMultiplier,
+            minionArmor: this.minionArmor,
+            minionLifesteal: this.minionLifesteal,
+            minionRegen: this.minionRegen,
+            minionKnockback: this.minionKnockback,
+            minionStun: this.minionStun,
+            minionCleave: this.minionCleave,
+            minionUnstoppable: this.minionUnstoppable,
+            minionCritChance: this.minionCritChance,
+            minionCritDamage: this.minionCritDamage,
+            damageMultiplier: this.damageMultiplier,
+            xpMultiplier: this.xpMultiplier,
+            healPerKill: this.healPerKill,
+            healOnKillPercent: this.healOnKillPercent,
+            regenPerMinion: this.regenPerMinion,
+            packDamageBonus: this.packDamageBonus,
+            groupedDefense: this.groupedDefense,
+            coordinatedDamage: this.coordinatedDamage,
+            perMinionBonus: this.perMinionBonus,
+            maxMinionBonus: this.maxMinionBonus,
+            berserkerDamage: this.berserkerDamage,
+            berserkerThreshold: this.berserkerThreshold,
+            executeThreshold: this.executeThreshold,
+            executeDamage: this.executeDamage,
+            bossDamage: this.bossDamage,
+            armorPen: this.armorPen,
+            chainAttack: this.chainAttack,
+            splashDamage: this.splashDamage,
+            dualWield: this.dualWield,
+            attacksPerStrike: this.attacksPerStrike,
+            commandAura: this.commandAura,
+            flankDamage: this.flankDamage,
+            killDamageStack: this.killDamageStack,
+            maxKillStacks: this.maxKillStacks,
+            currentKillStacks: this.currentKillStacks,
+            reapersMarkThreshold: this.reapersMarkThreshold,
+            reapersMarkDamage: this.reapersMarkDamage,
+            minionCap: this.minionCap,
+            legionBuffMultiplier: this.legionBuffMultiplier,
+            instantRevive: this.instantRevive,
+            shockwaveRadius: this.shockwaveRadius,
+            deathAura: this.deathAura,
+            deathImmunity: this.deathImmunity
         };
     }
 }
@@ -1177,7 +1297,30 @@ io.on('connection', (socket) => {
 
             player.isAlive = false;
             player.deaths++;
-            player.health = 0;
+
+            console.log(`💀 ${player.username} died - resetting to level 1`);
+
+            // FULL RESET - Roguelike death penalty
+            player.level = 1;
+            player.experience = 0;
+            player.selectedSkills = [];
+            player.permanentMinions = [];
+
+            // Reset stats to class defaults
+            player.stats = player.getClassStats(player.class);
+            player.health = player.maxHealth;
+
+            // Reset all multipliers
+            player.initializeMultipliers();
+
+            // Respawn at spawn point (center of world)
+            const worldCenter = Math.floor(lobby.WORLD_SIZE / 2);
+            player.position = {
+                x: worldCenter,
+                y: worldCenter
+            };
+
+            console.log(`♻️ ${player.username} reset: Level ${player.level}, Health ${player.health}/${player.maxHealth}`);
 
             lobby.broadcast('player:died', {
                 playerId: player.id,
@@ -1185,8 +1328,107 @@ io.on('connection', (socket) => {
                 killedBy: data.killedBy,
                 position: player.position
             });
+
+            // After death animation, send respawn data
+            setTimeout(() => {
+                player.isAlive = true;
+                socket.emit('player:respawned', {
+                    ...player.toJSON(),
+                    respawnPosition: player.position
+                });
+
+                lobby.broadcast('player:respawned', {
+                    playerId: player.id,
+                    playerName: player.username,
+                    position: player.position,
+                    health: player.health,
+                    maxHealth: player.maxHealth,
+                    level: player.level
+                });
+            }, 3000); // 3 second death delay
         } catch (error) {
             console.error('Error in player:death:', error);
+        }
+    });
+
+
+    // Handle skill selection
+    socket.on('skill:selected', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby) return;
+
+            const { skill, multipliers } = data;
+
+            // Validate skill data
+            if (!skill || !skill.id) {
+                console.error('Invalid skill data received');
+                return;
+            }
+
+            // Add skill to player's skill list
+            player.selectedSkills.push(skill);
+
+            // Update multipliers from client
+            if (multipliers) {
+                Object.keys(multipliers).forEach(key => {
+                    if (player.hasOwnProperty(key)) {
+                        player[key] = multipliers[key];
+                    }
+                });
+            }
+
+            console.log(`✨ ${player.username} selected skill: ${skill.name}`);
+
+            // Broadcast updated player data
+            lobby.broadcast('player:skillUpdate', {
+                playerId: player.id,
+                skill: skill,
+                multipliers: multipliers
+            });
+        } catch (error) {
+            console.error('Error in skill:selected:', error);
+        }
+    });
+
+    // Track permanent minions
+    socket.on('minion:permanent', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
+
+            const { minionId, action } = data;
+
+            if (action === 'add') {
+                if (!player.permanentMinions.includes(minionId)) {
+                    player.permanentMinions.push(minionId);
+                    console.log(`👹 ${player.username} gained permanent minion: ${minionId}`);
+                }
+            } else if (action === 'remove') {
+                const index = player.permanentMinions.indexOf(minionId);
+                if (index > -1) {
+                    player.permanentMinions.splice(index, 1);
+                    console.log(`💀 ${player.username} lost permanent minion: ${minionId}`);
+                }
+            }
+        } catch (error) {
+            console.error('Error in minion:permanent:', error);
+        }
+    });
+
+    // Request skill restoration (on reconnect/respawn)
+    socket.on('skills:requestRestore', () => {
+        try {
+            const player = players.get(socket.id);
+            if (!player) return;
+
+            // Send all player data including skills and multipliers
+            socket.emit('skills:restored', player.toJSON());
+        } catch (error) {
+            console.error('Error in skills:requestRestore:', error);
         }
     });
 
@@ -1299,7 +1541,7 @@ setInterval(() => {
             lobby.updateEnemies();
         }
     });
-}, 100); // Update every 100ms
+}, 200); // Update every 200ms (reduced from 100ms to prevent flicker)
 
 // Cleanup old lobbies
 setInterval(() => {

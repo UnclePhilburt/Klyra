@@ -190,11 +190,20 @@ class GameScene extends Phaser.Scene {
         networkManager.on('game:start', (data) => {
             this.gameData = data;
             this.initializeGame();
+            // Request skill restoration from server
+            networkManager.requestSkillRestore();
+        });
+
+        // Setup skill restoration listener
+        networkManager.on('skills:restored', (data) => {
+            this.restorePlayerSkills(data);
         });
 
         // If gameData already exists (from init) and has gameState, initialize immediately
         if (this.gameData && this.gameData.gameState) {
             this.initializeGame();
+            // Request skill restoration from server
+            networkManager.requestSkillRestore();
         }
     }
 
@@ -246,14 +255,21 @@ class GameScene extends Phaser.Scene {
             console.log(`📍 Sending initial position: pixel(${this.localPlayer.sprite.x.toFixed(0)}, ${this.localPlayer.sprite.y.toFixed(0)}) -> grid(${gridPos.x}, ${gridPos.y})`);
             networkManager.movePlayer(gridPos);
 
-            // Spawn permanent minion if player is Malachar
-            if (myData.class === 'MALACHAR') {
-                this.spawnMinion(
+            // Spawn permanent minion if player is Malachar (level 1 only)
+            if (myData.class === 'MALACHAR' && myData.level === 1) {
+                const minion = this.spawnMinion(
                     this.localPlayer.sprite.x + 40,
                     this.localPlayer.sprite.y,
                     myData.id,
                     true // permanent
                 );
+
+                // Track on server
+                if (minion && minion.minionId) {
+                    networkManager.trackPermanentMinion(minion.minionId, 'add');
+                }
+
+                console.log('🔮 Malachar starting minion spawned');
             }
         }
 
@@ -1510,7 +1526,46 @@ class GameScene extends Phaser.Scene {
                 player.die();
             }
             if (data.playerId === networkManager.currentPlayer.id) {
+                console.log('💀 You died! Resetting to level 1...');
                 this.localPlayer.die();
+
+                // Clear all permanent minions
+                Object.keys(this.minions).forEach(minionId => {
+                    const minion = this.minions[minionId];
+                    if (minion.ownerId === data.playerId) {
+                        minion.destroy();
+                        delete this.minions[minionId];
+                    }
+                });
+
+                // Clear skill selector state
+                if (this.skillSelector) {
+                    this.skillSelector.selectedSkills = [];
+                }
+            }
+        });
+
+        // Player respawned after death
+        networkManager.on('player:respawned', (data) => {
+            if (data.playerId === networkManager.currentPlayer.id) {
+                console.log('♻️ Respawning at spawn point - Level 1');
+
+                // Restore player from server state
+                this.restorePlayerFromDeath(data);
+            } else {
+                // Other player respawned
+                const player = this.otherPlayers[data.playerId];
+                if (player) {
+                    player.isAlive = true;
+                    player.health = data.health;
+                    player.maxHealth = data.maxHealth;
+                    player.level = data.level;
+                    player.sprite.setAlpha(1);
+                    player.sprite.setPosition(
+                        data.position.x * this.tileSize + this.tileSize / 2,
+                        data.position.y * this.tileSize + this.tileSize / 2
+                    );
+                }
             }
         });
 
@@ -2187,6 +2242,139 @@ class GameScene extends Phaser.Scene {
             ease: 'Power2',
             onComplete: () => spawnCircle.destroy()
         });
+
+        return minion; // Return minion for tracking
+    }
+
+    // ==================== SKILL RESTORATION SYSTEM ====================
+
+    restorePlayerSkills(playerData) {
+        if (!this.localPlayer || !this.skillSelector) {
+            console.warn('⚠️ Cannot restore skills - localPlayer or skillSelector not initialized');
+            return;
+        }
+
+        console.log('🔄 Restoring player skills from server:', playerData);
+
+        // Restore selected skills array
+        if (playerData.selectedSkills && playerData.selectedSkills.length > 0) {
+            this.skillSelector.selectedSkills = playerData.selectedSkills;
+            console.log(`✅ Restored ${playerData.selectedSkills.length} skills`);
+        }
+
+        // Restore all multipliers and special effects
+        const player = this.localPlayer;
+        const fields = [
+            'minionHealthMultiplier', 'minionDamageMultiplier', 'minionSpeedMultiplier',
+            'minionAttackSpeedMultiplier', 'minionAllStatsMultiplier', 'minionSizeMultiplier',
+            'minionDefenseMultiplier', 'minionArmor', 'minionLifesteal', 'minionRegen',
+            'minionKnockback', 'minionStun', 'minionCleave', 'minionUnstoppable',
+            'minionCritChance', 'minionCritDamage', 'damageMultiplier', 'xpMultiplier',
+            'healPerKill', 'healOnKillPercent', 'regenPerMinion', 'packDamageBonus',
+            'groupedDefense', 'coordinatedDamage', 'perMinionBonus', 'maxMinionBonus',
+            'berserkerDamage', 'berserkerThreshold', 'executeThreshold', 'executeDamage',
+            'bossDamage', 'armorPen', 'chainAttack', 'splashDamage', 'dualWield',
+            'attacksPerStrike', 'commandAura', 'flankDamage', 'killDamageStack',
+            'maxKillStacks', 'currentKillStacks', 'reapersMarkThreshold', 'reapersMarkDamage',
+            'minionCap', 'legionBuffMultiplier', 'instantRevive', 'shockwaveRadius',
+            'deathAura', 'deathImmunity'
+        ];
+
+        fields.forEach(field => {
+            if (playerData[field] !== undefined) {
+                player[field] = playerData[field];
+            }
+        });
+
+        // Restore permanent minions (only if not empty - respawn after death has empty array)
+        if (playerData.permanentMinions && playerData.permanentMinions.length > 0) {
+            console.log(`🔮 Restoring ${playerData.permanentMinions.length} permanent minions...`);
+
+            // Count existing minions to avoid duplicates
+            const existingMinions = Object.keys(this.minions).length;
+
+            playerData.permanentMinions.forEach((minionId, index) => {
+                // Skip if minion already exists
+                if (this.minions[minionId]) {
+                    console.log(`⏭️ Minion ${minionId} already exists, skipping`);
+                    return;
+                }
+
+                // Spawn minion near player with slight offset
+                const spawnX = player.sprite.x + (index * 40) - 40;
+                const spawnY = player.sprite.y + (index % 2 === 0 ? -40 : 40);
+
+                this.spawnMinion(spawnX, spawnY, player.data.id, true, minionId);
+            });
+        }
+
+        console.log('✅ Skill restoration complete');
+    }
+
+    restorePlayerFromDeath(playerData) {
+        if (!this.localPlayer) {
+            console.warn('⚠️ Cannot restore player - localPlayer not initialized');
+            return;
+        }
+
+        console.log('♻️ Restoring player from death:', playerData);
+
+        const player = this.localPlayer;
+
+        // Reset player state
+        player.isAlive = true;
+        player.level = playerData.level || 1;
+        player.experience = playerData.experience || 0;
+        player.health = playerData.health;
+        player.maxHealth = playerData.maxHealth;
+        player.stats = playerData.stats;
+
+        // Clear all multipliers (reset to defaults)
+        if (this.skillSelector) {
+            this.skillSelector.initializePlayerMultipliers();
+        }
+
+        // Teleport to respawn position
+        if (playerData.respawnPosition) {
+            const pixelX = playerData.respawnPosition.x * this.tileSize + this.tileSize / 2;
+            const pixelY = playerData.respawnPosition.y * this.tileSize + this.tileSize / 2;
+
+            player.sprite.setPosition(pixelX, pixelY);
+            player.sprite.setAlpha(1);
+
+            // Center camera on respawn point
+            this.cameras.main.centerOn(pixelX, pixelY);
+
+            console.log(`📍 Respawned at (${playerData.respawnPosition.x}, ${playerData.respawnPosition.y})`);
+
+            // Malachar starts with 1 permanent minion
+            const isMalachar = player.data.characterId === 'MALACHAR' ||
+                               player.class === 'MALACHAR' ||
+                               player.class === 'Malachar';
+
+            if (isMalachar && player.level === 1) {
+                console.log('🔮 Malachar detected - spawning starting minion');
+                const minion = this.spawnMinion(
+                    pixelX + 60,
+                    pixelY,
+                    player.data.id,
+                    true // permanent
+                );
+
+                // Track on server
+                if (minion && minion.minionId) {
+                    networkManager.trackPermanentMinion(minion.minionId, 'add');
+                }
+            }
+        }
+
+        // Update UI
+        if (player.ui) {
+            player.ui.updateHealthBar();
+            player.ui.updateLevel();
+        }
+
+        console.log('✅ Death restoration complete - Fresh start!');
     }
 
     // ==================== MAP TRANSITION SYSTEM ====================
