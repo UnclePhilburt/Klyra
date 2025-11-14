@@ -1,0 +1,122 @@
+/* Screen Manager CSS - Clean state-based transitions */
+/* Uses data-screen attribute on body to control visibility */
+
+/* === BASE SETUP === */
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    transition: background-color 0.5s ease;
+}
+
+/* Hide all screens by default */
+#startScreen,
+#lobbyScreen,
+#game-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+/* Background canvas transitions */
+#backgroundCanvas {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+/* === START SCREEN STATE === */
+body[data-screen="start"] #startScreen {
+    opacity: 1;
+    pointer-events: all;
+    z-index: 10000;
+}
+
+/* === LOBBY SCREEN STATE === */
+body[data-screen="lobby"] #lobbyScreen {
+    opacity: 1;
+    pointer-events: all;
+    display: block !important; /* Override any inline styles */
+}
+
+body[data-screen="lobby"] #backgroundCanvas {
+    opacity: 1;
+}
+
+/* === GAME SCREEN STATE === */
+body[data-screen="game"] #game-container {
+    opacity: 1;
+    pointer-events: all;
+    display: block !important; /* Override any inline styles */
+}
+
+body[data-screen="game"] #lobbyScreen,
+body[data-screen="game"] #startScreen,
+body[data-screen="game"] #backgroundCanvas {
+    display: none !important;
+}
+
+/* === LOADING STATE (OPTIONAL) === */
+body[data-screen="loading"] {
+    background: #0a0a0f;
+}
+
+body[data-screen="loading"]::after {
+    content: 'LOADING...';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 24px;
+    color: #6B4FFF;
+    text-shadow: 0 0 20px rgba(107, 79, 255, 0.8);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* === TRANSITIONS === */
+/* Smooth fade between screens */
+#startScreen,
+#lobbyScreen,
+#game-container,
+#backgroundCanvas {
+    transition:
+        opacity 0.5s cubic-bezier(0.4, 0.0, 0.2, 1),
+        transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Fade in animation */
+body[data-screen="lobby"] #lobbyScreen {
+    animation: fadeIn 0.5s ease;
+}
+
+body[data-screen="game"] #game-container {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Prevent any flash of content */
+body:not([data-screen]) #startScreen,
+body:not([data-screen]) #lobbyScreen,
+body:not([data-screen]) #game-container {
+    display: none;
+}

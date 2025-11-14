@@ -268,37 +268,12 @@ class MainMenu {
                 try {
                     if (window.game) {
                         await window.game.connect(name);
-                        
+
                         setTimeout(() => {
-                            // Hide lobby screen (must use inline style to override start-screen.js)
-                            lobbyScreen.style.display = 'none';
-                            lobbyScreen.classList.add('hidden');
-                            document.body.classList.add('game-active');
-
-                            const settingsBtn = document.getElementById('settingsBtn');
-                            if (settingsBtn) {
-                                settingsBtn.style.display = 'none';
+                            // Use ScreenManager for clean transition
+                            if (window.screenManager) {
+                                window.screenManager.transitionToGame();
                             }
-
-                            // Hide characters button
-                            const charactersBtn = document.getElementById('charactersBtn');
-                            if (charactersBtn) {
-                                charactersBtn.style.display = 'none';
-                            }
-
-                            // Hide server status when in game
-                            const serverStatus = document.getElementById('serverStatus');
-                            if (serverStatus) {
-                                serverStatus.style.display = 'none';
-                            }
-
-                            // Hide background canvas to remove blue tint
-                            const bgCanvas = document.getElementById('backgroundCanvas');
-                            if (bgCanvas) {
-                                bgCanvas.style.display = 'none';
-                            }
-
-                            this.stopMusic();
                         }, 500);
                     }
                 } catch (error) {
