@@ -47,6 +47,14 @@ class Minion {
         this.vigilanceRadius = 0; // How far to watch for threats
         this.protectionPriority = 0; // Higher = stays closer to player in combat
 
+        // TACTICAL ARMY AI: Health-based behavior
+        this.baseRole = null; // Original assigned role
+        this.currentRole = null; // May change based on health
+        this.isInjured = false; // Below 50% health
+        this.isCritical = false; // Below 25% health
+        this.retreating = false; // Currently falling back
+        this.assistTarget = null; // Ally minion we're helping
+
         this.createSprite(x, y);
         this.setupAI();
     }
@@ -82,22 +90,25 @@ class Minion {
         const roles = ['scout', 'flank_left', 'flank_right', 'rear_guard', 'bodyguard'];
 
         if (totalMinions === 1) {
-            this.role = 'bodyguard'; // Solo minion stays close
+            this.baseRole = 'bodyguard'; // Solo minion stays close
         } else if (totalMinions <= 3) {
             // Small squad: 1 scout, rest bodyguards
-            this.role = index === 0 ? 'scout' : 'bodyguard';
+            this.baseRole = index === 0 ? 'scout' : 'bodyguard';
         } else if (totalMinions <= 5) {
             // Medium squad: scout, 2 flanks, bodyguards
             const roleMap = ['scout', 'flank_left', 'flank_right', 'bodyguard', 'bodyguard'];
-            this.role = roleMap[index] || 'bodyguard';
+            this.baseRole = roleMap[index] || 'bodyguard';
         } else {
             // Large squad: full formation
             const roleMap = ['scout', 'scout', 'flank_left', 'flank_right', 'rear_guard', 'rear_guard', 'bodyguard', 'bodyguard'];
-            this.role = roleMap[index] || 'bodyguard';
+            this.baseRole = roleMap[index] || 'bodyguard';
         }
 
+        // Current role starts as base role (may change based on health)
+        this.role = this.baseRole;
+
         // Set role-specific stats
-        switch(this.role) {
+        switch(this.baseRole) {
             case 'scout':
                 this.patrolDistance = 180; // Far ahead
                 this.vigilanceRadius = 500; // Wide vision
@@ -259,14 +270,42 @@ class Minion {
             return;
         }
 
-        // INTELLIGENT FORMATION: Calculate formation position
+        // TACTICAL ARMY AI: Update health status
+        this.updateHealthStatus();
+
+        // TACTICAL ARMY AI: Check if we should help an ally
+        const allyNeedingHelp = this.findAllyNeedingHelp();
+        if (allyNeedingHelp && !this.isCritical) {
+            this.state = 'assisting';
+            this.assistAlly(allyNeedingHelp);
+            return;
+        }
+
+        // INTELLIGENT FORMATION: Calculate formation position (may be adjusted by health)
         this.formationPosition = this.calculateFormationPosition(owner);
 
         // Priority 2: Detect threats and enter combat mode
         const nearbyThreats = this.detectThreats();
         this.combatMode = nearbyThreats.length > 0;
 
-        // Priority 3: Find target (smart selection - don't all attack same enemy)
+        // TACTICAL ARMY AI: If injured/critical, modify behavior
+        if (this.isCritical) {
+            // Critical health: retreat to safety, only fight if threatened directly
+            const closestThreat = nearbyThreats.length > 0 ? nearbyThreats[0] : null;
+            if (closestThreat && closestThreat.distance < 150) {
+                // Defend ourselves if enemy too close
+                this.target = closestThreat.enemy;
+                this.state = 'defending';
+                this.attackEnemy(this.target);
+            } else {
+                // Retreat to rear position
+                this.state = 'retreating';
+                this.retreatToSafety(owner);
+            }
+            return;
+        }
+
+        // Priority 3: Find target (smart selection based on health)
         this.target = this.selectSmartTarget(nearbyThreats);
 
         if (this.target) {
@@ -364,7 +403,7 @@ class Minion {
         return threats.sort((a, b) => a.distanceSquared - b.distanceSquared);
     }
 
-    // INTELLIGENT FORMATION: Smart target selection (spread attacks)
+    // INTELLIGENT FORMATION: Smart target selection (spread attacks + health-based)
     selectSmartTarget(threats) {
         if (threats.length === 0) return null;
 
@@ -404,13 +443,35 @@ class Minion {
 
         for (const threat of threats) {
             const count = targetCounts.get(threat.enemy.data.id) || 0;
+            const enemyHealth = threat.enemy.health;
+            const enemyMaxHealth = threat.enemy.maxHealth;
+            const enemyHealthPercent = enemyHealth / enemyMaxHealth;
 
             // Prioritize:
             // 1. Enemies with fewer minions attacking them
             // 2. Closer enemies
-            // 3. Scouts prioritize threats ahead, bodyguards prioritize threats near player
+            // 3. TACTICAL: Match enemy health to minion health
+            // 4. Role-based preferences
             let priority = count * 100 + threat.distance;
 
+            // TACTICAL ARMY AI: Health-based targeting
+            const myHealthPercent = this.health / this.maxHealth;
+
+            if (this.isInjured) {
+                // Injured minions prefer weak enemies (safer targets)
+                if (enemyHealthPercent < 0.5) {
+                    priority -= 80; // Much prefer low-health enemies
+                } else {
+                    priority += 50; // Avoid healthy enemies when injured
+                }
+            } else {
+                // Healthy minions tank strong enemies (protect injured allies)
+                if (enemyHealthPercent > 0.7) {
+                    priority -= 60; // Prefer healthy enemies to protect team
+                }
+            }
+
+            // Role-based adjustments
             if (this.role === 'scout' && threat.distance > 150) {
                 priority -= 50; // Scouts prefer distant threats
             }
@@ -430,6 +491,163 @@ class Minion {
         }
 
         return bestTarget;
+    }
+
+    // TACTICAL ARMY AI: Update health status and role adjustments
+    updateHealthStatus() {
+        const healthPercent = this.health / this.maxHealth;
+
+        this.isInjured = healthPercent < 0.5;
+        this.isCritical = healthPercent < 0.25;
+
+        // TACTICAL: Injured minions become more defensive
+        if (this.isCritical && this.role !== 'bodyguard') {
+            // Critical minions fallback to bodyguard role (stay close to player)
+            this.role = 'bodyguard';
+            this.patrolDistance = 50;
+            this.vigilanceRadius = 300;
+        } else if (this.isInjured && this.role === 'scout') {
+            // Injured scouts become flankers (less exposed)
+            this.role = 'flank_left';
+            this.patrolDistance = 120;
+            this.vigilanceRadius = 400;
+        } else if (!this.isInjured && !this.isCritical) {
+            // Healthy minions resume base role
+            this.role = this.baseRole;
+            // Restore original stats based on base role
+            this.setRoleStats(this.baseRole);
+        }
+    }
+
+    // Helper to set role stats
+    setRoleStats(role) {
+        switch(role) {
+            case 'scout':
+                this.patrolDistance = 180;
+                this.vigilanceRadius = 500;
+                this.moveSpeed = 280;
+                break;
+            case 'flank_left':
+            case 'flank_right':
+                this.patrolDistance = 120;
+                this.vigilanceRadius = 400;
+                this.moveSpeed = 250;
+                break;
+            case 'rear_guard':
+                this.patrolDistance = -100;
+                this.vigilanceRadius = 350;
+                this.moveSpeed = 240;
+                break;
+            case 'bodyguard':
+                this.patrolDistance = 50;
+                this.vigilanceRadius = 300;
+                this.moveSpeed = 260;
+                break;
+        }
+    }
+
+    // TACTICAL ARMY AI: Find ally minion that needs help
+    findAllyNeedingHelp() {
+        const friendlyMinions = Object.values(this.scene.minions || {})
+            .filter(m => m.ownerId === this.ownerId && m.isAlive && m !== this);
+
+        let mostUrgent = null;
+        let urgencyScore = 0;
+
+        for (const ally of friendlyMinions) {
+            // Skip if ally is healthy
+            if (ally.health / ally.maxHealth > 0.6) continue;
+
+            // Check if ally is in combat
+            if (!ally.target) continue;
+
+            const allyHealthPercent = ally.health / ally.maxHealth;
+            const distToAlly = Phaser.Math.Distance.Between(
+                this.sprite.x, this.sprite.y,
+                ally.sprite.x, ally.sprite.y
+            );
+
+            // Urgency = low health + close distance
+            const score = (1 - allyHealthPercent) * 100 + (400 - distToAlly);
+
+            if (score > urgencyScore && distToAlly < 400) {
+                urgencyScore = score;
+                mostUrgent = ally;
+            }
+        }
+
+        return mostUrgent;
+    }
+
+    // TACTICAL ARMY AI: Assist struggling ally
+    assistAlly(ally) {
+        if (!ally || !ally.isAlive || !ally.target) {
+            this.assistTarget = null;
+            return;
+        }
+
+        this.assistTarget = ally;
+        this.target = ally.target; // Attack same enemy ally is fighting
+
+        // If ally is critical, try to body block (move between ally and enemy)
+        const allyHealthPercent = ally.health / ally.maxHealth;
+        if (allyHealthPercent < 0.3 && this.health / this.maxHealth > 0.5) {
+            // Position ourselves between ally and their target
+            const blockX = (ally.sprite.x + ally.target.sprite.x) / 2;
+            const blockY = (ally.sprite.y + ally.target.sprite.y) / 2;
+
+            const angle = Math.atan2(blockY - this.sprite.y, blockX - this.sprite.x);
+            this.sprite.setVelocity(
+                Math.cos(angle) * this.moveSpeed,
+                Math.sin(angle) * this.moveSpeed
+            );
+
+            console.log(`🛡️ ${this.role} body blocking for injured ally!`);
+        }
+
+        // Attack the enemy
+        this.attackEnemy(this.target);
+    }
+
+    // TACTICAL ARMY AI: Retreat to safety when critical
+    retreatToSafety(owner) {
+        if (!owner || !owner.sprite) return;
+
+        // Move behind player (opposite of threats)
+        const playerX = owner.sprite.x;
+        const playerY = owner.sprite.y;
+
+        // Find average threat direction
+        const threats = this.detectThreats();
+        let threatAngle = 0;
+        if (threats.length > 0) {
+            let avgX = 0, avgY = 0;
+            threats.forEach(t => {
+                avgX += t.enemy.sprite.x;
+                avgY += t.enemy.sprite.y;
+            });
+            avgX /= threats.length;
+            avgY /= threats.length;
+            threatAngle = Math.atan2(avgY - playerY, avgX - playerX);
+        }
+
+        // Retreat in opposite direction (behind player, away from threats)
+        const retreatAngle = threatAngle + Math.PI; // Opposite direction
+        const safeX = playerX + Math.cos(retreatAngle) * 80;
+        const safeY = playerY + Math.sin(retreatAngle) * 80;
+
+        const angle = Math.atan2(safeY - this.sprite.y, safeX - this.sprite.x);
+        this.sprite.setVelocity(
+            Math.cos(angle) * (this.moveSpeed * 1.2), // Faster retreat
+            Math.sin(angle) * (this.moveSpeed * 1.2)
+        );
+
+        this.retreating = true;
+
+        // Play walk animation
+        if (this.sprite.anims) {
+            this.sprite.play('minion_walk', true);
+        }
     }
 
     // INTELLIGENT FORMATION: Move to assigned formation position
