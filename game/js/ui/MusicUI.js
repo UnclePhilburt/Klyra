@@ -346,6 +346,9 @@ class MusicUI {
         if (this.isExpanded) return;
         this.isExpanded = true;
 
+        // Disable hitArea interactivity so buttons can be clicked
+        this.hitArea.disableInteractive();
+
         // Animate size change
         this.scene.tweens.add({
             targets: this,
@@ -391,6 +394,9 @@ class MusicUI {
     collapse() {
         if (!this.isExpanded) return;
         this.isExpanded = false;
+
+        // Re-enable hitArea interactivity for hover detection
+        this.hitArea.setInteractive({ useHandCursor: true });
 
         // Hide volume slider if visible
         if (this.volumeSliderVisible) {
