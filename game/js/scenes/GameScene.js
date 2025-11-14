@@ -2434,6 +2434,9 @@ class GameScene extends Phaser.Scene {
             });
         }
 
+        // INTELLIGENT FORMATION: Assign roles to all minions owned by this player
+        this.updateMinionFormations(ownerId);
+
         // Apply damage multiplier from skills (if local player owns this minion)
         if (ownerId === networkManager.currentPlayer.id && this.localPlayer && this.localPlayer.minionDamageMultiplier) {
             minion.damage *= this.localPlayer.minionDamageMultiplier;
@@ -2455,6 +2458,23 @@ class GameScene extends Phaser.Scene {
         });
 
         return minion; // Return minion for tracking
+    }
+
+    // INTELLIGENT FORMATION: Reassign roles to all minions owned by a player
+    updateMinionFormations(ownerId) {
+        // Get all alive minions owned by this player
+        const ownerMinions = Object.values(this.minions)
+            .filter(m => m.ownerId === ownerId && m.isAlive)
+            .sort((a, b) => a.minionId.localeCompare(b.minionId)); // Stable sort
+
+        const totalMinions = ownerMinions.length;
+
+        // Assign roles based on squad size
+        ownerMinions.forEach((minion, index) => {
+            minion.setFormationRole(index, totalMinions);
+        });
+
+        console.log(`🛡️ Formation updated for player ${ownerId.slice(0,8)}: ${totalMinions} minions assigned roles`);
     }
 
     // ==================== SKILL RESTORATION SYSTEM ====================

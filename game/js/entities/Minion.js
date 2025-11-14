@@ -26,25 +26,26 @@ class Minion {
 
         // AI state
         this.target = null;
-        this.followDistance = 350; // Maximum distance from owner before returning (increased)
-        this.roamRadius = 250; // How far to wander when exploring (increased)
-        this.seekRadius = 350; // How far to look for enemies (increased)
-
-        // Wandering behavior
-        this.wanderTarget = null;
-        this.wanderCooldown = 0;
-        this.wanderDelay = 2000; // Change wander direction every 2 seconds
+        this.followDistance = 450; // Maximum distance from owner before returning
+        this.seekRadius = 400; // How far to look for enemies
 
         // State machine
-        this.state = 'idle'; // idle, wandering, seeking, attacking, following
+        this.state = 'idle'; // idle, patrolling, seeking, attacking, following
 
         // Aggro management
         this.aggroedEnemies = new Set(); // Track enemies currently targeting this minion
         this.maxAggro = Phaser.Math.Between(3, 5); // Random 3-5 enemy limit per minion
 
-        // Formation positioning
-        this.formationOffset = { x: 0, y: 0 }; // Offset for surrounding target
-        this.formationAngle = Math.random() * Math.PI * 2; // Random starting angle
+        // INTELLIGENT FORMATION SYSTEM
+        this.role = null; // Assigned in setFormationRole()
+        this.formationIndex = null; // Position in formation
+        this.formationPosition = { x: 0, y: 0 }; // Target position in formation
+        this.combatMode = false; // Changes behavior (patrol vs combat)
+
+        // Role-specific behaviors
+        this.patrolDistance = 0; // How far from player to patrol
+        this.vigilanceRadius = 0; // How far to watch for threats
+        this.protectionPriority = 0; // Higher = stays closer to player in combat
 
         this.createSprite(x, y);
         this.setupAI();
@@ -71,6 +72,129 @@ class Minion {
         this.healthBar.setDepth(2); // Same depth as sprite
 
         this.updateHealthBar();
+    }
+
+    // INTELLIGENT FORMATION: Assign role to this minion
+    setFormationRole(index, totalMinions) {
+        this.formationIndex = index;
+
+        // Assign roles based on position in minion array
+        const roles = ['scout', 'flank_left', 'flank_right', 'rear_guard', 'bodyguard'];
+
+        if (totalMinions === 1) {
+            this.role = 'bodyguard'; // Solo minion stays close
+        } else if (totalMinions <= 3) {
+            // Small squad: 1 scout, rest bodyguards
+            this.role = index === 0 ? 'scout' : 'bodyguard';
+        } else if (totalMinions <= 5) {
+            // Medium squad: scout, 2 flanks, bodyguards
+            const roleMap = ['scout', 'flank_left', 'flank_right', 'bodyguard', 'bodyguard'];
+            this.role = roleMap[index] || 'bodyguard';
+        } else {
+            // Large squad: full formation
+            const roleMap = ['scout', 'scout', 'flank_left', 'flank_right', 'rear_guard', 'rear_guard', 'bodyguard', 'bodyguard'];
+            this.role = roleMap[index] || 'bodyguard';
+        }
+
+        // Set role-specific stats
+        switch(this.role) {
+            case 'scout':
+                this.patrolDistance = 180; // Far ahead
+                this.vigilanceRadius = 500; // Wide vision
+                this.protectionPriority = 1;
+                this.moveSpeed = 280; // Fast
+                break;
+            case 'flank_left':
+            case 'flank_right':
+                this.patrolDistance = 120; // Sides
+                this.vigilanceRadius = 400;
+                this.protectionPriority = 2;
+                this.moveSpeed = 250;
+                break;
+            case 'rear_guard':
+                this.patrolDistance = -100; // Behind player
+                this.vigilanceRadius = 350;
+                this.protectionPriority = 3;
+                this.moveSpeed = 240;
+                break;
+            case 'bodyguard':
+                this.patrolDistance = 50; // Close to player
+                this.vigilanceRadius = 300;
+                this.protectionPriority = 5; // Highest - always protect player
+                this.moveSpeed = 260;
+                break;
+        }
+
+        console.log(`🛡️ Minion ${index} assigned role: ${this.role.toUpperCase()}`);
+    }
+
+    // INTELLIGENT FORMATION: Calculate where this minion should be
+    calculateFormationPosition(owner) {
+        if (!owner || !owner.sprite) return { x: this.sprite.x, y: this.sprite.y };
+
+        // Detect player movement direction
+        const playerVelocity = owner.sprite.body.velocity;
+        const isMoving = Math.abs(playerVelocity.x) > 10 || Math.abs(playerVelocity.y) > 10;
+
+        let moveAngle = 0;
+        if (isMoving) {
+            moveAngle = Math.atan2(playerVelocity.y, playerVelocity.x);
+        } else {
+            // Use last known direction or default down
+            moveAngle = owner.currentDirection === 'up' ? -Math.PI/2 :
+                       owner.currentDirection === 'down' ? Math.PI/2 :
+                       owner.currentDirection === 'left' ? Math.PI :
+                       owner.currentDirection === 'right' ? 0 : Math.PI/2;
+        }
+
+        let targetX = owner.sprite.x;
+        let targetY = owner.sprite.y;
+        let distance = this.combatMode ? this.patrolDistance * 0.5 : this.patrolDistance;
+
+        switch(this.role) {
+            case 'scout':
+                // Ahead of player in movement direction
+                targetX += Math.cos(moveAngle) * distance;
+                targetY += Math.sin(moveAngle) * distance;
+                // Add slight offset for multiple scouts
+                if (this.formationIndex === 1) {
+                    targetX += Math.cos(moveAngle + Math.PI/2) * 40;
+                    targetY += Math.sin(moveAngle + Math.PI/2) * 40;
+                }
+                break;
+
+            case 'flank_left':
+                // Left side of player
+                targetX += Math.cos(moveAngle + Math.PI/2) * distance;
+                targetY += Math.sin(moveAngle + Math.PI/2) * distance;
+                break;
+
+            case 'flank_right':
+                // Right side of player
+                targetX += Math.cos(moveAngle - Math.PI/2) * distance;
+                targetY += Math.sin(moveAngle - Math.PI/2) * distance;
+                break;
+
+            case 'rear_guard':
+                // Behind player (opposite of movement)
+                targetX += Math.cos(moveAngle + Math.PI) * Math.abs(distance);
+                targetY += Math.sin(moveAngle + Math.PI) * Math.abs(distance);
+                // Spread out multiple rear guards
+                if (this.formationIndex === 5) {
+                    targetX += Math.cos(moveAngle + Math.PI/2) * 50;
+                    targetY += Math.sin(moveAngle + Math.PI/2) * 50;
+                }
+                break;
+
+            case 'bodyguard':
+                // Circle around player, close
+                const bodyguardAngle = (this.formationIndex * Math.PI / 2) + moveAngle;
+                targetX += Math.cos(bodyguardAngle) * distance;
+                targetY += Math.sin(bodyguardAngle) * distance;
+                break;
+        }
+
+        return { x: targetX, y: targetY };
     }
 
     setupAI() {
@@ -135,15 +259,23 @@ class Minion {
             return;
         }
 
-        // Priority 2: Find and attack enemies
-        this.target = this.findNearestEnemy(this.seekRadius);
+        // INTELLIGENT FORMATION: Calculate formation position
+        this.formationPosition = this.calculateFormationPosition(owner);
+
+        // Priority 2: Detect threats and enter combat mode
+        const nearbyThreats = this.detectThreats();
+        this.combatMode = nearbyThreats.length > 0;
+
+        // Priority 3: Find target (smart selection - don't all attack same enemy)
+        this.target = this.selectSmartTarget(nearbyThreats);
 
         if (this.target) {
             this.state = 'attacking';
             this.attackEnemy(this.target);
         } else {
-            // Priority 3: Explore and wander
-            this.wanderAround(owner);
+            // Priority 4: Move to formation position
+            this.state = 'patrolling';
+            this.moveToFormationPosition();
         }
 
         // DIAGNOSTIC: Log if AI update is slow
@@ -201,6 +333,135 @@ class Minion {
         }
 
         return nearestEnemy;
+    }
+
+    // INTELLIGENT FORMATION: Detect nearby threats
+    detectThreats() {
+        const allEnemies = [
+            ...Object.values(this.scene.enemies || {}),
+            ...Object.values(this.scene.wolves || {})
+        ];
+
+        const threats = [];
+        const searchRadiusSquared = this.vigilanceRadius * this.vigilanceRadius;
+
+        for (const enemy of allEnemies) {
+            if (!enemy.isAlive) continue;
+
+            const dx = this.sprite.x - enemy.sprite.x;
+            const dy = this.sprite.y - enemy.sprite.y;
+            const distSquared = dx * dx + dy * dy;
+
+            if (distSquared < searchRadiusSquared) {
+                threats.push({
+                    enemy: enemy,
+                    distanceSquared: distSquared,
+                    distance: Math.sqrt(distSquared)
+                });
+            }
+        }
+
+        return threats.sort((a, b) => a.distanceSquared - b.distanceSquared);
+    }
+
+    // INTELLIGENT FORMATION: Smart target selection (spread attacks)
+    selectSmartTarget(threats) {
+        if (threats.length === 0) return null;
+
+        // Check if at aggro limit
+        if (this.aggroedEnemies.size >= this.maxAggro) {
+            const currentTargets = Array.from(this.aggroedEnemies)
+                .map(id => this.scene.enemies[id] || this.scene.wolves[id])
+                .filter(e => e && e.isAlive);
+
+            if (currentTargets.length > 0) {
+                return currentTargets[0]; // Continue current targets
+            } else {
+                this.aggroedEnemies.clear();
+            }
+        }
+
+        // Get all minions owned by same player
+        const friendlyMinions = Object.values(this.scene.minions || {})
+            .filter(m => m.ownerId === this.ownerId && m.isAlive && m !== this);
+
+        // Count how many minions are targeting each threat
+        const targetCounts = new Map();
+        threats.forEach(t => {
+            targetCounts.set(t.enemy.data.id, 0);
+        });
+
+        friendlyMinions.forEach(minion => {
+            if (minion.target && minion.target.data) {
+                const count = targetCounts.get(minion.target.data.id) || 0;
+                targetCounts.set(minion.target.data.id, count + 1);
+            }
+        });
+
+        // Find threat with LEAST minions attacking it (spread damage!)
+        let bestTarget = null;
+        let lowestCount = Infinity;
+
+        for (const threat of threats) {
+            const count = targetCounts.get(threat.enemy.data.id) || 0;
+
+            // Prioritize:
+            // 1. Enemies with fewer minions attacking them
+            // 2. Closer enemies
+            // 3. Scouts prioritize threats ahead, bodyguards prioritize threats near player
+            let priority = count * 100 + threat.distance;
+
+            if (this.role === 'scout' && threat.distance > 150) {
+                priority -= 50; // Scouts prefer distant threats
+            }
+            if (this.role === 'bodyguard' && threat.distance < 100) {
+                priority -= 100; // Bodyguards prefer close threats
+            }
+
+            if (priority < lowestCount) {
+                lowestCount = priority;
+                bestTarget = threat.enemy;
+            }
+        }
+
+        // Add to aggro list
+        if (bestTarget && bestTarget.data && bestTarget.data.id) {
+            this.aggroedEnemies.add(bestTarget.data.id);
+        }
+
+        return bestTarget;
+    }
+
+    // INTELLIGENT FORMATION: Move to assigned formation position
+    moveToFormationPosition() {
+        const dist = Phaser.Math.Distance.Between(
+            this.sprite.x,
+            this.sprite.y,
+            this.formationPosition.x,
+            this.formationPosition.y
+        );
+
+        // If close enough to formation position, idle there
+        if (dist < 30) {
+            this.sprite.setVelocity(0, 0);
+            return;
+        }
+
+        // Move toward formation position
+        const angle = Math.atan2(
+            this.formationPosition.y - this.sprite.y,
+            this.formationPosition.x - this.sprite.x
+        );
+
+        this.sprite.setVelocity(
+            Math.cos(angle) * this.moveSpeed,
+            Math.sin(angle) * this.moveSpeed
+        );
+
+        // Play walk animation
+        if (this.sprite.anims) {
+            this.sprite.play('minion_walk', true);
+        }
     }
 
     wanderAround(owner) {
@@ -536,12 +797,20 @@ class Minion {
         // Debug log despawn reason
         console.log(`🔮 Minion despawning (permanent: ${this.isPermanent})`);
 
+        // INTELLIGENT FORMATION: Update remaining minions' formations
+        const ownerId = this.ownerId;
         this.scene.tweens.add({
             targets: [this.sprite, this.healthBar, this.healthBarBg],
             alpha: 0,
             duration: 500,
             ease: 'Power2',
-            onComplete: () => this.destroy()
+            onComplete: () => {
+                this.destroy();
+                // Reassign roles to remaining minions
+                if (this.scene && this.scene.updateMinionFormations) {
+                    this.scene.updateMinionFormations(ownerId);
+                }
+            }
         });
     }
 
