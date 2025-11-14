@@ -126,6 +126,9 @@ class Player {
     attack(targetX, targetY) {
         this.spriteRenderer.animateAttack(targetX, targetY);
 
+        // Safety check
+        if (!this.spriteRenderer || !this.spriteRenderer.sprite) return;
+
         // Find and damage nearby enemies
         const attackRange = 50; // Attack range in pixels
         const playerPos = { x: this.spriteRenderer.sprite.x, y: this.spriteRenderer.sprite.y };
