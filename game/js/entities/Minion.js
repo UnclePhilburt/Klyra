@@ -354,8 +354,10 @@ class Minion {
         this.updateHealthStatus();
 
         // TACTICAL ARMY AI: Check if we should help an ally
+        // Only help if WE are healthy (>60% HP) - injured minions focus on survival
         const allyNeedingHelp = this.findAllyNeedingHelp();
-        if (allyNeedingHelp && !this.isCritical) {
+        const healthPercent = this.health / this.maxHealth;
+        if (allyNeedingHelp && healthPercent > 0.6) {
             this.state = 'assisting';
             this.assistAlly(allyNeedingHelp);
             return;
@@ -675,6 +677,14 @@ class Minion {
         if (!ally || !ally.isAlive || !ally.target || !ally.target.isAlive) {
             this.assistTarget = null;
             this.state = 'patrolling'; // Exit assist mode
+            return;
+        }
+
+        // Check if WE are still healthy enough to assist (must be >60% HP)
+        const myHealthPercent = this.health / this.maxHealth;
+        if (myHealthPercent <= 0.6) {
+            this.assistTarget = null;
+            this.state = 'patrolling'; // Too injured, focus on own survival
             return;
         }
 
