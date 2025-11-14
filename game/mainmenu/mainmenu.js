@@ -270,12 +270,20 @@ class MainMenu {
                         await window.game.connect(name);
                         
                         setTimeout(() => {
+                            // Hide lobby screen (must use inline style to override start-screen.js)
+                            lobbyScreen.style.display = 'none';
                             lobbyScreen.classList.add('hidden');
                             document.body.classList.add('game-active');
 
                             const settingsBtn = document.getElementById('settingsBtn');
                             if (settingsBtn) {
                                 settingsBtn.style.display = 'none';
+                            }
+
+                            // Hide characters button
+                            const charactersBtn = document.getElementById('charactersBtn');
+                            if (charactersBtn) {
+                                charactersBtn.style.display = 'none';
                             }
 
                             // Hide server status when in game
