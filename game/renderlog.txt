@@ -1,0 +1,50 @@
+2025-11-13T14:20:56.856066907Z ==> 
+2025-11-13T14:20:56.972425327Z ==> Available at your primary URL https://klyra-server.onrender.com
+2025-11-13T14:20:57.06399234Z ==> 
+2025-11-13T14:20:57.154684484Z ==> ///////////////////////////////////////////////////////////
+2025-11-13T14:21:02.955392826Z 🔌 Client connected: 4d46jfn1gSfzdVn_AAAB
+2025-11-13T14:21:03.054485969Z ✨ Generated chunk (-1, -1) with 5 enemies and 4 items
+2025-11-13T14:21:03.056233226Z ✨ Generated chunk (-1, 0) with 5 enemies and 4 items
+2025-11-13T14:21:03.056916585Z ✨ Generated chunk (-1, 1) with 5 enemies and 4 items
+2025-11-13T14:21:03.057461645Z ✨ Generated chunk (0, -1) with 5 enemies and 4 items
+2025-11-13T14:21:03.057893389Z ✨ Generated chunk (0, 0) with 5 enemies and 4 items
+2025-11-13T14:21:03.058473741Z ✨ Generated chunk (0, 1) with 5 enemies and 4 items
+2025-11-13T14:21:03.058927557Z ✨ Generated chunk (1, -1) with 5 enemies and 4 items
+2025-11-13T14:21:03.059460056Z ✨ Generated chunk (1, 0) with 5 enemies and 4 items
+2025-11-13T14:21:03.111517703Z ✨ Generated chunk (1, 1) with 5 enemies and 4 items
+2025-11-13T14:21:03.111549435Z 🗺️ Generated infinite world for room b85f7618 (chunk-based, normal)
+2025-11-13T14:21:03.111554065Z    Seed: b85f7618-2ad7-44d7-acbf-58ab2f3a08f6-1763043663051-qtxa8t
+2025-11-13T14:21:03.111558645Z    Initial chunks: 3x3 around spawn (0,0)
+2025-11-13T14:21:03.11218908Z 🆕 Created new game b85f7618 (normal) - Ready for players!
+2025-11-13T14:21:03.112201051Z ✅ a joined game b85f7618 (1/10)
+2025-11-13T14:21:05.144732934Z 📍 Received initial position for a: (30, 25)
+2025-11-13T14:21:05.144966397Z 🚶 a entered chunk (0, 0) at position (30, 25)
+2025-11-13T14:21:05.146533445Z ✨ Generated chunk (-2, -2) with 5 enemies and 4 items
+2025-11-13T14:21:05.148464783Z ✨ Generated chunk (-2, -1) with 5 enemies and 4 items
+2025-11-13T14:21:05.210710497Z ✨ Generated chunk (-2, 0) with 5 enemies and 4 items
+2025-11-13T14:21:05.211201205Z ✨ Generated chunk (-2, 1) with 5 enemies and 4 items
+2025-11-13T14:21:05.211676781Z ✨ Generated chunk (-2, 2) with 5 enemies and 4 items
+2025-11-13T14:21:05.212136857Z ✨ Generated chunk (-1, -2) with 5 enemies and 4 items
+2025-11-13T14:21:05.212601693Z ✨ Generated chunk (-1, 2) with 5 enemies and 4 items
+2025-11-13T14:21:05.213022796Z ✨ Generated chunk (0, -2) with 5 enemies and 4 items
+2025-11-13T14:21:05.21344587Z ✨ Generated chunk (0, 2) with 5 enemies and 4 items
+2025-11-13T14:21:05.213898085Z ✨ Generated chunk (1, -2) with 5 enemies and 4 items
+2025-11-13T14:21:05.214316288Z ✨ Generated chunk (1, 2) with 5 enemies and 4 items
+2025-11-13T14:21:05.214743803Z ✨ Generated chunk (2, -2) with 5 enemies and 4 items
+2025-11-13T14:21:05.21559332Z ✨ Generated chunk (2, -1) with 5 enemies and 4 items
+2025-11-13T14:21:05.216012543Z ✨ Generated chunk (2, 0) with 5 enemies and 4 items
+2025-11-13T14:21:05.216452948Z ✨ Generated chunk (2, 1) with 5 enemies and 4 items
+2025-11-13T14:21:05.216876022Z ✨ Generated chunk (2, 2) with 5 enemies and 4 items
+2025-11-13T14:21:05.216882302Z 📊 Chunks: 9 → 25 (+16)
+2025-11-13T14:21:05.216885062Z ✨ Generated 16 new chunks! Total: 25
+2025-11-13T14:21:05.412922535Z 📡 Broadcasted 25 chunks to all players
+2025-11-13T14:21:07.236655613Z 🔌 Client connected: tEUHo-SqU25nSvpCAAAD
+2025-11-13T14:21:10.564583381Z 🚶 a entered chunk (1, 0) at position (50, 36)
+2025-11-13T14:21:10.565172184Z ✨ Generated chunk (3, -2) with 5 enemies and 4 items
+2025-11-13T14:21:10.565558575Z ✨ Generated chunk (3, -1) with 5 enemies and 4 items
+2025-11-13T14:21:10.565945857Z ✨ Generated chunk (3, 0) with 5 enemies and 4 items
+2025-11-13T14:21:10.566391282Z ✨ Generated chunk (3, 1) with 5 enemies and 4 items
+2025-11-13T14:21:10.567109682Z ✨ Generated chunk (3, 2) with 5 enemies and 4 items
+2025-11-13T14:21:10.567121423Z 📊 Chunks: 25 → 30 (+5)
+2025-11-13T14:21:10.567126423Z ✨ Generated 5 new chunks! Total: 30
+2025-11-13T14:21:10.611608076Z 📡 Broadcasted 30 chunks to all players

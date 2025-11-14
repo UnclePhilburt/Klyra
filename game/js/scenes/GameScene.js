@@ -55,6 +55,13 @@ class GameScene extends Phaser.Scene {
             this.skillSelector = null;
         }
 
+        // Destroy ability manager
+        if (this.abilityManager) {
+            console.log('🧹 Destroying AbilityManager');
+            this.abilityManager.destroy();
+            this.abilityManager = null;
+        }
+
         // Destroy music system
         if (this.musicManager) {
             console.log('🧹 Destroying MusicManager');
@@ -1373,6 +1380,9 @@ class GameScene extends Phaser.Scene {
         // Create skill selector system
         this.skillSelector = new SkillSelector(this);
 
+        // Create ability manager system (Q/E/R abilities)
+        this.abilityManager = new AbilityManager(this, this.localPlayer);
+
         // Create music system
         this.musicManager = new MusicManager(this);
         this.musicUI = new MusicUI(this, this.musicManager);
@@ -1391,6 +1401,29 @@ class GameScene extends Phaser.Scene {
             right: Phaser.Input.Keyboard.KeyCodes.D
         });
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+        // Ability keys (Q/E/R)
+        this.keyQ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
+        this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        this.keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+
+        this.keyQ.on('down', () => {
+            if (this.abilityManager) {
+                this.abilityManager.useAbility('q');
+            }
+        });
+
+        this.keyE.on('down', () => {
+            if (this.abilityManager) {
+                this.abilityManager.useAbility('e');
+            }
+        });
+
+        this.keyR.on('down', () => {
+            if (this.abilityManager) {
+                this.abilityManager.useAbility('r');
+            }
+        });
 
         // Tilda key for dev menu
         this.tildaKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.BACKTICK);
@@ -2567,6 +2600,11 @@ class GameScene extends Phaser.Scene {
         // Update music UI progress bar
         if (this.musicUI) {
             this.musicUI.update();
+        }
+
+        // Update ability manager cooldowns
+        if (this.abilityManager) {
+            this.abilityManager.update(time, delta);
         }
 
         // DIAGNOSTIC: Performance timing
