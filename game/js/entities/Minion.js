@@ -20,6 +20,10 @@ class Minion {
         this.lastPositionUpdate = 0;
         this.positionUpdateInterval = 500; // Send position to server every 500ms
 
+        // UI update throttling (don't update every frame!)
+        this.uiUpdateCounter = 0;
+        this.uiUpdateInterval = 5; // Update UI every 5 frames (~83ms at 60fps)
+
         // AI state
         this.target = null;
         this.followDistance = 350; // Maximum distance from owner before returning (increased)
@@ -191,23 +195,21 @@ class Minion {
         }
 
         let nearestEnemy = null;
-        let nearestDistance = searchRadius;
+        let nearestDistSquared = searchRadius * searchRadius; // Use squared distance (faster)
 
-        allEnemies.forEach(enemy => {
-            if (!enemy.isAlive) return;
+        // PERFORMANCE: Use squared distance to avoid expensive sqrt
+        for (const enemy of allEnemies) {
+            if (!enemy.isAlive) continue;
 
-            const distance = Phaser.Math.Distance.Between(
-                this.sprite.x,
-                this.sprite.y,
-                enemy.sprite.x,
-                enemy.sprite.y
-            );
+            const dx = this.sprite.x - enemy.sprite.x;
+            const dy = this.sprite.y - enemy.sprite.y;
+            const distSquared = dx * dx + dy * dy;
 
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
+            if (distSquared < nearestDistSquared) {
+                nearestDistSquared = distSquared;
                 nearestEnemy = enemy;
             }
-        });
+        }
 
         // Add new target to aggro list
         if (nearestEnemy && nearestEnemy.data && nearestEnemy.data.id) {
@@ -283,18 +285,17 @@ class Minion {
 
     isPositionClearOfMinions(position, minDistance) {
         const allMinions = this.getAllMinionsInScene();
+        const minDistSquared = minDistance * minDistance; // Squared distance (faster than sqrt)
 
         for (const minion of allMinions) {
-            if (minion === this) continue;
+            if (minion === this || !minion.sprite) continue;
 
-            const distance = Phaser.Math.Distance.Between(
-                position.x,
-                position.y,
-                minion.sprite.x,
-                minion.sprite.y
-            );
+            // Use squared distance (avoid expensive sqrt)
+            const dx = position.x - minion.sprite.x;
+            const dy = position.y - minion.sprite.y;
+            const distSquared = dx * dx + dy * dy;
 
-            if (distance < minDistance) {
+            if (distSquared < minDistSquared) {
                 return false; // Too close to another minion
             }
         }
@@ -305,23 +306,21 @@ class Minion {
     avoidNearbyMinions() {
         const allMinions = this.getAllMinionsInScene();
         const personalSpace = 60; // Minimum distance to maintain
+        const personalSpaceSquared = personalSpace * personalSpace;
 
         for (const minion of allMinions) {
             if (minion === this || !minion.sprite || !minion.sprite.body) continue;
 
-            const distance = Phaser.Math.Distance.Between(
-                this.sprite.x,
-                this.sprite.y,
-                minion.sprite.x,
-                minion.sprite.y
-            );
+            // Use squared distance (avoid expensive sqrt)
+            const dx = this.sprite.x - minion.sprite.x;
+            const dy = this.sprite.y - minion.sprite.y;
+            const distSquared = dx * dx + dy * dy;
 
             // If too close, apply repulsion force
-            if (distance < personalSpace && distance > 0) {
-                const angle = Math.atan2(
-                    this.sprite.y - minion.sprite.y,
-                    this.sprite.x - minion.sprite.x
-                );
+            if (distSquared < personalSpaceSquared && distSquared > 0) {
+                // Normalize direction without sqrt
+                const distance = Math.sqrt(distSquared);
+                const angle = Math.atan2(dy, dx);
 
                 // Push away from nearby minion
                 const repulsionStrength = (personalSpace - distance) / personalSpace;
@@ -572,7 +571,7 @@ class Minion {
             this.lastPositionUpdate = now;
         }
 
-        // Update sprite facing direction based on velocity
+        // Update sprite facing direction based on velocity (cheap, keep every frame)
         if (this.sprite && this.sprite.body) {
             if (this.sprite.body.velocity.x < -10) {
                 // Moving left - flip sprite
@@ -583,12 +582,18 @@ class Minion {
             }
         }
 
-        // Update positions of UI elements
-        if (this.sprite && this.sprite.active) {
-            this.glow.setPosition(this.sprite.x, this.sprite.y);
-            this.label.setPosition(this.sprite.x, this.sprite.y - 25);
-            this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 18);
-            this.healthBar.setPosition(this.sprite.x - (24 - this.healthBar.width) / 2, this.sprite.y - 18);
+        // PERFORMANCE: Only update UI positions every 5 frames (~83ms at 60fps)
+        // This saves massive performance with many minions
+        this.uiUpdateCounter++;
+        if (this.uiUpdateCounter >= this.uiUpdateInterval) {
+            this.uiUpdateCounter = 0;
+
+            if (this.sprite && this.sprite.active) {
+                this.glow.setPosition(this.sprite.x, this.sprite.y);
+                this.label.setPosition(this.sprite.x, this.sprite.y - 25);
+                this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 18);
+                this.healthBar.setPosition(this.sprite.x - (24 - this.healthBar.width) / 2, this.sprite.y - 18);
+            }
         }
     }
 
