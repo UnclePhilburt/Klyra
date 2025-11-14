@@ -102,6 +102,23 @@ window.debugFormationCalc = function() {
     // Call calculateFormationPosition for each minion and log the result
     myMinions.forEach((m, i) => {
         const owner = scene.localPlayer;
+
+        // Manually replicate the calculation to see where it goes wrong
+        const playerVelocity = owner.sprite.body.velocity;
+        const isMoving = Math.abs(playerVelocity.x) > 10 || Math.abs(playerVelocity.y) > 10;
+
+        let moveAngle = 0;
+        if (isMoving) {
+            moveAngle = Math.atan2(playerVelocity.y, playerVelocity.x);
+        } else {
+            moveAngle = owner.currentDirection === 'up' ? -Math.PI/2 :
+                       owner.currentDirection === 'down' ? Math.PI/2 :
+                       owner.currentDirection === 'left' ? Math.PI :
+                       owner.currentDirection === 'right' ? 0 : Math.PI/2;
+        }
+
+        let distance = m.combatMode ? m.patrolDistance * 0.5 : m.patrolDistance;
+
         const formPos = m.calculateFormationPosition(owner);
         const offsetX = formPos.x - owner.sprite.x;
         const offsetY = formPos.y - owner.sprite.y;
@@ -111,7 +128,9 @@ window.debugFormationCalc = function() {
         console.log(`   Player: (${owner.sprite.x.toFixed(0)}, ${owner.sprite.y.toFixed(0)})`);
         console.log(`   Formation: (${formPos.x.toFixed(0)}, ${formPos.y.toFixed(0)})`);
         console.log(`   Offset: (${offsetX.toFixed(1)}, ${offsetY.toFixed(1)}) = ${dist.toFixed(1)}px`);
-        console.log(`   patrolDistance: ${m.patrolDistance}, combatMode: ${m.combatMode}`);
+        console.log(`   patrolDistance: ${m.patrolDistance}, combatMode: ${m.combatMode}, distance: ${distance}`);
+        console.log(`   moveAngle: ${(moveAngle * 180 / Math.PI).toFixed(0)}°, isMoving: ${isMoving}`);
+        console.log(`   currentDirection: ${owner.currentDirection}`);
     });
     console.log('================================\n');
 };

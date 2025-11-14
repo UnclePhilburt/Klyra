@@ -167,11 +167,6 @@ class Minion {
         let targetY = owner.sprite.y;
         let distance = this.combatMode ? this.patrolDistance * 0.5 : this.patrolDistance;
 
-        // DEBUG: Log formation calc inputs
-        if (Math.random() < 0.01) { // 1% chance
-            console.log(`🔍 ${this.role} formation calc: player=(${owner.sprite.x.toFixed(0)}, ${owner.sprite.y.toFixed(0)}), patrolDist=${this.patrolDistance}, combatMode=${this.combatMode}, distance=${distance}`);
-        }
-
         // Count minions of same role for better spreading
         const allMinions = Object.values(this.scene.minions || {}).filter(m =>
             m.ownerId === this.ownerId && m.isAlive && m.role === this.role
@@ -179,16 +174,39 @@ class Minion {
         const roleIndex = allMinions.indexOf(this);
         const roleCount = allMinions.length;
 
+        // DEBUG: Always log for scout to trace the bug
+        const debugThis = this.role === 'scout' && roleIndex === 0;
+        if (debugThis) {
+            console.log(`\n🔍 SCOUT FORMATION DEBUG:`);
+            console.log(`  Initial: player=(${owner.sprite.x.toFixed(0)}, ${owner.sprite.y.toFixed(0)}), target=(${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
+            console.log(`  distance=${distance}, patrolDistance=${this.patrolDistance}, combatMode=${this.combatMode}`);
+            console.log(`  roleIndex=${roleIndex}, roleCount=${roleCount}`);
+            console.log(`  moveAngle=${(moveAngle * 180 / Math.PI).toFixed(0)}°, isMoving=${isMoving}`);
+        }
+
         switch(this.role) {
             case 'scout':
                 // Ahead of player in movement direction
-                targetX += Math.cos(moveAngle) * distance;
-                targetY += Math.sin(moveAngle) * distance;
+                const dx1 = Math.cos(moveAngle) * distance;
+                const dy1 = Math.sin(moveAngle) * distance;
+                targetX += dx1;
+                targetY += dy1;
+
+                if (debugThis) {
+                    console.log(`  After base offset: dx=${dx1.toFixed(1)}, dy=${dy1.toFixed(1)}, target=(${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
+                }
+
                 // Spread multiple scouts in a fan pattern
                 if (roleCount > 1) {
                     const spreadAngle = (roleIndex - (roleCount - 1) / 2) * (Math.PI / 6); // 30° spread
-                    targetX += Math.cos(moveAngle + spreadAngle + Math.PI/2) * 60;
-                    targetY += Math.sin(moveAngle + spreadAngle + Math.PI/2) * 60;
+                    const dx2 = Math.cos(moveAngle + spreadAngle + Math.PI/2) * 60;
+                    const dy2 = Math.sin(moveAngle + spreadAngle + Math.PI/2) * 60;
+                    targetX += dx2;
+                    targetY += dy2;
+
+                    if (debugThis) {
+                        console.log(`  After spread: dx2=${dx2.toFixed(1)}, dy2=${dy2.toFixed(1)}, target=(${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
+                    }
                 }
                 break;
 
