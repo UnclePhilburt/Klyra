@@ -1,4 +1,4 @@
-// Music UI - Compact Synthwave Retro-Futuristic Design
+// Music UI - Modern Centered Design
 class MusicUI {
     constructor(scene, musicManager) {
         this.scene = scene;
@@ -17,116 +17,98 @@ class MusicUI {
 
     createUI() {
         const width = this.scene.cameras.main.width;
+        
+        // Calculate centered position
+        const panelWidth = 700;
+        const panelHeight = 85;
+        const centerX = width / 2;
+        const panelX = centerX - panelWidth / 2;
 
-        // Create main container - COMPACT and positioned in top-right corner
-        this.mainContainer = this.scene.add.container(width - 200, 15);
+        // Create main container centered at top
+        this.mainContainer = this.scene.add.container(0, 0);
         this.mainContainer.setScrollFactor(0);
         this.mainContainer.setDepth(99998);
 
-        // Retro neon background with scanlines
+        // Modern glass morphism background
         const bgGraphics = this.scene.add.graphics();
         
-        // Dark base with gradient
-        bgGraphics.fillGradientStyle(0x0a0a1f, 0x0a0a1f, 0x1a0a2e, 0x1a0a2e, 1, 1, 1, 1);
-        bgGraphics.fillRoundedRect(0, 0, 190, 60, 8);
+        // Main background with gradient
+        bgGraphics.fillGradientStyle(0x1a1a2e, 0x1a1a2e, 0x16213e, 0x16213e, 0.95, 0.95, 0.9, 0.9);
+        bgGraphics.fillRoundedRect(panelX, 15, panelWidth, panelHeight, 30);
         
-        // Neon pink/purple border
-        bgGraphics.lineStyle(2, 0xff006e, 1);
-        bgGraphics.strokeRoundedRect(0, 0, 190, 60, 8);
+        // Glowing border
+        bgGraphics.lineStyle(3, 0x00d4ff, 0.5);
+        bgGraphics.strokeRoundedRect(panelX, 15, panelWidth, panelHeight, 30);
         
-        // Inner cyan glow line
-        bgGraphics.lineStyle(1, 0x00f0ff, 0.6);
-        bgGraphics.strokeRoundedRect(2, 2, 186, 56, 7);
-        
-        // Add scanline overlay effect
-        for (let i = 0; i < 60; i += 4) {
-            bgGraphics.lineStyle(1, 0x000000, 0.15);
-            bgGraphics.lineBetween(0, i, 190, i);
-        }
+        // Inner subtle highlight
+        bgGraphics.lineStyle(1.5, 0xffffff, 0.2);
+        bgGraphics.strokeRoundedRect(panelX + 3, 18, panelWidth - 6, panelHeight - 6, 27);
         
         this.mainContainer.add(bgGraphics);
         this.elements.push(bgGraphics);
 
-        // Retro corner accent triangles
-        const accentGraphics = this.scene.add.graphics();
-        accentGraphics.fillStyle(0xff006e, 0.3);
-        accentGraphics.fillTriangle(0, 0, 15, 0, 0, 15);
-        accentGraphics.fillTriangle(190, 0, 175, 0, 190, 15);
-        accentGraphics.fillStyle(0x00f0ff, 0.2);
-        accentGraphics.fillTriangle(0, 60, 15, 60, 0, 45);
-        accentGraphics.fillTriangle(190, 60, 175, 60, 190, 45);
-        this.mainContainer.add(accentGraphics);
-        this.elements.push(accentGraphics);
+        // Animated equalizer bars (left side)
+        this.createEqualizerBars(panelX + 40, 60);
 
-        // Animated VU meter style bars (top left corner)
-        this.createRetroVUMeter(15, 15);
-
-        // Track title - compact with retro font styling
-        this.trackTitle = this.scene.add.text(15, 30, '♪ LOADING...', {
-            fontFamily: '"Press Start 2P", "Courier New", monospace',
-            fontSize: '8px',
-            fill: '#00f0ff',
-            stroke: '#ff006e',
+        // Track title with modern styling
+        this.trackTitle = this.scene.add.text(panelX + 130, 45, '♪ Loading Track...', {
+            fontFamily: 'Inter, "Segoe UI", Roboto, Arial, sans-serif',
+            fontSize: '22px',
+            fontStyle: '600',
+            fill: '#ffffff',
+            stroke: '#00d4ff',
             strokeThickness: 1
         });
         this.trackTitle.setOrigin(0, 0.5);
         this.trackTitle.setScrollFactor(0);
         this.trackTitle.setDepth(99999);
+        this.trackTitle.setShadow(0, 0, '#00d4ff', 12, false, true);
         
-        // Retro glitch text effect
-        this.scene.time.addEvent({
-            delay: 3000,
-            callback: () => this.glitchEffect(this.trackTitle),
-            loop: true
+        // Pulsing glow animation
+        this.scene.tweens.add({
+            targets: this.trackTitle,
+            alpha: { from: 1, to: 0.75 },
+            duration: 2000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
         });
         
         this.mainContainer.add(this.trackTitle);
         this.elements.push(this.trackTitle);
 
-        // Neon progress bar with retro styling
-        this.createRetroProgressBar(15, 42);
+        // Progress bar below title
+        this.createProgressBar(panelX + 130, 68, 380);
 
-        // Compact button row at bottom
-        const buttonY = 52;
-        const startX = 15;
+        // Control buttons (right side)
+        const buttonStartX = panelX + panelWidth - 200;
+        const buttonY = 57;
 
         // Skip button
-        this.skipButton = this.createRetroButton(startX, buttonY, '▶▶', () => {
+        this.skipButton = this.createModernButton(buttonStartX, buttonY, '⏭', () => {
             this.musicManager.skipTrack();
-            this.flashButton(this.skipButton);
+            this.animateButtonPress(this.skipButton);
         });
 
         // Mute button
-        this.muteButton = this.createRetroButton(startX + 35, buttonY, '♫', () => {
+        this.muteButton = this.createModernButton(buttonStartX + 60, buttonY, '🔊', () => {
             const isMuted = this.musicManager.toggleMute();
-            this.muteButton.setText(isMuted ? '✖' : '♫');
-            this.flashButton(this.muteButton);
+            this.muteButton.setText(isMuted ? '🔇' : '🔊');
+            this.animateButtonPress(this.muteButton);
         });
 
         // Volume button
-        this.volumeButton = this.createRetroButton(startX + 70, buttonY, '≡', () => {
+        this.volumeButton = this.createModernButton(buttonStartX + 120, buttonY, '🎚', () => {
             this.toggleVolumeSlider();
-            this.flashButton(this.volumeButton);
+            this.animateButtonPress(this.volumeButton);
         });
 
-        // Volume percentage display (compact)
-        this.volumeText = this.scene.add.text(startX + 100, buttonY, '100%', {
-            fontFamily: '"Courier New", monospace',
-            fontSize: '10px',
-            fill: '#00f0ff',
-            fontStyle: 'bold'
-        });
-        this.volumeText.setOrigin(0, 0.5);
-        this.volumeText.setScrollFactor(0);
-        this.volumeText.setDepth(99999);
-        this.mainContainer.add(this.volumeText);
-        this.elements.push(this.volumeText);
+        // Store positions for volume slider
+        this.panelCenterX = centerX;
+        this.panelBottom = 15 + panelHeight;
 
-        // Compact volume slider (appears below main container)
-        this.createRetroVolumeSlider(0, 70);
-
-        // Pulsing neon glow on border
-        this.createBorderPulse();
+        // Volume slider (initially hidden, appears below panel)
+        this.createModernVolumeSlider();
 
         // Update initial track display
         const currentTrack = this.musicManager.getCurrentTrack();
@@ -135,97 +117,102 @@ class MusicUI {
         }
     }
 
-    createRetroVUMeter(x, y) {
-        this.vuBars = [];
-        const barCount = 8;
-        const barWidth = 2;
-        const barSpacing = 2;
-        const colors = [0x00ff00, 0x7fff00, 0xffff00, 0xffa500, 0xff6b00, 0xff0000, 0xff006e, 0xff00ff];
+    createEqualizerBars(x, y) {
+        this.eqBars = [];
+        const barCount = 5;
+        const barWidth = 6;
+        const barSpacing = 8;
+        const maxHeight = 30;
 
         for (let i = 0; i < barCount; i++) {
             const bar = this.scene.add.rectangle(
                 x + (i * (barWidth + barSpacing)),
                 y,
                 barWidth,
-                8,
-                colors[i]
+                maxHeight,
+                0x00d4ff
             );
             bar.setOrigin(0.5, 1);
             bar.setScrollFactor(0);
             bar.setDepth(99999);
 
-            // Random VU meter style animation
+            // Animate each bar at different speeds
             this.scene.tweens.add({
                 targets: bar,
-                scaleY: { from: 0.2, to: 1 },
-                duration: 200 + Math.random() * 300,
+                scaleY: { from: 0.3, to: 1 },
+                duration: 400 + (i * 150),
                 yoyo: true,
                 repeat: -1,
-                ease: 'Linear'
+                ease: 'Sine.easeInOut'
             });
 
             this.mainContainer.add(bar);
-            this.vuBars.push(bar);
+            this.eqBars.push(bar);
             this.elements.push(bar);
         }
     }
 
-    createRetroProgressBar(x, y) {
-        const width = 160;
+    createProgressBar(x, y, width) {
+        // Background track
+        const trackBg = this.scene.add.rectangle(x, y, width, 4, 0x333333, 0.6);
+        trackBg.setOrigin(0, 0.5);
+        trackBg.setScrollFactor(0);
+        trackBg.setDepth(99999);
+        this.mainContainer.add(trackBg);
+        this.elements.push(trackBg);
 
-        // Retro pixel-style background
-        const bgGraphics = this.scene.add.graphics();
-        bgGraphics.fillStyle(0x1a0a2e, 1);
-        bgGraphics.fillRect(x, y - 2, width, 4);
-        bgGraphics.lineStyle(1, 0xff006e, 0.5);
-        bgGraphics.strokeRect(x, y - 2, width, 4);
-        this.mainContainer.add(bgGraphics);
-        this.elements.push(bgGraphics);
-
-        // Animated progress fill with gradient
-        this.progressFill = this.scene.add.rectangle(x, y, 0, 4, 0x00f0ff);
+        // Progress fill with gradient
+        this.progressFill = this.scene.add.rectangle(x, y, 0, 4, 0x00d4ff);
         this.progressFill.setOrigin(0, 0.5);
         this.progressFill.setScrollFactor(0);
         this.progressFill.setDepth(100000);
         this.mainContainer.add(this.progressFill);
         this.elements.push(this.progressFill);
 
-        // Store max width for real-time updates
+        // Glowing tip
+        this.progressGlow = this.scene.add.circle(x, y, 6, 0x00d4ff, 0.8);
+        this.progressGlow.setScrollFactor(0);
+        this.progressGlow.setDepth(100001);
+        this.mainContainer.add(this.progressGlow);
+        this.elements.push(this.progressGlow);
+
+        // Pulse animation on glow
+        this.scene.tweens.add({
+            targets: this.progressGlow,
+            scale: { from: 1, to: 1.4 },
+            alpha: { from: 0.8, to: 0.3 },
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+
+        // Store for real-time updates
         this.progressMaxWidth = width;
         this.progressBarX = x;
-
-        // Moving scanline across progress
-        const scanline = this.scene.add.rectangle(x, y, 2, 4, 0xffffff, 0.8);
-        scanline.setOrigin(0, 0.5);
-        scanline.setScrollFactor(0);
-        scanline.setDepth(100001);
-        this.mainContainer.add(scanline);
-        this.elements.push(scanline);
-
-        this.scene.tweens.add({
-            targets: scanline,
-            x: { from: x, to: x + width },
-            duration: 2000,
-            repeat: -1,
-            ease: 'Linear'
-        });
+        this.progressBarY = y;
     }
 
-    createRetroButton(x, y, text, callback) {
-        // Button container with pixelated border
-        const btnBg = this.scene.add.graphics();
-        btnBg.fillStyle(0x1a0a2e, 1);
-        btnBg.fillRect(x - 12, y - 8, 24, 16);
-        btnBg.lineStyle(1, 0xff006e, 1);
-        btnBg.strokeRect(x - 12, y - 8, 24, 16);
-        this.mainContainer.add(btnBg);
-        this.elements.push(btnBg);
+    createModernButton(x, y, icon, callback) {
+        // Button background circle
+        const buttonBg = this.scene.add.circle(x, y, 20, 0x2a2a4e, 0.9);
+        buttonBg.setScrollFactor(0);
+        buttonBg.setDepth(99999);
+        this.mainContainer.add(buttonBg);
+        this.elements.push(buttonBg);
 
-        const button = this.scene.add.text(x, y, text, {
-            fontFamily: '"Courier New", monospace',
-            fontSize: '12px',
-            fill: '#00f0ff',
-            fontStyle: 'bold'
+        // Button glow
+        const buttonGlow = this.scene.add.circle(x, y, 26, 0x00d4ff, 0);
+        buttonGlow.setScrollFactor(0);
+        buttonGlow.setDepth(99998);
+        this.mainContainer.add(buttonGlow);
+        this.elements.push(buttonGlow);
+
+        // Button icon
+        const button = this.scene.add.text(x, y, icon, {
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '20px',
+            fill: '#ffffff'
         });
         button.setOrigin(0.5);
         button.setScrollFactor(0);
@@ -235,212 +222,297 @@ class MusicUI {
         button.on('pointerdown', callback);
 
         button.on('pointerover', () => {
-            button.setTint(0xff006e);
-            btnBg.clear();
-            btnBg.fillStyle(0xff006e, 0.3);
-            btnBg.fillRect(x - 12, y - 8, 24, 16);
-            btnBg.lineStyle(2, 0x00f0ff, 1);
-            btnBg.strokeRect(x - 12, y - 8, 24, 16);
+            this.scene.tweens.add({
+                targets: buttonBg,
+                scale: 1.2,
+                alpha: 1,
+                duration: 200,
+                ease: 'Back.easeOut'
+            });
+            this.scene.tweens.add({
+                targets: buttonGlow,
+                alpha: 0.4,
+                duration: 200
+            });
+            button.setTint(0x00d4ff);
         });
 
         button.on('pointerout', () => {
+            this.scene.tweens.add({
+                targets: buttonBg,
+                scale: 1.0,
+                alpha: 0.9,
+                duration: 200,
+                ease: 'Back.easeIn'
+            });
+            this.scene.tweens.add({
+                targets: buttonGlow,
+                alpha: 0,
+                duration: 200
+            });
             button.clearTint();
-            btnBg.clear();
-            btnBg.fillStyle(0x1a0a2e, 1);
-            btnBg.fillRect(x - 12, y - 8, 24, 16);
-            btnBg.lineStyle(1, 0xff006e, 1);
-            btnBg.strokeRect(x - 12, y - 8, 24, 16);
         });
 
         this.mainContainer.add(button);
-        button.bgGraphics = btnBg;
+        button.bgCircle = buttonBg;
+        button.glowCircle = buttonGlow;
         this.elements.push(button);
         return button;
     }
 
-    flashButton(button) {
-        // Retro flash effect
+    animateButtonPress(button) {
+        if (this.isAnimating) return;
+        this.isAnimating = true;
+
+        // Ripple effect
+        const ripple = this.scene.add.circle(button.x, button.y, 20, 0x00d4ff, 0.6);
+        ripple.setScrollFactor(0);
+        ripple.setDepth(99997);
+        this.mainContainer.add(ripple);
+
         this.scene.tweens.add({
-            targets: button,
-            alpha: { from: 1, to: 0.3 },
-            duration: 50,
+            targets: ripple,
+            scale: 2.5,
+            alpha: 0,
+            duration: 500,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                ripple.destroy();
+                this.isAnimating = false;
+            }
+        });
+
+        // Button press
+        this.scene.tweens.add({
+            targets: button.bgCircle,
+            scale: 0.85,
+            duration: 100,
             yoyo: true,
-            repeat: 2
-        });
-
-        button.setTint(0xffffff);
-        this.scene.time.delayedCall(150, () => {
-            button.clearTint();
+            ease: 'Power2'
         });
     }
 
-    createRetroVolumeSlider(x, y) {
-        // Compact slider panel
-        this.sliderPanel = this.scene.add.container(x + 10, y);
-        this.sliderPanel.setScrollFactor(0);
-        this.sliderPanel.setDepth(100002);
-        this.sliderPanel.setVisible(false);
+    createModernVolumeSlider() {
+        // Create slider container
+        this.sliderContainer = this.scene.add.container(this.panelCenterX, this.panelBottom + 20);
+        this.sliderContainer.setScrollFactor(0);
+        this.sliderContainer.setDepth(100002);
+        this.sliderContainer.setVisible(false);
 
-        const panelBg = this.scene.add.graphics();
-        panelBg.fillStyle(0x0a0a1f, 1);
-        panelBg.fillRoundedRect(0, 0, 170, 35, 6);
-        panelBg.lineStyle(2, 0xff006e, 1);
-        panelBg.strokeRoundedRect(0, 0, 170, 35, 6);
-        panelBg.lineStyle(1, 0x00f0ff, 0.6);
-        panelBg.strokeRoundedRect(2, 2, 166, 31, 5);
-        this.sliderPanel.add(panelBg);
+        // Slider panel background
+        const sliderBg = this.scene.add.graphics();
+        sliderBg.fillStyle(0x1a1a2e, 0.95);
+        sliderBg.fillRoundedRect(-150, 0, 300, 50, 20);
+        sliderBg.lineStyle(2, 0x00d4ff, 0.5);
+        sliderBg.strokeRoundedRect(-150, 0, 300, 50, 20);
+        this.sliderContainer.add(sliderBg);
 
-        // Slider label
-        const label = this.scene.add.text(10, 10, 'VOLUME', {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: '6px',
-            fill: '#ff006e'
+        // Volume label
+        const volumeLabel = this.scene.add.text(-130, 15, 'VOLUME', {
+            fontFamily: 'Inter, Arial, sans-serif',
+            fontSize: '12px',
+            fontStyle: '600',
+            fill: '#00d4ff'
         });
-        label.setOrigin(0, 0);
-        this.sliderPanel.add(label);
+        volumeLabel.setOrigin(0, 0);
+        this.sliderContainer.add(volumeLabel);
 
-        // Retro segmented slider track
-        const trackGraphics = this.scene.add.graphics();
-        const segments = 20;
-        for (let i = 0; i < segments; i++) {
-            const segX = 10 + (i * 7);
-            trackGraphics.fillStyle(0x1a0a2e, 1);
-            trackGraphics.fillRect(segX, 20, 5, 8);
-            trackGraphics.lineStyle(1, 0xff006e, 0.3);
-            trackGraphics.strokeRect(segX, 20, 5, 8);
-        }
-        this.sliderPanel.add(trackGraphics);
+        // Volume percentage
+        this.volumePercent = this.scene.add.text(130, 15, '100%', {
+            fontFamily: 'Inter, Arial, sans-serif',
+            fontSize: '12px',
+            fontStyle: '600',
+            fill: '#ffffff'
+        });
+        this.volumePercent.setOrigin(1, 0);
+        this.sliderContainer.add(this.volumePercent);
 
-        // Filled segments
-        this.sliderSegments = [];
-        for (let i = 0; i < segments; i++) {
-            const segX = 10 + (i * 7);
-            const seg = this.scene.add.rectangle(segX + 2.5, 24, 5, 8, 0x00f0ff, 0);
-            seg.setOrigin(0.5);
-            this.sliderPanel.add(seg);
-            this.sliderSegments.push(seg);
-        }
+        // Slider track background
+        const trackWidth = 220;
+        const trackHeight = 6;
+        const trackY = 32;
 
-        // Invisible interactive zone
-        this.sliderZone = this.scene.add.rectangle(85, 24, 140, 15, 0xffffff, 0.01);
-        this.sliderZone.setInteractive({ useHandCursor: true });
-        this.sliderPanel.add(this.sliderZone);
+        this.sliderTrackBg = this.scene.add.rectangle(0, trackY, trackWidth, trackHeight, 0x333333, 0.6);
+        this.sliderTrackBg.setScrollFactor(0);
+        this.sliderContainer.add(this.sliderTrackBg);
 
-        // Update segments based on volume
-        this.updateVolumeSegments(this.musicManager.getVolume());
+        // Slider fill
+        const initialVolume = this.musicManager.getVolume();
+        this.sliderFill = this.scene.add.rectangle(
+            -(trackWidth / 2),
+            trackY,
+            trackWidth * initialVolume,
+            trackHeight,
+            0x00d4ff
+        );
+        this.sliderFill.setOrigin(0, 0.5);
+        this.sliderFill.setScrollFactor(0);
+        this.sliderContainer.add(this.sliderFill);
 
-        this.sliderZone.on('pointerdown', (pointer) => {
-            this.updateVolumeFromPointer(pointer);
+        // Slider handle with glow
+        this.sliderHandleGlow = this.scene.add.circle(
+            -(trackWidth / 2) + (trackWidth * initialVolume),
+            trackY,
+            14,
+            0x00d4ff,
+            0.3
+        );
+        this.sliderHandleGlow.setScrollFactor(0);
+        this.sliderContainer.add(this.sliderHandleGlow);
+
+        this.sliderHandle = this.scene.add.circle(
+            -(trackWidth / 2) + (trackWidth * initialVolume),
+            trackY,
+            10,
+            0xffffff
+        );
+        this.sliderHandle.setScrollFactor(0);
+        this.sliderHandle.setInteractive({ draggable: true, useHandCursor: true });
+        this.sliderContainer.add(this.sliderHandle);
+
+        // Glow pulse animation
+        this.scene.tweens.add({
+            targets: this.sliderHandleGlow,
+            scale: { from: 1, to: 1.5 },
+            alpha: { from: 0.3, to: 0.1 },
+            duration: 1200,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
         });
 
-        this.sliderZone.on('pointermove', (pointer) => {
-            if (pointer.isDown) {
-                this.updateVolumeFromPointer(pointer);
-            }
+        // Store track bounds
+        this.trackWidth = trackWidth;
+        this.trackMinX = -(trackWidth / 2);
+        this.trackMaxX = trackWidth / 2;
+        this.trackY = trackY;
+
+        // Drag functionality
+        this.sliderHandle.on('drag', (pointer) => {
+            this.updateVolumeFromDrag(pointer);
         });
 
-        this.mainContainer.add(this.sliderPanel);
-        this.elements.push(this.sliderPanel);
+        // Hover effect
+        this.sliderHandle.on('pointerover', () => {
+            this.scene.tweens.add({
+                targets: this.sliderHandle,
+                scale: 1.3,
+                duration: 200,
+                ease: 'Back.easeOut'
+            });
+        });
+
+        this.sliderHandle.on('pointerout', () => {
+            this.scene.tweens.add({
+                targets: this.sliderHandle,
+                scale: 1.0,
+                duration: 200,
+                ease: 'Back.easeIn'
+            });
+        });
+
+        // Click on track to jump
+        this.sliderTrackBg.setInteractive({ useHandCursor: true });
+        this.sliderTrackBg.on('pointerdown', (pointer) => {
+            this.updateVolumeFromClick(pointer);
+        });
+
+        this.elements.push(this.sliderContainer);
     }
 
-    updateVolumeFromPointer(pointer) {
-        const localX = pointer.x - this.mainContainer.x - this.sliderPanel.x - 10;
-        const volume = Phaser.Math.Clamp(localX / 140, 0, 1);
+    updateVolumeFromDrag(pointer) {
+        // Get pointer position relative to slider container
+        const localX = pointer.x - this.sliderContainer.x;
+        const clampedX = Phaser.Math.Clamp(localX, this.trackMinX, this.trackMaxX);
+        
+        // Update handle position
+        this.sliderHandle.x = clampedX;
+        this.sliderHandleGlow.x = clampedX;
+        
+        // Calculate volume
+        const volume = (clampedX - this.trackMinX) / this.trackWidth;
+        
+        // Update fill
+        this.sliderFill.width = this.trackWidth * volume;
+        
+        // Update volume
         this.musicManager.setVolume(volume);
-        this.updateVolumeSegments(volume);
-        this.volumeText.setText(`${Math.round(volume * 100)}%`);
+        this.volumePercent.setText(`${Math.round(volume * 100)}%`);
     }
 
-    updateVolumeSegments(volume) {
-        const activeSegments = Math.floor(volume * this.sliderSegments.length);
-        this.sliderSegments.forEach((seg, i) => {
-            if (i < activeSegments) {
-                seg.setAlpha(1);
-                // Color gradient from cyan to pink
-                const color = i < 10 ? 0x00f0ff : (i < 15 ? 0x7f7fff : 0xff006e);
-                seg.setFillStyle(color);
-            } else {
-                seg.setAlpha(0);
-            }
+    updateVolumeFromClick(pointer) {
+        // Get pointer position relative to slider container
+        const localX = pointer.x - this.sliderContainer.x;
+        const clampedX = Phaser.Math.Clamp(localX, this.trackMinX, this.trackMaxX);
+        
+        // Animate handle to new position
+        this.scene.tweens.add({
+            targets: [this.sliderHandle, this.sliderHandleGlow],
+            x: clampedX,
+            duration: 200,
+            ease: 'Power2'
         });
+        
+        // Calculate volume
+        const volume = (clampedX - this.trackMinX) / this.trackWidth;
+        
+        // Animate fill
+        this.scene.tweens.add({
+            targets: this.sliderFill,
+            width: this.trackWidth * volume,
+            duration: 200,
+            ease: 'Power2'
+        });
+        
+        // Update volume
+        this.musicManager.setVolume(volume);
+        this.volumePercent.setText(`${Math.round(volume * 100)}%`);
     }
 
     toggleVolumeSlider() {
         this.volumeSliderVisible = !this.volumeSliderVisible;
         
         if (this.volumeSliderVisible) {
-            this.sliderPanel.setVisible(true);
-            this.sliderPanel.setAlpha(0);
+            this.sliderContainer.setVisible(true);
+            this.sliderContainer.setAlpha(0);
+            this.sliderContainer.setScale(0.8);
+            
             this.scene.tweens.add({
-                targets: this.sliderPanel,
+                targets: this.sliderContainer,
                 alpha: 1,
-                y: 70,
-                duration: 200,
+                scale: 1,
+                duration: 300,
                 ease: 'Back.easeOut'
             });
         } else {
             this.scene.tweens.add({
-                targets: this.sliderPanel,
+                targets: this.sliderContainer,
                 alpha: 0,
-                y: 60,
-                duration: 150,
+                scale: 0.8,
+                duration: 250,
                 ease: 'Power2',
                 onComplete: () => {
-                    this.sliderPanel.setVisible(false);
+                    this.sliderContainer.setVisible(false);
                 }
             });
         }
     }
 
-    createBorderPulse() {
-        const pulseGraphics = this.scene.add.graphics();
-        pulseGraphics.lineStyle(2, 0x00f0ff, 0.5);
-        pulseGraphics.strokeRoundedRect(0, 0, 190, 60, 8);
-        this.mainContainer.add(pulseGraphics);
-        this.elements.push(pulseGraphics);
-
-        this.scene.tweens.add({
-            targets: pulseGraphics,
-            alpha: { from: 0.5, to: 0 },
-            duration: 1500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
-    }
-
-    glitchEffect(textObject) {
-        const originalX = textObject.x;
-        const originalText = textObject.text;
-        
-        // Random glitch displacement
-        textObject.x = originalX + (Math.random() * 4 - 2);
-        textObject.setTint(Math.random() > 0.5 ? 0xff006e : 0x00f0ff);
-        
-        this.scene.time.delayedCall(50, () => {
-            textObject.x = originalX;
-            textObject.clearTint();
-        });
-    }
-
     updateTrackDisplay(track) {
         if (track && this.trackTitle) {
-            // Glitch transition effect
-            const originalText = this.trackTitle.text;
-
-            // Scramble text briefly
-            const scrambleChars = '█▓▒░@#$%&*';
-            let scrambled = '';
-            for (let i = 0; i < originalText.length; i++) {
-                scrambled += scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
-            }
-
-            this.trackTitle.setText(scrambled);
-            this.trackTitle.setTint(0xff006e);
-
-            this.scene.time.delayedCall(100, () => {
-                this.trackTitle.setText(`♪ ${track.title.toUpperCase()}`);
-                this.trackTitle.clearTint();
+            // Fade transition
+            this.scene.tweens.add({
+                targets: this.trackTitle,
+                alpha: 0,
+                duration: 250,
+                onComplete: () => {
+                    this.trackTitle.setText(`♪ ${track.title}`);
+                    this.scene.tweens.add({
+                        targets: this.trackTitle,
+                        alpha: 1,
+                        duration: 250
+                    });
+                }
             });
         }
     }
@@ -450,6 +522,11 @@ class MusicUI {
         if (this.progressFill && this.musicManager) {
             const progress = this.musicManager.getProgress();
             this.progressFill.width = this.progressMaxWidth * progress;
+
+            // Update glowing tip position
+            if (this.progressGlow) {
+                this.progressGlow.x = this.progressBarX + this.progressFill.width;
+            }
         }
     }
 
@@ -463,9 +540,6 @@ class MusicUI {
         
         if (this.mainContainer) {
             this.mainContainer.destroy();
-        }
-        if (this.sliderPanel) {
-            this.sliderPanel.destroy();
         }
     }
 }
