@@ -417,30 +417,29 @@ class Lobby {
         let bossChance = 0;
 
         if (distanceFromSpawn < 100) {
-            // PERFORMANCE: Reduced spawn counts by ~58% total (40% + 30% more)
-            // Close to spawn: 1 pack, 1 small wolf
+            // Close to spawn: 1 pack, 1-2 wolves
             packsToSpawn = 1;
             minPackSize = 1;
-            maxPackSize = 1;
+            maxPackSize = 2; // Increased from 1
             bossChance = 0;
         } else if (distanceFromSpawn < 200) {
-            // Medium distance: 1 pack, 1 wolf, 2% boss chance
+            // Medium distance: 1 pack, 1-2 wolves, 3% boss chance
             packsToSpawn = 1;
             minPackSize = 1;
-            maxPackSize = 1; // Reduced from 2
-            bossChance = 0.02; // Reduced from 0.03
+            maxPackSize = 2; // Increased from 1
+            bossChance = 0.03; // Increased from 0.02
         } else if (distanceFromSpawn < 400) {
-            // Far: 1 pack, 1-2 wolves, 5% boss chance
+            // Far: 1 pack, 2-3 wolves, 8% boss chance
             packsToSpawn = 1;
-            minPackSize = 1; // Reduced from 2
-            maxPackSize = 2; // Reduced from 3
-            bossChance = 0.05; // Reduced from 0.10
+            minPackSize = 2; // Increased from 1
+            maxPackSize = 3; // Increased from 2
+            bossChance = 0.08; // Increased from 0.05
         } else {
-            // Very far: 1 pack, 2-3 wolves, 10% boss chance
-            packsToSpawn = 1; // Always 1 pack now (was 1-2)
+            // Very far: 1-2 packs, 2-4 wolves, 12% boss chance
+            packsToSpawn = Math.random() < 0.5 ? 1 : 2; // Sometimes 2 packs
             minPackSize = 2;
-            maxPackSize = 3; // Reduced from 4
-            bossChance = 0.10; // Reduced from 0.15
+            maxPackSize = 4; // Increased from 3
+            bossChance = 0.12; // Increased from 0.10
         }
 
         // Use seed for consistent spawning
