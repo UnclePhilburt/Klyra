@@ -661,7 +661,7 @@ class Minion {
 
         // If close enough to formation position, idle there
         if (dist < 30) {
-            this.sprite.setVelocity(0, 0);
+            this.sprite.body.setVelocity(0, 0);
             return;
         }
 
@@ -671,7 +671,7 @@ class Minion {
             this.formationPosition.x - this.sprite.x
         );
 
-        this.sprite.setVelocity(
+        this.sprite.body.setVelocity(
             Math.cos(angle) * this.moveSpeed,
             Math.sin(angle) * this.moveSpeed
         );
