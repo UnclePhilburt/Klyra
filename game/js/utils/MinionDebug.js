@@ -77,6 +77,45 @@ window.debugMinions = function() {
     console.log('💡 Stop moving and run this again to see formation spreading');
 };
 
+// Force print formation calculations for ONE minion
+window.debugFormationCalc = function() {
+    let scene = null;
+    if (window.game && window.game.scene) {
+        const scenes = window.game.scene.scenes || window.game.scene.getScenes();
+        scene = scenes.find(s => s.scene && s.scene.key === 'GameScene') || scenes[scenes.length - 1];
+    }
+    if (!scene || !scene.localPlayer) {
+        console.log('❌ Cannot find game scene or player');
+        return;
+    }
+
+    const myMinions = Object.values(scene.minions || {})
+        .filter(m => m.ownerId === scene.localPlayer.data.id && m.isAlive);
+
+    if (myMinions.length === 0) {
+        console.log('❌ No minions found');
+        return;
+    }
+
+    console.log('\n===== FORCE FORMATION CALC =====');
+
+    // Call calculateFormationPosition for each minion and log the result
+    myMinions.forEach((m, i) => {
+        const owner = scene.localPlayer;
+        const formPos = m.calculateFormationPosition(owner);
+        const offsetX = formPos.x - owner.sprite.x;
+        const offsetY = formPos.y - owner.sprite.y;
+        const dist = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+
+        console.log(`${i+1}. ${m.role?.toUpperCase()}`);
+        console.log(`   Player: (${owner.sprite.x.toFixed(0)}, ${owner.sprite.y.toFixed(0)})`);
+        console.log(`   Formation: (${formPos.x.toFixed(0)}, ${formPos.y.toFixed(0)})`);
+        console.log(`   Offset: (${offsetX.toFixed(1)}, ${offsetY.toFixed(1)}) = ${dist.toFixed(1)}px`);
+        console.log(`   patrolDistance: ${m.patrolDistance}, combatMode: ${m.combatMode}`);
+    });
+    console.log('================================\n');
+};
+
 // Also add a simpler version that just logs patrol distances
 window.debugMinionRoles = function() {
     let scene = null;
@@ -102,3 +141,4 @@ window.debugMinionRoles = function() {
 console.log('✅ Minion Debug loaded');
 console.log('   debugMinions() - Full formation analysis');
 console.log('   debugMinionRoles() - Quick role check');
+console.log('   debugFormationCalc() - Force calculate formations NOW');
