@@ -392,7 +392,7 @@ class GameScene extends Phaser.Scene {
 
         // Store for viewport-based rendering (don't pre-generate all tiles)
         this.renderedTiles = new Map(); // Track rendered tiles
-        this.renderedDecorations = new Set(); // Track rendered decorations
+        this.renderedDecorations = new Map(); // Track rendered decorations with their sprites
         this.RENDER_DISTANCE = 25; // Render 25 tiles in each direction from camera
 
         // Map biome types to tileset textures and tile indices
@@ -637,8 +637,10 @@ class GameScene extends Phaser.Scene {
                 // Generate decorations on-demand (already outside spawn area due to continue above)
                 const decoration = this.getDecoration(x, y);
                 if (decoration && !this.renderedDecorations.has(key)) {
-                    this.renderDecoration(x, y, decoration);
-                    this.renderedDecorations.add(key);
+                    const sprites = this.renderDecoration(x, y, decoration);
+                    if (sprites && sprites.length > 0) {
+                        this.renderedDecorations.set(key, sprites);
+                    }
                 }
             }
         }
@@ -654,6 +656,22 @@ class GameScene extends Phaser.Scene {
                 this.renderedTiles.delete(key);
             }
         });
+
+        // PERFORMANCE: Clean up decorations far from player (critical for FPS)
+        this.renderedDecorations.forEach((sprites, key) => {
+            const [x, y] = key.split(',').map(Number);
+            const dist = Math.max(Math.abs(x - playerTileX), Math.abs(y - playerTileY));
+
+            if (dist > CLEANUP_DISTANCE) {
+                // Destroy all sprites for this decoration
+                sprites.forEach(sprite => {
+                    if (sprite && sprite.destroy) {
+                        sprite.destroy();
+                    }
+                });
+                this.renderedDecorations.delete(key);
+            }
+        });
     }
 
     seededRandom(seed) {
@@ -666,6 +684,7 @@ class GameScene extends Phaser.Scene {
         const tileSize = GameConfig.GAME.TILE_SIZE;
         const px = x * tileSize;
         const py = y * tileSize;
+        const allSprites = []; // PERFORMANCE: Track all sprites for cleanup
 
         // Tree tile patterns: rows of tiles that make up complete trees
         // TREE ONE - Top: 0-3, Second: 16-19, Third: 32-34, Fourth: 48-50, Bottom: 64-66
@@ -769,6 +788,9 @@ class GameScene extends Phaser.Scene {
                 sprites: treeGroup,
                 collisionY: collisionY
             });
+
+            // PERFORMANCE: Add to allSprites for cleanup
+            allSprites.push(...treeGroup);
 
         } else if (type === 'red_tree') {
             // RED BIOME TREES - Multi-tile trees from Big_Trees_red.png
@@ -895,6 +917,9 @@ class GameScene extends Phaser.Scene {
                 collisionY: collisionY
             });
 
+            // PERFORMANCE: Add to allSprites for cleanup
+            allSprites.push(...treeGroup);
+
         } else if (type === 'red_flower' || type === 'red_grass' || type === 'red_bush' ||
                    type === 'red_mushroom' || type === 'red_log' || type === 'red_stone' ||
                    type === 'red_stump' || type === 'red_trunk' || type === 'red_baby_tree') {
@@ -1001,6 +1026,7 @@ class GameScene extends Phaser.Scene {
                 sprite.setOrigin(0, 0);
                 sprite.setScale(scale * variant.scale);
                 sprite.setDepth(tilePy + tileSize);
+                allSprites.push(sprite); // PERFORMANCE: Track for cleanup
             }
 
         } else {
@@ -1107,6 +1133,7 @@ class GameScene extends Phaser.Scene {
                 decoration.setScale(finalScale);
                 decoration.setDepth(py + tileSize);
                 this.tileContainer.add(decoration);
+                allSprites.push(decoration); // PERFORMANCE: Track for cleanup
 
             } else if (frames.length === 2 && decoInfo.horizontal) {
                 // Horizontal 1x2 (side by side)
@@ -1123,6 +1150,8 @@ class GameScene extends Phaser.Scene {
                 sprite2.setDepth(py + tileSize);
                 this.tileContainer.add(sprite2);
 
+                allSprites.push(sprite1, sprite2); // PERFORMANCE: Track for cleanup
+
             } else if (frames.length === 2) {
                 // Vertical 2x1 (stacked)
                 const topSprite = this.add.sprite(px, py, 'objects_d', frames[0]);
@@ -1137,8 +1166,13 @@ class GameScene extends Phaser.Scene {
                 bottomSprite.setScale(finalScale);
                 bottomSprite.setDepth(py + tileSize * 2);
                 this.tileContainer.add(bottomSprite);
+
+                allSprites.push(topSprite, bottomSprite); // PERFORMANCE: Track for cleanup
             }
         }
+
+        // PERFORMANCE: Return all sprites for cleanup tracking
+        return allSprites;
     }
 
     createSpawnPoint() {
