@@ -26,9 +26,6 @@ class Wolf {
 
         // Prevent camera culling from making wolves flicker/disappear
         this.sprite.setScrollFactor(1, 1); // Follow camera normally
-        // Increase cull padding so wolves don't disappear at screen edges
-        const cullPadding = 400; // Pixels beyond screen bounds before culling
-        this.sprite.setCullPadding(cullPadding, cullPadding);
 
         // Play idle animation
         this.sprite.play('skullwolf_idle');

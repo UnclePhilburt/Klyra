@@ -25,8 +25,6 @@ class Enemy {
 
         // Prevent camera culling from making enemies flicker/disappear
         this.sprite.setScrollFactor(1, 1); // Follow camera normally
-        const cullPadding = 400; // Pixels beyond screen bounds before culling
-        this.sprite.setCullPadding(cullPadding, cullPadding);
 
         // Play idle animation
         this.sprite.play('skullwolf_idle');
