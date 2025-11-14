@@ -678,12 +678,13 @@ class Lobby {
         this.gameState.enemies = this.gameState.enemies.filter(enemy => {
             // Check if ANY player is within range
             let nearPlayer = false;
+            const cleanupDistSquared = CLEANUP_DISTANCE * CLEANUP_DISTANCE;
             this.players.forEach(player => {
-                const dist = Math.sqrt(
-                    Math.pow(player.position.x - enemy.position.x, 2) +
-                    Math.pow(player.position.y - enemy.position.y, 2)
-                );
-                if (dist < CLEANUP_DISTANCE) {
+                // PERFORMANCE: Use squared distance for cleanup check
+                const dx = player.position.x - enemy.position.x;
+                const dy = player.position.y - enemy.position.y;
+                const distSquared = dx * dx + dy * dy;
+                if (distSquared < cleanupDistSquared) {
                     nearPlayer = true;
                 }
             });
@@ -742,6 +743,8 @@ class Lobby {
 
             // Check all minions first (they have higher priority if they have aggro)
             if (this.gameState.minions) {
+                const sightRangeSquared = enemy.sightRange * enemy.sightRange; // PERFORMANCE: Squared comparison
+
                 this.gameState.minions.forEach((minion, minionId) => {
                     // Clean up stale minions (older than 5 seconds since last update)
                     if (Date.now() - minion.lastUpdate > 5000) {
@@ -749,20 +752,21 @@ class Lobby {
                         return;
                     }
 
-                    const dist = Math.sqrt(
-                        Math.pow(minion.position.x - enemy.position.x, 2) +
-                        Math.pow(minion.position.y - enemy.position.y, 2)
-                    );
+                    // PERFORMANCE: Use squared distance (avoid expensive sqrt)
+                    const dx = minion.position.x - enemy.position.x;
+                    const dy = minion.position.y - enemy.position.y;
+                    const distSquared = dx * dx + dy * dy;
 
                     // Check if minion has aggro on this enemy
                     const hasAggro = enemy.aggro && enemy.aggro.has(minionId);
-                    const inSightRange = dist <= enemy.sightRange;
+                    const inSightRange = distSquared <= sightRangeSquared;
 
                     if (!hasAggro && !inSightRange) {
                         return; // Minion is too far and hasn't attacked this enemy
                     }
 
-                    // Base aggro (closer = higher aggro)
+                    // Base aggro (closer = higher aggro) - need actual distance here
+                    const dist = Math.sqrt(distSquared);
                     let aggroValue = 100 / (dist + 1);
 
                     // Add bonus aggro from damage taken
@@ -782,23 +786,26 @@ class Lobby {
             }
 
             // Check all players
+            const sightRangeSquared = enemy.sightRange * enemy.sightRange; // PERFORMANCE: Squared comparison
+
             this.players.forEach(player => {
                 if (!player.isAlive) return;
 
-                const dist = Math.sqrt(
-                    Math.pow(player.position.x - enemy.position.x, 2) +
-                    Math.pow(player.position.y - enemy.position.y, 2)
-                );
+                // PERFORMANCE: Use squared distance (avoid expensive sqrt)
+                const dx = player.position.x - enemy.position.x;
+                const dy = player.position.y - enemy.position.y;
+                const distSquared = dx * dx + dy * dy;
 
                 // Check if player is within sight range OR has aggro (enemy remembers them)
                 const hasAggro = enemy.aggro && enemy.aggro.has(player.id);
-                const inSightRange = dist <= enemy.sightRange;
+                const inSightRange = distSquared <= sightRangeSquared;
 
                 if (!hasAggro && !inSightRange) {
                     return; // Player is too far and hasn't attacked this enemy
                 }
 
-                // Base aggro (closer = higher aggro)
+                // Base aggro (closer = higher aggro) - need actual distance here
+                const dist = Math.sqrt(distSquared);
                 let aggroValue = 100 / (dist + 1);
 
                 // Add bonus aggro from damage taken (enemy remembers who hurt them)
@@ -819,14 +826,19 @@ class Lobby {
             // Move toward target
             const dx = target.position.x - enemy.position.x;
             const dy = target.position.y - enemy.position.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distanceSquared = dx * dx + dy * dy;
+
+            // Only calculate sqrt when needed (for movement normalization or debug)
+            let distance = null;
 
             // Debug: Log first enemy movement occasionally
             if (movedCount === 1 && Math.random() < 0.05) {
+                distance = Math.sqrt(distanceSquared);
                 console.log(`🧟 ${enemy.type} at (${enemy.position.x.toFixed(1)}, ${enemy.position.y.toFixed(1)}) targeting (${target.position.x.toFixed(1)}, ${target.position.y.toFixed(1)}), dist: ${distance.toFixed(1)}`);
             }
 
-            if (distance > 1) {
+            if (distanceSquared > 1) {  // PERFORMANCE: Check squared distance first
+                if (distance === null) distance = Math.sqrt(distanceSquared);  // Calculate only if needed
                 const moveDistance = enemy.speed / 100; // Grid tiles per update (100ms)
                 const newX = enemy.position.x + (dx / distance) * moveDistance;
                 const newY = enemy.position.y + (dy / distance) * moveDistance;
@@ -859,17 +871,16 @@ class Lobby {
                     enemyId: enemy.id,
                     position: enemy.position
                 }, (player, data) => {
-                    // Only send to players within 50 tiles
-                    const dist = Math.sqrt(
-                        Math.pow(player.position.x - data.position.x, 2) +
-                        Math.pow(player.position.y - data.position.y, 2)
-                    );
-                    return dist < 50;
+                    // PERFORMANCE: Only send to players within 50 tiles (2500 squared)
+                    const dx = player.position.x - data.position.x;
+                    const dy = player.position.y - data.position.y;
+                    const distSquared = dx * dx + dy * dy;
+                    return distSquared < 2500;  // 50 * 50 = 2500
                 });
             }
 
-            // Attack if close enough (1 tile)
-            if (distance < 1.5) {
+            // Attack if close enough (1.5 tiles -> 2.25 squared)
+            if (distanceSquared < 2.25) {  // PERFORMANCE: 1.5 * 1.5 = 2.25
                 // Attack target (player or minion)
                 if (target.isMinion) {
                     // Attack minion
@@ -1111,11 +1122,11 @@ io.on('connection', (socket) => {
                         position: player.position
                     }, (p, data) => {
                         if (p.id === player.id) return false; // Don't send to self
-                        const dist = Math.sqrt(
-                            Math.pow(p.position.x - data.position.x, 2) +
-                            Math.pow(p.position.y - data.position.y, 2)
-                        );
-                        return dist < 50; // Only within 50 tiles
+                        // PERFORMANCE: Use squared distance for broadcast filter
+                        const dx = p.position.x - data.position.x;
+                        const dy = p.position.y - data.position.y;
+                        const distSquared = dx * dx + dy * dy;
+                        return distSquared < 2500; // 50 * 50 = 2500
                     });
                 }
             });
