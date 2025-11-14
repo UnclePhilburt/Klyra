@@ -578,6 +578,20 @@ class GameScene extends Phaser.Scene {
         const playerTileX = Math.floor(this.localPlayer.sprite.x / tileSize);
         const playerTileY = Math.floor(this.localPlayer.sprite.y / tileSize);
 
+        // PERFORMANCE: Only update when player moves to a new tile (not every frame!)
+        // This avoids 1,265+ iterations per frame (589 tiles + 656 cleanup + 20 decorations)
+        if (!this.lastPlayerTileX) {
+            this.lastPlayerTileX = playerTileX;
+            this.lastPlayerTileY = playerTileY;
+        }
+
+        if (playerTileX === this.lastPlayerTileX && playerTileY === this.lastPlayerTileY) {
+            return; // Player hasn't moved to a new tile, skip expensive update
+        }
+
+        this.lastPlayerTileX = playerTileX;
+        this.lastPlayerTileY = playerTileY;
+
         // Calculate visible tile range (asymmetric for aspect ratio)
         const minX = Math.max(0, playerTileX - this.RENDER_DISTANCE_X);
         const maxX = Math.min(this.worldSize - 1, playerTileX + this.RENDER_DISTANCE_X);
