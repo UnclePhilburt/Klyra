@@ -967,7 +967,8 @@ class SkillSelector {
             console.log(`📊 Unlocked skills:`, unlockedSkillIds);
 
             // Get skills for this specific level using new v2 API
-            const levelSkills = window.getAvailableChoices(unlockedSkillIds, currentLevel);
+            // Note: Function signature is (level, unlockedSkills)
+            const levelSkills = window.getAvailableChoices(currentLevel, unlockedSkillIds);
             console.log(`✅ Found ${levelSkills ? levelSkills.length : 0} choices for level ${currentLevel}`);
 
             if (levelSkills && levelSkills.length > 0) {
