@@ -1228,31 +1228,6 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        // Remove collision from any tiles where doors exist
-        if (this.doorLayer && this.castleCollisionLayers) {
-            console.log('🚪 Removing collision from door tile positions...');
-
-            // Collect door positions efficiently (only iterates over non-empty tiles)
-            const doorPositions = [];
-            this.doorLayer.forEachTile(tile => {
-                if (tile.index > 0) {
-                    doorPositions.push({ x: tile.x, y: tile.y });
-                }
-            });
-
-            // Only process the specific door positions (much faster than scanning entire 50x50 map)
-            doorPositions.forEach(pos => {
-                this.castleCollisionLayers.forEach(collisionLayer => {
-                    const tile = collisionLayer.getTileAt(pos.x, pos.y);
-                    if (tile) {
-                        tile.setCollision(false);
-                    }
-                });
-            });
-
-            console.log(`✅ Cleared collision at ${doorPositions.length} door positions`);
-        }
-
         // Spawn point is now at the CENTER of the map (tile 25, 25)
         const spawnX = worldCenterX; // Center of map
         const spawnY = worldCenterY; // Center of map
@@ -2214,11 +2189,22 @@ class GameScene extends Phaser.Scene {
             const tileX = Math.floor((playerX - this.doorLayerOffset.x) / (48 * this.doorLayerScale));
             const tileY = Math.floor((playerY - this.doorLayerOffset.y) / (48 * this.doorLayerScale));
 
-            // Get tile at player position
-            const tile = this.doorLayer.getTileAt(tileX, tileY);
+            // Check if there's a door tile nearby (within 2 tiles in any direction)
+            // This lets players stand in front of the door rather than on it
+            let doorFound = false;
+            for (let dy = -2; dy <= 0; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const checkTile = this.doorLayer.getTileAt(tileX + dx, tileY + dy);
+                    if (checkTile && checkTile.index > 0) {
+                        doorFound = true;
+                        break;
+                    }
+                }
+                if (doorFound) break;
+            }
 
-            if (tile && tile.index > 0) {
-                // Player is on a door tile
+            if (doorFound) {
+                // Player is near a door
                 this.transitionToInterior();
                 this.doorCooldown = Date.now();
             }
