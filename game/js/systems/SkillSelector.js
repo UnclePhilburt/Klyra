@@ -157,56 +157,74 @@ class SkillSelector {
         const availableSkills = this.getAvailableSkills(playerClass, currentLevel);
         console.log(`📊 Available Skills Found: ${availableSkills.length}`);
 
-        // Show ALL available skills (no randomization - skill tree v2 returns exact choices)
+        // If no skills available for this level, don't show selector
+        if (!availableSkills || availableSkills.length === 0) {
+            console.log(`⏭️ No skills available for level ${currentLevel} - skipping skill selector`);
+            this.isActive = false;
+            return;
+        }
+
+        // Show ALL available skills
         const skillChoices = availableSkills;
         console.log(`📊 Showing Skills:`, skillChoices.map(s => s.name));
-        const cardWidth = 250;
-        const cardHeight = 400;
-        const spacing = 30;
-        const numCards = skillChoices.length;
-        const totalWidth = (cardWidth * numCards) + (spacing * (numCards - 1));
-        const startX = (width - totalWidth) / 2;
 
-        // Cards poke out from bottom of screen
-        const bottomY = height - 40; // Cards mostly off-screen, peeking up
+        // Dark overlay (subtle)
+        this.overlay = this.scene.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
+        this.overlay.setScrollFactor(0);
+        this.overlay.setDepth(99999);
 
-        // Instruction text at bottom - modern glassmorphism style
-        const keyText = numCards === 2 ? '[1/2]' : '[1/2/3]';
-        this.instructionText = this.scene.add.text(width / 2, height - cardHeight - 50, `LEVEL UP! Press ${keyText} to highlight, press again to select`, {
+        // Compact centered panel
+        const panelWidth = Math.min(900, width - 100);
+        const panelHeight = Math.min(500, height - 100);
+
+        this.panel = this.scene.add.rectangle(width / 2, height / 2, panelWidth, panelHeight, 0x0a0a0f, 0.95);
+        this.panel.setStrokeStyle(2, 0x8b5cf6, 0.6);
+        this.panel.setScrollFactor(0);
+        this.panel.setDepth(100000);
+
+        // Title
+        this.titleText = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 40, 'LEVEL UP!', {
             fontFamily: 'Inter, Arial, sans-serif',
-            fontSize: '16px',
-            fontStyle: '600',
-            fill: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 2,
-            backgroundColor: '#0a0a0fdd',
-            padding: { x: 16, y: 8 }
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(100000);
+            fontSize: '24px',
+            fontStyle: '700',
+            fill: '#ffffff'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(100001);
+        this.titleText.setShadow(0, 0, 10, '#8b5cf6', false, true);
 
-        // Add subtle glow to instruction text
-        this.instructionText.setShadow(0, 0, 20, '#8b5cf6', true, true);
+        // Instructions
+        const keyText = skillChoices.length === 2 ? '[1] [2]' : skillChoices.length === 3 ? '[1] [2] [3]' : '[1-4]';
+        this.instructionText = this.scene.add.text(width / 2, height / 2 - panelHeight / 2 + 75, `Press ${keyText} to select`, {
+            fontFamily: 'Inter, Arial, sans-serif',
+            fontSize: '13px',
+            fontStyle: '400',
+            fill: '#a1a1aa'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(100001);
 
-        // Set initial selection to middle card (or first card if only 2 choices)
-        this.selectedIndex = numCards === 2 ? 0 : 1;
+        // Set initial selection
+        this.selectedIndex = 0;
 
-        // Create skill cards
+        // Create compact horizontal skill cards
         this.cards = [];
-        skillChoices.forEach((skill, index) => {
-            const x = startX + (cardWidth / 2) + (index * (cardWidth + spacing));
-            const y = bottomY;
+        const cardWidth = Math.min(200, (panelWidth - 60) / skillChoices.length - 15);
+        const cardHeight = panelHeight - 180;
+        const totalWidth = skillChoices.length * cardWidth + (skillChoices.length - 1) * 15;
+        const startX = width / 2 - totalWidth / 2 + cardWidth / 2;
+        const cardY = height / 2 + 20;
 
-            const card = this.createSkillCard(skill, x, y, cardWidth, cardHeight, index);
+        skillChoices.forEach((skill, index) => {
+            const x = startX + index * (cardWidth + 15);
+            const card = this.createCompactCard(skill, x, cardY, cardWidth, cardHeight, index);
             this.cards.push(card);
         });
 
         // Setup keyboard controls
         this.setupKeyboardControls();
 
-        // Highlight the initially selected card (middle one)
+        // Highlight the initially selected card
         this.updateCardSelection();
     }
 
-    createSkillCard(skill, x, y, width, height, index) {
+    createCompactCard(skill, x, y, width, height, index) {
         const card = {
             skill: skill,
             elements: [],
@@ -215,52 +233,91 @@ class SkillSelector {
             baseX: x
         };
 
-        // Card background - modern glassmorphism with transparency
-        const bg = this.scene.add.rectangle(x, y, width, height, 0x0a0a0f, 0.85);
-        bg.setStrokeStyle(2, 0x8b5cf6, 0.3); // Purple border with transparency
+        // Card background
+        const bg = this.scene.add.rectangle(x, y, width, height, 0x1a1a2e, 0.9);
+        bg.setStrokeStyle(2, 0x52525b, 0.5);
         bg.setScrollFactor(0);
-        bg.setDepth(100000);
+        bg.setDepth(100001);
         card.elements.push(bg);
         card.background = bg;
 
-        // Add inner glow container (for glassmorphism effect simulation)
-        const innerGlow = this.scene.add.rectangle(x, y, width - 4, height - 4, 0x8b5cf6, 0.05);
-        innerGlow.setStrokeStyle(1, 0xffffff, 0.05);
-        innerGlow.setScrollFactor(0);
-        innerGlow.setDepth(100001);
-        card.elements.push(innerGlow);
-        card.innerGlow = innerGlow;
+        // Number indicator
+        const numberBadge = this.scene.add.circle(x - width / 2 + 20, y - height / 2 + 20, 14, 0x8b5cf6, 0.3);
+        numberBadge.setStrokeStyle(2, 0x8b5cf6, 0.8);
+        numberBadge.setScrollFactor(0);
+        numberBadge.setDepth(100002);
+        card.elements.push(numberBadge);
 
-        // Skill name at TOP of card - modern gradient text
-        const name = this.scene.add.text(x, y - 180, skill.name, {
-            fontFamily: 'Inter, Space Grotesk, Arial, sans-serif',
-            fontSize: '17px',
+        const numberText = this.scene.add.text(x - width / 2 + 20, y - height / 2 + 20, (index + 1).toString(), {
+            fontFamily: 'Inter, Arial, sans-serif',
+            fontSize: '12px',
+            fontStyle: '700',
+            fill: '#ffffff'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(100003);
+        card.elements.push(numberText);
+
+        // Skill name
+        const name = this.scene.add.text(x, y - height / 2 + 55, skill.name, {
+            fontFamily: 'Inter, Arial, sans-serif',
+            fontSize: '15px',
             fontStyle: '700',
             fill: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 2,
-            wordWrap: { width: width - 30 },
+            wordWrap: { width: width - 20 },
             align: 'center'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(100002);
-        name.setShadow(0, 0, 15, '#8b5cf6', false, true); // Purple glow
         card.elements.push(name);
 
-        // Generate detailed description
-        let detailedDescription = this.generateDetailedDescription(skill);
+        // Generate compact description
+        let compactDesc = this.generateCompactDescription(skill);
 
-        // Skill description in CENTER of card
-        const desc = this.scene.add.text(x, y, detailedDescription, {
+        // Description
+        const desc = this.scene.add.text(x, y - height / 2 + 95, compactDesc, {
             fontFamily: 'Inter, Arial, sans-serif',
             fontSize: '11px',
             fontStyle: '400',
             fill: '#a1a1aa',
-            wordWrap: { width: width - 30 },
+            wordWrap: { width: width - 25 },
             align: 'left',
             lineSpacing: 3
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(100002);
+        }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(100002);
         card.elements.push(desc);
 
         return card;
+    }
+
+    generateCompactDescription(skill) {
+        let details = [];
+
+        if (skill.description) {
+            details.push(skill.description);
+            details.push('');
+        }
+
+        if (skill.subtitle) {
+            details.push(skill.subtitle);
+            details.push('');
+        }
+
+        if (skill.stats) {
+            if (skill.stats.playerDamage !== undefined) {
+                details.push(`⚔️ ${skill.stats.playerDamage} DMG`);
+            }
+            if (skill.stats.startingMinions !== undefined) {
+                details.push(`👥 ${skill.stats.startingMinions}/${skill.stats.minionCap} Minions`);
+            }
+            if (skill.stats.minionDamage !== undefined) {
+                details.push(`🗡️ ${skill.stats.minionDamage} Minion DMG`);
+            }
+        }
+
+        if (skill.abilities) {
+            details.push('');
+            if (skill.abilities.q) details.push(`Q: ${skill.abilities.q.name}`);
+            if (skill.abilities.e) details.push(`E: ${skill.abilities.e.name}`);
+            if (skill.abilities.r) details.push(`R: ${skill.abilities.r.name}`);
+        }
+
+        return details.join('\n');
     }
 
     generateDetailedDescription(skill) {
@@ -432,69 +489,35 @@ class SkillSelector {
     }
 
     updateCardSelection() {
-        // Update all cards with modern effects
+        // Update all cards with subtle highlight
         this.cards.forEach((card, index) => {
             const isSelected = index === this.selectedIndex;
 
             if (isSelected) {
-                // Selected card: raise up with glow and gradient border
-                card.elements.forEach((element, i) => {
-                    const targetY = i === 0 ? card.baseY - 100 : // background
-                                   i === 1 ? card.baseY - 100 : // innerGlow
-                                   i === 2 ? card.baseY - 100 - 180 : // name (180px above bg)
-                                   card.baseY - 100; // description (at bg position)
+                // Selected: bright border and slight scale
+                card.background.setStrokeStyle(3, 0xec4899, 1.0);
+                card.background.setFillStyle(0x1a1a2e, 1.0);
 
-                    this.scene.tweens.add({
-                        targets: element,
-                        y: targetY,
-                        duration: 250,
-                        ease: 'Cubic.easeOut' // Smooth cubic-bezier easing
-                    });
-                });
-
-                // Modern gradient border glow
-                card.background.setStrokeStyle(3, 0xec4899, 0.9); // Pink gradient accent
                 this.scene.tweens.add({
                     targets: card.background,
-                    scaleX: 1.03,
-                    scaleY: 1.03,
-                    duration: 250,
-                    ease: 'Cubic.easeOut'
+                    scaleX: 1.05,
+                    scaleY: 1.05,
+                    duration: 150,
+                    ease: 'Back.easeOut'
                 });
-
-                // Inner glow effect for glassmorphism
-                card.innerGlow.setFillStyle(0xec4899, 0.15);
-                card.innerGlow.setStrokeStyle(1, 0xec4899, 0.4);
 
             } else {
-                // Unselected card: lower down with subtle style
-                card.elements.forEach((element, i) => {
-                    const targetY = i === 0 ? card.baseY : // background
-                                   i === 1 ? card.baseY : // innerGlow
-                                   i === 2 ? card.baseY - 180 : // name (180px above bg)
-                                   card.baseY; // description (at bg position)
+                // Unselected: subtle gray border
+                card.background.setStrokeStyle(2, 0x52525b, 0.5);
+                card.background.setFillStyle(0x1a1a2e, 0.9);
 
-                    this.scene.tweens.add({
-                        targets: element,
-                        y: targetY,
-                        duration: 250,
-                        ease: 'Cubic.easeOut'
-                    });
-                });
-
-                // Subtle purple border
-                card.background.setStrokeStyle(2, 0x8b5cf6, 0.3);
                 this.scene.tweens.add({
                     targets: card.background,
                     scaleX: 1.0,
                     scaleY: 1.0,
-                    duration: 250,
+                    duration: 150,
                     ease: 'Cubic.easeOut'
                 });
-
-                // Reset inner glow
-                card.innerGlow.setFillStyle(0x8b5cf6, 0.05);
-                card.innerGlow.setStrokeStyle(1, 0xffffff, 0.05);
             }
         });
     }
@@ -582,20 +605,35 @@ class SkillSelector {
                 console.log(`  👥 Minion cap: ${skill.stats.minionCap}`);
             }
 
-            if (skill.stats.startingMinions !== undefined) {
-                console.log(`  🔮 Spawning ${skill.stats.startingMinions} starting minions`);
-                // Spawn initial minions in a circle around player
+            // Only spawn starting minions if this is a NEW path selection (not already selected)
+            // Count how many times this skill has been selected (current selection is already in array)
+            const selectionCount = this.selectedSkills.filter(s => s.id === skill.id).length;
+            const isFirstTimeSelecting = selectionCount === 1; // First time if count is exactly 1
+
+            if (skill.stats.startingMinions !== undefined && isFirstTimeSelecting) {
+                console.log(`  🔮 First time selecting ${skill.name} - Spawning ${skill.stats.startingMinions} starting minions`);
+
+                // Spawn all minions first WITHOUT calling updateMinionFormations each time
+                const spawnedMinions = [];
                 for (let i = 0; i < skill.stats.startingMinions; i++) {
                     const angle = (Math.PI * 2 * i) / skill.stats.startingMinions;
                     const distance = 100;
                     const spawnX = player.sprite.x + Math.cos(angle) * distance;
                     const spawnY = player.sprite.y + Math.sin(angle) * distance;
 
-                    const minion = this.scene.spawnMinion(spawnX, spawnY, player.data.id, true);
+                    // Temporarily disable formation updates during batch spawn
+                    const minion = this.scene.spawnMinion(spawnX, spawnY, player.data.id, true, null, true);
                     if (minion && minion.minionId) {
                         networkManager.trackPermanentMinion(minion.minionId, 'add');
+                        spawnedMinions.push(minion);
                     }
                 }
+
+                // Now update formations ONCE for all minions
+                console.log(`  ✅ All ${spawnedMinions.length} minions spawned, assigning formations...`);
+                this.scene.updateMinionFormations(player.data.id);
+            } else if (skill.stats.startingMinions !== undefined && !isFirstTimeSelecting) {
+                console.log(`  ⏭️ Already selected ${skill.name} ${selectionCount} times - skipping minion spawn`);
             }
         }
 
@@ -619,6 +657,20 @@ class SkillSelector {
             if (skill.abilities.r) {
                 player.abilities.r = skill.abilities.r;
                 console.log(`  R: ${skill.abilities.r.name}`);
+            }
+
+            // Initialize Malachar Ability Handler (for builds with Q/E/R)
+            if (player.class === 'MALACHAR' && typeof MalacharAbilityHandler !== 'undefined') {
+                // Store the full build data
+                player.malacharBuild = skill;
+
+                // Initialize the ability handler
+                this.scene.malacharAbilityHandler = new MalacharAbilityHandler(
+                    this.scene,
+                    player,
+                    skill
+                );
+                console.log(`  🔮 Initialized MalacharAbilityHandler for ${skill.name}`);
             }
 
             // Update ability UI immediately
@@ -1031,31 +1083,29 @@ class SkillSelector {
             }
         }
 
-        // Legacy skill IDs for backward compatibility
-        switch(skill.id) {
-            case 'minion_power':
-                Object.values(this.scene.minions).forEach(minion => {
-                    minion.damage *= 2;
-                });
-                if (!player.minionDamageMultiplier) player.minionDamageMultiplier = 1;
-                player.minionDamageMultiplier *= 2;
-                console.log('⚡ All minion damage doubled!');
-                break;
-
-            case 'health_boost':
-                player.maxHealth += 50;
-                player.health += 50;
-                console.log(`❤️ Max health increased to ${player.maxHealth}`);
-                break;
-
-            case 'damage_boost':
-                player.stats.strength = Math.floor(player.stats.strength * 1.5);
-                console.log(`⚔️ Strength increased to ${player.stats.strength}`);
-                break;
-        }
+        // No legacy skills - all handled by MalacharSkillTree system above
     }
 
     hide() {
+
+        // Destroy overlay
+        if (this.overlay) {
+            this.overlay.destroy();
+            this.overlay = null;
+        }
+
+        // Destroy panel
+        if (this.panel) {
+            this.panel.destroy();
+            this.panel = null;
+        }
+
+        // Destroy title text
+        if (this.titleText) {
+            this.titleText.destroy();
+            this.titleText = null;
+        }
+
         // Destroy instruction text
         if (this.instructionText) {
             this.instructionText.destroy();
@@ -1066,6 +1116,7 @@ class SkillSelector {
         this.cards.forEach(card => {
             card.elements.forEach(element => element.destroy());
         });
+        this.cards = [];
 
         // Cleanup keyboard controls
         if (this.key1) {
@@ -1081,9 +1132,8 @@ class SkillSelector {
             this.key3 = null;
         }
 
-        this.cards = [];
-        this.selectedIndex = 1;
         this.isActive = false;
+        this.selectedIndex = 0;
     }
 
     getAvailableSkills(playerClass, currentLevel) {
@@ -1127,93 +1177,17 @@ class SkillSelector {
                 console.warn(`⚠️ Unlocked skills:`, unlockedSkillIds);
             }
         } else {
-            console.log(`ℹ️ Not Malachar or skill tree not loaded - using fallback skills`);
+            console.log(`ℹ️ Not Malachar or skill tree not loaded`);
             console.log(`ℹ️ Reason: ${!isMalachar ? 'Not Malachar' : typeof MalacharSkillTree === 'undefined' ? 'SkillTree not loaded' : 'getAvailableChoices not a function'}`);
         }
         console.log(`======= END SKILL SELECTOR DEBUG =======\n`);
 
-        // Fallback to basic skills if no skill tree available
-        const allSkills = {
-            // Malachar-specific skills
-            summon_minion: {
-                id: 'summon_minion',
-                name: 'Dark Summoning',
-                description: 'Summon another permanent minion to fight alongside you. Build your undead army!',
-                icon: '👹',
-                rarity: 'uncommon',
-                classes: ['MALACHAR'],
-                maxStacks: 5 // Can take this skill multiple times
-            },
-            minion_power: {
-                id: 'minion_power',
-                name: 'Abyssal Empowerment',
-                description: 'Your minions deal 100% more damage. Make them unstoppable!',
-                icon: '💀',
-                rarity: 'rare',
-                classes: ['MALACHAR'],
-                maxStacks: 3
-            },
-
-            // Universal skills
-            health_boost: {
-                id: 'health_boost',
-                name: 'Vitality Surge',
-                description: 'Increase maximum health by 50. Survive longer in battle.',
-                icon: '❤️',
-                rarity: 'common',
-                classes: ['ALL'],
-                maxStacks: 10
-            },
-            damage_boost: {
-                id: 'damage_boost',
-                name: 'Power Strike',
-                description: 'Increase your attack damage by 50%. Hit harder!',
-                icon: '⚔️',
-                rarity: 'common',
-                classes: ['ALL'],
-                maxStacks: 5
-            }
-        };
-
-        // Filter skills by class and how many times they've been taken
-        const available = [];
-        for (let skillId in allSkills) {
-            const skill = allSkills[skillId];
-
-            // Check class requirement
-            if (!skill.classes.includes('ALL') && !skill.classes.includes(playerClass)) {
-                continue;
-            }
-
-            // Check max stacks
-            const timesTaken = this.selectedSkills.filter(s => s.id === skill.id).length;
-            if (timesTaken >= skill.maxStacks) {
-                continue;
-            }
-
-            available.push(skill);
-        }
-
-        return available;
+        // No fallback skills - only use MalacharSkillTree
+        console.warn(`⚠️ No skill tree available - returning empty array`);
+        return [];
     }
 
-    selectRandomSkills(skills, count) {
-        // Fisher-Yates shuffle algorithm for unbiased randomization
-        const shuffled = [...skills];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        return shuffled.slice(0, Math.min(count, skills.length));
-    }
-
-    hasSkill(skillId) {
-        return this.selectedSkills.some(s => s.id === skillId);
-    }
-
-    getSkillCount(skillId) {
-        return this.selectedSkills.filter(s => s.id === skillId).length;
-    }
+    // Removed old helper methods - no longer needed with MalacharSkillTree
 
     removeExcessMinions(player, newCap) {
         // Get all minions owned by this player

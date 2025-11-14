@@ -5,8 +5,13 @@ class Wolf {
         this.data = data;
         this.health = data.health;
         this.maxHealth = data.maxHealth;
-        this.isAlive = data.isAlive;
+        this.isAlive = data.isAlive !== false; // Default to true if not specified
         this.damage = data.damage || 8;
+
+        // Debug log for wolves with bad data
+        if (!this.isAlive) {
+            console.warn(`⚠️ Wolf ${data.id} created with isAlive: false`);
+        }
 
         this.createSprite();
     }
@@ -27,11 +32,23 @@ class Wolf {
         this.sprite.setOrigin(0.5);
         this.sprite.setScale(scale); // Use variant scale
         this.sprite.setDepth(2); // Above walkways (depth 1) but with walls (depth 2)
+
+        // Add physics and ensure body is properly configured
         this.scene.physics.add.existing(this.sprite);
+
+        // Verify body was created
+        if (!this.sprite.body) {
+            console.error(`❌ Wolf ${this.data.id}: Physics body failed to create!`);
+            return;
+        }
 
         // Scale hitbox based on wolf size
         const hitboxSize = 32 * scale;
         this.sprite.body.setSize(hitboxSize, hitboxSize);
+        this.sprite.body.setCollideWorldBounds(false); // Allow wolves to move freely
+
+        // Store reference to this wolf entity on the sprite for collision detection
+        this.sprite.wolfEntity = this;
 
         // Prevent camera culling from making wolves flicker/disappear
         this.sprite.setScrollFactor(1, 1); // Follow camera normally
@@ -121,11 +138,16 @@ class Wolf {
     }
 
     setTargetPosition(x, y) {
+        // Only set target if sprite and body exist
+        if (!this.sprite || !this.sprite.body) {
+            console.warn(`⚠️ Wolf ${this.data.id}: Cannot set target position, missing sprite or body`);
+            return;
+        }
         this.targetPosition = { x, y };
     }
 
     updateInterpolation() {
-        if (!this.targetPosition) return;
+        if (!this.targetPosition || !this.sprite) return;
 
         const lerpSpeed = 0.3; // Smooth interpolation (increased from 0.2 for better sync)
         const dx = this.targetPosition.x - this.sprite.x;
@@ -176,5 +198,18 @@ class Wolf {
                 this.crownText.setPosition(this.sprite.x, this.sprite.y - 40 * this.scale);
             }
         }
+    }
+
+    destroy() {
+        // Clean up sprite and crown
+        if (this.sprite) {
+            this.sprite.destroy();
+            this.sprite = null;
+        }
+        if (this.crownText) {
+            this.crownText.destroy();
+            this.crownText = null;
+        }
+        this.isAlive = false;
     }
 }

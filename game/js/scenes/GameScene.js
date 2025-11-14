@@ -265,6 +265,10 @@ class GameScene extends Phaser.Scene {
             this.localPlayer = new Player(this, myData, true);
             this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.1, 0.1);
 
+            // Initialize Ally Manager (detects nearby players for co-op abilities)
+            this.allyManager = new AllyManager(this);
+            console.log('✅ AllyManager initialized');
+
             // Send initial position immediately
             const tileSize = GameConfig.GAME.TILE_SIZE;
             const gridPos = {
@@ -2421,7 +2425,7 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    spawnMinion(x, y, ownerId, isPermanent = false, providedMinionId = null) {
+    spawnMinion(x, y, ownerId, isPermanent = false, providedMinionId = null, skipFormationUpdate = false) {
         // Use provided ID if spawning from network, otherwise generate new one
         const minionId = providedMinionId || `minion_${this.minionIdCounter++}`;
         const minion = new Minion(this, x, y, ownerId, isPermanent, minionId);
@@ -2435,7 +2439,10 @@ class GameScene extends Phaser.Scene {
         }
 
         // INTELLIGENT FORMATION: Assign roles to all minions owned by this player
-        this.updateMinionFormations(ownerId);
+        // Skip if this is a batch spawn (will be called manually after)
+        if (!skipFormationUpdate) {
+            this.updateMinionFormations(ownerId);
+        }
 
         // Apply damage multiplier from skills (if local player owns this minion)
         if (ownerId === networkManager.currentPlayer.id && this.localPlayer && this.localPlayer.minionDamageMultiplier) {
@@ -2460,6 +2467,37 @@ class GameScene extends Phaser.Scene {
         return minion; // Return minion for tracking
     }
 
+    // Spawn temporary minion with custom stats and auto-destruction
+    spawnTempMinion(x, y, stats, duration) {
+        if (!this.localPlayer) return null;
+
+        // Spawn temporary minion (isPermanent = false)
+        const minion = this.spawnMinion(x, y, this.localPlayer.data.id, false);
+
+        if (!minion) return null;
+
+        // Apply custom stats
+        if (stats.health !== undefined) {
+            minion.maxHealth = stats.health;
+            minion.health = stats.health;
+        }
+        if (stats.damage !== undefined) {
+            minion.damage = stats.damage;
+        }
+
+        // Auto-remove after duration
+        this.time.delayedCall(duration, () => {
+            if (minion && minion.isAlive) {
+                minion.health = 0; // Will be cleaned up by death logic
+                console.log(`⏱️ Temp minion ${minion.minionId} expired after ${duration}ms`);
+            }
+        });
+
+        console.log(`🔮 Spawned temp minion with ${stats.health}HP, ${stats.damage}DMG (${duration}ms duration)`);
+
+        return minion;
+    }
+
     // INTELLIGENT FORMATION: Reassign roles to all minions owned by a player
     updateMinionFormations(ownerId) {
         // Get all alive minions owned by this player
@@ -2469,12 +2507,14 @@ class GameScene extends Phaser.Scene {
 
         const totalMinions = ownerMinions.length;
 
+        console.log(`🛡️ Formation update for player ${ownerId.slice(0,8)}: ${totalMinions} minions`);
+        console.log(`  Minion IDs:`, ownerMinions.map(m => m.minionId.slice(-4)));
+
         // Assign roles based on squad size
         ownerMinions.forEach((minion, index) => {
             minion.setFormationRole(index, totalMinions);
+            console.log(`    [${index}] ${minion.minionId.slice(-4)} -> ${minion.role} (patrol: ${minion.patrolDistance})`);
         });
-
-        console.log(`🛡️ Formation updated for player ${ownerId.slice(0,8)}: ${totalMinions} minions assigned roles`);
     }
 
     // ==================== SKILL RESTORATION SYSTEM ====================

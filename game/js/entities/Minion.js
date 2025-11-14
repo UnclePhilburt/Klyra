@@ -136,7 +136,7 @@ class Minion {
                 break;
         }
 
-        console.log(`🛡️ Minion ${index} assigned role: ${this.role.toUpperCase()}`);
+        // Removed - logging now happens in GameScene
     }
 
     // DYNAMIC FORMATION SYSTEM V3: Smart, adaptive formations
@@ -153,11 +153,12 @@ class Minion {
 
         let angle;
         if (moving) {
+            // Use movement direction
             angle = Math.atan2(vel.y, vel.x);
         } else {
-            const dir = owner.currentDirection || 'down';
-            angle = dir === 'up' ? -Math.PI/2 : dir === 'down' ? Math.PI/2 :
-                    dir === 'left' ? Math.PI : 0;
+            // When stationary, use DOWN (Math.PI/2) regardless of facing direction
+            // This prevents all minions clustering to one side when player spawns
+            angle = Math.PI / 2; // Always face down when stationary
         }
 
         // Count all alive minions for adaptive formations
@@ -165,7 +166,11 @@ class Minion {
             m.ownerId === this.ownerId && m.isAlive
         );
         const totalMinions = allMinions.length;
-        const myGlobalIndex = allMinions.indexOf(this);
+
+        // Use formationIndex if available, otherwise find index in array
+        const myGlobalIndex = this.formationIndex !== null && this.formationIndex !== undefined
+            ? this.formationIndex
+            : allMinions.indexOf(this);
 
         // HEALTH-BASED DISTANCE MODIFIER
         const healthPercent = this.health / this.maxHealth;
@@ -289,12 +294,15 @@ class Minion {
     }
 
     setupAI() {
-        // AI update every 100ms
-        this.aiTimer = this.scene.time.addEvent({
-            delay: 100,
-            callback: this.updateAI,
-            callbackScope: this,
-            loop: true
+        // Delay AI start by 200ms to ensure roles are assigned first
+        this.scene.time.delayedCall(200, () => {
+            // AI update every 100ms
+            this.aiTimer = this.scene.time.addEvent({
+                delay: 100,
+                callback: this.updateAI,
+                callbackScope: this,
+                loop: true
+            });
         });
     }
 
@@ -365,6 +373,12 @@ class Minion {
 
         // FORMATION V2: Using new function name to force cache break
         this.formationPosition = this.calculateFormationPositionV2(owner);
+
+        // DEBUG: Log if formation position is invalid
+        if (!this.role) {
+            console.warn(`⚠️ Minion ${this.minionId.slice(0,10)} has NO ROLE assigned! (formationIndex: ${this.formationIndex})`);
+            return; // Don't move until role is assigned
+        }
 
         // Priority 2: Detect threats and enter combat mode
         const nearbyThreats = this.detectThreats();
@@ -761,6 +775,9 @@ class Minion {
     // INTELLIGENT FORMATION: Move to assigned formation position
     moveToFormationPosition() {
         if (!this.formationPosition) {
+            if (Math.random() < 0.01) {
+                console.warn(`⚠️ Minion ${this.minionId} - NO formation position!`);
+            }
             return;
         }
 
@@ -771,9 +788,19 @@ class Minion {
             this.formationPosition.y
         );
 
+        // DEBUG: Occasionally log movement details
+        if (Math.random() < 0.002) {
+            console.log(`🚶 ${this.role} moving: dist=${dist.toFixed(0)}, target=(${this.formationPosition.x.toFixed(0)}, ${this.formationPosition.y.toFixed(0)}), pos=(${this.sprite.x.toFixed(0)}, ${this.sprite.y.toFixed(0)})`);
+        }
+
         // If close enough to formation position, idle there
         if (dist < 10) { // REDUCED from 30 to 10 for tighter formations
             this.sprite.body.setVelocity(0, 0);
+
+            // Play idle animation when stopped
+            if (this.sprite.anims) {
+                this.sprite.play('minion_idle', true);
+            }
             return;
         }
 

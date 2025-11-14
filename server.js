@@ -427,35 +427,41 @@ class Lobby {
             Math.pow(regionCenterY - worldCenterY, 2)
         );
 
-        // Distance-based pack sizing
+        // Distance-based pack sizing - MASSIVE SPAWN, SMALL GROUPS
         let packsToSpawn = 1;
         let minPackSize = 1;
         let maxPackSize = 2;
         let bossChance = 0;
 
-        if (distanceFromSpawn < 100) {
-            // Close to spawn: Safe zone - 1 pack, 1-2 wolves
-            packsToSpawn = 1;
+        if (distanceFromSpawn < 50) {
+            // Very close to spawn: Lots of tiny packs - 8-12 packs, 1-2 wolves each
+            packsToSpawn = 8 + Math.floor(Math.random() * 5); // 8-12 packs
             minPackSize = 1;
             maxPackSize = 2;
             bossChance = 0;
+        } else if (distanceFromSpawn < 100) {
+            // Close to spawn: Many small packs - 6-8 packs, 1-3 wolves
+            packsToSpawn = 6 + Math.floor(Math.random() * 3); // 6-8 packs
+            minPackSize = 1;
+            maxPackSize = 3;
+            bossChance = 0.02;
         } else if (distanceFromSpawn < 200) {
-            // Medium distance: Challenge begins - 1-2 packs, 2-3 wolves, 5% boss
-            packsToSpawn = Math.random() < 0.6 ? 1 : 2; // 60% chance of 2 packs
+            // Medium distance: More packs - 5-7 packs, 2-3 wolves, 5% boss
+            packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
             minPackSize = 2;
             maxPackSize = 3;
             bossChance = 0.05;
         } else if (distanceFromSpawn < 400) {
-            // Far: Dangerous - 2 packs, 3-5 wolves, 12% boss
-            packsToSpawn = 2;
-            minPackSize = 3;
-            maxPackSize = 5;
+            // Far: Many packs - 4-6 packs, 2-3 wolves, 12% boss
+            packsToSpawn = 4 + Math.floor(Math.random() * 3); // 4-6 packs
+            minPackSize = 2;
+            maxPackSize = 3;
             bossChance = 0.12;
         } else {
-            // Very far: Extreme danger - 2-3 packs, 4-6 wolves, 20% boss
-            packsToSpawn = Math.random() < 0.7 ? 2 : 3; // 70% chance of 3 packs
-            minPackSize = 4;
-            maxPackSize = 6;
+            // Very far: Extreme danger - 3-5 packs, 2-4 wolves, 20% boss
+            packsToSpawn = 3 + Math.floor(Math.random() * 3); // 3-5 packs
+            minPackSize = 2;
+            maxPackSize = 4;
             bossChance = 0.20;
         }
 
@@ -476,8 +482,8 @@ class Lobby {
             const packX = regionX * REGION_SIZE + Math.floor(this.seededRandom(packSeed + 1) * REGION_SIZE);
             const packY = regionY * REGION_SIZE + Math.floor(this.seededRandom(packSeed + 2) * REGION_SIZE);
 
-            // Check if pack location is in safe zone
-            const safeZoneRadius = 25;
+            // Check if pack location is in safe zone (MUCH SMALLER NOW)
+            const safeZoneRadius = 10; // Reduced from 25 to 10
             const isInSafeZone = (
                 packX >= (worldCenterX - safeZoneRadius) &&
                 packX < (worldCenterX + safeZoneRadius) &&

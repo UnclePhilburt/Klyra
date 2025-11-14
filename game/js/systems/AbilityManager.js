@@ -227,6 +227,20 @@ class AbilityManager {
 
     executeAbility(key, ability) {
         console.log(`🔥 Executing ${key.toUpperCase()}: ${ability.name}`);
+
+        // MALACHAR: Delegate to ability handler if it exists
+        if (this.scene.malacharAbilityHandler) {
+            const methodName = `use${key.toUpperCase()}`;
+            if (typeof this.scene.malacharAbilityHandler[methodName] === 'function') {
+                console.log(`  🔮 Delegating to MalacharAbilityHandler.${methodName}()`);
+                const success = this.scene.malacharAbilityHandler[methodName]();
+                if (success) {
+                    return; // Handler executed successfully
+                }
+            }
+        }
+
+        // LEGACY: Fallback to old system
         console.log(`   Effect:`, ability.effect);
         console.log(`   Bonus Effect:`, ability.bonusEffect);
 
