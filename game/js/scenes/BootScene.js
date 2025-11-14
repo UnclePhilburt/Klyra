@@ -71,8 +71,17 @@ class BootScene extends Phaser.Scene {
             margin: 0
         });
 
+        // Malachar's Auto Attack Effect sprite sheet (64x64px, row 2 has 15 frames)
+        this.load.spritesheet('malacharautoattack', 'assets/skilleffects/malacharautoattack.png', {
+            frameWidth: 64,
+            frameHeight: 64,
+            spacing: 0,
+            margin: 0
+        });
+
         console.log('📦 Loading sprite: malachar from assets/sprites/malachar.png');
         console.log('📦 Loading sprite: malacharminion from assets/sprites/malacharminion.png');
+        console.log('📦 Loading sprite: malacharautoattack from assets/skilleffects/malacharautoattack.png');
 
         // Load music files
         MusicManager.preload(this);
@@ -129,7 +138,16 @@ class BootScene extends Phaser.Scene {
             repeat: 0 // Play once, don't loop
         });
 
+        // Malachar healing auto attack effect (row 2, 15 frames)
+        this.anims.create({
+            key: 'malachar_heal_attack',
+            frames: this.anims.generateFrameNumbers('malacharautoattack', { start: 30, end: 44 }),
+            frameRate: 20,
+            repeat: 0 // Play once
+        });
+
         console.log('✅ Created minion animations: idle (frames 39-42), walk (frames 26-37), attack (frames 0-12)');
+        console.log('✅ Created Malachar heal attack animation: (row 2, frames 30-44)');
 
         // Don't connect to server - custom menu handles that
         // Just load assets and wait for custom menu to call game.connect()

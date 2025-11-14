@@ -1424,6 +1424,18 @@ class GameScene extends Phaser.Scene {
             this.toggleDevMenu();
         });
 
+        // H key for testing healing animation (DEV ONLY)
+        this.keyH = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H);
+        this.keyH.on('down', () => {
+            // Test: Show heal effect on all minions
+            Object.values(this.minions).forEach(minion => {
+                if (minion.sprite && minion.sprite.active) {
+                    this.showMinionHealEffect(minion.sprite.x, minion.sprite.y);
+                }
+            });
+            console.log('🧪 [DEV] Showing heal animation on all minions (Press H to test)');
+        });
+
         // Mouse click to attack
         this.input.on('pointerdown', (pointer) => {
             if (pointer.leftButtonDown() && this.localPlayer) {
@@ -2613,6 +2625,29 @@ class GameScene extends Phaser.Scene {
 
     showAttackEffect(position) {
         // Visual attack effect
+    }
+
+    showMinionHealEffect(minionX, minionY) {
+        // Play Malachar healing auto attack animation on minion
+        const healSprite = this.add.sprite(minionX, minionY, 'malacharautoattack');
+        healSprite.setOrigin(0.5);
+        healSprite.setDepth(100); // Above everything
+        healSprite.setScale(1.0); // 64x64 at 1:1 scale
+
+        // Play animation once
+        healSprite.play('malachar_heal_attack');
+
+        // Destroy sprite after animation completes
+        healSprite.once('animationcomplete', () => {
+            healSprite.destroy();
+        });
+
+        // Backup: destroy after 1 second if animation doesn't complete
+        this.time.delayedCall(1000, () => {
+            if (healSprite && healSprite.active) {
+                healSprite.destroy();
+            }
+        });
     }
 
     showChatMessage(username, message) {
