@@ -27,7 +27,16 @@ class MainMenu {
         this.setupEventListeners();
         this.loadMenuMusic();
         this.loadSavedPlayerName();
-        
+
+        // Start menu music on first user interaction (browser requirement)
+        const startMusic = () => {
+            this.playMusic();
+            document.removeEventListener('click', startMusic);
+            document.removeEventListener('keydown', startMusic);
+        };
+        document.addEventListener('click', startMusic, { once: true });
+        document.addEventListener('keydown', startMusic, { once: true });
+
         // Check server every 10 seconds
         setInterval(() => this.checkServerStatus(), 10000);
     }

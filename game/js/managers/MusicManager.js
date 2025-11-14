@@ -145,6 +145,31 @@ class MusicManager {
         return this.isMuted;
     }
 
+    // Get current playback time in seconds
+    getCurrentTime() {
+        if (this.currentTrack && this.currentTrack.isPlaying) {
+            return this.currentTrack.seek;
+        }
+        return 0;
+    }
+
+    // Get total track duration in seconds
+    getDuration() {
+        if (this.currentTrack) {
+            return this.currentTrack.duration;
+        }
+        return 0;
+    }
+
+    // Get playback progress (0 to 1)
+    getProgress() {
+        const duration = this.getDuration();
+        if (duration > 0) {
+            return this.getCurrentTime() / duration;
+        }
+        return 0;
+    }
+
     // Stop current track
     stopCurrentTrack() {
         if (this.currentTrack) {

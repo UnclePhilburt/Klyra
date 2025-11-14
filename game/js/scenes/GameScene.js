@@ -2564,6 +2564,11 @@ class GameScene extends Phaser.Scene {
     update(time, delta) {
         if (!this.localPlayer) return;
 
+        // Update music UI progress bar
+        if (this.musicUI) {
+            this.musicUI.update();
+        }
+
         // DIAGNOSTIC: Performance timing
         const perfStart = performance.now();
         if (!this.perfTimings) {
