@@ -2185,7 +2185,16 @@ class GameScene extends Phaser.Scene {
                 player.sprite.setVisible(shouldBeVisible);
             }
             if (player.ui) {
-                player.ui.setVisible(shouldBeVisible);
+                // PlayerUI doesn't have setVisible, need to hide individual elements
+                if (player.ui.nameTag) player.ui.nameTag.setVisible(shouldBeVisible);
+                if (player.ui.nameTagBg) player.ui.nameTagBg.setVisible(shouldBeVisible);
+                if (player.ui.nameTagShadow) player.ui.nameTagShadow.setVisible(shouldBeVisible);
+                if (player.ui.healthBar) player.ui.healthBar.setVisible(shouldBeVisible);
+                if (player.ui.healthBarShadow) player.ui.healthBarShadow.setVisible(shouldBeVisible);
+                if (player.ui.healthBarContainer) player.ui.healthBarContainer.setVisible(shouldBeVisible);
+                if (player.ui.healthBarGloss) player.ui.healthBarGloss.setVisible(shouldBeVisible);
+                if (player.ui.levelBadge) player.ui.levelBadge.setVisible(shouldBeVisible);
+                if (player.ui.levelText) player.ui.levelText.setVisible(shouldBeVisible);
             }
 
             // Also hide sprite components if using 2x2 sprite
