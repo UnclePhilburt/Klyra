@@ -163,8 +163,8 @@ class Minion {
                        owner.currentDirection === 'right' ? 0 : Math.PI/2;
         }
 
-        let targetX = owner.sprite.x;
-        let targetY = owner.sprite.y;
+        const playerX = owner.sprite.x;
+        const playerY = owner.sprite.y;
         let distance = this.combatMode ? this.patrolDistance * 0.5 : this.patrolDistance;
 
         // Count minions of same role for better spreading
@@ -174,81 +174,63 @@ class Minion {
         const roleIndex = allMinions.indexOf(this);
         const roleCount = allMinions.length;
 
-        // DEBUG: Always log for scout to trace the bug
-        const debugThis = this.role === 'scout' && roleIndex === 0;
-        if (debugThis) {
-            console.log(`\n🔍 SCOUT FORMATION DEBUG:`);
-            console.log(`  Initial: player=(${owner.sprite.x.toFixed(0)}, ${owner.sprite.y.toFixed(0)}), target=(${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
-            console.log(`  distance=${distance}, patrolDistance=${this.patrolDistance}, combatMode=${this.combatMode}`);
-            console.log(`  roleIndex=${roleIndex}, roleCount=${roleCount}`);
-            console.log(`  moveAngle=${(moveAngle * 180 / Math.PI).toFixed(0)}°, isMoving=${isMoving}`);
-        }
+        // Calculate offsets based on role (NOT adding to target yet!)
+        let offsetX = 0;
+        let offsetY = 0;
 
         switch(this.role) {
             case 'scout':
                 // Ahead of player in movement direction
-                const dx1 = Math.cos(moveAngle) * distance;
-                const dy1 = Math.sin(moveAngle) * distance;
-                targetX += dx1;
-                targetY += dy1;
-
-                if (debugThis) {
-                    console.log(`  After base offset: dx=${dx1.toFixed(1)}, dy=${dy1.toFixed(1)}, target=(${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
-                }
+                offsetX = Math.cos(moveAngle) * distance;
+                offsetY = Math.sin(moveAngle) * distance;
 
                 // Spread multiple scouts in a fan pattern
                 if (roleCount > 1) {
                     const spreadAngle = (roleIndex - (roleCount - 1) / 2) * (Math.PI / 6); // 30° spread
-                    const dx2 = Math.cos(moveAngle + spreadAngle + Math.PI/2) * 60;
-                    const dy2 = Math.sin(moveAngle + spreadAngle + Math.PI/2) * 60;
-                    targetX += dx2;
-                    targetY += dy2;
-
-                    if (debugThis) {
-                        console.log(`  After spread: dx2=${dx2.toFixed(1)}, dy2=${dy2.toFixed(1)}, target=(${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
-                    }
+                    offsetX += Math.cos(moveAngle + spreadAngle + Math.PI/2) * 60;
+                    offsetY += Math.sin(moveAngle + spreadAngle + Math.PI/2) * 60;
                 }
                 break;
 
             case 'flank_left':
                 // Left side of player
-                targetX += Math.cos(moveAngle + Math.PI/2) * distance;
-                targetY += Math.sin(moveAngle + Math.PI/2) * distance;
+                offsetX = Math.cos(moveAngle + Math.PI/2) * distance;
+                offsetY = Math.sin(moveAngle + Math.PI/2) * distance;
                 // Stagger multiple flankers
                 if (roleCount > 1) {
-                    targetX += Math.cos(moveAngle) * (roleIndex * 40 - 20);
-                    targetY += Math.sin(moveAngle) * (roleIndex * 40 - 20);
+                    offsetX += Math.cos(moveAngle) * (roleIndex * 40 - 20);
+                    offsetY += Math.sin(moveAngle) * (roleIndex * 40 - 20);
                 }
                 break;
 
             case 'flank_right':
                 // Right side of player
-                targetX += Math.cos(moveAngle - Math.PI/2) * distance;
-                targetY += Math.sin(moveAngle - Math.PI/2) * distance;
+                offsetX = Math.cos(moveAngle - Math.PI/2) * distance;
+                offsetY = Math.sin(moveAngle - Math.PI/2) * distance;
                 // Stagger multiple flankers
                 if (roleCount > 1) {
-                    targetX += Math.cos(moveAngle) * (roleIndex * 40 - 20);
-                    targetY += Math.sin(moveAngle) * (roleIndex * 40 - 20);
+                    offsetX += Math.cos(moveAngle) * (roleIndex * 40 - 20);
+                    offsetY += Math.sin(moveAngle) * (roleIndex * 40 - 20);
                 }
                 break;
 
             case 'rear_guard':
                 // Behind player (opposite of movement)
-                targetX += Math.cos(moveAngle + Math.PI) * Math.abs(distance);
-                targetY += Math.sin(moveAngle + Math.PI) * Math.abs(distance);
+                offsetX = Math.cos(moveAngle + Math.PI) * Math.abs(distance);
+                offsetY = Math.sin(moveAngle + Math.PI) * Math.abs(distance);
                 // Spread multiple rear guards in a line
                 if (roleCount > 1) {
                     const spreadOffset = (roleIndex - (roleCount - 1) / 2) * 60;
-                    targetX += Math.cos(moveAngle + Math.PI/2) * spreadOffset;
-                    targetY += Math.sin(moveAngle + Math.PI/2) * spreadOffset;
+                    offsetX += Math.cos(moveAngle + Math.PI/2) * spreadOffset;
+                    offsetY += Math.sin(moveAngle + Math.PI/2) * spreadOffset;
                 }
                 break;
 
             case 'bodyguard':
                 // Circle around player evenly - FIX: distribute ALL bodyguards evenly
                 const bodyguardAngle = (roleIndex / Math.max(roleCount, 1)) * Math.PI * 2 + moveAngle;
-                targetX += Math.cos(bodyguardAngle) * distance;
-                targetY += Math.sin(bodyguardAngle) * distance;
+                offsetX = Math.cos(bodyguardAngle) * distance;
+                offsetY = Math.sin(bodyguardAngle) * distance;
                 break;
 
             default:
@@ -257,14 +239,14 @@ class Minion {
                 break;
         }
 
-        // DEBUG: Validate formation position
-        const offsetX = targetX - owner.sprite.x;
-        const offsetY = targetY - owner.sprite.y;
+        // Apply offsets to player position to get final formation target
+        const targetX = playerX + offsetX;
+        const targetY = playerY + offsetY;
         const offsetDist = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
 
-        // ALWAYS log this to diagnose the issue
+        // DEBUG: Log formation calculation
         if (Math.random() < 0.02) { // 2% chance
-            console.log(`🎯 ${this.role}: offset=(${offsetX.toFixed(1)}, ${offsetY.toFixed(1)}), dist=${offsetDist.toFixed(1)}px, moveAngle=${(moveAngle * 180 / Math.PI).toFixed(0)}°, distance=${distance}`);
+            console.log(`🎯 ${this.role}: offset=(${offsetX.toFixed(1)}, ${offsetY.toFixed(1)}), dist=${offsetDist.toFixed(1)}px, moveAngle=${(moveAngle * 180 / Math.PI).toFixed(0)}°, patrolDist=${this.patrolDistance}`);
         }
 
         return { x: targetX, y: targetY };
