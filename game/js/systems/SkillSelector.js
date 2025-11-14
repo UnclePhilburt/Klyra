@@ -437,6 +437,109 @@ class SkillSelector {
             this.scene.passiveAbilityManager = new PassiveAbilityManager(this.scene, player);
         }
 
+        // ==== NEW SKILL TREE V2 SYSTEM ====
+        // Handle path selection (tier 1) - sets up initial stats and abilities
+        if (skill.stats) {
+            console.log(`🎯 Applying initial path stats for ${skill.name}`);
+
+            // Apply base stats
+            if (skill.stats.playerDamage !== undefined) {
+                player.baseDamage = skill.stats.playerDamage;
+                console.log(`  ⚔️ Player damage: ${skill.stats.playerDamage}`);
+            }
+            if (skill.stats.minionCap !== undefined) {
+                player.minionCap = skill.stats.minionCap;
+                console.log(`  👥 Minion cap: ${skill.stats.minionCap}`);
+            }
+            if (skill.stats.startingMinions !== undefined) {
+                console.log(`  🔮 Starting minions: ${skill.stats.startingMinions}`);
+                // Spawn initial minions
+                for (let i = 0; i < skill.stats.startingMinions; i++) {
+                    const angle = (Math.PI * 2 * i) / skill.stats.startingMinions;
+                    const distance = 100;
+                    const spawnX = player.sprite.x + Math.cos(angle) * distance;
+                    const spawnY = player.sprite.y + Math.sin(angle) * distance;
+
+                    const minion = this.scene.spawnMinion(spawnX, spawnY, player.data.id, true);
+                    if (minion && minion.minionId) {
+                        networkManager.trackPermanentMinion(minion.minionId, 'add');
+                    }
+                }
+            }
+            if (skill.stats.minionHealth !== undefined) {
+                player.baseMinionHealth = skill.stats.minionHealth;
+                console.log(`  💚 Base minion health: ${skill.stats.minionHealth}`);
+            }
+            if (skill.stats.minionDamage !== undefined) {
+                player.baseMinionDamage = skill.stats.minionDamage;
+                console.log(`  ⚔️ Base minion damage: ${skill.stats.minionDamage}`);
+            }
+        }
+
+        // Store auto-attack configuration
+        if (skill.autoAttack) {
+            player.autoAttackConfig = skill.autoAttack;
+            console.log(`  🎯 Auto-attack: ${skill.autoAttack.name}`);
+        }
+
+        // Store Q/E/R abilities
+        if (skill.abilities) {
+            if (!player.abilities) player.abilities = {};
+            if (skill.abilities.q) {
+                player.abilities.q = skill.abilities.q;
+                console.log(`  Q: ${skill.abilities.q.name}`);
+            }
+            if (skill.abilities.e) {
+                player.abilities.e = skill.abilities.e;
+                console.log(`  E: ${skill.abilities.e.name}`);
+            }
+            if (skill.abilities.r) {
+                player.abilities.r = skill.abilities.r;
+                console.log(`  R: ${skill.abilities.r.name}`);
+            }
+        }
+
+        // Handle modifications (tier 2+)
+        if (skill.modifications) {
+            console.log(`🔧 Applying modifications for ${skill.name}`);
+            const mods = skill.modifications;
+
+            // Apply stat modifications
+            if (mods.minionCap !== undefined) {
+                player.minionCap = mods.minionCap;
+                console.log(`  👥 Modified minion cap: ${mods.minionCap}`);
+            }
+            if (mods.minionHealth !== undefined) {
+                player.minionHealthMultiplier = (player.minionHealthMultiplier || 1) * mods.minionHealth;
+                console.log(`  💚 Minion health multiplier: ${player.minionHealthMultiplier}x`);
+            }
+            if (mods.minionDamage !== undefined) {
+                player.minionDamageMultiplier = (player.minionDamageMultiplier || 1) * mods.minionDamage;
+                console.log(`  ⚔️ Minion damage multiplier: ${player.minionDamageMultiplier}x`);
+            }
+
+            // Merge ability modifications
+            if (mods.q && player.abilities && player.abilities.q) {
+                player.abilities.q.bonusEffect = { ...player.abilities.q.bonusEffect, ...mods.q.bonusEffect };
+                console.log(`  Q modified:`, mods.q.bonusEffect);
+            }
+            if (mods.e && player.abilities && player.abilities.e) {
+                player.abilities.e.bonusEffect = { ...player.abilities.e.bonusEffect, ...mods.e.bonusEffect };
+                console.log(`  E modified:`, mods.e.bonusEffect);
+            }
+            if (mods.r && player.abilities && player.abilities.r) {
+                player.abilities.r.bonusEffect = { ...player.abilities.r.bonusEffect, ...mods.r.bonusEffect };
+                console.log(`  R modified:`, mods.r.bonusEffect);
+            }
+
+            // Auto-attack modifications
+            if (mods.autoAttack && player.autoAttackConfig) {
+                player.autoAttackConfig = { ...player.autoAttackConfig, ...mods.autoAttack };
+                console.log(`  Auto-attack modified`);
+            }
+        }
+
+        // ==== OLD SKILL TREE SYSTEM (fallback) ====
         // Handle special case for spawn_minion effect (used throughout skill tree)
         if (skill.effect === 'spawn_minion') {
             const spawnX = player.sprite.x + 60;
@@ -847,7 +950,7 @@ class SkillSelector {
             characterId: this.scene.localPlayer.data ? this.scene.localPlayer.data.characterId : 'no data'
         } : 'no local player');
         console.log(`📊 MalacharSkillTree exists: ${typeof MalacharSkillTree !== 'undefined'}`);
-        console.log(`📊 window.getSkillsForLevel exists: ${typeof window.getSkillsForLevel === 'function'}`);
+        console.log(`📊 window.getAvailableChoices exists: ${typeof window.getAvailableChoices === 'function'}`);
 
         // Load skills from MalacharSkillTree (only for Malachar class)
         // Check both the ID and display name variations
@@ -858,10 +961,14 @@ class SkillSelector {
 
         console.log(`✔️ Is Malachar check: ${isMalachar}`);
 
-        if (isMalachar && typeof MalacharSkillTree !== 'undefined' && typeof window.getSkillsForLevel === 'function') {
-            // Get skills for this specific level
-            const levelSkills = window.getSkillsForLevel(currentLevel);
-            console.log(`✅ Found ${levelSkills ? levelSkills.length : 0} skills for level ${currentLevel}`);
+        if (isMalachar && typeof MalacharSkillTree !== 'undefined' && typeof window.getAvailableChoices === 'function') {
+            // Get unlocked skill IDs (just the IDs, in order)
+            const unlockedSkillIds = this.selectedSkills.map(s => s.id);
+            console.log(`📊 Unlocked skills:`, unlockedSkillIds);
+
+            // Get skills for this specific level using new v2 API
+            const levelSkills = window.getAvailableChoices(unlockedSkillIds, currentLevel);
+            console.log(`✅ Found ${levelSkills ? levelSkills.length : 0} choices for level ${currentLevel}`);
 
             if (levelSkills && levelSkills.length > 0) {
                 console.log(`✅ Returning skills:`, levelSkills.map(s => s.name));
@@ -869,11 +976,11 @@ class SkillSelector {
                 return levelSkills;
             } else {
                 console.warn(`⚠️ No skills found for level ${currentLevel} in MalacharSkillTree`);
-                console.warn(`⚠️ Available levels in skill tree:`, Object.keys(MalacharSkillTree));
+                console.warn(`⚠️ Unlocked skills:`, unlockedSkillIds);
             }
         } else {
             console.log(`ℹ️ Not Malachar or skill tree not loaded - using fallback skills`);
-            console.log(`ℹ️ Reason: ${!isMalachar ? 'Not Malachar' : typeof MalacharSkillTree === 'undefined' ? 'SkillTree not loaded' : 'getSkillsForLevel not a function'}`);
+            console.log(`ℹ️ Reason: ${!isMalachar ? 'Not Malachar' : typeof MalacharSkillTree === 'undefined' ? 'SkillTree not loaded' : 'getAvailableChoices not a function'}`);
         }
         console.log(`======= END SKILL SELECTOR DEBUG =======\n`);
 
