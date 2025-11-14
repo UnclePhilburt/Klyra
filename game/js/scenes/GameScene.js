@@ -393,7 +393,7 @@ class GameScene extends Phaser.Scene {
         // Store for viewport-based rendering (don't pre-generate all tiles)
         this.renderedTiles = new Map(); // Track rendered tiles
         this.renderedDecorations = new Map(); // Track rendered decorations with their sprites
-        this.RENDER_DISTANCE = 25; // Render 25 tiles in each direction from camera
+        this.RENDER_DISTANCE = 18; // PERFORMANCE: Render 18 tiles (was 25) - smaller viewport
 
         // Map biome types to tileset textures and tile indices
         this.BIOME_TILESET_MAP = {};
@@ -646,7 +646,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // Clean up tiles far from player (keep memory manageable)
-        const CLEANUP_DISTANCE = this.RENDER_DISTANCE * 2;
+        const CLEANUP_DISTANCE = this.RENDER_DISTANCE * 1.3; // PERFORMANCE: Aggressive cleanup (was 2x)
         this.renderedTiles.forEach((sprite, key) => {
             const [x, y] = key.split(',').map(Number);
             const dist = Math.max(Math.abs(x - playerTileX), Math.abs(y - playerTileY));
@@ -2765,7 +2765,7 @@ class GameScene extends Phaser.Scene {
         // Update visible tiles based on camera position (viewport culling)
         if (!this.tileUpdateCounter) this.tileUpdateCounter = 0;
         this.tileUpdateCounter++;
-        if (this.tileUpdateCounter >= 10) {  // Every 10 frames
+        if (this.tileUpdateCounter >= 5) {  // PERFORMANCE: Every 5 frames (was 10) for faster cleanup
             this.tileUpdateCounter = 0;
             this.updateVisibleTiles();
         }
