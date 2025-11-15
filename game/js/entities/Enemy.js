@@ -49,6 +49,25 @@ class Enemy {
         this.updateHealthBar();
     }
 
+    attack() {
+        // Play attack animation if available
+        if (this.sprite && this.sprite.anims && this.isAlive) {
+            if (this.scene.anims.exists('skullwolf_attack')) {
+                this.sprite.play('skullwolf_attack');
+                // Return to walk/idle after attack completes
+                this.scene.time.delayedCall(500, () => {
+                    if (this.sprite && this.sprite.active && this.isAlive) {
+                        const isMoving = Math.abs(this.sprite.x - this.lastX) > 0.5;
+                        const animKey = isMoving ? 'skullwolf_walk' : 'skullwolf_idle';
+                        if (this.scene.anims.exists(animKey)) {
+                            this.sprite.play(animKey, true);
+                        }
+                    }
+                });
+            }
+        }
+    }
+
     takeDamage(amount) {
         this.health -= amount;
         if (this.health <= 0) {

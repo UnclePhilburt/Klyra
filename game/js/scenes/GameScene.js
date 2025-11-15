@@ -4,7 +4,8 @@ class GameScene extends Phaser.Scene {
         super({ key: 'GameScene' });
         this.otherPlayers = {};
         this.enemies = {};
-        this.wolves = {};
+        this.swordDemons = {};
+        this.minotaurs = {};
         this.items = {};
         this.minions = {};
         this.minionIdCounter = 0;
@@ -186,13 +187,43 @@ class GameScene extends Phaser.Scene {
             frameHeight: 48
         });
 
-        // Enemy sprites
-        this.load.spritesheet('skullwolf', 'assets/sprites/skullwolf.png', {
+        // Enemy sprites - Sword Demon (64x64 tiles, 28 columns x 8 rows = 224 tiles)
+        // Odd-numbered tiles are blank (baked into PNG), so we manually pick even tiles for animations
+        // Row 0: idle (tiles 0,2,4,6,8,10,12)
+        // Row 1: walk (tiles 28,30,32,34)
+        // Row 2: run (tiles 56,58,60,62,64,66,68,70)
+        // Row 4: attack (tiles 112,114,116,118,120,122,124,126)
+        // Row 6: damage (tiles 168,170)
+        // Row 7: death (tiles 196,198,200,202,204,206,208,210,212)
+        this.load.spritesheet('sworddemon', 'assets/sprites/Sword.png', {
             frameWidth: 64,
-            frameHeight: 64
+            frameHeight: 64,
+            spacing: 0,  // No spacing - blank tiles are part of the image
+            margin: 0
+        });
+
+        // Enemy sprites - Minotaur (96x96 tiles, 10 columns x 10 rows)
+        // Row 0: idle (tiles 0-4)
+        // Row 2: run (tiles 20-24)
+        // Row 3: attack (tiles 30-38)
+        // Row 8: damage (tiles 80-82)
+        // Row 9: death (tiles 90-95)
+        this.load.spritesheet('minotaur', 'assets/sprites/minotaur.png', {
+            frameWidth: 96,
+            frameHeight: 96,
+            spacing: 0,
+            margin: 0
         });
 
         console.log('✅ All tilesets queued for loading');
+
+        // Debug: Log sword demon spritesheet info after load
+        this.load.on('filecomplete-spritesheet-sworddemon', () => {
+            const texture = this.textures.get('sworddemon');
+            console.log('🗡️ Sword Demon spritesheet loaded:');
+            console.log(`   Total frames: ${texture.frameTotal}`);
+            console.log(`   Frame names:`, Object.keys(texture.frames).slice(0, 10), '...');
+        });
     }
 
     create() {
@@ -232,22 +263,91 @@ class GameScene extends Phaser.Scene {
             this.loadingText.destroy();
         }
 
-        // Create enemy animations
+        // Create enemy animations - Sword Demon (64x64 tiles, 28 cols x 8 rows, odd tiles are blank)
+        // Row 0: Idle (tiles 0,2,4,6,8,10,12)
         this.anims.create({
-            key: 'skullwolf_idle',
-            frames: this.anims.generateFrameNumbers('skullwolf', { start: 0, end: 5 }),
+            key: 'sworddemon_idle',
+            frames: [0, 2, 4, 6, 8, 10, 12].map(n => ({ key: 'sworddemon', frame: n })),
             frameRate: 8,
             repeat: -1
         });
 
+        // Row 1: Walk (tiles 28,30,32,34)
         this.anims.create({
-            key: 'skullwolf_walk',
-            frames: this.anims.generateFrameNumbers('skullwolf', { start: 6, end: 10 }),
+            key: 'sworddemon_walk',
+            frames: [28, 30, 32, 34].map(n => ({ key: 'sworddemon', frame: n })),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        // Row 4: Attack (tiles 112,114,116,118,120,122,124,126)
+        this.anims.create({
+            key: 'sworddemon_attack',
+            frames: [112, 114, 116, 118, 120, 122, 124, 126].map(n => ({ key: 'sworddemon', frame: n })),
+            frameRate: 12,
+            repeat: 0
+        });
+
+        // Row 6: Damage (tiles 168,170)
+        this.anims.create({
+            key: 'sworddemon_damage',
+            frames: [168, 170].map(n => ({ key: 'sworddemon', frame: n })),
+            frameRate: 12,
+            repeat: 0
+        });
+
+        // Row 7: Death (tiles 196,198,200,202,204,206,208,210,212)
+        this.anims.create({
+            key: 'sworddemon_death',
+            frames: [196, 198, 200, 202, 204, 206, 208, 210, 212].map(n => ({ key: 'sworddemon', frame: n })),
+            frameRate: 10,
+            repeat: 0
+        });
+
+        console.log('✅ Created enemy animations: sworddemon (idle, walk, attack, damage, death)');
+
+        // Create enemy animations - Minotaur (96x96 tiles, 10 columns)
+        // Row 0: Idle (tiles 0-4)
+        this.anims.create({
+            key: 'minotaur_idle',
+            frames: this.anims.generateFrameNumbers('minotaur', { start: 0, end: 4 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        // Row 2: Run (tiles 20-24)
+        this.anims.create({
+            key: 'minotaur_run',
+            frames: this.anims.generateFrameNumbers('minotaur', { start: 20, end: 24 }),
             frameRate: 10,
             repeat: -1
         });
 
-        console.log('✅ Created enemy animations: skullwolf');
+        // Row 3: Attack (tiles 30-38)
+        this.anims.create({
+            key: 'minotaur_attack',
+            frames: this.anims.generateFrameNumbers('minotaur', { start: 30, end: 38 }),
+            frameRate: 12,
+            repeat: 0
+        });
+
+        // Row 8: Damage (tiles 80-82)
+        this.anims.create({
+            key: 'minotaur_damage',
+            frames: this.anims.generateFrameNumbers('minotaur', { start: 80, end: 82 }),
+            frameRate: 12,
+            repeat: 0
+        });
+
+        // Row 9: Death (tiles 90-95)
+        this.anims.create({
+            key: 'minotaur_death',
+            frames: this.anims.generateFrameNumbers('minotaur', { start: 90, end: 95 }),
+            frameRate: 10,
+            repeat: 0
+        });
+
+        console.log('✅ Created enemy animations: minotaur (idle, run, attack, damage, death)');
 
         // Initialize tree collision array
         this.treeCollisions = [];
@@ -343,17 +443,41 @@ class GameScene extends Phaser.Scene {
         // Create enemies
         this.gameData.gameState.enemies.forEach(enemyData => {
             if (enemyData.type === 'wolf') {
-                const wolf = new Wolf(this, enemyData);
-                this.wolves[enemyData.id] = wolf;
+                // Skip dead sword demons from initial game state
+                if (enemyData.isAlive === false) {
+                    console.log(`⚰️ Skipping dead sword demon ${enemyData.id}`);
+                    return;
+                }
 
-                // Add castle collision to wolf
+                const swordDemon = new SwordDemon(this, enemyData);
+                this.swordDemons[enemyData.id] = swordDemon;
+
+                // Add castle collision to sword demon
                 if (this.castleCollisionLayers) {
                     this.castleCollisionLayers.forEach(layer => {
-                        this.physics.add.collider(wolf.sprite, layer);
+                        this.physics.add.collider(swordDemon.sprite, layer);
                     });
                 }
 
-                console.log(`🐺 Created wolf ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
+                console.log(`⚔️ Created sword demon ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
+            } else if (enemyData.type === 'minotaur') {
+                // Skip dead minotaurs from initial game state
+                if (enemyData.isAlive === false) {
+                    console.log(`⚰️ Skipping dead minotaur ${enemyData.id}`);
+                    return;
+                }
+
+                const minotaur = new Minotaur(this, enemyData);
+                this.minotaurs[enemyData.id] = minotaur;
+
+                // Add castle collision to minotaur
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(minotaur.sprite, layer);
+                    });
+                }
+
+                console.log(`🐂 Created minotaur ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
             } else {
                 const enemy = new Enemy(this, enemyData);
                 this.enemies[enemyData.id] = enemy;
@@ -367,7 +491,7 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        console.log(`📊 Total enemies: ${Object.keys(this.enemies).length}, Total wolves: ${Object.keys(this.wolves).length}`);
+        console.log(`📊 Total enemies: ${Object.keys(this.enemies).length}, Total sword demons: ${Object.keys(this.swordDemons).length}, Total minotaurs: ${Object.keys(this.minotaurs).length}`);
 
         // Create items
         this.gameData.gameState.items.forEach(itemData => {
@@ -1746,13 +1870,35 @@ class GameScene extends Phaser.Scene {
         // Enemy spawned
         networkManager.on('enemy:spawned', (data) => {
             if (data.enemy.type === 'wolf') {
-                const wolf = new Wolf(this, data.enemy);
-                this.wolves[data.enemy.id] = wolf;
+                // Skip dead sword demons
+                if (data.enemy.isAlive === false) {
+                    console.log(`⚰️ Skipping spawning dead sword demon ${data.enemy.id}`);
+                    return;
+                }
 
-                // Add castle collision to wolf
+                const swordDemon = new SwordDemon(this, data.enemy);
+                this.swordDemons[data.enemy.id] = swordDemon;
+
+                // Add castle collision to sword demon
                 if (this.castleCollisionLayers) {
                     this.castleCollisionLayers.forEach(layer => {
-                        this.physics.add.collider(wolf.sprite, layer);
+                        this.physics.add.collider(swordDemon.sprite, layer);
+                    });
+                }
+            } else if (data.enemy.type === 'minotaur') {
+                // Skip dead minotaurs
+                if (data.enemy.isAlive === false) {
+                    console.log(`⚰️ Skipping spawning dead minotaur ${data.enemy.id}`);
+                    return;
+                }
+
+                const minotaur = new Minotaur(this, data.enemy);
+                this.minotaurs[data.enemy.id] = minotaur;
+
+                // Add castle collision to minotaur
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(minotaur.sprite, layer);
                     });
                 }
             } else {
@@ -1770,13 +1916,18 @@ class GameScene extends Phaser.Scene {
 
         // DYNAMIC SPAWN SYSTEM: Enemy despawned (region became inactive)
         networkManager.on('enemy:despawned', (data) => {
-            const wolf = this.wolves[data.enemyId];
+            const swordDemon = this.swordDemons[data.enemyId];
+            const minotaur = this.minotaurs[data.enemyId];
             const enemy = this.enemies[data.enemyId];
 
-            if (wolf) {
-                console.log(`🌙 Despawning wolf ${data.enemyId}`);
-                wolf.destroy();
-                delete this.wolves[data.enemyId];
+            if (swordDemon) {
+                console.log(`🌙 Despawning sword demon ${data.enemyId}`);
+                swordDemon.destroy();
+                delete this.swordDemons[data.enemyId];
+            } else if (minotaur) {
+                console.log(`🌙 Despawning minotaur ${data.enemyId}`);
+                minotaur.destroy();
+                delete this.minotaurs[data.enemyId];
             } else if (enemy) {
                 console.log(`🌙 Despawning enemy ${data.enemyId}`);
                 enemy.destroy();
@@ -1786,7 +1937,7 @@ class GameScene extends Phaser.Scene {
 
         // Enemy damaged
         networkManager.on('enemy:damaged', (data) => {
-            const enemy = this.enemies[data.enemyId] || this.wolves[data.enemyId];
+            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId];
             if (enemy) {
                 enemy.takeDamage(data.damage);
             }
@@ -1816,6 +1967,19 @@ class GameScene extends Phaser.Scene {
             const minion = this.minions[data.minionId];
             if (minion) {
                 minion.takeDamage(data.damage);
+            }
+
+            // Trigger attack animation for the attacker
+            if (data.attackerId) {
+                console.log(`🎯 Minion damaged event - attackerId: ${data.attackerId}`);
+                const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId];
+                console.log(`   Found in enemies:`, !!this.enemies[data.attackerId], `Found in swordDemons:`, !!this.swordDemons[data.attackerId], `Found in minotaurs:`, !!this.minotaurs[data.attackerId]);
+                if (attacker && attacker.attack) {
+                    console.log(`   Calling attack() method...`);
+                    attacker.attack();
+                } else {
+                    console.warn(`   ❌ Attacker not found or no attack method`);
+                }
             }
         });
 
@@ -1852,7 +2016,7 @@ class GameScene extends Phaser.Scene {
 
         // Enemy moved
         networkManager.on('enemy:moved', (data) => {
-            const enemy = this.enemies[data.enemyId] || this.wolves[data.enemyId];
+            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId];
 
             // Silently ignore movement for non-existent enemies (likely killed but server still sending updates)
             if (!enemy) {
@@ -1877,11 +2041,19 @@ class GameScene extends Phaser.Scene {
                 // Show damage effect
                 this.cameras.main.shake(100, 0.005);
             }
+
+            // Trigger attack animation for the attacker
+            if (data.attackerId) {
+                const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId];
+                if (attacker && attacker.attack) {
+                    attacker.attack();
+                }
+            }
         });
 
         // Enemy killed
         networkManager.on('enemy:killed', (data) => {
-            const enemy = this.enemies[data.enemyId] || this.wolves[data.enemyId];
+            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId];
             if (enemy) {
                 const deathX = enemy.sprite.x;
                 const deathY = enemy.sprite.y;
@@ -1891,8 +2063,10 @@ class GameScene extends Phaser.Scene {
                 // Delete from correct collection
                 if (this.enemies[data.enemyId]) {
                     delete this.enemies[data.enemyId];
-                } else if (this.wolves[data.enemyId]) {
-                    delete this.wolves[data.enemyId];
+                } else if (this.swordDemons[data.enemyId]) {
+                    delete this.swordDemons[data.enemyId];
+                } else if (this.minotaurs[data.enemyId]) {
+                    delete this.minotaurs[data.enemyId];
                 }
 
                 // Check if killer is Malachar with special passives
@@ -2408,14 +2582,20 @@ class GameScene extends Phaser.Scene {
                 enemy.sprite.destroy();
             }
         });
-        Object.values(this.wolves).forEach(wolf => {
-            if (wolf.sprite) {
-                wolf.sprite.destroy();
+        Object.values(this.swordDemons).forEach(swordDemon => {
+            if (swordDemon.sprite) {
+                swordDemon.sprite.destroy();
+            }
+        });
+        Object.values(this.minotaurs).forEach(minotaur => {
+            if (minotaur.sprite) {
+                minotaur.sprite.destroy();
             }
         });
         this.enemies = {};
-        this.wolves = {};
-        console.log('🧹 Cleared all enemies and wolves');
+        this.swordDemons = {};
+        this.minotaurs = {};
+        console.log('🧹 Cleared all enemies, sword demons, and minotaurs');
     }
 
     healPlayer() {
@@ -2431,12 +2611,7 @@ class GameScene extends Phaser.Scene {
         const minion = new Minion(this, x, y, ownerId, isPermanent, minionId);
         this.minions[minionId] = minion;
 
-        // Add castle collision to minion
-        if (this.castleCollisionLayers) {
-            this.castleCollisionLayers.forEach(layer => {
-                this.physics.add.collider(minion.sprite, layer);
-            });
-        }
+        // DON'T add castle collision to minions - they need to pass through walls to follow player
 
         // INTELLIGENT FORMATION: Assign roles to all minions owned by this player
         // Skip if this is a batch spawn (will be called manually after)
@@ -2889,10 +3064,17 @@ class GameScene extends Phaser.Scene {
 
         // PERFORMANCE: Removed diagnostic logging and FPS counter (saves performance)
 
-        // Update minions
-        Object.values(this.minions).forEach(minion => {
+        // Update minions and cleanup dead ones
+        Object.keys(this.minions).forEach(minionId => {
+            const minion = this.minions[minionId];
             if (minion.isAlive) {
                 minion.update();
+            } else {
+                // Clean up dead minion if sprite is destroyed
+                if (!minion.sprite || !minion.sprite.active) {
+                    delete this.minions[minionId];
+                    console.log(`🧹 Cleaned up dead minion: ${minionId.slice(0, 8)}`);
+                }
             }
         });
 
@@ -2903,10 +3085,17 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        // Update wolves
-        Object.values(this.wolves).forEach(wolf => {
-            if (wolf.isAlive) {
-                wolf.update();
+        // Update sword demons
+        Object.values(this.swordDemons).forEach(swordDemon => {
+            if (swordDemon.isAlive) {
+                swordDemon.update();
+            }
+        });
+
+        // Update minotaurs
+        Object.values(this.minotaurs).forEach(minotaur => {
+            if (minotaur.isAlive) {
+                minotaur.update();
             }
         });
 

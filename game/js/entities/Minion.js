@@ -26,15 +26,15 @@ class Minion {
 
         // AI state
         this.target = null;
-        this.followDistance = 450; // Maximum distance from owner before returning
-        this.seekRadius = 400; // How far to look for enemies
+        this.followDistance = 250; // Maximum distance from owner before returning (REDUCED - stay on screen)
+        this.seekRadius = 200; // How far to look for enemies (REDUCED)
 
         // State machine
         this.state = 'idle'; // idle, patrolling, seeking, attacking, following
 
         // Aggro management
         this.aggroedEnemies = new Set(); // Track enemies currently targeting this minion
-        this.maxAggro = Phaser.Math.Between(3, 5); // Random 3-5 enemy limit per minion
+        this.maxAggro = Phaser.Math.Between(1, 2); // Random 1-2 enemy limit per minion
 
         // INTELLIGENT FORMATION SYSTEM
         this.role = null; // Assigned in setFormationRole()
@@ -73,13 +73,12 @@ class Minion {
         // Play idle animation
         this.sprite.play('minion_idle');
 
-        // Health bar only (no glow, no label - cleanest look)
-        this.healthBarBg = this.scene.add.rectangle(x, y - 18, 24, 3, 0x000000);
-        this.healthBarBg.setDepth(2); // Same depth as sprite
-        this.healthBar = this.scene.add.rectangle(x, y - 18, 24, 3, 0x8B008B);
-        this.healthBar.setDepth(2); // Same depth as sprite
-
-        this.updateHealthBar();
+        // Health bars removed for cleaner visuals
+        // this.healthBarBg = this.scene.add.rectangle(x, y - 18, 24, 3, 0x000000);
+        // this.healthBarBg.setDepth(2);
+        // this.healthBar = this.scene.add.rectangle(x, y - 18, 24, 3, 0x8B008B);
+        // this.healthBar.setDepth(2);
+        // this.updateHealthBar();
     }
 
     // INTELLIGENT FORMATION: Assign role to this minion
@@ -107,32 +106,32 @@ class Minion {
         // Current role starts as base role (may change based on health)
         this.role = this.baseRole;
 
-        // Set role-specific stats
+        // Set role-specific stats - STAY ON SCREEN, SLOW MOVEMENT
         switch(this.baseRole) {
             case 'scout':
-                this.patrolDistance = 180; // Far ahead
-                this.vigilanceRadius = 500; // Wide vision
+                this.patrolDistance = 80; // Reduced from 180 - stay closer
+                this.vigilanceRadius = 150; // Reduced from 200
                 this.protectionPriority = 1;
-                this.moveSpeed = 280; // Fast
+                this.moveSpeed = 140; // SLOWED from 280
                 break;
             case 'flank_left':
             case 'flank_right':
-                this.patrolDistance = 120; // Sides
-                this.vigilanceRadius = 400;
+                this.patrolDistance = 60; // Reduced from 120 - stay closer
+                this.vigilanceRadius = 140; // Reduced from 180
                 this.protectionPriority = 2;
-                this.moveSpeed = 250;
+                this.moveSpeed = 130; // SLOWED from 250
                 break;
             case 'rear_guard':
-                this.patrolDistance = -100; // Behind player
-                this.vigilanceRadius = 350;
+                this.patrolDistance = -60; // Reduced from -100 - stay closer
+                this.vigilanceRadius = 130; // Reduced from 160
                 this.protectionPriority = 3;
-                this.moveSpeed = 240;
+                this.moveSpeed = 120; // SLOWED from 240
                 break;
             case 'bodyguard':
-                this.patrolDistance = 50; // Close to player
-                this.vigilanceRadius = 300;
+                this.patrolDistance = 40; // Reduced from 50 - stay very close
+                this.vigilanceRadius = 120; // Reduced from 150
                 this.protectionPriority = 5; // Highest - always protect player
-                this.moveSpeed = 260;
+                this.moveSpeed = 130; // SLOWED from 260
                 break;
         }
 
@@ -351,78 +350,29 @@ class Minion {
             owner.sprite.y
         );
 
-        // Priority 1: Return to owner if too far away
-        if (distanceToOwner > this.followDistance) {
+        // Simple AI: Spread out in front of player, attack closest enemies to self
+
+        // Priority 1: If too far from owner, return
+        if (distanceToOwner > 450) {
             this.state = 'following';
+            this.target = null;
             this.returnToOwner(owner);
             return;
         }
 
-        // TACTICAL ARMY AI: Update health status
-        this.updateHealthStatus();
+        // Priority 2: Look for enemies near THIS minion
+        const enemy = this.findNearestEnemyToSelf(250); // Search within 250px of THIS minion
 
-        // TACTICAL ARMY AI: Check if we should help an ally
-        // Only help if WE are healthy (>60% HP) - injured minions focus on survival
-        const allyNeedingHelp = this.findAllyNeedingHelp();
-        const healthPercent = this.health / this.maxHealth;
-        if (allyNeedingHelp && healthPercent > 0.6) {
-            this.state = 'assisting';
-            this.assistAlly(allyNeedingHelp);
-            return;
-        }
-
-        // FORMATION V2: Using new function name to force cache break
-        this.formationPosition = this.calculateFormationPositionV2(owner);
-
-        // DEBUG: Log if formation position is invalid
-        if (!this.role) {
-            console.warn(`⚠️ Minion ${this.minionId.slice(0,10)} has NO ROLE assigned! (formationIndex: ${this.formationIndex})`);
-            return; // Don't move until role is assigned
-        }
-
-        // Priority 2: Detect threats and enter combat mode
-        const nearbyThreats = this.detectThreats();
-        this.combatMode = nearbyThreats.length > 0;
-
-        // TACTICAL ARMY AI: If injured/critical, modify behavior
-        if (this.isCritical) {
-            // Critical health: retreat to safety, only fight if threatened directly
-            const closestThreat = nearbyThreats.length > 0 ? nearbyThreats[0] : null;
-            if (closestThreat && closestThreat.distance < 150) {
-                // Defend ourselves if enemy too close
-                this.target = closestThreat.enemy;
-                this.state = 'defending';
-                this.attackEnemy(this.target);
-            } else {
-                // Retreat to rear position
-                this.state = 'retreating';
-                this.retreatToSafety(owner);
-            }
-            return;
-        }
-
-        // Priority 3: Find target (smart selection based on health)
-        this.target = this.selectSmartTarget(nearbyThreats);
-
-        if (this.target) {
+        if (enemy) {
+            // Found an enemy close to ME - attack it
             this.state = 'attacking';
-            this.attackEnemy(this.target);
+            this.target = enemy;
+            this.attackEnemy(enemy);
         } else {
-            // Priority 4: Move to formation position
+            // No enemies - spread out in front of player
             this.state = 'patrolling';
-
-            // DEBUG: Log formation state occasionally
-            if (Math.random() < 0.005) { // 0.5% chance
-                console.log(`📍 ${this.role} patrolling to formation: (${this.formationPosition.x.toFixed(0)}, ${this.formationPosition.y.toFixed(0)}), current: (${this.sprite.x.toFixed(0)}, ${this.sprite.y.toFixed(0)})`);
-            }
-
-            this.moveToFormationPosition();
-        }
-
-        // DIAGNOSTIC: Log if AI update is slow
-        const aiTime = performance.now() - aiStart;
-        if (aiTime > 5) {
-            console.warn(`⚠️ SLOW MINION AI: ${aiTime.toFixed(1)}ms (state: ${this.state}, permanent: ${this.isPermanent})`);
+            this.target = null;
+            this.leadPlayer(owner);
         }
     }
 
@@ -431,7 +381,7 @@ class Minion {
         if (this.aggroedEnemies.size >= this.maxAggro) {
             // Already tanking max enemies, only target ones we're already fighting
             const alreadyTargeted = Array.from(this.aggroedEnemies)
-                .map(id => this.scene.enemies[id] || this.scene.wolves[id])
+                .map(id => this.scene.enemies[id] || this.scene.swordDemons[id])
                 .filter(e => e && e.isAlive);
 
             if (alreadyTargeted.length > 0) {
@@ -441,10 +391,10 @@ class Minion {
             }
         }
 
-        // Combine both enemies and wolves
+        // Combine both enemies and sword demons
         const allEnemies = [
             ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.wolves || {})
+            ...Object.values(this.scene.swordDemons || {})
         ];
 
         if (allEnemies.length === 0) {
@@ -480,7 +430,7 @@ class Minion {
     detectThreats() {
         const allEnemies = [
             ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.wolves || {})
+            ...Object.values(this.scene.swordDemons || {})
         ];
 
         const threats = [];
@@ -512,7 +462,7 @@ class Minion {
         // Check if at aggro limit
         if (this.aggroedEnemies.size >= this.maxAggro) {
             const currentTargets = Array.from(this.aggroedEnemies)
-                .map(id => this.scene.enemies[id] || this.scene.wolves[id])
+                .map(id => this.scene.enemies[id] || this.scene.swordDemons[id])
                 .filter(e => e && e.isAlive);
 
             if (currentTargets.length > 0) {
@@ -944,6 +894,111 @@ class Minion {
         }
     }
 
+    findNearestEnemyToSelf(searchRadius) {
+        // Find enemies closest to THIS minion, not the player
+        const allEnemies = [
+            ...Object.values(this.scene.enemies || {}),
+            ...Object.values(this.scene.swordDemons || {})
+        ];
+
+        if (allEnemies.length === 0) return null;
+
+        let nearestEnemy = null;
+        let nearestDistSquared = searchRadius * searchRadius;
+
+        for (const enemy of allEnemies) {
+            if (!enemy.isAlive) continue;
+
+            // Distance from THIS minion to enemy
+            const dx = this.sprite.x - enemy.sprite.x;
+            const dy = this.sprite.y - enemy.sprite.y;
+            const distSquared = dx * dx + dy * dy;
+
+            if (distSquared < nearestDistSquared) {
+                nearestDistSquared = distSquared;
+                nearestEnemy = enemy;
+            }
+        }
+
+        return nearestEnemy;
+    }
+
+    leadPlayer(owner) {
+        // Get all minions belonging to same owner
+        const ownerMinions = Object.values(this.scene.minions || {})
+            .filter(m => m.ownerId === this.ownerId && m.isAlive)
+            .sort((a, b) => a.minionId.localeCompare(b.minionId)); // Consistent ordering
+
+        const myIndex = ownerMinions.findIndex(m => m === this);
+        const totalMinions = ownerMinions.length;
+
+        if (myIndex === -1 || totalMinions === 0) return;
+
+        // Calculate player movement direction
+        let moveAngle = 0;
+        if (owner.sprite.body && (owner.sprite.body.velocity.x !== 0 || owner.sprite.body.velocity.y !== 0)) {
+            moveAngle = Math.atan2(owner.sprite.body.velocity.y, owner.sprite.body.velocity.x);
+        } else {
+            // Player not moving - use last known direction or face right
+            moveAngle = owner.lastMoveAngle || 0;
+        }
+
+        // Save player's move angle for when they stop
+        if (owner.sprite.body && (owner.sprite.body.velocity.x !== 0 || owner.sprite.body.velocity.y !== 0)) {
+            owner.lastMoveAngle = moveAngle;
+        }
+
+        // Spread minions in a line perpendicular to movement direction
+        const spreadDistance = 80; // Distance between minions
+        const leadDistance = 120; // Distance ahead of player
+
+        // Calculate perpendicular angle (90 degrees from movement)
+        const perpAngle = moveAngle + Math.PI / 2;
+
+        // Center the spread around the player's forward position
+        const centerOffset = -(totalMinions - 1) * spreadDistance / 2;
+        const myOffset = centerOffset + (myIndex * spreadDistance);
+
+        // Position: ahead of player + spread to the side
+        const targetX = owner.sprite.x + Math.cos(moveAngle) * leadDistance + Math.cos(perpAngle) * myOffset;
+        const targetY = owner.sprite.y + Math.sin(moveAngle) * leadDistance + Math.sin(perpAngle) * myOffset;
+
+        // Move toward target position
+        const dist = Phaser.Math.Distance.Between(
+            this.sprite.x,
+            this.sprite.y,
+            targetX,
+            targetY
+        );
+
+        if (dist > 15) {
+            const angle = Phaser.Math.Angle.Between(
+                this.sprite.x,
+                this.sprite.y,
+                targetX,
+                targetY
+            );
+
+            this.sprite.body.setVelocity(
+                Math.cos(angle) * this.moveSpeed,
+                Math.sin(angle) * this.moveSpeed
+            );
+
+            // Play walk animation
+            if (this.sprite.anims.currentAnim?.key !== 'minion_walk') {
+                this.sprite.play('minion_walk');
+            }
+        } else {
+            // At position - slow down
+            this.sprite.body.setVelocity(0, 0);
+
+            // Play idle animation
+            if (this.sprite.anims.currentAnim?.key !== 'minion_idle') {
+                this.sprite.play('minion_idle');
+            }
+        }
+    }
+
     attackEnemy(enemy) {
         // Check if enemy is still alive
         if (!enemy.isAlive) {
@@ -1069,6 +1124,28 @@ class Minion {
             onComplete: () => attackLine.destroy()
         });
 
+        // Calculate total damage with buffs
+        let totalDamage = this.damage;
+
+        // Apply damage buffs (from Command Bolt, etc.)
+        if (this.damageBuffs && this.damageBuffs.length > 0) {
+            const now = Date.now();
+            // Remove expired buffs
+            this.damageBuffs = this.damageBuffs.filter(buff => buff.endTime > now);
+
+            // Calculate total buff bonus
+            let totalBonus = 0;
+            this.damageBuffs.forEach(buff => {
+                totalBonus += buff.bonus;
+            });
+
+            totalDamage = Math.floor(this.damage * (1 + totalBonus));
+
+            if (totalBonus > 0) {
+                console.log(`💥 Minion ${this.minionId.slice(0, 8)}: ${this.damage} → ${totalDamage} (+${(totalBonus * 100).toFixed(0)}% buff)`);
+            }
+        }
+
         // Deal damage to enemy (emit to server)
         // Send minion ID and position so server knows aggro should go to minion, not owner
         if (enemy.data && enemy.data.id) {
@@ -1076,7 +1153,7 @@ class Minion {
                 x: Math.floor(this.sprite.x / 32), // Convert to grid coordinates
                 y: Math.floor(this.sprite.y / 32)
             };
-            networkManager.hitEnemy(enemy.data.id, this.damage, this.minionId, minionPosition);
+            networkManager.hitEnemy(enemy.data.id, totalDamage, this.minionId, minionPosition);
         }
     }
 
@@ -1121,8 +1198,9 @@ class Minion {
     }
 
     updateHealthBar() {
-        const healthPercent = this.health / this.maxHealth;
-        this.healthBar.width = 24 * healthPercent;
+        // Health bars removed - no longer updating
+        // const healthPercent = this.health / this.maxHealth;
+        // this.healthBar.width = 24 * healthPercent;
     }
 
     die() {
@@ -1138,7 +1216,7 @@ class Minion {
 
         // Death animation - fade out
         this.scene.tweens.add({
-            targets: [this.sprite, this.healthBar, this.healthBarBg],
+            targets: [this.sprite],
             alpha: 0,
             scale: 0.5,
             duration: 300,
@@ -1157,7 +1235,7 @@ class Minion {
         // INTELLIGENT FORMATION: Update remaining minions' formations
         const ownerId = this.ownerId;
         this.scene.tweens.add({
-            targets: [this.sprite, this.healthBar, this.healthBarBg],
+            targets: [this.sprite],
             alpha: 0,
             duration: 500,
             ease: 'Power2',
@@ -1194,15 +1272,15 @@ class Minion {
 
         // PERFORMANCE: Only update UI positions every 5 frames (~83ms at 60fps)
         // This saves massive performance with many minions
-        this.uiUpdateCounter++;
-        if (this.uiUpdateCounter >= this.uiUpdateInterval) {
-            this.uiUpdateCounter = 0;
-
-            if (this.sprite && this.sprite.active) {
-                this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 18);
-                this.healthBar.setPosition(this.sprite.x - (24 - this.healthBar.width) / 2, this.sprite.y - 18);
-            }
-        }
+        // Health bar updates removed - no longer needed
+        // this.uiUpdateCounter++;
+        // if (this.uiUpdateCounter >= this.uiUpdateInterval) {
+        //     this.uiUpdateCounter = 0;
+        //     if (this.sprite && this.sprite.active) {
+        //         this.healthBarBg.setPosition(this.sprite.x, this.sprite.y - 18);
+        //         this.healthBar.setPosition(this.sprite.x - (24 - this.healthBar.width) / 2, this.sprite.y - 18);
+        //     }
+        // }
     }
 
     sendPositionUpdate() {
@@ -1221,7 +1299,8 @@ class Minion {
         }
 
         if (this.sprite) this.sprite.destroy();
-        if (this.healthBar) this.healthBar.destroy();
-        if (this.healthBarBg) this.healthBarBg.destroy();
+        // Health bars removed - no longer destroyed
+        // if (this.healthBar) this.healthBar.destroy();
+        // if (this.healthBarBg) this.healthBarBg.destroy();
     }
 }

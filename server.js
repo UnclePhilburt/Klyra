@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
     cors: {
-        origin: ["https://klyra.lol", "http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500"],
+        origin: ["https://klyra.lol", "http://localhost:3001", "http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500"],
         methods: ["GET", "POST"],
         credentials: true
     },
@@ -21,7 +21,10 @@ const io = socketIO(server, {
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+// Serve static game files
+app.use(express.static('game'));
+
+const PORT = process.env.PORT || 3001;
 
 // Game constants
 const MAX_PLAYERS_PER_LOBBY = 10;
@@ -349,9 +352,9 @@ class Lobby {
         const variants = {
             small: {
                 scale: 0.7,
-                health: 20,
-                maxHealth: 20,
-                damage: 6,
+                health: 100,
+                maxHealth: 100,
+                damage: 3,
                 speed: 70,
                 sightRange: 12,
                 glowColor: 0xff6666, // Light red
@@ -359,9 +362,9 @@ class Lobby {
             },
             normal: {
                 scale: 1.0,
-                health: 30,
-                maxHealth: 30,
-                damage: 10,
+                health: 150,
+                maxHealth: 150,
+                damage: 5,
                 speed: 80,
                 sightRange: 15,
                 glowColor: 0xff0000, // Red
@@ -369,9 +372,9 @@ class Lobby {
             },
             boss: {
                 scale: 1.5,
-                health: 60,
-                maxHealth: 60,
-                damage: 20,
+                health: 300,
+                maxHealth: 300,
+                damage: 10,
                 speed: 90,
                 sightRange: 20,
                 glowColor: 0xff0066, // Dark pink/red
@@ -392,6 +395,52 @@ class Lobby {
             scale: stats.scale,
             glowColor: stats.glowColor,
             glowSize: stats.glowSize,
+            isAlive: true,
+            sightRange: stats.sightRange,
+            lastMove: 0
+        };
+    }
+
+    // Create minotaur with variant stats
+    createMinotaurVariant(variant, baseId, position) {
+        const variants = {
+            small: {
+                scale: 0.8,
+                health: 150,
+                maxHealth: 150,
+                damage: 8,
+                speed: 50,
+                sightRange: 10
+            },
+            normal: {
+                scale: 1.0,
+                health: 250,
+                maxHealth: 250,
+                damage: 12,
+                speed: 60,
+                sightRange: 12
+            },
+            boss: {
+                scale: 1.3,
+                health: 400,
+                maxHealth: 400,
+                damage: 18,
+                speed: 70,
+                sightRange: 15
+            }
+        };
+
+        const stats = variants[variant];
+        return {
+            id: baseId,
+            type: 'minotaur',
+            variant: variant,
+            position: position,
+            health: stats.health,
+            maxHealth: stats.maxHealth,
+            damage: stats.damage,
+            speed: stats.speed,
+            scale: stats.scale,
             isAlive: true,
             sightRange: stats.sightRange,
             lastMove: 0
@@ -420,6 +469,7 @@ class Lobby {
         // Calculate distance from world center (spawn point)
         const worldCenterX = this.WORLD_SIZE / 2;
         const worldCenterY = this.WORLD_SIZE / 2;
+        const safeZoneRadius = 30; // Safe zone around spawn
         const regionCenterX = regionX * REGION_SIZE + REGION_SIZE / 2;
         const regionCenterY = regionY * REGION_SIZE + REGION_SIZE / 2;
         const distanceFromSpawn = Math.sqrt(
@@ -433,25 +483,25 @@ class Lobby {
         let maxPackSize = 2;
         let bossChance = 0;
 
-        if (distanceFromSpawn < 50) {
-            // Very close to spawn: Lots of tiny packs - 8-12 packs, 1-2 wolves each
+        if (distanceFromSpawn < 80) {
+            // Near spawn (30-80 tiles): Lots of tiny packs - 8-12 packs, 1-2 wolves each
             packsToSpawn = 8 + Math.floor(Math.random() * 5); // 8-12 packs
             minPackSize = 1;
             maxPackSize = 2;
             bossChance = 0;
-        } else if (distanceFromSpawn < 100) {
+        } else if (distanceFromSpawn < 150) {
             // Close to spawn: Many small packs - 6-8 packs, 1-3 wolves
             packsToSpawn = 6 + Math.floor(Math.random() * 3); // 6-8 packs
             minPackSize = 1;
             maxPackSize = 3;
             bossChance = 0.02;
-        } else if (distanceFromSpawn < 200) {
+        } else if (distanceFromSpawn < 250) {
             // Medium distance: More packs - 5-7 packs, 2-3 wolves, 5% boss
             packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
             minPackSize = 2;
             maxPackSize = 3;
             bossChance = 0.05;
-        } else if (distanceFromSpawn < 400) {
+        } else if (distanceFromSpawn < 450) {
             // Far: Many packs - 4-6 packs, 2-3 wolves, 12% boss
             packsToSpawn = 4 + Math.floor(Math.random() * 3); // 4-6 packs
             minPackSize = 2;
@@ -482,8 +532,7 @@ class Lobby {
             const packX = regionX * REGION_SIZE + Math.floor(this.seededRandom(packSeed + 1) * REGION_SIZE);
             const packY = regionY * REGION_SIZE + Math.floor(this.seededRandom(packSeed + 2) * REGION_SIZE);
 
-            // Check if pack location is in safe zone (MUCH SMALLER NOW)
-            const safeZoneRadius = 10; // Reduced from 25 to 10
+            // Check if pack location is in safe zone
             const isInSafeZone = (
                 packX >= (worldCenterX - safeZoneRadius) &&
                 packX < (worldCenterX + safeZoneRadius) &&
@@ -538,6 +587,96 @@ class Lobby {
         }
 
         console.log(`✨ Spawned ${newEnemies.length} wolves in ${packsToSpawn} pack(s) at region (${regionX}, ${regionY}) [Distance: ${Math.floor(distanceFromSpawn)}]`);
+
+        // Spawn minotaurs in forested areas (1-2 groups per region)
+        const minotaurGroupsToSpawn = distanceFromSpawn > 100 ? (Math.random() < 0.6 ? 1 : 2) : 0;
+        let minotaurBossChance = 0;
+        let minMinotaurGroupSize = 1;
+        let maxMinotaurGroupSize = 2;
+
+        if (distanceFromSpawn < 200) {
+            // Close to spawn: Small minotaur groups, no boss
+            minotaurBossChance = 0;
+            minMinotaurGroupSize = 1;
+            maxMinotaurGroupSize = 2;
+        } else if (distanceFromSpawn < 400) {
+            // Medium distance: Medium groups, small boss chance
+            minotaurBossChance = 0.08;
+            minMinotaurGroupSize = 1;
+            maxMinotaurGroupSize = 3;
+        } else {
+            // Far from spawn: Larger groups, higher boss chance
+            minotaurBossChance = 0.15;
+            minMinotaurGroupSize = 2;
+            maxMinotaurGroupSize = 3;
+        }
+
+        for (let groupIndex = 0; groupIndex < minotaurGroupsToSpawn; groupIndex++) {
+            const groupSeed = regionSeed + 50000 + groupIndex * 20000;
+
+            // Determine group size
+            const groupSize = Math.floor(
+                minMinotaurGroupSize + this.seededRandom(groupSeed) * (maxMinotaurGroupSize - minMinotaurGroupSize + 1)
+            );
+
+            // Choose group location in region (prefer forested tiles)
+            const groupX = regionX * REGION_SIZE + Math.floor(this.seededRandom(groupSeed + 1) * REGION_SIZE);
+            const groupY = regionY * REGION_SIZE + Math.floor(this.seededRandom(groupSeed + 2) * REGION_SIZE);
+
+            // Check if in safe zone
+            const isInSafeZone = (
+                groupX >= (worldCenterX - safeZoneRadius) &&
+                groupX < (worldCenterX + safeZoneRadius) &&
+                groupY >= (worldCenterY - safeZoneRadius) &&
+                groupY < (worldCenterY + safeZoneRadius)
+            );
+
+            if (isInSafeZone) continue;
+
+            // Decide if this group has a boss
+            const hasBoss = this.seededRandom(groupSeed + 3) < minotaurBossChance;
+            let bossSpawned = false;
+
+            // Spawn minotaurs in group
+            for (let i = 0; i < groupSize; i++) {
+                const minotaurSeed = groupSeed + i * 100;
+
+                // Position minotaurs in cluster (within 4 tiles of group center)
+                const offsetX = Math.floor((this.seededRandom(minotaurSeed + 10) - 0.5) * 8);
+                const offsetY = Math.floor((this.seededRandom(minotaurSeed + 11) - 0.5) * 8);
+                const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, groupX + offsetX));
+                const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, groupY + offsetY));
+
+                // Determine minotaur variant
+                let variant = 'normal';
+
+                if (hasBoss && !bossSpawned && i === 0) {
+                    variant = 'boss';
+                    bossSpawned = true;
+                } else if (distanceFromSpawn < 250) {
+                    // Close to spawn: mix of small and normal
+                    variant = this.seededRandom(minotaurSeed + 20) < 0.5 ? 'small' : 'normal';
+                } else {
+                    // Far from spawn: all normal (except boss)
+                    variant = 'normal';
+                }
+
+                const minotaurId = `${this.id}_minotaur_${regionKey}_g${groupIndex}_${i}`;
+                const minotaur = this.createMinotaurVariant(variant, minotaurId, { x, y });
+
+                // Track which region this minotaur belongs to
+                minotaur.regionKey = regionKey;
+                this.regionEnemies.get(regionKey).add(minotaur.id);
+
+                this.gameState.enemies.push(minotaur);
+                newEnemies.push(minotaur);
+            }
+        }
+
+        if (minotaurGroupsToSpawn > 0) {
+            console.log(`🐂 Spawned minotaurs in ${minotaurGroupsToSpawn} group(s) at region (${regionX}, ${regionY})`);
+        }
+
         return newEnemies;
     }
 

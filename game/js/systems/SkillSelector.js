@@ -610,6 +610,12 @@ class SkillSelector {
             const selectionCount = this.selectedSkills.filter(s => s.id === skill.id).length;
             const isFirstTimeSelecting = selectionCount === 1; // First time if count is exactly 1
 
+            console.log(`  🔍 Minion spawn check:`);
+            console.log(`    - startingMinions: ${skill.stats.startingMinions}`);
+            console.log(`    - selectionCount: ${selectionCount}`);
+            console.log(`    - isFirstTimeSelecting: ${isFirstTimeSelecting}`);
+            console.log(`    - player sprite exists: ${!!player.sprite}`);
+
             if (skill.stats.startingMinions !== undefined && isFirstTimeSelecting) {
                 console.log(`  🔮 First time selecting ${skill.name} - Spawning ${skill.stats.startingMinions} starting minions`);
 
@@ -641,6 +647,9 @@ class SkillSelector {
         if (skill.autoAttack) {
             player.autoAttackConfig = skill.autoAttack;
             console.log(`  🎯 Auto-attack: ${skill.autoAttack.name}`);
+            console.log(`  ✅ autoAttackConfig stored on player:`, player.autoAttackConfig);
+        } else {
+            console.log(`  ⚠️ No autoAttack property on skill`);
         }
 
         // Store Q/E/R abilities

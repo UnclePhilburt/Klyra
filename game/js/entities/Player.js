@@ -124,6 +124,8 @@ class Player {
     // ==================== COMBAT ====================
 
     attack(targetX, targetY) {
+        console.log(`🎯 ATTACK CALLED - autoAttackConfig:`, this.autoAttackConfig ? this.autoAttackConfig.name : 'NONE');
+
         this.spriteRenderer.animateAttack(targetX, targetY);
 
         // Safety check
@@ -154,16 +156,53 @@ class Player {
             }
         });
 
-        // Malachar (Bone Commander spec) heals minions with auto attacks
-        if (this.class === 'malachar' && this.scene.selectedCharacter === 'bone_commander') {
-            this.healNearestMinion();
+        // Execute auto-attack based on skill configuration
+        if (this.autoAttackConfig) {
+            console.log(`🎯 Auto-attack triggered: ${this.autoAttackConfig.name}`);
+            this.executeAutoAttack();
+        } else {
+            console.log(`⚠️ No autoAttackConfig set for player`);
         }
     }
 
-    healNearestMinion() {
+    executeAutoAttack() {
+        const config = this.autoAttackConfig;
+        if (!config) {
+            console.log(`❌ executeAutoAttack called but config is missing`);
+            return;
+        }
+
+        // Check cooldown
+        const now = Date.now();
+        if (this.lastAutoAttackTime && (now - this.lastAutoAttackTime) < (config.cooldown || 1000)) {
+            console.log(`⏱️ Auto-attack on cooldown`);
+            return; // Still on cooldown
+        }
+
+        this.lastAutoAttackTime = now;
+
+        // Handle different auto-attack types
+        if (config.target === 'minion_or_ally') {
+            // Command Bolt: Buff nearest minion OR ally
+            console.log(`🔮 Executing Command Bolt`);
+            this.commandBolt();
+        } else if (config.target === 'enemy') {
+            // Already handled by normal attack damage above
+            console.log(`⚔️ ${config.name}: ${config.damage} damage`);
+        } else {
+            console.log(`❓ Unknown auto-attack target: ${config.target}`);
+        }
+    }
+
+    commandBolt() {
+        console.log(`🔍 Looking for minions to buff...`);
+
         // Find nearest minion owned by this player
         let nearestMinion = null;
         let nearestDistance = Infinity;
+        const range = this.autoAttackConfig.range * GameConfig.GAME.TILE_SIZE || 10 * GameConfig.GAME.TILE_SIZE;
+
+        console.log(`  Range: ${range} pixels, Total minions in scene: ${Object.keys(this.scene.minions).length}`);
 
         Object.values(this.scene.minions).forEach(minion => {
             if (minion.ownerId === this.data.id && minion.isAlive) {
@@ -171,29 +210,64 @@ class Player {
                 const dy = minion.sprite.y - this.spriteRenderer.sprite.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance < nearestDistance) {
+                if (distance < nearestDistance && distance <= range) {
                     nearestDistance = distance;
                     nearestMinion = minion;
                 }
             }
         });
 
-        // Heal the nearest minion
+        console.log(`  Found minions owned by me: ${Object.values(this.scene.minions).filter(m => m.ownerId === this.data.id).length}`);
+        console.log(`  Nearest minion: ${nearestMinion ? nearestMinion.minionId.slice(0, 8) : 'NONE'}, distance: ${nearestDistance}`);
+
+        // Buff the nearest minion
         if (nearestMinion) {
-            // Send heal request to server
-            networkManager.socket.emit('minion:heal', {
-                minionId: nearestMinion.data.id,
-                healAmount: 15, // From MalacharSkills.js autoAttack.heal
-                position: {
-                    x: nearestMinion.sprite.x,
-                    y: nearestMinion.sprite.y
+            console.log(`✅ Buffing minion!`);
+            const buffEffect = this.autoAttackConfig.effects.onMinion;
+            const duration = buffEffect.duration || 3000;
+
+            // Apply damage buff to minion
+            if (!nearestMinion.damageBuffs) nearestMinion.damageBuffs = [];
+
+            const buffId = `command_bolt_${Date.now()}`;
+            const buff = {
+                id: buffId,
+                bonus: buffEffect.damageBonus,
+                endTime: Date.now() + duration
+            };
+
+            nearestMinion.damageBuffs.push(buff);
+
+            // Visual effect - purple/pink glow
+            const glowCircle = this.scene.add.circle(
+                nearestMinion.sprite.x,
+                nearestMinion.sprite.y,
+                30,
+                0x8b5cf6,
+                0.3
+            );
+            glowCircle.setDepth(1);
+
+            this.scene.tweens.add({
+                targets: glowCircle,
+                scaleX: 1.5,
+                scaleY: 1.5,
+                alpha: 0,
+                duration: 500,
+                onComplete: () => glowCircle.destroy()
+            });
+
+            // Remove buff after duration
+            this.scene.time.delayedCall(duration, () => {
+                const index = nearestMinion.damageBuffs.findIndex(b => b.id === buffId);
+                if (index !== -1) {
+                    nearestMinion.damageBuffs.splice(index, 1);
                 }
             });
 
-            // Show visual effect immediately (client prediction)
-            this.scene.showMinionHealEffect(nearestMinion.sprite.x, nearestMinion.sprite.y);
-
-            console.log(`💚 Healing minion ${nearestMinion.data.id} for 15 HP`);
+            console.log(`✨ Command Bolt: Buffed minion ${nearestMinion.minionId.slice(0, 8)} +${(buffEffect.damageBonus * 100).toFixed(0)}% damage for ${duration / 1000}s`);
+        } else {
+            console.log(`❌ No minions found in range to buff`);
         }
     }
 

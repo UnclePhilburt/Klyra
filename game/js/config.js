@@ -1,6 +1,6 @@
 // Game Configuration
 const GameConfig = {
-    SERVER_URL: 'https://klyra-server.onrender.com',
+    SERVER_URL: 'http://localhost:3001',
 
     GAME: {
         WIDTH: 1280,
