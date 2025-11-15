@@ -405,8 +405,20 @@ class Player {
             // Play the bone commander aura animation
             auraSprite.play('bone_commander_aura');
 
+            // Update aura position to follow minion during animation
+            const updateAuraPosition = () => {
+                if (auraSprite && auraSprite.active && nearestMinion && nearestMinion.sprite) {
+                    auraSprite.setPosition(nearestMinion.sprite.x, nearestMinion.sprite.y);
+                    auraSprite.setDepth(nearestMinion.sprite.depth - 1); // Keep behind minion
+                }
+            };
+
+            // Add update listener to follow minion
+            this.scene.events.on('update', updateAuraPosition);
+
             // Destroy sprite after animation completes
             auraSprite.on('animationcomplete', () => {
+                this.scene.events.off('update', updateAuraPosition);
                 auraSprite.destroy();
             });
 
