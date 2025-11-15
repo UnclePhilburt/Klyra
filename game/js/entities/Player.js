@@ -62,6 +62,9 @@ class Player {
             this.spriteRenderer.updateSpritePositions();
         }
 
+        // Update animation state based on movement
+        this.spriteRenderer.updateMovementState(velocityX, velocityY);
+
         // Update weapon rotation for fallback
         if (!this.usingSprite && (velocityX !== 0 || velocityY !== 0)) {
             const angle = Math.atan2(velocityY, velocityX);
@@ -114,18 +117,23 @@ class Player {
         if (!this.lastUpdate || now - this.lastUpdate > 50) {
             this.lastUpdate = now;
             const tileSize = GameConfig.GAME.TILE_SIZE;
-            networkManager.movePlayer({
+            const gridPos = {
                 x: Math.floor(this.sprite.x / tileSize),
                 y: Math.floor(this.sprite.y / tileSize)
-            });
+            };
+
+            // DEBUG: Log position updates occasionally
+            if (Math.random() < 0.05) {
+                console.log(`📍 CLIENT: Sending position (${gridPos.x}, ${gridPos.y}), isAlive=${this.isAlive}`);
+            }
+
+            networkManager.movePlayer(gridPos);
         }
     }
 
     // ==================== COMBAT ====================
 
     attack(targetX, targetY) {
-        console.log(`🎯 ATTACK CALLED - autoAttackConfig:`, this.autoAttackConfig ? this.autoAttackConfig.name : 'NONE');
-
         this.spriteRenderer.animateAttack(targetX, targetY);
 
         // Safety check
@@ -135,10 +143,11 @@ class Player {
         const attackRange = 50; // Attack range in pixels
         const playerPos = { x: this.spriteRenderer.sprite.x, y: this.spriteRenderer.sprite.y };
 
-        // Check all enemies and wolves
+        // Check all enemies (sword demons and minotaurs)
         const allEnemies = [
-            ...Object.values(this.scene.enemies),
-            ...Object.values(this.scene.wolves)
+            ...Object.values(this.scene.enemies || {}),
+            ...Object.values(this.scene.swordDemons || {}),
+            ...Object.values(this.scene.minotaurs || {})
         ];
 
         allEnemies.forEach(enemy => {
@@ -156,26 +165,24 @@ class Player {
             }
         });
 
-        // Execute auto-attack based on skill configuration
-        if (this.autoAttackConfig) {
-            console.log(`🎯 Auto-attack triggered: ${this.autoAttackConfig.name}`);
-            this.executeAutoAttack();
-        } else {
-            console.log(`⚠️ No autoAttackConfig set for player`);
-        }
+        // Note: Auto-attacks now happen automatically in update() loop
+        // No need to trigger manually here
     }
 
     executeAutoAttack() {
+        // Safety check: ensure player sprite exists before attempting auto-attack
+        if (!this.spriteRenderer || !this.spriteRenderer.sprite) {
+            return; // Silently skip until player is ready
+        }
+
         const config = this.autoAttackConfig;
         if (!config) {
-            console.log(`❌ executeAutoAttack called but config is missing`);
-            return;
+            return; // No config, nothing to do
         }
 
         // Check cooldown
         const now = Date.now();
         if (this.lastAutoAttackTime && (now - this.lastAutoAttackTime) < (config.cooldown || 1000)) {
-            console.log(`⏱️ Auto-attack on cooldown`);
             return; // Still on cooldown
         }
 
@@ -184,45 +191,191 @@ class Player {
         // Handle different auto-attack types
         if (config.target === 'minion_or_ally') {
             // Command Bolt: Buff nearest minion OR ally
-            console.log(`🔮 Executing Command Bolt`);
             this.commandBolt();
         } else if (config.target === 'enemy') {
-            // Already handled by normal attack damage above
-            console.log(`⚔️ ${config.name}: ${config.damage} damage`);
-        } else {
-            console.log(`❓ Unknown auto-attack target: ${config.target}`);
+            // Attack nearest enemy
+            this.autoAttackEnemy(config);
+        }
+    }
+
+    autoAttackEnemy(config) {
+        // Find all enemies in front of Kelise within range
+        const range = (config.range || 3) * GameConfig.GAME.TILE_SIZE;
+        const playerPos = { x: this.spriteRenderer.sprite.x, y: this.spriteRenderer.sprite.y };
+
+        // Determine facing direction based on sprite flip
+        const facingLeft = this.spriteRenderer.sprite && this.spriteRenderer.sprite.flipX;
+
+        // Get all enemies
+        const allEnemies = [
+            ...Object.values(this.scene.enemies || {}),
+            ...Object.values(this.scene.swordDemons || {}),
+            ...Object.values(this.scene.minotaurs || {})
+        ];
+
+        const enemiesInFront = [];
+
+        allEnemies.forEach(enemy => {
+            if (!enemy.isAlive || !enemy.sprite) return;
+
+            const dx = enemy.sprite.x - playerPos.x;
+            const dy = enemy.sprite.y - playerPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Check if enemy is within range
+            if (distance > range) return;
+
+            // Check if enemy is in front based on facing direction
+            // Front cone: 120 degrees in the facing direction
+            if (facingLeft && dx >= 0) return; // Facing left but enemy is on right
+            if (!facingLeft && dx <= 0) return; // Facing right but enemy is on left
+
+            enemiesInFront.push(enemy);
+        });
+
+        // Attack all enemies in front
+        if (enemiesInFront.length > 0) {
+            const damage = config.damage || 10;
+
+            // Play attack animation once
+            this.spriteRenderer.playAttackAnimation();
+
+            enemiesInFront.forEach(enemy => {
+                // Stun enemy for 1000ms (1 second)
+                const stunDuration = 1000;
+
+                // Deal damage with stun effect
+                networkManager.hitEnemy(enemy.data.id, damage, this.data.id, playerPos, {
+                    stun: stunDuration,
+                    knockback: {
+                        distance: 50,
+                        sourceX: playerPos.x,
+                        sourceY: playerPos.y
+                    }
+                });
+
+                // Apply client-side stun immediately for responsiveness
+                enemy.isStunned = true;
+                enemy.stunnedUntil = Date.now() + stunDuration;
+
+                // Store velocity before stunning
+                if (enemy.sprite.body) {
+                    enemy.preStunVelocity = {
+                        x: enemy.sprite.body.velocity.x,
+                        y: enemy.sprite.body.velocity.y
+                    };
+                    enemy.sprite.body.setVelocity(0, 0);
+                }
+
+                // Apply client-side knockback immediately for instant feedback
+                // Server will sync the authoritative position
+                const knockbackDistance = 50; // pixels
+                const dx = enemy.sprite.x - playerPos.x;
+                const dy = enemy.sprite.y - playerPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 0 && enemy.sprite) {
+                    const knockbackX = (dx / distance) * knockbackDistance;
+                    const knockbackY = (dy / distance) * knockbackDistance;
+
+                    // Smooth knockback tween
+                    this.scene.tweens.add({
+                        targets: enemy.sprite,
+                        x: enemy.sprite.x + knockbackX,
+                        y: enemy.sprite.y + knockbackY,
+                        duration: 150,
+                        ease: 'Power2',
+                        onComplete: () => {
+                            // Update target positions after tween
+                            if (enemy.setTargetPosition) {
+                                enemy.setTargetPosition(enemy.sprite.x, enemy.sprite.y);
+                            } else if (enemy.targetX !== undefined) {
+                                enemy.targetX = enemy.sprite.x;
+                                enemy.targetY = enemy.sprite.y;
+                            }
+                        }
+                    });
+                }
+
+                // Visual stun indicator - stars/sparkles
+                const stunEffect = this.scene.add.text(
+                    enemy.sprite.x,
+                    enemy.sprite.y - 40,
+                    '★',
+                    {
+                        fontSize: '24px',
+                        color: '#FFFF00'
+                    }
+                );
+                stunEffect.setOrigin(0.5);
+                stunEffect.setDepth(10001);
+
+                this.scene.tweens.add({
+                    targets: stunEffect,
+                    y: enemy.sprite.y - 50,
+                    alpha: 0,
+                    duration: 1000,
+                    onComplete: () => stunEffect.destroy()
+                });
+
+                // Remove stun after duration
+                this.scene.time.delayedCall(stunDuration, () => {
+                    enemy.isStunned = false;
+                    enemy.stunnedUntil = 0;
+                });
+
+                // Visual effect - slash at enemy
+                const slashEffect = this.scene.add.circle(
+                    enemy.sprite.x,
+                    enemy.sprite.y,
+                    20,
+                    0xFF6B9D,
+                    0.6
+                );
+                slashEffect.setDepth(10000);
+
+                this.scene.tweens.add({
+                    targets: slashEffect,
+                    scaleX: 2,
+                    scaleY: 2,
+                    alpha: 0,
+                    duration: 300,
+                    onComplete: () => slashEffect.destroy()
+                });
+            });
+
+            console.log(`⚔️ ${config.name}: ${damage} damage to ${enemiesInFront.length} enemies + knockback`);
         }
     }
 
     commandBolt() {
-        console.log(`🔍 Looking for minions to buff...`);
+        // Safety check: ensure player sprite exists
+        if (!this.spriteRenderer || !this.spriteRenderer.sprite) {
+            return; // Silently skip
+        }
 
         // Find nearest minion owned by this player
         let nearestMinion = null;
         let nearestDistance = Infinity;
         const range = this.autoAttackConfig.range * GameConfig.GAME.TILE_SIZE || 10 * GameConfig.GAME.TILE_SIZE;
 
-        console.log(`  Range: ${range} pixels, Total minions in scene: ${Object.keys(this.scene.minions).length}`);
+        Object.values(this.scene.minions || {}).forEach(minion => {
+            // Safety check: ensure minion and sprite exist
+            if (!minion || !minion.sprite || !minion.isAlive) return;
+            if (minion.ownerId !== this.data.id) return;
 
-        Object.values(this.scene.minions).forEach(minion => {
-            if (minion.ownerId === this.data.id && minion.isAlive) {
-                const dx = minion.sprite.x - this.spriteRenderer.sprite.x;
-                const dy = minion.sprite.y - this.spriteRenderer.sprite.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+            const dx = minion.sprite.x - this.spriteRenderer.sprite.x;
+            const dy = minion.sprite.y - this.spriteRenderer.sprite.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance < nearestDistance && distance <= range) {
-                    nearestDistance = distance;
-                    nearestMinion = minion;
-                }
+            if (distance < nearestDistance && distance <= range) {
+                nearestDistance = distance;
+                nearestMinion = minion;
             }
         });
 
-        console.log(`  Found minions owned by me: ${Object.values(this.scene.minions).filter(m => m.ownerId === this.data.id).length}`);
-        console.log(`  Nearest minion: ${nearestMinion ? nearestMinion.minionId.slice(0, 8) : 'NONE'}, distance: ${nearestDistance}`);
-
         // Buff the nearest minion
-        if (nearestMinion) {
-            console.log(`✅ Buffing minion!`);
+        if (nearestMinion && nearestMinion.sprite) {
             const buffEffect = this.autoAttackConfig.effects.onMinion;
             const duration = buffEffect.duration || 3000;
 
@@ -264,10 +417,6 @@ class Player {
                     nearestMinion.damageBuffs.splice(index, 1);
                 }
             });
-
-            console.log(`✨ Command Bolt: Buffed minion ${nearestMinion.minionId.slice(0, 8)} +${(buffEffect.damageBonus * 100).toFixed(0)}% damage for ${duration / 1000}s`);
-        } else {
-            console.log(`❌ No minions found in range to buff`);
         }
     }
 
@@ -287,11 +436,27 @@ class Player {
         this.ui.updateHealthBar();
     }
 
-    die() {
+    die(killedBy = 'unknown') {
+        // Only die once - prevent multiple death reports
+        if (!this.isAlive) {
+            return; // Already dead
+        }
+
         this.isAlive = false;
 
-        // Death animation
-        this.spriteRenderer.fadeOut(500);
+        // Report death to server
+        if (networkManager && networkManager.connected) {
+            networkManager.reportDeath(killedBy);
+            console.log(`💀 Player died, reporting to server (killed by: ${killedBy})`);
+        } else {
+            console.error('❌ Cannot report death - network manager not connected');
+        }
+
+        // Play death animation
+        this.spriteRenderer.playDeathAnimation();
+
+        // Fade out after animation
+        this.spriteRenderer.fadeOut(1000);
         this.ui.setAlpha(0.5);
     }
 
@@ -317,6 +482,17 @@ class Player {
 
         // Update UI (handles its own position caching)
         this.ui.update(spriteDepth);
+
+        // AUTO-ATTACK: Execute automatically on cooldown
+        if (this.autoAttackConfig) {
+            const now = Date.now();
+            const cooldown = this.autoAttackConfig.cooldown || 1000;
+
+            // Check if cooldown has passed
+            if (!this.lastAutoAttackTime || (now - this.lastAutoAttackTime) >= cooldown) {
+                this.executeAutoAttack();
+            }
+        }
     }
 
     // ==================== CLEANUP ====================

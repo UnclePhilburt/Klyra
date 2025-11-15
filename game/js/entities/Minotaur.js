@@ -192,6 +192,21 @@ class Minotaur {
     update() {
         if (!this.sprite || !this.sprite.active) return;
 
+        // Check if stunned - don't move if stunned
+        if (this.isStunned && Date.now() < this.stunnedUntil) {
+            // Stop physics velocity
+            if (this.sprite.body) {
+                this.sprite.body.setVelocity(0, 0);
+            }
+            return; // Skip movement while stunned
+        }
+
+        // Clear stun flag if expired
+        if (this.isStunned && Date.now() >= this.stunnedUntil) {
+            this.isStunned = false;
+            this.stunnedUntil = 0;
+        }
+
         // Stop physics velocity
         if (this.sprite.body) {
             this.sprite.body.setVelocity(0, 0);
@@ -233,7 +248,7 @@ class Minotaur {
 
             // Flip sprite based on movement direction
             if (Math.abs(dx) > 0.5) {
-                this.sprite.setFlipX(dx > 0);
+                this.sprite.setFlipX(dx < 0);
             }
         }
 

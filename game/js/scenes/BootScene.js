@@ -51,15 +51,40 @@ class BootScene extends Phaser.Scene {
         });
 
         // Load character sprite sheets
-        // Malachar sprite sheet
-        // Actual dimensions: 2720 x 896
-        // User's frame math: 113 - 57 = 56 frames per row
-        // 2720 / 56 = 48.57 per frame slot
-        // Try 48x48 with 1px margin between frames
-        this.load.spritesheet('malachar', 'assets/sprites/malachar.png', {
-            frameWidth: 48,
-            frameHeight: 48,
-            margin: 1,
+        // Kelise sprite sheet (32x32 frames, 1x1 tile character)
+        this.load.spritesheet('kelise', 'assets/sprites/Kelise.png', {
+            frameWidth: 32,
+            frameHeight: 32,
+            margin: 0,
+            spacing: 0
+        });
+
+        // Malachar sprite sheets (individual animation files, all 140x140 frames)
+        this.load.spritesheet('malachar_idle', 'assets/sprites/malachar/Idle.png', {
+            frameWidth: 140,
+            frameHeight: 140,
+            margin: 0,
+            spacing: 0
+        });
+
+        this.load.spritesheet('malachar_walk', 'assets/sprites/malachar/Walk.png', {
+            frameWidth: 140,
+            frameHeight: 140,
+            margin: 0,
+            spacing: 0
+        });
+
+        this.load.spritesheet('malachar_attack', 'assets/sprites/malachar/Attack.png', {
+            frameWidth: 140,
+            frameHeight: 140,
+            margin: 0,
+            spacing: 0
+        });
+
+        this.load.spritesheet('malachar_death', 'assets/sprites/malachar/Death.png', {
+            frameWidth: 140,
+            frameHeight: 140,
+            margin: 0,
             spacing: 0
         });
 
@@ -79,37 +104,85 @@ class BootScene extends Phaser.Scene {
             margin: 0
         });
 
-        console.log('📦 Loading sprite: malachar from assets/sprites/malachar.png');
+        console.log('📦 Loading sprite: kelise from assets/sprites/Kelise.png');
+        console.log('📦 Loading Malachar animations:');
+        console.log('  - Idle (10 frames)');
+        console.log('  - Walk (8 frames)');
+        console.log('  - Attack (13 frames)');
+        console.log('  - Death (18 frames)');
         console.log('📦 Loading sprite: malacharminion from assets/sprites/malacharminion.png');
         console.log('📦 Loading sprite: malacharautoattack from assets/skilleffects/malacharautoattack.png');
 
         // Load music files
         MusicManager.preload(this);
 
-        // Debug: Log spritesheet info after load
-        this.load.once('complete', () => {
-            const texture = this.textures.get('malachar');
-            const frames = texture.getFrameNames();
-
-            // Disable texture smoothing for pixel-perfect rendering
-            texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-
-            console.log('🖼️ Malachar spritesheet loaded:');
-            console.log('  - Total frames:', frames.length);
-            console.log('  - Image size:', texture.source[0].width, 'x', texture.source[0].height);
-            console.log('  - Frames per row:', Math.floor(texture.source[0].width / 64));
-            console.log('  - Texture filtering: NEAREST (pixel-perfect)');
-        });
-
-        console.log('✅ Loaded character sprites: malachar');
-        console.log('💡 Other characters will use colored placeholders');
+        console.log('✅ Loaded character sprites: kelise, malachar');
     }
 
     async create() {
         console.log('🚀 Booting game assets...');
 
-        // Malachar uses manual frame animation (2x2 tile character)
-        // No Phaser animations needed
+        // Create Kelise animations (1x1 character with animated frames)
+        this.anims.create({
+            key: 'kelise_idle',
+            frames: this.anims.generateFrameNumbers('kelise', { start: 0, end: 1 }),
+            frameRate: 4,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'kelise_running',
+            frames: this.anims.generateFrameNumbers('kelise', { start: 24, end: 31 }),
+            frameRate: 12,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'kelise_attack',
+            frames: this.anims.generateFrameNumbers('kelise', { start: 64, end: 71 }),
+            frameRate: 16,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'kelise_death',
+            frames: this.anims.generateFrameNumbers('kelise', { start: 56, end: 63 }),
+            frameRate: 10,
+            repeat: 0
+        });
+
+        console.log('✅ Created Kelise animations: idle (0-1), running (24-31), attack (64-71), death (56-63)');
+
+        // Create Malachar animations (1x1 character with 140x140 frames)
+        this.anims.create({
+            key: 'malachar_idle',
+            frames: this.anims.generateFrameNumbers('malachar_idle', { start: 0, end: 9 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'malachar_walk',
+            frames: this.anims.generateFrameNumbers('malachar_walk', { start: 0, end: 7 }),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'malachar_attack',
+            frames: this.anims.generateFrameNumbers('malachar_attack', { start: 0, end: 12 }),
+            frameRate: 16,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'malachar_death',
+            frames: this.anims.generateFrameNumbers('malachar_death', { start: 0, end: 17 }),
+            frameRate: 10,
+            repeat: 0
+        });
+
+        console.log('✅ Created Malachar animations: idle (10 frames), walk (8 frames), attack (13 frames), death (18 frames)');
 
         // Create minion animations
         // 5 rows x 13 columns, 64x64px

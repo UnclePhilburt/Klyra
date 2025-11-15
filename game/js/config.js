@@ -1,4 +1,4 @@
-// Game Configuration
+// Game Configuration v5.9 - Force cache break
 const GameConfig = {
     SERVER_URL: 'http://localhost:3001',
 

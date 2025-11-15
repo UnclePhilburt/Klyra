@@ -196,6 +196,11 @@ class NetworkManager {
 
         this.socket.on('player:respawned', (data) => {
             console.log(`💚 Player respawned:`, data.playerName);
+
+            // CRITICAL FIX: Reset position tracking on respawn
+            // This ensures the next movement sends absolute position, not delta
+            this.lastPosition = null;
+
             this.emit('player:respawned', data);
         });
 
@@ -223,6 +228,11 @@ class NetworkManager {
     startBatchSender() {
         setInterval(() => {
             if (this.updateQueue.length > 0 && this.connected) {
+                // DEBUG: Log batch sends occasionally
+                if (Math.random() < 0.05) {
+                    console.log(`📦 CLIENT: Sending batch with ${this.updateQueue.length} updates`);
+                }
+
                 // Send all queued updates at once
                 this.socket.emit('batch:update', this.updateQueue);
                 this.updateQueue = [];
@@ -263,8 +273,8 @@ class NetworkManager {
     }
 
     // Hit enemy
-    hitEnemy(enemyId, damage, attackerId = null, attackerPosition = null) {
-        this.socket.emit('enemy:hit', { enemyId, damage, attackerId, attackerPosition });
+    hitEnemy(enemyId, damage, attackerId = null, attackerPosition = null, effects = null) {
+        this.socket.emit('enemy:hit', { enemyId, damage, attackerId, attackerPosition, effects });
     }
 
     // Pick up item

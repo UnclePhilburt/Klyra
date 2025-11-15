@@ -73,8 +73,11 @@ class CharacterSelectManager {
 
     setProgressionSystem(progressionSystem) {
         this.progressionSystem = progressionSystem;
+        console.log('✅ Progression system connected to character select', {
+            hasProgressionSystem: !!this.progressionSystem,
+            selectedChar: this.progressionSystem?.getSelectedCharacter()
+        });
         this.updateSelectedCharacterDisplay();
-        console.log('✅ Progression system connected to character select');
     }
 
     setupEventListeners() {
@@ -284,7 +287,7 @@ class CharacterSelectManager {
 
         const selectedCharacterId = this.progressionSystem
             ? this.progressionSystem.getSelectedCharacter()
-            : 'ALDRIC';
+            : 'MALACHAR';
 
         console.log('🎨 Rendering characters, selected:', selectedCharacterId);
         console.log('📊 Available characters:', Object.keys(this.characters));
@@ -326,14 +329,87 @@ class CharacterSelectManager {
         const visual = document.createElement('div');
         visual.className = 'character-visual';
 
-        // Check if character has avatar image
-        if (char.display.avatar) {
-            const avatarUrl = `url('${char.display.avatar}')`;
-            visual.style.backgroundImage = avatarUrl;
-            visual.style.backgroundSize = 'cover';
-            visual.style.backgroundPosition = 'center';
-            visual.style.imageRendering = 'pixelated';
-            console.log(`      🖼️ Using avatar image: ${avatarUrl}`);
+        // Check if character has sprite sheet to extract frame from
+        if (char.display.avatar && char.sprite) {
+            // Create canvas to render specific sprite frame
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size based on sprite config
+            const frameWidth = char.sprite.frameWidth || 32;
+            const frameHeight = char.sprite.frameHeight || 32;
+            const scale = 4; // Scale up for visibility
+
+            canvas.width = frameWidth * scale;
+            canvas.height = frameHeight * scale;
+            canvas.style.imageRendering = 'pixelated';
+
+            // Load sprite sheet
+            const img = new Image();
+            img.src = char.display.avatar;
+
+            // Animation state
+            let currentFrame = 0;
+            let animationFrames = [0]; // Default to single frame
+
+            // Check if character has idle animation frames
+            if (char.sprite.frames && char.sprite.frames.idle) {
+                const idleFrames = char.sprite.frames.idle;
+                if (idleFrames.start !== undefined && idleFrames.end !== undefined) {
+                    // Generate array of frame numbers from start to end
+                    animationFrames = [];
+                    for (let i = idleFrames.start; i <= idleFrames.end; i++) {
+                        animationFrames.push(i);
+                    }
+                }
+            }
+
+            img.onload = () => {
+                ctx.imageSmoothingEnabled = false;
+
+                // Animation loop
+                const animate = () => {
+                    // Calculate frame position in sprite sheet
+                    const framesPerRow = Math.floor(img.width / frameWidth);
+                    const frameIndex = animationFrames[currentFrame];
+                    const frameX = (frameIndex % framesPerRow) * frameWidth;
+                    const frameY = Math.floor(frameIndex / framesPerRow) * frameHeight;
+
+                    // Clear and draw current frame
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(
+                        img,
+                        frameX, frameY, // Source x, y
+                        frameWidth, frameHeight, // Source width, height
+                        0, 0, // Dest x, y
+                        frameWidth * scale, frameHeight * scale // Dest width, height (scaled)
+                    );
+
+                    // Move to next frame
+                    currentFrame = (currentFrame + 1) % animationFrames.length;
+                };
+
+                // Initial draw
+                animate();
+
+                // Animate if more than one frame
+                if (animationFrames.length > 1) {
+                    setInterval(animate, 250); // 4 fps for idle animation
+                }
+            };
+
+            // Center the canvas in the visual container
+            canvas.style.display = 'block';
+            canvas.style.margin = 'auto';
+            canvas.style.position = 'absolute';
+            canvas.style.top = '50%';
+            canvas.style.left = '50%';
+            canvas.style.transform = 'translate(-50%, -50%)';
+
+            visual.appendChild(canvas);
+            visual.style.position = 'relative';
+            visual.style.overflow = 'hidden';
+            console.log(`      🖼️ Using sprite animation (${animationFrames.length} frames) from: ${char.display.avatar}`);
         } else {
             // Fallback to colored background
             const bgColor = `#${char.display.color.toString(16).padStart(6, '0')}`;
@@ -400,7 +476,18 @@ class CharacterSelectManager {
     selectCharacter(characterId) {
         if (!this.progressionSystem) {
             console.warn('⚠️ No progression system - cannot select character');
-            return;
+            console.log('🔍 Debug info:', {
+                progressionSystemExists: !!this.progressionSystem,
+                windowProgressionSystem: !!window.progressionSystem,
+                characterSelectManager: !!window.characterSelectManager
+            });
+            // Try to recover by getting it from window
+            if (window.progressionSystem) {
+                console.log('🔧 Attempting to reconnect progression system...');
+                this.progressionSystem = window.progressionSystem;
+            } else {
+                return;
+            }
         }
 
         const success = this.progressionSystem.selectCharacter(characterId);
@@ -440,7 +527,7 @@ class CharacterSelectManager {
     }
 
     getSelectedCharacter() {
-        if (!this.progressionSystem) return 'ALDRIC';
+        if (!this.progressionSystem) return 'MALACHAR';
         return this.progressionSystem.getSelectedCharacter();
     }
 }

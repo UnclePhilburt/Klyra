@@ -142,6 +142,17 @@ class Enemy {
     updateInterpolation() {
         if (!this.targetPosition) return;
 
+        // Check if stunned - don't move if stunned
+        if (this.isStunned && Date.now() < this.stunnedUntil) {
+            return; // Skip movement while stunned
+        }
+
+        // Clear stun flag if expired
+        if (this.isStunned && Date.now() >= this.stunnedUntil) {
+            this.isStunned = false;
+            this.stunnedUntil = 0;
+        }
+
         const lerpSpeed = 0.3; // Smooth interpolation (increased from 0.2 for better sync)
         const dx = this.targetPosition.x - this.sprite.x;
         const dy = this.targetPosition.y - this.sprite.y;

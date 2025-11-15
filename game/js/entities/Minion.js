@@ -5,9 +5,9 @@ class Minion {
         this.ownerId = ownerId; // The player who summoned this minion
         this.minionId = minionId; // Unique ID for this minion
         this.isPermanent = isPermanent; // Permanent minions don't despawn
-        this.health = 50;
-        this.maxHealth = 50;
-        this.damage = 15;
+        this.health = 100;
+        this.maxHealth = 100;
+        this.damage = 12;
         this.isAlive = true;
         this.moveSpeed = 240; // Increased from 150 for faster response
         this.attackRange = 100;
@@ -350,17 +350,26 @@ class Minion {
             owner.sprite.y
         );
 
-        // Simple AI: Spread out in front of player, attack closest enemies to self
+        // RETREAT MECHANIC: Minions follow player when they move away
+        // This allows players to save their minions by retreating
 
-        // Priority 1: If too far from owner, return
-        if (distanceToOwner > 450) {
+        // Priority 1: IMMEDIATE retreat if player is very far (lost minion)
+        if (distanceToOwner > 600) {
             this.state = 'following';
             this.target = null;
             this.returnToOwner(owner);
             return;
         }
 
-        // Priority 2: Look for enemies near THIS minion
+        // Priority 2: Standard retreat if too far from player
+        if (distanceToOwner > 350) {
+            this.state = 'following';
+            this.target = null;
+            this.returnToOwner(owner);
+            return;
+        }
+
+        // Priority 4: Look for enemies near THIS minion (only if close to player)
         const enemy = this.findNearestEnemyToSelf(250); // Search within 250px of THIS minion
 
         if (enemy) {

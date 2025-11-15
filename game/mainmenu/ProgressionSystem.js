@@ -7,8 +7,28 @@ class ProgressionSystem {
         this.saveKey = 'klyra_progression';
         this.data = this.loadData();
 
+        // Always ensure KELISE and MALACHAR are unlocked
+        this.ensureDefaultCharactersUnlocked();
+
         console.log('✅ Progression System initialized');
         console.log('📊 Progression data:', this.data);
+    }
+
+    ensureDefaultCharactersUnlocked() {
+        const defaultUnlocked = ['MALACHAR', 'KELISE'];
+        let updated = false;
+
+        for (const charId of defaultUnlocked) {
+            if (!this.data.unlockedCharacters.includes(charId)) {
+                this.data.unlockedCharacters.push(charId);
+                updated = true;
+                console.log(`🔓 Auto-unlocked character: ${charId}`);
+            }
+        }
+
+        if (updated) {
+            this.saveData();
+        }
     }
 
     loadData() {
@@ -28,14 +48,10 @@ class ProgressionSystem {
 
     getDefaultData() {
         return {
-            selectedCharacter: 'ALDRIC',
+            selectedCharacter: 'MALACHAR',
             unlockedCharacters: [
-                'ALDRIC',      // Knight - Unlocked by default
-                'NYX',         // Rogue - Unlocked by default
                 'MALACHAR',    // Necromancer - Unlocked by default
-                'THRAIN',      // Berserker - Unlocked by default
-                'ZEPHIRA',     // Mage - Unlocked by default
-                'HIROSHI'      // Samurai - Unlocked by default
+                'KELISE',      // Warrior - Unlocked by default
             ],
             stats: {
                 totalRuns: 0,
@@ -64,7 +80,7 @@ class ProgressionSystem {
 
     // Character Management
     getSelectedCharacter() {
-        return this.data.selectedCharacter || 'ALDRIC';
+        return this.data.selectedCharacter || 'MALACHAR';
     }
 
     selectCharacter(characterId) {
@@ -191,16 +207,23 @@ class ProgressionSystem {
 const progressionSystem = new ProgressionSystem();
 window.progressionSystem = progressionSystem;
 
-// Connect to character select manager
-if (window.characterSelectManager) {
-    window.characterSelectManager.setProgressionSystem(progressionSystem);
-    console.log('✅ Progression system connected to character select');
-} else {
-    // Wait for character select manager to load
+// Connect to character select manager (try multiple times if needed)
+function connectProgressionSystem() {
+    if (window.characterSelectManager) {
+        window.characterSelectManager.setProgressionSystem(progressionSystem);
+        console.log('✅ Progression system connected to character select');
+        return true;
+    }
+    return false;
+}
+
+// Try immediately
+if (!connectProgressionSystem()) {
+    // Try again after a delay
     setTimeout(() => {
-        if (window.characterSelectManager) {
-            window.characterSelectManager.setProgressionSystem(progressionSystem);
-            console.log('✅ Progression system connected to character select (delayed)');
+        if (!connectProgressionSystem()) {
+            // One more try after a longer delay
+            setTimeout(connectProgressionSystem, 500);
         }
     }, 100);
 }

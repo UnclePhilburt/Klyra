@@ -2,83 +2,67 @@
 // Based on klyra2 character definitions
 
 const CHARACTERS = {
-    ALDRIC: {
-        id: "ALDRIC",
+    KELISE: {
+        id: "KELISE",
         display: {
-            name: "Aldric",
-            description: "Armored defender with unwavering resolve",
-            class: "Tank/Warrior",
-            color: 0x4169E1,
+            name: "Kelise",
+            description: "Swift warrior with deadly precision",
+            class: "Warrior/DPS",
+            color: 0xFF6B9D,
             locked: false,
-            avatar: null  // Will use color fallback
+            avatar: "assets/sprites/Kelise.png"
+        },
+        sprite: {
+            frameWidth: 32,
+            frameHeight: 32,
+            frames: {
+                // Kelise is 1x1 tile (not 2x2 like Malachar)
+                idle: { start: 0, end: 1 },      // Row 0, frames 0-1
+                running: { start: 24, end: 31 }, // Row 3, frames 24-31
+                death: { start: 56, end: 63 },   // Row 7, frames 56-63
+                attack: { start: 64, end: 71 }   // Row 8, frames 64-71
+            },
+            tileSize: 1  // 1x1 character (not 2x2)
         },
         equipment: {
-            startingWeapon: "iron_sword"
+            startingWeapon: "swift_blade"
+        },
+        autoAttack: {
+            name: "Swift Strike",
+            damage: 15,
+            cooldown: 800,  // Fast attack speed for warrior
+            range: 4,       // 4 tiles
+            target: "enemy",
+            effects: {
+                onHit: {
+                    damageBonus: 0
+                }
+            }
         },
         stats: {
             base: {
-                maxHP: 120,
-                damage: 10,
-                moveSpeed: 180,
-                attackSpeed: 1.0,
-                critChance: 0.05,
-                critDamage: 1.5,
-                armor: 10
+                maxHP: 100,
+                damage: 12,
+                moveSpeed: 200,
+                attackSpeed: 1.2,
+                critChance: 0.10,
+                critDamage: 1.8,
+                armor: 5
             },
             growth: {
-                hpPerLevel: 12,
-                damagePerLevel: 2
+                hpPerLevel: 10,
+                damagePerLevel: 2.5
             }
         },
         passives: [
-            { id: "iron_will", name: "Iron Will", description: "Respawn once per run at 25% HP" },
-            { id: "stalwart", name: "Stalwart", description: "Reduce all incoming damage by 3" },
-            { id: "coin_guard", name: "Coin Guard", description: "+20% gold from enemies" }
+            { id: "swift_strikes", name: "Swift Strikes", description: "Auto-attacks strike rapidly" },
+            { id: "momentum", name: "Momentum", description: "+10% damage for each consecutive hit" },
+            { id: "agile", name: "Agile", description: "+20% movement speed" }
         ],
         lore: {
-            title: "The Shield of Hope",
-            background: "Sir Aldric Thornheart, decorated knight of the realm, stands as the last defense against the darkness. His unwavering resolve has saved countless lives.",
-            quote: "While I draw breath, evil shall not pass."
-        }
-    },
-
-    NYX: {
-        id: "NYX",
-        display: {
-            name: "Nyx",
-            description: "Swift assassin who strikes from shadows",
-            class: "Rogue/Assassin",
-            color: 0x228B22,
-            locked: false,
-            avatar: null
-        },
-        equipment: {
-            startingWeapon: "shadow_daggers"
-        },
-        stats: {
-            base: {
-                maxHP: 80,
-                damage: 15,
-                moveSpeed: 220,
-                attackSpeed: 1.5,
-                critChance: 0.20,
-                critDamage: 2.0,
-                armor: 3
-            },
-            growth: {
-                hpPerLevel: 8,
-                damagePerLevel: 3
-            }
-        },
-        passives: [
-            { id: "shadow_step", name: "Shadow Step", description: "First attack after dodge always crits" },
-            { id: "quick_reflexes", name: "Quick Reflexes", description: "20% chance to dodge attacks" },
-            { id: "backstab", name: "Backstab", description: "+50% crit damage" }
-        ],
-        lore: {
-            title: "Shadow's Whisper",
-            background: "Nyx moves through darkness like a phantom, her twin blades claiming enemies before they know she's there. A master of stealth and precision.",
-            quote: "You never see me coming. You only see me leaving."
+            title: "The Swift Blade",
+            background: "Kelise moves like the wind, her blade a blur of deadly precision. Trained in the ancient arts of speed combat, she overwhelms enemies before they can react.",
+            quote: "By the time you see me, it's already over."
         }
     },
 
@@ -90,7 +74,19 @@ const CHARACTERS = {
             class: "Necromancer",
             color: 0x8B008B,
             locked: false,
-            avatar: "assets/sprites/malachar.png"
+            avatar: "assets/sprites/malachar/Idle.png"
+        },
+        sprite: {
+            frameWidth: 140,
+            frameHeight: 140,
+            frames: {
+                // Malachar is now 1x1 tile (like Kelise)
+                idle: { start: 0, end: 9 },      // 10 frames
+                walking: { start: 0, end: 7 },   // 8 frames (uses walk spritesheet)
+                death: { start: 0, end: 17 },    // 18 frames
+                attack: { start: 0, end: 12 }    // 13 frames
+            },
+            tileSize: 1  // 1x1 character
         },
         equipment: {
             startingWeapon: "necro_staff"
@@ -121,141 +117,30 @@ const CHARACTERS = {
             background: "Malachar commands the forces of death itself. Once a noble mage, he embraced forbidden necromancy to save his kingdom - only to become the very thing he fought against.",
             quote: "Death is not the end. It is merely a new beginning under my command."
         }
-    },
-
-    THRAIN: {
-        id: "THRAIN",
-        display: {
-            name: "Thrain",
-            description: "Dwarven berserker with explosive damage",
-            class: "Berserker",
-            color: 0xDC143C,
-            locked: false,
-            avatar: null
-        },
-        equipment: {
-            startingWeapon: "battle_axe"
-        },
-        stats: {
-            base: {
-                maxHP: 100,
-                damage: 18,
-                moveSpeed: 160,
-                attackSpeed: 0.7,
-                critChance: 0.15,
-                critDamage: 1.8,
-                armor: 7
-            },
-            growth: {
-                hpPerLevel: 10,
-                damagePerLevel: 4
-            }
-        },
-        passives: [
-            { id: "rage", name: "Rage", description: "+5% damage per 10% missing HP" },
-            { id: "bloodlust", name: "Bloodlust", description: "Gain attack speed on kill (stacks)" },
-            { id: "tough_skin", name: "Tough Skin", description: "Reduce damage taken by 10%" }
-        ],
-        lore: {
-            title: "The Mountain's Fury",
-            background: "Thrain Ironbeard, last of the Mountain Kings, channels ancestral rage into devastating strikes. Each battle fuels his fury, making him unstoppable.",
-            quote: "You want a fight? I'll give you a war!"
-        }
-    },
-
-    ZEPHIRA: {
-        id: "ZEPHIRA",
-        display: {
-            name: "Zephira",
-            description: "Wind mage with devastating spells",
-            class: "Mage/Sorcerer",
-            color: 0xFF4500,
-            locked: false,
-            avatar: null
-        },
-        equipment: {
-            startingWeapon: "storm_wand"
-        },
-        stats: {
-            base: {
-                maxHP: 60,
-                damage: 20,
-                moveSpeed: 190,
-                attackSpeed: 1.2,
-                critChance: 0.10,
-                critDamage: 2.5,
-                armor: 1
-            },
-            growth: {
-                hpPerLevel: 6,
-                damagePerLevel: 4
-            }
-        },
-        passives: [
-            { id: "glass_cannon", name: "Glass Cannon", description: "+40% damage, -20% HP" },
-            { id: "chain_lightning", name: "Chain Lightning", description: "Attacks bounce to nearby enemies" },
-            { id: "arcane_power", name: "Arcane Power", description: "+15% damage per kill (resets on hit)" }
-        ],
-        lore: {
-            title: "Storm's Daughter",
-            background: "Zephira commands the very winds themselves. Born during a raging tempest, she wields elemental power that few can match - at the cost of her own frailty.",
-            quote: "I am the storm. Witness my fury."
-        }
-    },
-
-    HIROSHI: {
-        id: "HIROSHI",
-        display: {
-            name: "Hiroshi",
-            description: "Exiled blade dancer seeking redemption through the way of the sword",
-            class: "Samurai Swordmaster",
-            color: 0xDC143C,
-            locked: false,
-            avatar: null
-        },
-        equipment: {
-            startingWeapon: "katana"
-        },
-        stats: {
-            base: {
-                maxHP: 100,
-                damage: 18,
-                moveSpeed: 210,
-                attackSpeed: 1.4,
-                critChance: 0.25,
-                critDamage: 2.0,
-                armor: 8
-            },
-            growth: {
-                hpPerLevel: 10,
-                damagePerLevel: 3
-            }
-        },
-        passives: [
-            { id: "blade_dancer", name: "Blade Dancer", description: "Every 3rd attack strikes twice" },
-            { id: "perfect_parry", name: "Perfect Parry", description: "30% chance to reflect damage back" },
-            { id: "way_of_the_sword", name: "Way of the Sword", description: "+10% crit chance, +25% crit damage" }
-        ],
-        lore: {
-            title: "The Exiled Blade",
-            background: "Once a master swordsman of the Imperial Guard, Hiroshi was exiled after refusing a dishonorable order. Now he wanders the realm, seeking redemption through perfect mastery of the blade.",
-            quote: "Honor is not given. It is earned with every swing of the blade."
-        }
     }
 };
 
-const MINIONS = {
-    SKELETON: {
-        id: "SKELETON",
-        display: { name: "Skeleton", color: 0xCCCCCC },
-        stats: { maxHP: 20, damage: 5, moveSpeed: 140, attackSpeed: 1.0 }
-    }
-};
-
-// Export for custom menu system
-if (typeof window !== 'undefined') {
-    window.CharacterSystem = {
-        CHARACTERS: CHARACTERS,
-        MINIONS: MINIONS
-    };
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { CHARACTERS };
 }
+
+// Make available globally
+window.CharacterSystem = {
+    CHARACTERS: CHARACTERS, // Uppercase for compatibility with CharacterSelectManager
+    characters: CHARACTERS, // Keep lowercase for backwards compatibility
+
+    getCharacter(id) {
+        return CHARACTERS[id] || null;
+    },
+
+    getAllCharacters() {
+        return Object.values(CHARACTERS);
+    },
+
+    getUnlockedCharacters() {
+        return Object.values(CHARACTERS).filter(char => !char.display.locked);
+    }
+};
+
+console.log('✅ Character System Loaded:', Object.keys(CHARACTERS).length, 'characters');

@@ -165,16 +165,18 @@
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
     <!-- Character System (Load First!) -->
-    <script src="js/config/characters.js?v=2.1"></script>
+    <script src="js/config/characters.js?v=3.0"></script>
     <script src="js/config/MalacharSkills.js?v=2.4"></script>
 
     <!-- Game Scripts -->
-    <script src="js/config.js?v=2.0"></script>
+    <script src="js/config.js?v=5.9"></script>
     <script src="diagnostic.js"></script>
     <script src="js/utils/Debug.js"></script>
     <script src="js/utils/MinionDebug.js?v=1.3"></script>
     <script src="js/utils/BiomeGenerator.js?v=2.0"></script>
     <script src="js/utils/MobileControls.js?v=2.0"></script>
+    <!-- Load MainMenu before ScreenManager since ScreenManager depends on it -->
+    <script src="mainmenu/mainmenu.js?v=5.0"></script>
     <script src="js/managers/ScreenManager.js"></script>
     <script src="js/managers/NetworkManager.js?v=3.0"></script>
     <script src="js/managers/MusicManager.js?v=5.0"></script>
@@ -182,11 +184,11 @@
     <!-- Player Modules (Load before Player.js) -->
     <script src="js/entities/PlayerSprite.js?v=2.1"></script>
     <script src="js/entities/PlayerUI.js?v=2.3"></script>
-    <script src="js/entities/Player.js?v=5.4"></script>
+    <script src="js/entities/Player.js?v=5.9"></script>
     <script src="js/entities/Enemy.js?v=5.0"></script>
-    <script src="js/entities/SwordDemon.js?v=1.9"></script>
-    <script src="js/entities/Minotaur.js?v=1.0"></script>
-    <script src="js/entities/Minion.js?v=9.0"></script>
+    <script src="js/entities/SwordDemon.js?v=2.0"></script>
+    <script src="js/entities/Minotaur.js?v=1.1"></script>
+    <script src="js/entities/Minion.js?v=9.2">
     <script src="js/entities/Item.js?v=2.0"></script>
     <!-- UI System -->
     <script src="js/ui/ModernHUD.js?v=3.1"></script>
@@ -204,7 +206,7 @@
     <script src="js/main.js"></script>
 
     <!-- Custom Menu System -->
-    <script src="mainmenu/mainmenu.js?v=5.0"></script>
+    <!-- mainmenu.js already loaded earlier before ScreenManager -->
     <script src="mainmenu/ProgressionSystem.js"></script>
     <script src="mainmenu/CharacterSelectManager.js"></script>
 

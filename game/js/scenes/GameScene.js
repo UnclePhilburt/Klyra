@@ -365,6 +365,13 @@ class GameScene extends Phaser.Scene {
             this.localPlayer = new Player(this, myData, true);
             this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.1, 0.1);
 
+            // Set character's default auto-attack if available
+            const characterDef = CHARACTERS[myData.class];
+            if (characterDef && characterDef.autoAttack) {
+                this.localPlayer.autoAttackConfig = characterDef.autoAttack;
+                console.log(`⚔️ Auto-attack enabled: ${characterDef.autoAttack.name}`);
+            }
+
             // Initialize Ally Manager (detects nearby players for co-op abilities)
             this.allyManager = new AllyManager(this);
             console.log('✅ AllyManager initialized');
@@ -1763,13 +1770,31 @@ class GameScene extends Phaser.Scene {
 
         // Player died
         networkManager.on('player:died', (data) => {
+            // Handle other players dying
             const player = this.otherPlayers[data.playerId];
             if (player) {
                 player.die();
             }
-            if (data.playerId === networkManager.currentPlayer.id) {
-                console.log('💀 You died! Resetting to level 1...');
-                this.localPlayer.die();
+
+            // Handle local player death (server says we died)
+            if (data.playerId === networkManager.currentPlayer.id && this.localPlayer) {
+                console.log('💀 Server says we died - processing death...');
+
+                // Set health to 0 and mark as dead
+                this.localPlayer.health = 0;
+                this.localPlayer.isAlive = false;
+
+                // Play death animation
+                if (this.localPlayer.spriteRenderer) {
+                    this.localPlayer.spriteRenderer.playDeathAnimation();
+                    this.localPlayer.spriteRenderer.fadeOut(1000);
+                }
+
+                // Fade UI
+                if (this.localPlayer.ui) {
+                    this.localPlayer.ui.setAlpha(0.5);
+                    this.localPlayer.ui.updateHealthBar();
+                }
 
                 // Clear all permanent minions
                 Object.keys(this.minions).forEach(minionId => {
@@ -1784,16 +1809,25 @@ class GameScene extends Phaser.Scene {
                 if (this.skillSelector) {
                     this.skillSelector.selectedSkills = [];
                 }
+
+                console.log('💀 Death processed - awaiting respawn in 3 seconds...');
             }
         });
 
         // Player respawned after death
         networkManager.on('player:respawned', (data) => {
-            if (data.playerId === networkManager.currentPlayer.id) {
-                console.log('♻️ Respawning at spawn point - Level 1');
+            console.log('📨 Received player:respawned event:', data);
 
-                // Restore player from server state
-                this.restorePlayerFromDeath(data);
+            if (data.playerId === networkManager.currentPlayer.id || data.id === networkManager.currentPlayer.id) {
+                console.log('♻️ Respawning local player at spawn point - Level 1');
+
+                try {
+                    // Restore player from server state
+                    this.restorePlayerFromDeath(data);
+                    console.log('✅ Respawn complete');
+                } catch (error) {
+                    console.error('❌ Error during respawn:', error);
+                }
             } else {
                 // Other player respawned
                 const player = this.otherPlayers[data.playerId];
@@ -2038,6 +2072,8 @@ class GameScene extends Phaser.Scene {
         networkManager.on('player:damaged', (data) => {
             if (data.playerId === networkManager.currentPlayer.id && this.localPlayer) {
                 this.localPlayer.health = data.health;
+                this.localPlayer.ui.updateHealthBar();
+
                 // Show damage effect
                 this.cameras.main.shake(100, 0.005);
             }
@@ -2773,7 +2809,14 @@ class GameScene extends Phaser.Scene {
         player.experience = playerData.experience || 0;
         player.health = playerData.health;
         player.maxHealth = playerData.maxHealth;
-        player.stats = playerData.stats;
+        player.stats = playerData.stats || {
+            strength: 10,
+            agility: 10,
+            intelligence: 10,
+            vitality: 10,
+            damage: 10,
+            armor: 5
+        };
 
         // Clear all multipliers (reset to defaults)
         if (this.skillSelector) {
@@ -2781,17 +2824,57 @@ class GameScene extends Phaser.Scene {
         }
 
         // Teleport to respawn position
-        if (playerData.respawnPosition) {
-            const pixelX = playerData.respawnPosition.x * this.tileSize + this.tileSize / 2;
-            const pixelY = playerData.respawnPosition.y * this.tileSize + this.tileSize / 2;
+        const respawnPos = playerData.respawnPosition || playerData.position;
+        if (respawnPos) {
+            const tileSize = GameConfig.GAME.TILE_SIZE;
+            const pixelX = respawnPos.x * tileSize + tileSize / 2;
+            const pixelY = respawnPos.y * tileSize + tileSize / 2;
 
-            player.sprite.setPosition(pixelX, pixelY);
-            player.sprite.setAlpha(1);
+            console.log(`🎯 Teleporting to (${respawnPos.x}, ${respawnPos.y}) = pixels (${pixelX}, ${pixelY})`);
+
+            // Update physics body position (this is the actual player position)
+            player.sprite.x = pixelX;
+            player.sprite.y = pixelY;
+            player.sprite.body.setVelocity(0, 0);
+
+            console.log(`✅ Physics body moved to (${player.sprite.x}, ${player.sprite.y})`);
+
+            // Restore visual sprites - make all elements visible again
+            if (player.spriteRenderer) {
+                const targets = player.spriteRenderer.getVisualTargets();
+                targets.forEach(target => {
+                    if (target) {
+                        target.setAlpha(1);
+                        target.setVisible(true);
+                    }
+                });
+
+                // Update sprite positions
+                if (player.usingSprite) {
+                    player.spriteRenderer.updateSpritePositions();
+                }
+
+                // Play idle animation
+                if (player.spriteRenderer.is1x1 && player.spriteRenderer.sprite) {
+                    const textureKey = player.class.toLowerCase();
+                    const idleAnimKey = `${textureKey}_idle`;
+                    if (this.anims.exists(idleAnimKey)) {
+                        player.spriteRenderer.sprite.play(idleAnimKey);
+                    }
+                }
+            }
+
+            // Restore UI visibility
+            if (player.ui) {
+                player.ui.setAlpha(1);
+            }
 
             // Center camera on respawn point
             this.cameras.main.centerOn(pixelX, pixelY);
+            this.cameras.main.startFollow(player.sprite);
 
-            console.log(`📍 Respawned at (${playerData.respawnPosition.x}, ${playerData.respawnPosition.y})`);
+            console.log(`📍 Respawned at (${respawnPos.x}, ${respawnPos.y})`);
+            console.log(`📷 Camera at (${this.cameras.main.scrollX}, ${this.cameras.main.scrollY})`);
 
             // Starting minions are now handled by skill tree path selection
         }
@@ -2799,10 +2882,15 @@ class GameScene extends Phaser.Scene {
         // Update UI
         if (player.ui) {
             player.ui.updateHealthBar();
-            player.ui.updateLevel();
+        }
+
+        // Force an update to ensure everything is rendered
+        if (player.spriteRenderer && player.usingSprite) {
+            player.spriteRenderer.updateSpritePositions();
         }
 
         console.log('✅ Death restoration complete - Fresh start!');
+        console.log(`   Player at (${player.sprite.x}, ${player.sprite.y}), alive: ${player.isAlive}, health: ${player.health}/${player.maxHealth}`);
     }
 
     // ==================== MAP TRANSITION SYSTEM ====================

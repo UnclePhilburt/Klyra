@@ -964,6 +964,17 @@ class Lobby {
         this.gameState.enemies.forEach(enemy => {
             if (!enemy.isAlive) return;
 
+            // Check if stunned - skip movement if stunned
+            if (enemy.isStunned && now < enemy.stunnedUntil) {
+                return; // Skip this enemy's update while stunned
+            }
+
+            // Clear stun flag if expired
+            if (enemy.isStunned && now >= enemy.stunnedUntil) {
+                enemy.isStunned = false;
+                enemy.stunnedUntil = 0;
+            }
+
             // Update every 100ms
             if (now - enemy.lastMove < 100) return;
             enemy.lastMove = now;
@@ -1031,7 +1042,13 @@ class Lobby {
             const sightRangeSquared = enemy.sightRange * enemy.sightRange; // PERFORMANCE: Squared comparison
 
             this.players.forEach(player => {
-                if (!player.isAlive) return;
+                if (!player.isAlive) {
+                    // DEBUG: Log if we're skipping a dead player
+                    if (Math.random() < 0.01) {
+                        console.log(`⚠️ Enemy ${enemy.id} skipping dead player ${player.username}`);
+                    }
+                    return;
+                }
 
                 // PERFORMANCE: Use squared distance (avoid expensive sqrt)
                 const dx = player.position.x - enemy.position.x;
@@ -1041,6 +1058,12 @@ class Lobby {
                 // Check if player is within sight range OR has aggro (enemy remembers them)
                 const hasAggro = enemy.aggro && enemy.aggro.has(player.id);
                 const inSightRange = distSquared <= sightRangeSquared;
+
+                // DEBUG: Log targeting checks occasionally
+                if (Math.random() < 0.01) {
+                    const dist = Math.sqrt(distSquared);
+                    console.log(`🎯 Enemy ${enemy.id} checking ${player.username}: alive=${player.isAlive}, dist=${dist.toFixed(1)}, sightRange=${enemy.sightRange}, hasAggro=${!!hasAggro}, inSight=${inSightRange}`);
+                }
 
                 if (!hasAggro && !inSightRange) {
                     return; // Player is too far and hasn't attacked this enemy
@@ -1141,11 +1164,76 @@ class Lobby {
                             damageTarget.health = 0;
                             damageTarget.deaths++;
 
+                            console.log(`💀 ${damageTarget.username} died - resetting to level 1`);
+
+                            // FULL RESET - Roguelike death penalty
+                            damageTarget.level = 1;
+                            damageTarget.experience = 0;
+                            damageTarget.selectedSkills = [];
+                            damageTarget.permanentMinions = [];
+
+                            // Reset stats to class defaults
+                            damageTarget.stats = damageTarget.getClassStats(damageTarget.class);
+                            damageTarget.health = damageTarget.maxHealth;
+
+                            // Reset all multipliers
+                            damageTarget.initializeMultipliers();
+
+                            // Respawn at spawn point (center of world)
+                            const worldCenter = Math.floor(this.WORLD_SIZE / 2);
+                            damageTarget.position = {
+                                x: worldCenter,
+                                y: worldCenter
+                            };
+
+                            console.log(`♻️ ${damageTarget.username} reset: Level ${damageTarget.level}, Health ${damageTarget.health}/${damageTarget.maxHealth}`);
+
+                            // Clear aggro from all enemies
+                            this.gameState.enemies.forEach(e => {
+                                if (e.aggro && e.aggro.has(damageTarget.id)) {
+                                    e.aggro.delete(damageTarget.id);
+                                }
+                            });
+
                             this.broadcast('player:died', {
                                 playerId: damageTarget.id,
                                 playerName: damageTarget.username,
-                                killedBy: enemy.id
+                                killedBy: enemy.id,
+                                position: damageTarget.position
                             });
+
+                            // After death animation, send respawn data
+                            setTimeout(() => {
+                                damageTarget.isAlive = true;
+                                damageTarget.justRespawned = true; // DEBUG FLAG
+
+                                console.log(`♻️ ${damageTarget.username} respawned at (${damageTarget.position.x}, ${damageTarget.position.y}), isAlive=${damageTarget.isAlive}`);
+
+                                // Find the player's socket
+                                const playerSocket = Array.from(io.sockets.sockets.values())
+                                    .find(s => players.get(s.id)?.id === damageTarget.id);
+
+                                if (playerSocket) {
+                                    playerSocket.emit('player:respawned', {
+                                        ...damageTarget.toJSON(),
+                                        respawnPosition: damageTarget.position
+                                    });
+                                }
+
+                                this.broadcast('player:respawned', {
+                                    playerId: damageTarget.id,
+                                    playerName: damageTarget.username,
+                                    position: damageTarget.position,
+                                    health: damageTarget.health,
+                                    maxHealth: damageTarget.maxHealth,
+                                    level: damageTarget.level
+                                });
+
+                                // Clear flag after 5 seconds
+                                setTimeout(() => {
+                                    damageTarget.justRespawned = false;
+                                }, 5000);
+                            }, 3000); // 3 second death delay
                         } else {
                             this.broadcast('player:damaged', {
                                 playerId: damageTarget.id,
@@ -1322,6 +1410,11 @@ io.on('connection', (socket) => {
             const lobby = lobbies.get(player.lobbyId);
             if (!lobby || lobby.status !== 'active') return;
 
+            // DEBUG: Log batch updates after respawn
+            if (player.justRespawned && updates.some(u => u.type === 'move')) {
+                console.log(`📦 BATCH: Received ${updates.length} updates from ${player.username}, processing...`);
+            }
+
             // Process each update in the batch
             updates.forEach(update => {
                 if (update.type === 'move') {
@@ -1331,6 +1424,12 @@ io.on('connection', (socket) => {
                         player.position.y += update.data.delta.y;
                     } else if (update.data.position) {
                         player.position = update.data.position;
+                    }
+
+                    // DEBUG: Log position updates after respawn
+                    if (player.justRespawned) {
+                        console.log(`📍 POST-RESPAWN (BATCH): ${player.username} moved to (${player.position.x}, ${player.position.y}), isAlive=${player.isAlive}, delta=${!!update.data.delta}`);
+                        player.justRespawned = false; // Only log first move
                     }
 
                     // Validate position
@@ -1394,6 +1493,12 @@ io.on('connection', (socket) => {
             if (!player.hasLoggedPosition) {
                 console.log(`📍 Received initial position for ${player.username}: (${data.position.x}, ${data.position.y})`);
                 player.hasLoggedPosition = true;
+            }
+
+            // DEBUG: Log position updates after respawn
+            if (player.justRespawned) {
+                console.log(`📍 POST-RESPAWN: ${player.username} moved to (${data.position.x}, ${data.position.y}), isAlive=${player.isAlive}`);
+                player.justRespawned = false; // Only log first move
             }
 
             player.position = data.position;
@@ -1479,6 +1584,45 @@ io.on('connection', (socket) => {
             enemy.health -= damage;
             player.updateActivity();
 
+            // Apply effects (stun, knockback, etc.)
+            if (data.effects) {
+                if (data.effects.stun) {
+                    enemy.isStunned = true;
+                    enemy.stunnedUntil = Date.now() + data.effects.stun;
+                }
+                if (data.effects.knockback && enemy.position) {
+                    // Convert pixel positions to tile positions
+                    const sourceX = data.effects.knockback.sourceX / 32;
+                    const sourceY = data.effects.knockback.sourceY / 32;
+
+                    const dx = enemy.position.x - sourceX;
+                    const dy = enemy.position.y - sourceY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance > 0) {
+                        const knockbackTiles = data.effects.knockback.distance / 32;
+                        const oldX = enemy.position.x;
+                        const oldY = enemy.position.y;
+
+                        enemy.position.x += (dx / distance) * knockbackTiles;
+                        enemy.position.y += (dy / distance) * knockbackTiles;
+
+                        // Mark when knockback happened to prevent immediate position updates
+                        enemy.lastKnockback = Date.now();
+
+                        // Broadcast the knockback position immediately (in tiles, not pixels)
+                        lobby.broadcast('enemy:moved', {
+                            enemyId: enemy.id,
+                            position: {
+                                x: enemy.position.x,
+                                y: enemy.position.y
+                            },
+                            isStunned: enemy.isStunned
+                        });
+                    }
+                }
+            }
+
             // Add aggro for the attacker (could be player or minion)
             const attackerId = data.attackerId || player.id;
             if (!enemy.aggro) enemy.aggro = new Map();
@@ -1541,7 +1685,8 @@ io.on('connection', (socket) => {
                     enemyId: data.enemyId,
                     health: enemy.health,
                     maxHealth: enemy.maxHealth,
-                    damage: damage
+                    damage: damage,
+                    effects: data.effects
                 });
             }
         } catch (error) {

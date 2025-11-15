@@ -34,7 +34,7 @@ game.connect = async function(username) {
         // Get selected character from CharacterSelectManager
         const selectedCharacter = window.characterSelectManager
             ? window.characterSelectManager.getSelectedCharacter()
-            : 'ALDRIC';
+            : 'MALACHAR';
 
         console.log('⚔️ Selected character:', selectedCharacter);
 
