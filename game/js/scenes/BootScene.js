@@ -111,7 +111,13 @@ class BootScene extends Phaser.Scene {
         console.log('  - Attack (13 frames)');
         console.log('  - Death (18 frames)');
         console.log('📦 Loading sprite: malacharminion from assets/sprites/malacharminion.png');
-        console.log('📦 Loading sprite: malacharautoattack from assets/skilleffects/malacharautoattack.png');
+
+        // Load bone commander auto-attack aura (row 1, tiles 10-18, 9 frames)
+        this.load.spritesheet('autoattackbonecommander', 'assets/sprites/malachar/autoattackbonecommander.png', {
+            frameWidth: 140,
+            frameHeight: 140
+        });
+        console.log('📦 Loading sprite: autoattackbonecommander (bone commander aura)');
 
         // Load music files
         MusicManager.preload(this);
@@ -219,8 +225,17 @@ class BootScene extends Phaser.Scene {
             repeat: 0 // Play once
         });
 
+        // Bone Commander aura effect (row 1, tiles 10-18 = frames 10-18, 9 frames)
+        this.anims.create({
+            key: 'bone_commander_aura',
+            frames: this.anims.generateFrameNumbers('autoattackbonecommander', { start: 10, end: 18 }),
+            frameRate: 12,
+            repeat: 0 // Play once
+        });
+
         console.log('✅ Created minion animations: idle (frames 39-42), walk (frames 26-37), attack (frames 0-12)');
         console.log('✅ Created Malachar heal attack animation: (row 2, frames 30-44)');
+        console.log('✅ Created Bone Commander aura animation: (row 1, frames 10-18)');
 
         // Don't connect to server - custom menu handles that
         // Just load assets and wait for custom menu to call game.connect()

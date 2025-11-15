@@ -391,23 +391,23 @@ class Player {
 
             nearestMinion.damageBuffs.push(buff);
 
-            // Visual effect - purple/pink glow
-            const glowCircle = this.scene.add.circle(
+            // Visual effect - Bone Commander aura animation
+            const auraSprite = this.scene.add.sprite(
                 nearestMinion.sprite.x,
                 nearestMinion.sprite.y,
-                30,
-                0x8b5cf6,
-                0.3
+                'autoattackbonecommander'
             );
-            glowCircle.setDepth(1);
+            auraSprite.setOrigin(0.5, 0.5);
+            auraSprite.setScale(0.5); // Scale down to fit under minion
+            auraSprite.setDepth(nearestMinion.sprite.depth - 1); // Behind minion
+            auraSprite.setAlpha(0.8);
 
-            this.scene.tweens.add({
-                targets: glowCircle,
-                scaleX: 1.5,
-                scaleY: 1.5,
-                alpha: 0,
-                duration: 500,
-                onComplete: () => glowCircle.destroy()
+            // Play the bone commander aura animation
+            auraSprite.play('bone_commander_aura');
+
+            // Destroy sprite after animation completes
+            auraSprite.on('animationcomplete', () => {
+                auraSprite.destroy();
             });
 
             // Remove buff after duration
