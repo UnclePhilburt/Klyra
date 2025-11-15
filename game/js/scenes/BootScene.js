@@ -112,10 +112,10 @@ class BootScene extends Phaser.Scene {
         console.log('  - Death (18 frames)');
         console.log('📦 Loading sprite: malacharminion from assets/sprites/malacharminion.png');
 
-        // Load bone commander auto-attack aura (row 1, tiles 10-18, 9 frames)
+        // Load bone commander auto-attack aura (9 frames, 64x64px each)
         this.load.spritesheet('autoattackbonecommander', 'assets/sprites/malachar/autoattackbonecommander.png', {
-            frameWidth: 140,
-            frameHeight: 140
+            frameWidth: 64,
+            frameHeight: 64
         });
         console.log('📦 Loading sprite: autoattackbonecommander (bone commander aura)');
 
@@ -225,10 +225,12 @@ class BootScene extends Phaser.Scene {
             repeat: 0 // Play once
         });
 
-        // Bone Commander aura effect (row 1, tiles 10-18 = frames 10-18, 9 frames)
+        // Bone Commander aura effect (row 1, tiles 10-18, 9 frames)
+        // Assuming 15 columns per row: row 1 starts at frame 15
+        // Tiles 10-18 on row 1 would be frames 0-8 if it's the only row in the sheet
         this.anims.create({
             key: 'bone_commander_aura',
-            frames: this.anims.generateFrameNumbers('autoattackbonecommander', { start: 10, end: 18 }),
+            frames: this.anims.generateFrameNumbers('autoattackbonecommander', { start: 0, end: 8 }),
             frameRate: 12,
             repeat: 0 // Play once
         });

@@ -398,7 +398,7 @@ class Player {
                 'autoattackbonecommander'
             );
             auraSprite.setOrigin(0.5, 0.5);
-            auraSprite.setScale(0.5); // Scale down to fit under minion
+            auraSprite.setScale(1.0); // 64x64 sprite fits nicely under minion
             auraSprite.setDepth(nearestMinion.sprite.depth - 1); // Behind minion
             auraSprite.setAlpha(0.8);
 
