@@ -505,6 +505,21 @@ class GameScene extends Phaser.Scene {
             this.items[itemData.id] = new Item(this, itemData);
         });
 
+        // Create existing minions from other players
+        if (this.gameData.minions && this.gameData.minions.length > 0) {
+            console.log(`🔮 Spawning ${this.gameData.minions.length} existing minions from other players`);
+            this.gameData.minions.forEach(minionData => {
+                // Don't spawn our own minions (they'll be spawned by our own commands)
+                if (minionData.ownerId !== networkManager.currentPlayer.id) {
+                    const tileSize = GameConfig.GAME.TILE_SIZE;
+                    const x = minionData.position.x * tileSize + tileSize / 2;
+                    const y = minionData.position.y * tileSize + tileSize / 2;
+                    this.spawnMinion(x, y, minionData.ownerId, minionData.isPermanent, minionData.id);
+                    console.log(`🔮 Spawned existing minion ${minionData.id} for player ${minionData.ownerId}`);
+                }
+            });
+        }
+
         // Setup UI
         this.createUI();
 

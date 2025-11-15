@@ -1378,6 +1378,11 @@ io.on('connection', (socket) => {
                 }
             }
 
+            // Convert minions Map to array for transmission
+            const minionsArray = lobby.gameState.minions
+                ? Array.from(lobby.gameState.minions.values())
+                : [];
+
             socket.emit('game:start', {
                 lobbyId: lobby.id,
                 player: player.toJSON(),
@@ -1386,7 +1391,8 @@ io.on('connection', (socket) => {
                 world: worldData,
                 difficulty: lobby.difficulty,
                 playerCount: lobby.players.size,
-                maxPlayers: lobby.maxPlayers
+                maxPlayers: lobby.maxPlayers,
+                minions: minionsArray  // Send existing minions to new player
             });
 
             // Notify others that a new player joined the active game
