@@ -225,12 +225,11 @@ class BootScene extends Phaser.Scene {
             repeat: 0 // Play once
         });
 
-        // Bone Commander aura effect (row 1, tiles 10-18, 9 frames)
-        // Assuming 15 columns per row: row 1 starts at frame 15
-        // Tiles 10-18 on row 1 would be frames 0-8 if it's the only row in the sheet
+        // Bone Commander aura effect (row 1, tiles 0-8, 9 frames)
+        // 10 sprites per row, row 1 starts at frame 10
         this.anims.create({
             key: 'bone_commander_aura',
-            frames: this.anims.generateFrameNumbers('autoattackbonecommander', { start: 0, end: 8 }),
+            frames: this.anims.generateFrameNumbers('autoattackbonecommander', { start: 10, end: 18 }),
             frameRate: 12,
             repeat: 0 // Play once
         });
