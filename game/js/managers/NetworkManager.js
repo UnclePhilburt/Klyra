@@ -314,6 +314,16 @@ class NetworkManager {
         this.socket.emit('minion:permanent', { minionId, action });
     }
 
+    // Request minion spawn from server (server-authoritative)
+    requestMinionSpawn(minionId, position, isPermanent) {
+        this.socket.emit('minion:requestSpawn', {
+            minionId,
+            position,
+            isPermanent
+        });
+        console.log(`🔮 Requested minion spawn: ${minionId} at (${position.x}, ${position.y})`);
+    }
+
     // Request skill restoration from server
     requestSkillRestore() {
         this.socket.emit('skills:requestRestore');

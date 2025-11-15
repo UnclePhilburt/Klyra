@@ -1967,6 +1967,45 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle minion spawn requests (server-authoritative)
+    socket.on('minion:requestSpawn', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby || lobby.status !== 'active') return;
+
+            const { position, isPermanent, minionId } = data;
+
+            // Add to permanent minions tracking
+            if (isPermanent && !player.permanentMinions.includes(minionId)) {
+                player.permanentMinions.push(minionId);
+            }
+
+            // Add to game state
+            lobby.gameState.minions.set(minionId, {
+                id: minionId,
+                position: position,
+                ownerId: player.id,
+                isPermanent: isPermanent || false,
+                lastUpdate: Date.now()
+            });
+
+            // Broadcast spawn to ALL players in lobby (including requester)
+            lobby.broadcast('minion:spawned', {
+                minionId: minionId,
+                position: position,
+                ownerId: player.id,
+                isPermanent: isPermanent || false
+            });
+
+            console.log(`🔮 ${player.username} spawned minion ${minionId} (permanent: ${isPermanent})`);
+        } catch (error) {
+            console.error('Error in minion:requestSpawn:', error);
+        }
+    });
+
     // Request skill restoration (on reconnect/respawn)
     socket.on('skills:requestRestore', () => {
         try {

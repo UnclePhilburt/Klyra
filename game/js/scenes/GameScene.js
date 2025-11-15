@@ -2659,6 +2659,20 @@ class GameScene extends Phaser.Scene {
     spawnMinion(x, y, ownerId, isPermanent = false, providedMinionId = null, skipFormationUpdate = false) {
         // Use provided ID if spawning from network, otherwise generate new one
         const minionId = providedMinionId || `minion_${this.minionIdCounter++}`;
+
+        // If this is a local player spawn (no provided ID), request from server instead
+        if (!providedMinionId && ownerId === networkManager.currentPlayer.id) {
+            const gridPosition = {
+                x: Math.floor(x / 32),
+                y: Math.floor(y / 32)
+            };
+            networkManager.requestMinionSpawn(minionId, gridPosition, isPermanent);
+
+            // Return null - minion will be spawned when server broadcasts
+            return null;
+        }
+
+        // Spawn the minion locally (from server broadcast)
         const minion = new Minion(this, x, y, ownerId, isPermanent, minionId);
         this.minions[minionId] = minion;
 
