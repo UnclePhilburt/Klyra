@@ -245,6 +245,9 @@ class MalacharAbilityHandler {
                 // Track permanent minion on server for multiplayer sync
                 if (minion && minion.minionId && typeof networkManager !== 'undefined') {
                     networkManager.trackPermanentMinion(minion.minionId, 'add');
+
+                    // Send initial position immediately for multiplayer sync
+                    minion.sendPositionUpdate();
                 }
 
                 // Visual: Resurrection effect
