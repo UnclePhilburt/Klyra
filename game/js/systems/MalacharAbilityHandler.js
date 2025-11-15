@@ -235,12 +235,17 @@ class MalacharAbilityHandler {
                 const spawnX = this.player.sprite.x + offsetX;
                 const spawnY = this.player.sprite.y + offsetY;
 
-                this.scene.spawnMinion(
+                const minion = this.scene.spawnMinion(
                     spawnX,
                     spawnY,
                     this.player.data.id,
                     true // isPermanent
                 );
+
+                // Track permanent minion on server for multiplayer sync
+                if (minion && minion.minionId && typeof networkManager !== 'undefined') {
+                    networkManager.trackPermanentMinion(minion.minionId, 'add');
+                }
 
                 // Visual: Resurrection effect
                 this.createExplosion(spawnX, spawnY, 0x00ff00, 80);
