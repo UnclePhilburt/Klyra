@@ -261,6 +261,7 @@ class Lobby {
             floor: 1,
             enemies: [],
             items: [],
+            minions: new Map(), // Track all spawned minions
             startTime: Date.now(),
             endTime: null
         };
@@ -279,7 +280,9 @@ class Lobby {
         // DYNAMIC WOLF SYSTEM: Track active regions and despawn inactive ones
         this.activeRegions = new Map(); // regionKey -> { lastActiveTime, playerCount }
         this.regionEnemies = new Map(); // regionKey -> Set of enemy IDs
+        this.regionClearedTime = new Map(); // regionKey -> timestamp when region was cleared
         this.REGION_INACTIVE_TIMEOUT = 120000; // Despawn wolves after 2 minutes of no players
+        this.REGION_RESPAWN_COOLDOWN = 30000; // Wait 30 seconds before respawning in cleared region
 
         // Start dynamic cleanup interval - runs every 30 seconds
         this.dynamicSpawnCleanup = setInterval(() => {
@@ -307,6 +310,7 @@ class Lobby {
         player.position = spawnPoints[this.players.size - 1];
 
         console.log(`✅ ${player.username} joined game ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
+        console.log(`📍 Assigned spawn position (PIXELS): (${player.position.x}, ${player.position.y})`);
 
         return { success: true };
     }
@@ -347,13 +351,13 @@ class Lobby {
         };
     }
 
-    // Create wolf with variant stats
-    createWolfVariant(variant, baseId, position) {
+    // Create wolf with variant stats - BALANCED: Quality over quantity
+    createWolfVariant(variant, baseId, position, healthMultiplier = 1.0) {
         const variants = {
             small: {
                 scale: 0.7,
-                health: 100,
-                maxHealth: 100,
+                health: 60,  // Balanced for moderate enemy counts
+                maxHealth: 60,
                 damage: 3,
                 speed: 70,
                 sightRange: 12,
@@ -362,8 +366,8 @@ class Lobby {
             },
             normal: {
                 scale: 1.0,
-                health: 150,
-                maxHealth: 150,
+                health: 100,  // Balanced - enemies are threats but not tanks
+                maxHealth: 100,
                 damage: 5,
                 speed: 80,
                 sightRange: 15,
@@ -372,8 +376,8 @@ class Lobby {
             },
             boss: {
                 scale: 1.5,
-                health: 300,
-                maxHealth: 300,
+                health: 200,  // Strong but not unkillable
+                maxHealth: 200,
                 damage: 10,
                 speed: 90,
                 sightRange: 20,
@@ -383,13 +387,18 @@ class Lobby {
         };
 
         const stats = variants[variant];
+
+        // Apply co-op health scaling
+        const scaledHealth = Math.floor(stats.health * healthMultiplier);
+        const scaledMaxHealth = Math.floor(stats.maxHealth * healthMultiplier);
+
         return {
             id: baseId,
             type: 'wolf',
             variant: variant, // Track variant type
             position: position,
-            health: stats.health,
-            maxHealth: stats.maxHealth,
+            health: scaledHealth,
+            maxHealth: scaledMaxHealth,
             damage: stats.damage,
             speed: stats.speed,
             scale: stats.scale,
@@ -401,29 +410,29 @@ class Lobby {
         };
     }
 
-    // Create minotaur with variant stats
-    createMinotaurVariant(variant, baseId, position) {
+    // Create minotaur with variant stats - BALANCED: Quality over quantity
+    createMinotaurVariant(variant, baseId, position, healthMultiplier = 1.0) {
         const variants = {
             small: {
                 scale: 0.8,
-                health: 150,
-                maxHealth: 150,
+                health: 120,  // Mini-boss level threat
+                maxHealth: 120,
                 damage: 8,
                 speed: 50,
                 sightRange: 10
             },
             normal: {
                 scale: 1.0,
-                health: 250,
-                maxHealth: 250,
+                health: 200,  // Real threat, requires focus
+                maxHealth: 200,
                 damage: 12,
                 speed: 60,
                 sightRange: 12
             },
             boss: {
                 scale: 1.3,
-                health: 400,
-                maxHealth: 400,
+                health: 350,  // Boss fight worthy
+                maxHealth: 350,
                 damage: 18,
                 speed: 70,
                 sightRange: 15
@@ -431,13 +440,18 @@ class Lobby {
         };
 
         const stats = variants[variant];
+
+        // Apply co-op health scaling
+        const scaledHealth = Math.floor(stats.health * healthMultiplier);
+        const scaledMaxHealth = Math.floor(stats.maxHealth * healthMultiplier);
+
         return {
             id: baseId,
             type: 'minotaur',
             variant: variant,
             position: position,
-            health: stats.health,
-            maxHealth: stats.maxHealth,
+            health: scaledHealth,
+            maxHealth: scaledMaxHealth,
             damage: stats.damage,
             speed: stats.speed,
             scale: stats.scale,
@@ -451,14 +465,55 @@ class Lobby {
     spawnEnemiesInRegion(regionX, regionY) {
         const regionKey = `${regionX},${regionY}`;
 
-        // DYNAMIC: Mark region as active
+        // DYNAMIC: Mark region as active and count players
+        const playersInRegion = this.getPlayersInRegion(regionX, regionY);
+        const playerCount = playersInRegion.length;
+
         this.activeRegions.set(regionKey, {
             lastActiveTime: Date.now(),
-            playerCount: this.getPlayersInRegion(regionX, regionY).length
+            playerCount: playerCount
         });
 
         // Skip if already spawned
         if (this.spawnedRegions.has(regionKey)) return [];
+
+        // CHECK: Don't spawn enemies if the region has living enemies or was recently cleared
+        // This prevents respawning on top of players who just cleared the area
+        const regionEnemies = this.regionEnemies.get(regionKey);
+        if (regionEnemies && regionEnemies.size > 0) {
+            // Check if any enemies in this region are still alive
+            let hasLivingEnemies = false;
+            regionEnemies.forEach(enemyId => {
+                const enemy = this.gameState.enemies.find(e => e.id === enemyId);
+                if (enemy && enemy.isAlive) {
+                    hasLivingEnemies = true;
+                }
+            });
+
+            if (hasLivingEnemies) {
+                return []; // Don't respawn if enemies still alive
+            }
+        }
+
+        // CHECK: Don't spawn if players are currently in this region
+        // Allow respawn only after players have left the area
+        if (playersInRegion.length > 0 && this.regionEnemies.has(regionKey)) {
+            // Region was previously spawned and players are still here - don't respawn yet
+            return [];
+        }
+
+        // CHECK: Respawn cooldown - don't respawn too quickly after clearing
+        const clearedTime = this.regionClearedTime.get(regionKey);
+        if (clearedTime) {
+            const timeSinceCleared = Date.now() - clearedTime;
+            if (timeSinceCleared < this.REGION_RESPAWN_COOLDOWN) {
+                // Still on cooldown
+                return [];
+            } else {
+                // Cooldown expired, remove the timer
+                this.regionClearedTime.delete(regionKey);
+            }
+        }
 
         this.spawnedRegions.add(regionKey);
         this.regionEnemies.set(regionKey, new Set()); // Track enemies in this region
@@ -477,42 +532,82 @@ class Lobby {
             Math.pow(regionCenterY - worldCenterY, 2)
         );
 
-        // Distance-based pack sizing - MASSIVE SPAWN, SMALL GROUPS
+        // Distance-based pack sizing - BALANCED: Quality over quantity for performance
         let packsToSpawn = 1;
         let minPackSize = 1;
         let maxPackSize = 2;
         let bossChance = 0;
 
         if (distanceFromSpawn < 80) {
-            // Near spawn (30-80 tiles): Lots of tiny packs - 8-12 packs, 1-2 wolves each
-            packsToSpawn = 8 + Math.floor(Math.random() * 5); // 8-12 packs
-            minPackSize = 1;
-            maxPackSize = 2;
+            // Near spawn: Moderate horde - 6-8 packs, 2-3 enemies each (~12-24 total)
+            packsToSpawn = 6 + Math.floor(Math.random() * 3); // 6-8 packs
+            minPackSize = 2;
+            maxPackSize = 3;
             bossChance = 0;
         } else if (distanceFromSpawn < 150) {
-            // Close to spawn: Many small packs - 6-8 packs, 1-3 wolves
-            packsToSpawn = 6 + Math.floor(Math.random() * 3); // 6-8 packs
-            minPackSize = 1;
-            maxPackSize = 3;
-            bossChance = 0.02;
-        } else if (distanceFromSpawn < 250) {
-            // Medium distance: More packs - 5-7 packs, 2-3 wolves, 5% boss
+            // Close to spawn: Growing threat - 5-7 packs, 3-4 enemies (~15-28 total)
             packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
-            minPackSize = 2;
-            maxPackSize = 3;
-            bossChance = 0.05;
-        } else if (distanceFromSpawn < 450) {
-            // Far: Many packs - 4-6 packs, 2-3 wolves, 12% boss
-            packsToSpawn = 4 + Math.floor(Math.random() * 3); // 4-6 packs
-            minPackSize = 2;
-            maxPackSize = 3;
-            bossChance = 0.12;
-        } else {
-            // Very far: Extreme danger - 3-5 packs, 2-4 wolves, 20% boss
-            packsToSpawn = 3 + Math.floor(Math.random() * 3); // 3-5 packs
-            minPackSize = 2;
+            minPackSize = 3;
             maxPackSize = 4;
-            bossChance = 0.20;
+            bossChance = 0.03;
+        } else if (distanceFromSpawn < 250) {
+            // Medium distance: Dangerous - 5-7 packs, 3-4 enemies, 8% boss (~15-28 total)
+            packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
+            minPackSize = 3;
+            maxPackSize = 4;
+            bossChance = 0.08;
+        } else if (distanceFromSpawn < 450) {
+            // Far: Challenging - 4-6 packs, 4-6 enemies, 15% boss (~16-36 total)
+            packsToSpawn = 4 + Math.floor(Math.random() * 3); // 4-6 packs
+            minPackSize = 4;
+            maxPackSize = 6;
+            bossChance = 0.15;
+        } else {
+            // Very far: Deadly - 4-6 packs, 5-7 enemies, 25% boss (~20-42 total)
+            packsToSpawn = 4 + Math.floor(Math.random() * 3); // 4-6 packs
+            minPackSize = 5;
+            maxPackSize = 7;
+            bossChance = 0.25;
+        }
+
+        // CO-OP SCALING: Diablo-style diminishing returns
+        // More players = more enemies with more health (aggressive but capped)
+        let spawnMultiplier = 1.0;
+        let healthMultiplier = 1.0;
+
+        if (playerCount === 1) {
+            spawnMultiplier = 1.0;
+            healthMultiplier = 1.0;
+        } else if (playerCount === 2) {
+            spawnMultiplier = 1.8;
+            healthMultiplier = 1.3;
+        } else if (playerCount === 3) {
+            spawnMultiplier = 2.4;
+            healthMultiplier = 1.5;
+        } else if (playerCount === 4) {
+            spawnMultiplier = 3.0;
+            healthMultiplier = 1.7;
+        } else if (playerCount === 5) {
+            spawnMultiplier = 3.5;
+            healthMultiplier = 1.9;
+        } else { // 6+ players
+            spawnMultiplier = 4.0; // Capped at 4x
+            healthMultiplier = 2.0; // Capped at 2x
+        }
+
+        // Apply spawn multiplier
+        packsToSpawn = Math.floor(packsToSpawn * spawnMultiplier);
+
+        // Hard cap: Max 80 enemies per region (safety net)
+        const estimatedEnemies = packsToSpawn * ((minPackSize + maxPackSize) / 2);
+        if (estimatedEnemies > 80) {
+            const scale = 80 / estimatedEnemies;
+            packsToSpawn = Math.floor(packsToSpawn * scale);
+        }
+
+        // Log co-op scaling (for debugging/balancing)
+        if (playerCount > 1) {
+            console.log(`🔥 CO-OP SCALING: ${playerCount} players in region ${regionKey} → ${spawnMultiplier.toFixed(1)}x spawns, ${healthMultiplier.toFixed(1)}x health`);
         }
 
         // Use seed for consistent spawning
@@ -575,7 +670,7 @@ class Lobby {
                 }
 
                 const wolfId = `${this.id}_wolf_${regionKey}_p${packIndex}_${i}`;
-                const wolf = this.createWolfVariant(variant, wolfId, { x, y });
+                const wolf = this.createWolfVariant(variant, wolfId, { x, y }, healthMultiplier);
 
                 // DYNAMIC: Track which region this wolf belongs to
                 wolf.regionKey = regionKey;
@@ -662,7 +757,7 @@ class Lobby {
                 }
 
                 const minotaurId = `${this.id}_minotaur_${regionKey}_g${groupIndex}_${i}`;
-                const minotaur = this.createMinotaurVariant(variant, minotaurId, { x, y });
+                const minotaur = this.createMinotaurVariant(variant, minotaurId, { x, y }, healthMultiplier);
 
                 // Track which region this minotaur belongs to
                 minotaur.regionKey = regionKey;
@@ -682,12 +777,16 @@ class Lobby {
 
     // DYNAMIC SPAWN SYSTEM: Get players in a specific region
     getPlayersInRegion(regionX, regionY) {
+        const TILE_SIZE = 32;
         const REGION_SIZE = 50;
         const players = [];
 
         this.players.forEach(player => {
-            const playerRegionX = Math.floor(player.position.x / REGION_SIZE);
-            const playerRegionY = Math.floor(player.position.y / REGION_SIZE);
+            // Convert pixel position to grid position for region calculation
+            const gridX = Math.floor(player.position.x / TILE_SIZE);
+            const gridY = Math.floor(player.position.y / TILE_SIZE);
+            const playerRegionX = Math.floor(gridX / REGION_SIZE);
+            const playerRegionY = Math.floor(gridY / REGION_SIZE);
 
             // Check if player is in this region or adjacent regions (visibility range)
             if (Math.abs(playerRegionX - regionX) <= 1 && Math.abs(playerRegionY - regionY) <= 1) {
@@ -749,6 +848,9 @@ class Lobby {
             this.spawnedRegions.delete(regionKey);
             this.activeRegions.delete(regionKey);
             this.regionEnemies.delete(regionKey);
+
+            // Mark when this region was cleared (for respawn cooldown)
+            this.regionClearedTime.set(regionKey, Date.now());
         });
 
         if (regionsToCleanup.length > 0) {
@@ -887,16 +989,21 @@ class Lobby {
 
     getSpawnPoints() {
         const points = [];
-        // Spawn at world center
+        // Spawn at world center (in PIXEL coordinates)
+        const TILE_SIZE = 32;
         const centerX = Math.floor(this.WORLD_SIZE / 2);
         const centerY = Math.floor(this.WORLD_SIZE / 2);
         const radius = 5;
 
         for (let i = 0; i < this.maxPlayers; i++) {
             const angle = (2 * Math.PI * i) / this.maxPlayers;
+            const gridX = Math.round(centerX + radius * Math.cos(angle));
+            const gridY = Math.round(centerY + radius * Math.sin(angle));
+
+            // Convert to pixel coordinates
             points.push({
-                x: Math.round(centerX + radius * Math.cos(angle)),
-                y: Math.round(centerY + radius * Math.sin(angle))
+                x: gridX * TILE_SIZE + TILE_SIZE / 2,
+                y: gridY * TILE_SIZE + TILE_SIZE / 2
             });
         }
         return points;
@@ -997,6 +1104,7 @@ class Lobby {
             // Check all minions first (they have higher priority if they have aggro)
             if (this.gameState.minions) {
                 const sightRangeSquared = enemy.sightRange * enemy.sightRange; // PERFORMANCE: Squared comparison
+                const TILE_SIZE = 32;
 
                 this.gameState.minions.forEach((minion, minionId) => {
                     // Clean up stale minions (older than 5 seconds since last update)
@@ -1005,9 +1113,13 @@ class Lobby {
                         return;
                     }
 
+                    // Convert minion PIXEL position to GRID coordinates for comparison with enemy
+                    const minionGridX = minion.position.x / TILE_SIZE;
+                    const minionGridY = minion.position.y / TILE_SIZE;
+
                     // PERFORMANCE: Use squared distance (avoid expensive sqrt)
-                    const dx = minion.position.x - enemy.position.x;
-                    const dy = minion.position.y - enemy.position.y;
+                    const dx = minionGridX - enemy.position.x;
+                    const dy = minionGridY - enemy.position.y;
                     const distSquared = dx * dx + dy * dy;
 
                     // Check if minion has aggro on this enemy
@@ -1033,13 +1145,15 @@ class Lobby {
                     // Target minion with highest aggro
                     if (aggroValue > maxAggro) {
                         maxAggro = aggroValue;
-                        target = { position: minion.position, id: minionId, isMinion: true };
+                        // Store GRID position for enemy movement
+                        target = { position: { x: minionGridX, y: minionGridY }, id: minionId, isMinion: true };
                     }
                 });
             }
 
             // Check all players
             const sightRangeSquared = enemy.sightRange * enemy.sightRange; // PERFORMANCE: Squared comparison
+            const TILE_SIZE = 32;
 
             this.players.forEach(player => {
                 if (!player.isAlive) {
@@ -1050,9 +1164,13 @@ class Lobby {
                     return;
                 }
 
+                // Convert player PIXEL position to GRID coordinates for comparison with enemy
+                const playerGridX = player.position.x / TILE_SIZE;
+                const playerGridY = player.position.y / TILE_SIZE;
+
                 // PERFORMANCE: Use squared distance (avoid expensive sqrt)
-                const dx = player.position.x - enemy.position.x;
-                const dy = player.position.y - enemy.position.y;
+                const dx = playerGridX - enemy.position.x;
+                const dy = playerGridY - enemy.position.y;
                 const distSquared = dx * dx + dy * dy;
 
                 // Check if player is within sight range OR has aggro (enemy remembers them)
@@ -1081,12 +1199,18 @@ class Lobby {
                 // Target player with highest aggro
                 if (aggroValue > maxAggro) {
                     maxAggro = aggroValue;
-                    target = { position: player.position, id: player.id };
+                    // Store GRID position for enemy movement
+                    target = { position: { x: playerGridX, y: playerGridY }, id: player.id };
                 }
             });
 
             // Skip if no target found
             if (!target) return;
+
+            // DEBUG: Log when we find a target
+            if (Math.random() < 0.02) {
+                console.log(`🎯 Enemy ${enemy.id} found target: ${target.id}, isMinion: ${target.isMinion}, targetPos: (${target.position.x.toFixed(1)}, ${target.position.y.toFixed(1)}), enemyPos: (${enemy.position.x.toFixed(1)}, ${enemy.position.y.toFixed(1)})`);
+            }
 
             // Move toward target
             const dx = target.position.x - enemy.position.x;
@@ -1137,14 +1261,19 @@ class Lobby {
                     position: enemy.position
                 }, (player, data) => {
                     // PERFORMANCE: Only send to players within 50 tiles (2500 squared)
-                    const dx = player.position.x - data.position.x;
-                    const dy = player.position.y - data.position.y;
+                    // FIX: Convert player pixel position to grid position for comparison
+                    const TILE_SIZE = 32;
+                    const playerGridX = player.position.x / TILE_SIZE;
+                    const playerGridY = player.position.y / TILE_SIZE;
+                    const dx = playerGridX - data.position.x;
+                    const dy = playerGridY - data.position.y;
                     const distSquared = dx * dx + dy * dy;
                     return distSquared < 2500;  // 50 * 50 = 2500
                 });
             }
 
             // Attack if close enough (1.5 tiles -> 2.25 squared)
+            // NOTE: distanceSquared is already calculated in GRID coordinates above
             if (distanceSquared < 2.25) {  // PERFORMANCE: 1.5 * 1.5 = 2.25
                 // Attack target (player or minion)
                 if (target.isMinion) {
@@ -1152,7 +1281,8 @@ class Lobby {
                     this.broadcast('minion:damaged', {
                         minionId: target.id,
                         damage: enemy.damage,
-                        attackerId: enemy.id
+                        attackerId: enemy.id,
+                        enemyPosition: { x: enemy.position.x, y: enemy.position.y }
                     });
                 } else {
                     // Attack player
@@ -1179,11 +1309,12 @@ class Lobby {
                             // Reset all multipliers
                             damageTarget.initializeMultipliers();
 
-                            // Respawn at spawn point (center of world)
-                            const worldCenter = Math.floor(this.WORLD_SIZE / 2);
+                            // Respawn at spawn point (center of world) in PIXEL coordinates
+                            const TILE_SIZE = 32;
+                            const worldCenterGrid = Math.floor(this.WORLD_SIZE / 2);
                             damageTarget.position = {
-                                x: worldCenter,
-                                y: worldCenter
+                                x: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2,
+                                y: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2
                             };
 
                             console.log(`♻️ ${damageTarget.username} reset: Level ${damageTarget.level}, Health ${damageTarget.health}/${damageTarget.maxHealth}`);
@@ -1240,7 +1371,9 @@ class Lobby {
                                 health: damageTarget.health,
                                 maxHealth: damageTarget.maxHealth,
                                 damage: enemy.damage,
-                                attackerId: enemy.id
+                                attackerId: enemy.id,
+                                enemyPosition: { x: enemy.position.x, y: enemy.position.y },
+                                playerPosition: { x: target.position.x, y: target.position.y }
                             });
                         }
                     }
@@ -1295,11 +1428,14 @@ function findOrCreateLobby(difficulty = 'normal') {
 
 // Validation helpers
 function isValidPosition(position, worldSize = 1000) {
+    // Position is now in PIXELS, so validate against worldSize * TILE_SIZE
+    const TILE_SIZE = 32;
+    const maxPixelCoord = worldSize * TILE_SIZE;
     return position &&
            typeof position.x === 'number' &&
            typeof position.y === 'number' &&
-           position.x >= 0 && position.x < worldSize &&
-           position.y >= 0 && position.y < worldSize;
+           position.x >= 0 && position.x < maxPixelCoord &&
+           position.y >= 0 && position.y < maxPixelCoord;
 }
 
 function sanitizeMessage(message) {
@@ -1446,9 +1582,13 @@ io.on('connection', (socket) => {
                     player.updateActivity();
 
                     // Check if player entered new region - spawn enemies dynamically
+                    // Convert pixel position to grid position for region calculation
+                    const TILE_SIZE = 32;
                     const REGION_SIZE = 50;
-                    const regionX = Math.floor(player.position.x / REGION_SIZE);
-                    const regionY = Math.floor(player.position.y / REGION_SIZE);
+                    const gridX = Math.floor(player.position.x / TILE_SIZE);
+                    const gridY = Math.floor(player.position.y / TILE_SIZE);
+                    const regionX = Math.floor(gridX / REGION_SIZE);
+                    const regionY = Math.floor(gridY / REGION_SIZE);
 
                     // Check surrounding regions (player can see beyond current region)
                     for (let dx = -1; dx <= 1; dx++) {
@@ -1473,7 +1613,7 @@ io.on('connection', (socket) => {
                         const dx = p.position.x - data.position.x;
                         const dy = p.position.y - data.position.y;
                         const distSquared = dx * dx + dy * dy;
-                        return distSquared < 2500; // 50 * 50 = 2500
+                        return distSquared < 640000; // 800 * 800 = 640000 (approx 25 tiles)
                     });
                 }
             });
@@ -1583,7 +1723,7 @@ io.on('connection', (socket) => {
             const damage = data.damage || player.stats.strength;
 
             // Debug: Log minion attacks to troubleshoot damage issues
-            if (data.attackerId && data.attackerId.startsWith('minion_')) {
+            if (data.attackerId && data.attackerId.includes('minion_')) {
                 console.log(`🔮 Minion attack: ${data.attackerId} dealt ${damage} damage to ${data.enemyId} (health: ${enemy.health} -> ${enemy.health - damage})`);
             }
 
@@ -1636,7 +1776,7 @@ io.on('connection', (socket) => {
             enemy.aggro.set(attackerId, currentAggro + damage * 2); // Damage generates 2x aggro
 
             // If it's a minion attack, track the minion's position
-            if (data.attackerId && data.attackerId.startsWith('minion_') && data.attackerPosition) {
+            if (data.attackerId && data.attackerId.includes('minion_') && data.attackerPosition) {
                 if (!lobby.gameState.minions) lobby.gameState.minions = new Map();
                 lobby.gameState.minions.set(data.attackerId, {
                     id: data.attackerId,
@@ -1760,15 +1900,16 @@ io.on('connection', (socket) => {
             const isNew = !existingMinion;
             const now = Date.now();
 
-            // Throttle position broadcasts - only broadcast every 100ms OR if position changed by 2+ tiles
+            // Minimal throttling - broadcast every 16ms (60fps) OR any movement
+            // Ultra-smooth multiplayer movement
             let shouldBroadcast = isNew;
             if (!isNew && existingMinion) {
                 const timeSinceLastBroadcast = now - (existingMinion.lastBroadcast || 0);
                 const dx = Math.abs(data.position.x - existingMinion.position.x);
                 const dy = Math.abs(data.position.y - existingMinion.position.y);
-                const significantMove = dx >= 2 || dy >= 2;
+                const anyMovement = dx > 0 || dy > 0;
 
-                shouldBroadcast = timeSinceLastBroadcast >= 100 || significantMove;
+                shouldBroadcast = timeSinceLastBroadcast >= 16 || anyMovement;
             }
 
             lobby.gameState.minions.set(data.minionId, {
@@ -1776,6 +1917,8 @@ io.on('connection', (socket) => {
                 position: data.position,
                 ownerId: player.id,
                 isPermanent: data.isPermanent || false,
+                animationState: data.animationState || 'minion_idle',
+                flipX: data.flipX || false,
                 lastUpdate: now,
                 lastBroadcast: shouldBroadcast ? now : (existingMinion?.lastBroadcast || now)
             });
@@ -1786,7 +1929,9 @@ io.on('connection', (socket) => {
                     minionId: data.minionId,
                     position: data.position,
                     ownerId: player.id,
-                    isPermanent: data.isPermanent || false
+                    isPermanent: data.isPermanent || false,
+                    animationState: data.animationState || 'minion_idle',
+                    flipX: data.flipX || false
                 });
                 console.log(`🔮 Broadcasted minion spawn: ${data.minionId} for ${player.username}`);
             } else if (shouldBroadcast) {
@@ -1794,8 +1939,11 @@ io.on('connection', (socket) => {
                 socket.to(lobby.id).emit('minion:moved', {
                     minionId: data.minionId,
                     position: data.position,
-                    ownerId: player.id
+                    ownerId: player.id,
+                    animationState: data.animationState || 'minion_idle',
+                    flipX: data.flipX || false
                 });
+                console.log(`🚶 Broadcasted minion move: ${data.minionId} to (${data.position.x}, ${data.position.y})`);
             }
         } catch (error) {
             console.error('Error in minion:position:', error);
@@ -1856,11 +2004,12 @@ io.on('connection', (socket) => {
             // Reset all multipliers
             player.initializeMultipliers();
 
-            // Respawn at spawn point (center of world)
-            const worldCenter = Math.floor(lobby.WORLD_SIZE / 2);
+            // Respawn at spawn point (center of world) in PIXEL coordinates
+            const TILE_SIZE = 32;
+            const worldCenterGrid = Math.floor(lobby.WORLD_SIZE / 2);
             player.position = {
-                x: worldCenter,
-                y: worldCenter
+                x: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2,
+                y: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2
             };
 
             console.log(`♻️ ${player.username} reset: Level ${player.level}, Health ${player.health}/${player.maxHealth}`);
@@ -1998,6 +2147,17 @@ io.on('connection', (socket) => {
 
             const { position, isPermanent, minionId } = data;
 
+            // Check permanent minion cap for this specific player
+            if (isPermanent) {
+                const currentPermanentCount = player.permanentMinions.length;
+                const minionCap = player.minionCap || 5; // Default cap is 5
+
+                if (currentPermanentCount >= minionCap && !player.permanentMinions.includes(minionId)) {
+                    console.log(`⛔ ${player.username} hit permanent minion cap (${currentPermanentCount}/${minionCap})`);
+                    return; // Reject spawn
+                }
+            }
+
             // Add to permanent minions tracking
             if (isPermanent && !player.permanentMinions.includes(minionId)) {
                 player.permanentMinions.push(minionId);
@@ -2020,9 +2180,45 @@ io.on('connection', (socket) => {
                 isPermanent: isPermanent || false
             });
 
-            console.log(`🔮 ${player.username} spawned minion ${minionId} (permanent: ${isPermanent})`);
+            console.log(`🔮 ${player.username} spawned minion ${minionId} (permanent: ${isPermanent}) [${player.permanentMinions.length}/${player.minionCap || 5}]`);
         } catch (error) {
             console.error('Error in minion:requestSpawn:', error);
+        }
+    });
+
+    // Handle minion death
+    socket.on('minion:death', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby) return;
+
+            const { minionId, isPermanent } = data;
+
+            // Remove from server state
+            if (lobby.gameState.minions) {
+                lobby.gameState.minions.delete(minionId);
+            }
+
+            // Remove from permanent minions list
+            if (isPermanent && player.permanentMinions) {
+                const index = player.permanentMinions.indexOf(minionId);
+                if (index > -1) {
+                    player.permanentMinions.splice(index, 1);
+                }
+            }
+
+            // Broadcast death to all players
+            lobby.broadcast('minion:died', {
+                minionId: minionId,
+                ownerId: player.id
+            });
+
+            console.log(`💀 ${player.username}'s minion ${minionId} died (permanent: ${isPermanent})`);
+        } catch (error) {
+            console.error('Error in minion:death:', error);
         }
     });
 
@@ -2036,6 +2232,46 @@ io.on('connection', (socket) => {
             socket.emit('skills:restored', player.toJSON());
         } catch (error) {
             console.error('Error in skills:requestRestore:', error);
+        }
+    });
+
+    // Handle Malachar ability usage
+    socket.on('ability:use', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby) return;
+
+            if (data.targetMinionId) {
+                console.log(`✨ ${player.username} used ${data.abilityName} on minion ${data.targetMinionId}`);
+            } else {
+                console.log(`✨ ${player.username} used ${data.abilityName} on player ${data.targetPlayerId}`);
+            }
+            console.log(`   Lobby has ${lobby.players.length} players`);
+
+            // Broadcast to all players in lobby (including the caster for confirmation)
+            let sentCount = 0;
+            lobby.players.forEach(p => {
+                const targetSocket = io.sockets.sockets.get(p.id);
+                console.log(`   → Sending to ${p.username} (${p.id}): ${targetSocket ? 'SUCCESS' : 'FAILED - Socket not found'}`);
+                if (targetSocket) {
+                    targetSocket.emit('ability:used', {
+                        playerId: socket.id,
+                        playerName: player.username,
+                        abilityKey: data.abilityKey,
+                        abilityName: data.abilityName,
+                        targetPlayerId: data.targetPlayerId,
+                        targetMinionId: data.targetMinionId, // For auto-attacks targeting minions
+                        effects: data.effects
+                    });
+                    sentCount++;
+                }
+            });
+            console.log(`   📤 Broadcast sent to ${sentCount}/${lobby.players.length} players`);
+        } catch (error) {
+            console.error('Error in ability:use:', error);
         }
     });
 
