@@ -119,6 +119,13 @@ class BootScene extends Phaser.Scene {
         });
         console.log('📦 Loading sprite: autoattackbonecommander (bone commander aura)');
 
+        // Load blood damage sprite sheet (124x124px frames)
+        this.load.spritesheet('blood', 'assets/sprites/blood.png', {
+            frameWidth: 124,
+            frameHeight: 124
+        });
+        console.log('📦 Loading sprite: blood (damage effects)');
+
         // Load Legion's Call ability effect (row 3, 9 frames, 64x64px each)
         this.load.spritesheet('legionscall', 'assets/sprites/malachar/legionscall.png', {
             frameWidth: 64,
@@ -128,6 +135,40 @@ class BootScene extends Phaser.Scene {
 
         // Load music files
         MusicManager.preload(this);
+
+        // Load footstep sound effects
+        this.load.audio('footstep1', 'assets/soundeffects/digital_footstep_grass_1.wav');
+        this.load.audio('footstep2', 'assets/soundeffects/digital_footstep_grass_2.wav');
+        this.load.audio('footstep3', 'assets/soundeffects/digital_footstep_grass_3.wav');
+        this.load.audio('footstep4', 'assets/soundeffects/digital_footstep_grass_4.wav');
+        console.log('📦 Loading footstep sounds (4 variations)');
+
+        // Load UI sound effects
+        this.load.audio('ui_cursor', 'assets/soundeffects/JDSherbert - Ultimate UI SFX Pack - Cursor - 1.mp3');
+        this.load.audio('ui_select', 'assets/soundeffects/JDSherbert - Ultimate UI SFX Pack - Select - 1.mp3');
+        console.log('📦 Loading UI sounds (cursor hover, select click)');
+
+        // Load attack sound effects
+        this.load.audio('swipe', 'assets/soundeffects/swipe.wav');
+        console.log('📦 Loading attack sound: swipe');
+
+        // Load death sound effects
+        this.load.audio('death_bone_snap', 'assets/soundeffects/deathsounds/bone_snap.wav');
+        this.load.audio('death_crunch', 'assets/soundeffects/deathsounds/crunch.wav');
+        this.load.audio('death_crunch_quick', 'assets/soundeffects/deathsounds/crunch_quick.wav');
+        this.load.audio('death_crunch_splat', 'assets/soundeffects/deathsounds/crunch_splat.wav');
+        this.load.audio('death_crunch_splat_2', 'assets/soundeffects/deathsounds/crunch_splat_2.wav');
+        this.load.audio('death_kick', 'assets/soundeffects/deathsounds/kick.wav');
+        this.load.audio('death_punch', 'assets/soundeffects/deathsounds/punch.wav');
+        this.load.audio('death_punch_2', 'assets/soundeffects/deathsounds/punch_2.wav');
+        this.load.audio('death_punch_3', 'assets/soundeffects/deathsounds/punch_3.wav');
+        this.load.audio('death_slap', 'assets/soundeffects/deathsounds/slap.wav');
+        this.load.audio('death_splat_double', 'assets/soundeffects/deathsounds/splat_double_quick.wav');
+        this.load.audio('death_squelch_1', 'assets/soundeffects/deathsounds/squelching_1.wav');
+        this.load.audio('death_squelch_2', 'assets/soundeffects/deathsounds/squelching_2.wav');
+        this.load.audio('death_squelch_3', 'assets/soundeffects/deathsounds/squelching_3.wav');
+        this.load.audio('death_squelch_4', 'assets/soundeffects/deathsounds/squelching_4.wav');
+        console.log('📦 Loading death sounds (15 variations)');
 
         console.log('✅ Loaded character sprites: kelise, malachar');
     }
@@ -255,9 +296,29 @@ class BootScene extends Phaser.Scene {
         console.log('✅ Created Bone Commander aura animation: (row 1, frames 10-18)');
         console.log('✅ Created Legion\'s Call animation: (row 3, frames 30-38)');
 
+        // Create blood damage animation
+        // Sprite sheet: 124x124px frames, ~12 frames per row
+        // Row 6, 14 frames: starts at frame 72 (6 rows × 12 frames)
+        this.anims.create({
+            key: 'blood_splatter',
+            frames: this.anims.generateFrameNumbers('blood', {
+                start: 72,
+                end: 85
+            }),
+            frameRate: 18,
+            repeat: 0
+        });
+
+        console.log('✅ Created blood damage animation (row 6, 14 frames)');
+
         // Don't connect to server - custom menu handles that
         // Just load assets and wait for custom menu to call game.connect()
         console.log('✅ Game assets loaded - waiting for menu...');
+
+        // Initialize UI sound manager with Phaser game instance
+        if (window.uiSoundManager) {
+            window.uiSoundManager.init(this.game);
+        }
 
         // Hide Phaser canvas initially (custom menu is shown)
         this.game.canvas.style.display = 'none';

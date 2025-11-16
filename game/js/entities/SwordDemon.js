@@ -7,6 +7,8 @@ class SwordDemon {
         this.maxHealth = data.maxHealth;
         this.isAlive = data.isAlive !== false;
         this.damage = data.damage || 8;
+        this.isAttacking = false; // Track if currently playing attack animation
+        this.lastAttackTime = 0; // Track when last attack started
 
         if (!this.isAlive) {
             console.warn(`⚠️ SwordDemon ${data.id} created with isAlive: false`);
@@ -82,18 +84,27 @@ class SwordDemon {
     }
 
     attack() {
+        // Prevent attack spam - enforce minimum cooldown (667ms to match animation)
+        const now = Date.now();
+        if (this.isAttacking || now - this.lastAttackTime < 667) {
+            return; // Still attacking or on cooldown
+        }
+
         console.log(`⚔️ SwordDemon attack() called`);
         // Play attack animation
         if (this.sprite && this.sprite.anims && this.isAlive) {
             console.log(`   Checking animation exists...`);
             if (this.scene.anims.exists('sworddemon_attack')) {
                 console.log(`   ✅ Playing sworddemon_attack`);
+                this.isAttacking = true;
+                this.lastAttackTime = now;
                 this.sprite.play('sworddemon_attack');
             } else {
                 console.warn(`   ❌ sworddemon_attack animation does NOT exist`);
             }
             // Return to previous animation after attack (8 frames at 12fps = ~667ms)
             this.scene.time.delayedCall(667, () => {
+                this.isAttacking = false;
                 if (this.sprite && this.sprite.active && this.isAlive) {
                     const wasMoving = this.currentState === 'walking';
                     const animKey = wasMoving ? 'sworddemon_walk' : 'sworddemon_idle';
@@ -112,6 +123,9 @@ class SwordDemon {
         if (this.health <= 0) {
             this.health = 0;
         }
+
+        // Blood splatter effect
+        this.showBloodEffect();
 
         // Play damage animation
         if (this.sprite && this.sprite.anims && this.health > 0) {
@@ -137,8 +151,101 @@ class SwordDemon {
         });
     }
 
+    showBloodEffect() {
+        // Create dynamic blood particle effect - brighter and bigger
+        const particleCount = 12;
+        const particles = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5) * 0.5;
+            const speed = 30 + Math.random() * 40;
+            const size = 4 + Math.random() * 5;
+
+            const particle = this.scene.add.circle(
+                this.sprite.x,
+                this.sprite.y,
+                size,
+                0xff0000 // Bright red
+            );
+            particle.setDepth(9999);
+            particles.push(particle);
+
+            // Animate particle outward
+            this.scene.tweens.add({
+                targets: particle,
+                x: this.sprite.x + Math.cos(angle) * speed,
+                y: this.sprite.y + Math.sin(angle) * speed,
+                alpha: 0,
+                scale: 0.3,
+                duration: 400 + Math.random() * 300,
+                ease: 'Cubic.easeOut',
+                onComplete: () => particle.destroy()
+            });
+        }
+
+        // Add blood drip particles
+        for (let i = 0; i < 5; i++) {
+            const drip = this.scene.add.circle(
+                this.sprite.x + (Math.random() - 0.5) * 20,
+                this.sprite.y - 5,
+                3,
+                0xff0000 // Bright red
+            );
+            drip.setDepth(9999);
+
+            this.scene.tweens.add({
+                targets: drip,
+                y: drip.y + 20 + Math.random() * 15,
+                alpha: 0,
+                duration: 500 + Math.random() * 300,
+                ease: 'Sine.easeIn',
+                onComplete: () => drip.destroy()
+            });
+        }
+
+        // Create blood puddles on the ground
+        const puddleCount = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < puddleCount; i++) {
+            const offsetX = (Math.random() - 0.5) * 30;
+            const offsetY = (Math.random() - 0.5) * 30;
+            const puddleSize = 5 + Math.random() * 8;
+
+            const puddle = this.scene.add.circle(
+                this.sprite.x + offsetX,
+                this.sprite.y + offsetY,
+                puddleSize,
+                0xcc0000 // Dark red puddle
+            );
+            puddle.setDepth(1); // Below enemies but above ground
+            puddle.setAlpha(0.7);
+
+            // Fade out puddle after a few seconds
+            this.scene.tweens.add({
+                targets: puddle,
+                alpha: 0,
+                duration: 3000 + Math.random() * 2000,
+                delay: 500,
+                ease: 'Linear',
+                onComplete: () => puddle.destroy()
+            });
+        }
+    }
+
     die() {
         this.isAlive = false;
+
+        // Play death sound (40% chance)
+        if (Math.random() < 0.4 && this.scene.sound) {
+            const deathSounds = [
+                'death_bone_snap', 'death_crunch', 'death_crunch_quick',
+                'death_crunch_splat', 'death_crunch_splat_2', 'death_kick',
+                'death_punch', 'death_punch_2', 'death_punch_3', 'death_slap',
+                'death_splat_double', 'death_squelch_1', 'death_squelch_2',
+                'death_squelch_3', 'death_squelch_4'
+            ];
+            const randomSound = deathSounds[Math.floor(Math.random() * deathSounds.length)];
+            this.scene.sound.play(randomSound, { volume: 0.3 });
+        }
 
         // Play death animation
         if (this.sprite && this.sprite.anims && this.scene.anims.exists('sworddemon_death')) {
@@ -236,16 +343,18 @@ class SwordDemon {
             // Animation state - only walk if moving significantly
             const shouldWalk = dist > 3;
 
-            // Only change animation if state actually changed
-            if (shouldWalk && this.currentState !== 'walking') {
-                this.currentState = 'walking';
-                if (this.scene.anims.exists('sworddemon_walk')) {
-                    this.sprite.play('sworddemon_walk', true);
-                }
-            } else if (!shouldWalk && this.currentState !== 'idle') {
-                this.currentState = 'idle';
-                if (this.scene.anims.exists('sworddemon_idle')) {
-                    this.sprite.play('sworddemon_idle', true);
+            // Only change animation if state actually changed (and not attacking!)
+            if (!this.isAttacking) {
+                if (shouldWalk && this.currentState !== 'walking') {
+                    this.currentState = 'walking';
+                    if (this.scene.anims.exists('sworddemon_walk')) {
+                        this.sprite.play('sworddemon_walk', true);
+                    }
+                } else if (!shouldWalk && this.currentState !== 'idle') {
+                    this.currentState = 'idle';
+                    if (this.scene.anims.exists('sworddemon_idle')) {
+                        this.sprite.play('sworddemon_idle', true);
+                    }
                 }
             }
 

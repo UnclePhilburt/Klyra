@@ -288,13 +288,18 @@ class MusicUI {
         this.sliderHandle.on('drag', (pointer) => {
             const localX = pointer.x - this.container.x - this.sliderContainer.x;
             const clampedX = Phaser.Math.Clamp(localX, this.trackMinX, this.trackMaxX);
-            
+
             this.sliderHandle.x = clampedX;
             const volume = (clampedX - this.trackMinX) / this.trackWidth;
             this.sliderFill.width = this.trackWidth * volume;
-            
+
             this.musicManager.setVolume(volume);
             this.volumeText.setText(`${Math.round(volume * 100)}%`);
+        });
+
+        // Start collapse timer when drag ends
+        this.sliderHandle.on('dragend', () => {
+            this.startCollapseTimer();
         });
 
         // Click on track
@@ -302,25 +307,28 @@ class MusicUI {
         trackBg.on('pointerdown', (pointer) => {
             const localX = pointer.x - this.container.x - this.sliderContainer.x;
             const clampedX = Phaser.Math.Clamp(localX, this.trackMinX, this.trackMaxX);
-            
+
             this.scene.tweens.add({
                 targets: this.sliderHandle,
                 x: clampedX,
                 duration: 150,
                 ease: 'Power2'
             });
-            
+
             const volume = (clampedX - this.trackMinX) / this.trackWidth;
-            
+
             this.scene.tweens.add({
                 targets: this.sliderFill,
                 width: this.trackWidth * volume,
                 duration: 150,
                 ease: 'Power2'
             });
-            
+
             this.musicManager.setVolume(volume);
             this.volumeText.setText(`${Math.round(volume * 100)}%`);
+
+            // Start collapse timer after clicking
+            this.startCollapseTimer();
         });
 
         this.elements.push(this.sliderContainer);
@@ -357,7 +365,10 @@ class MusicUI {
 
         // Start new timer to collapse after 2 seconds (ignores hover state)
         this.idleTimer = this.scene.time.delayedCall(2000, () => {
-            if (!this.volumeSliderVisible) {
+            // Hide volume slider if visible, which will trigger collapse
+            if (this.volumeSliderVisible) {
+                this.hideVolumeSlider();
+            } else {
                 this.collapse();
             }
         });

@@ -31,13 +31,15 @@ const MalacharSkillTree = {
                 
                 autoAttack: {
                     name: 'Command Bolt',
-                    description: 'Buff nearest minion OR ally',
-                    target: 'minion_or_ally', // Auto-targets minions first, then allies
+                    description: 'Shoots a bone projectile at lowest HP minion, healing and buffing it',
+                    target: 'minion_lowest_hp', // Targets lowest HP minion
                     range: 10,
-                    cooldown: 1000,
+                    cooldown: 3000, // 3 seconds instead of 1
+                    projectileSpeed: 400, // Pixels per second
                     effects: {
                         onMinion: {
-                            damageBonus: 0.40,
+                            damageBonus: 0.25, // 25% damage boost (down from 40%)
+                            heal: 15, // Heal 15 HP
                             duration: 3000
                         },
                         onAlly: {

@@ -17,6 +17,9 @@ const config = {
             debug: false
         }
     },
+    input: {
+        gamepad: true
+    },
     scene: [BootScene, MenuScene, CharacterSelectScene, LobbyScene, GameScene]
 };
 
@@ -27,6 +30,21 @@ game.connect = async function(username) {
     console.log('🎮 Connecting to game...', username);
 
     try {
+        // Wait for BootScene to finish loading assets
+        const bootScene = game.scene.getScene('BootScene');
+        if (bootScene && !bootScene.scene.isActive('BootScene')) {
+            console.log('⏳ Waiting for assets to load...');
+            await new Promise((resolve) => {
+                const checkBoot = setInterval(() => {
+                    if (bootScene.anims && bootScene.anims.exists('kelise_idle')) {
+                        clearInterval(checkBoot);
+                        console.log('✅ Assets loaded');
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+
         // Connect to server
         await networkManager.connect();
         console.log('✅ Connected to server');

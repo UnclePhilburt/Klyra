@@ -7,6 +7,7 @@ class ModernHUD {
         // Cache for optimization - CRITICAL FPS FIX
         this.lastHealth = null;
         this.lastMaxHealth = null;
+        this.lastShield = null;
         this.lastLevel = null;
         this.lastExperience = null;
         this.lastStats = null;
@@ -21,6 +22,7 @@ class ModernHUD {
         // Simple rectangles for bars
         this.healthBarBg = null;
         this.healthBarFill = null;
+        this.shieldBarFill = null;
         this.xpBarBg = null;
         this.xpBarFill = null;
 
@@ -40,6 +42,12 @@ class ModernHUD {
         this.healthBarFill.setOrigin(0, 0);
         this.healthBarFill.setScrollFactor(0);
         this.healthBarFill.setDepth(99001);
+
+        // Shield bar (rendered over health)
+        this.shieldBarFill = this.scene.add.rectangle(20, 20, 0, 20, 0x3b82f6, 0.9);
+        this.shieldBarFill.setOrigin(0, 0);
+        this.shieldBarFill.setScrollFactor(0);
+        this.shieldBarFill.setDepth(99002);
 
         // Health text
         this.healthText = this.scene.add.text(120, 30, '100/100', {
@@ -107,11 +115,13 @@ class ModernHUD {
     update() {
         if (!this.player) return;
 
-        // Only update health bar if health changed (CRITICAL FPS FIX)
-        if (this.player.health !== this.lastHealth || this.player.maxHealth !== this.lastMaxHealth) {
+        // Only update health bar if health or shield changed (CRITICAL FPS FIX)
+        const shield = this.player.shield || 0;
+        if (this.player.health !== this.lastHealth || this.player.maxHealth !== this.lastMaxHealth || shield !== this.lastShield) {
             this.updateHealthBar();
             this.lastHealth = this.player.health;
             this.lastMaxHealth = this.player.maxHealth;
+            this.lastShield = shield;
         }
 
         // Only update XP bar if XP/level changed
@@ -136,9 +146,10 @@ class ModernHUD {
     updateHealthBar() {
         const health = this.player.health;
         const maxHealth = this.player.maxHealth;
+        const shield = this.player.shield || 0;
         const healthPercent = health / maxHealth;
 
-        // Update bar width
+        // Update health bar width
         this.healthBarFill.width = 200 * healthPercent;
 
         // Update color based on health
@@ -154,8 +165,25 @@ class ModernHUD {
         }
         this.healthBarFill.setFillStyle(color, 1);
 
-        // Update text
-        this.healthText.setText(`${Math.ceil(health)}/${Math.ceil(maxHealth)}`);
+        // Update shield bar
+        if (shield > 0) {
+            const healthWidth = 200 * healthPercent;
+            const shieldWidth = Math.min((shield / maxHealth) * 200, 200 - healthWidth);
+
+            // Position shield bar right after health bar
+            this.shieldBarFill.setPosition(20 + healthWidth, 20);
+            this.shieldBarFill.width = shieldWidth;
+            this.shieldBarFill.setVisible(true);
+        } else {
+            this.shieldBarFill.setVisible(false);
+        }
+
+        // Update text (include shield if present)
+        if (shield > 0) {
+            this.healthText.setText(`${Math.ceil(health)}/${Math.ceil(maxHealth)} (+${Math.ceil(shield)})`);
+        } else {
+            this.healthText.setText(`${Math.ceil(health)}/${Math.ceil(maxHealth)}`);
+        }
     }
 
     updateLevel() {

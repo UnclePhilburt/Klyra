@@ -138,6 +138,27 @@ class MalacharAbilityHandler {
             return;
         }
 
+        // Send to server for multiplayer sync
+        const networkManager = this.scene.game.registry.get('networkManager');
+        console.log('🔍 NetworkManager found:', !!networkManager);
+        console.log('🎯 Target ally:', nearestAlly.data.username, nearestAlly.data.id);
+
+        if (networkManager) {
+            console.log('📤 Sending ability to server...');
+            networkManager.useAbility('q', ability.name, nearestAlly.data.id, {
+                shield: ability.effect.allyShield,
+                minionDamageBonus: ability.effect.minionDamageBonus,
+                duration: ability.duration
+            });
+        } else {
+            console.error('❌ NetworkManager not found in registry!');
+        }
+
+        // Apply locally
+        this.applyUnifiedFrontEffects(ability, nearestAlly);
+    }
+
+    applyUnifiedFrontEffects(ability, nearestAlly) {
         // Visual: Purple beam from player to ally
         this.createBeam(this.player.sprite, nearestAlly.sprite, 0x9b59d6, 2000);
 
@@ -628,23 +649,47 @@ class MalacharAbilityHandler {
     }
 
     applyMinionBuff(minion, buffId, damageBonus, duration) {
-        if (!minion.activeBuffs) minion.activeBuffs = new Map();
+        if (!minion.damageBuffs) minion.damageBuffs = [];
 
-        minion.activeBuffs.set(buffId, {
-            damageBonus: damageBonus,
+        const buff = {
+            id: buffId,
+            bonus: damageBonus,
             endTime: Date.now() + duration
-        });
+        };
+
+        minion.damageBuffs.push(buff);
 
         this.scene.time.delayedCall(duration, () => {
-            if (minion.activeBuffs) {
-                minion.activeBuffs.delete(buffId);
+            if (minion.damageBuffs) {
+                const index = minion.damageBuffs.findIndex(b => b.id === buffId);
+                if (index !== -1) {
+                    minion.damageBuffs.splice(index, 1);
+                }
             }
         });
     }
 
     applyShield(player, amount) {
-        // TODO: Implement shield system
-        console.log(`🛡️ Applied ${amount} shield to ${player.data.username}`);
+        if (!player) return;
+
+        // Add shield to player
+        player.shield = (player.shield || 0) + amount;
+
+        // Update UI if it exists (for other players' overhead bars)
+        if (player.ui && player.ui.updateHealthBar) {
+            player.ui.updateHealthBar();
+        }
+
+        // If this is the local player, update the HUD
+        if (player === this.player) {
+            const hud = this.scene.hud || this.scene.modernHUD;
+            if (hud && hud.updateHealthBar) {
+                hud.updateHealthBar();
+                console.log(`🛡️ Updated local player HUD with shield: ${player.shield}`);
+            }
+        }
+
+        console.log(`🛡️ Applied ${amount} shield to ${player.data.username} (Total: ${player.shield})`);
     }
 
     // Get player damage multiplier from all active buffs

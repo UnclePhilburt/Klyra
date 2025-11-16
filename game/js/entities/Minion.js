@@ -5,20 +5,22 @@ class Minion {
         this.ownerId = ownerId; // The player who summoned this minion
         this.minionId = minionId; // Unique ID for this minion
         this.isPermanent = isPermanent; // Permanent minions don't despawn
-        this.health = 100;
-        this.maxHealth = 100;
-        this.damage = 12;
+        // BALANCED MODE: Quality over quantity - strong but not overpowered
+        this.health = 250;  // Tanky enough to survive focused combat
+        this.maxHealth = 250;
+        this.damage = 15;  // 15 per hit x 2 swings = 30 damage per attack
         this.isAlive = true;
         this.moveSpeed = 240; // Increased from 150 for faster response
         this.attackRange = 100;
-        this.attackCooldown = 1000; // 1 second between attacks
+        this.attackCooldown = 600; // Fast enough to be effective
         this.lastAttackTime = 0;
+        this.isAttacking = false; // Prevent attacks while animation plays
         this.lifespan = 30000; // 30 seconds (only for temporary minions)
         this.spawnTime = Date.now();
 
         // Position update tracking for server
         this.lastPositionUpdate = 0;
-        this.positionUpdateInterval = 500; // Send position to server every 500ms
+        this.positionUpdateInterval = 50; // Send position to server every 50ms for very smooth movement
 
         // UI update throttling (don't update every frame!)
         this.uiUpdateCounter = 0;
@@ -56,22 +58,35 @@ class Minion {
         this.assistTarget = null; // Ally minion we're helping
 
         this.createSprite(x, y);
-        this.setupAI();
+
+        // Only run AI for minions owned by the local player
+        // Remote minions are purely visual and interpolate to server positions
+        if (this.ownerId === networkManager.currentPlayer?.id) {
+            this.setupAI();
+        }
     }
 
     createSprite(x, y) {
         const tileSize = GameConfig.GAME.TILE_SIZE;
 
-        // Create minion sprite - purple/dark creature
-        this.sprite = this.scene.add.sprite(x, y, 'malacharminion', 39);
+        // Create minion sprite - DON'T set initial frame, let animation system handle it
+        this.sprite = this.scene.add.sprite(x, y, 'malacharminion');
         this.sprite.setOrigin(0.5);
         this.sprite.setScale(1.0); // 64x64 sprite at 1:1 scale
         this.sprite.setDepth(2); // Above walkways (depth 1) but with walls (depth 2)
         this.scene.physics.add.existing(this.sprite);
         this.sprite.body.setSize(32, 32);
 
-        // Play idle animation
-        this.sprite.play('minion_idle');
+        // DEBUG: Check if anims component exists
+        console.log(`🎬 SPRITE CREATED: anims exists: ${!!this.sprite.anims}, animationManager: ${!!this.sprite.scene.anims}`);
+
+        // Play idle animation immediately - this sets the correct frame
+        if (this.sprite.anims) {
+            this.sprite.anims.play('minion_idle');
+            console.log(`🎬 PLAYED IDLE ON CREATE: currentAnim: ${this.sprite.anims.currentAnim?.key}, isPlaying: ${this.sprite.anims.isPlaying}`);
+        } else {
+            console.error(`❌ SPRITE HAS NO ANIMS COMPONENT!`);
+        }
 
         // Health bars removed for cleaner visuals
         // this.healthBarBg = this.scene.add.rectangle(x, y - 18, 24, 3, 0x000000);
@@ -390,7 +405,7 @@ class Minion {
         if (this.aggroedEnemies.size >= this.maxAggro) {
             // Already tanking max enemies, only target ones we're already fighting
             const alreadyTargeted = Array.from(this.aggroedEnemies)
-                .map(id => this.scene.enemies[id] || this.scene.swordDemons[id])
+                .map(id => this.scene.enemies[id] || this.scene.swordDemons[id] || this.scene.minotaurs[id])
                 .filter(e => e && e.isAlive);
 
             if (alreadyTargeted.length > 0) {
@@ -400,10 +415,11 @@ class Minion {
             }
         }
 
-        // Combine both enemies and sword demons
+        // Combine all enemy types
         const allEnemies = [
             ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.swordDemons || {})
+            ...Object.values(this.scene.swordDemons || {}),
+            ...Object.values(this.scene.minotaurs || {})
         ];
 
         if (allEnemies.length === 0) {
@@ -439,7 +455,8 @@ class Minion {
     detectThreats() {
         const allEnemies = [
             ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.swordDemons || {})
+            ...Object.values(this.scene.swordDemons || {}),
+            ...Object.values(this.scene.minotaurs || {})
         ];
 
         const threats = [];
@@ -471,7 +488,7 @@ class Minion {
         // Check if at aggro limit
         if (this.aggroedEnemies.size >= this.maxAggro) {
             const currentTargets = Array.from(this.aggroedEnemies)
-                .map(id => this.scene.enemies[id] || this.scene.swordDemons[id])
+                .map(id => this.scene.enemies[id] || this.scene.swordDemons[id] || this.scene.minotaurs[id])
                 .filter(e => e && e.isAlive);
 
             if (currentTargets.length > 0) {
@@ -727,7 +744,7 @@ class Minion {
 
         // Play walk animation
         if (this.sprite.anims) {
-            this.sprite.play('minion_walk', true);
+            this.sprite.anims.play('minion_walk', true);
         }
     }
 
@@ -758,7 +775,7 @@ class Minion {
 
             // Play idle animation when stopped
             if (this.sprite.anims) {
-                this.sprite.play('minion_idle', true);
+                this.sprite.anims.play('minion_idle', true);
             }
             return;
         }
@@ -776,7 +793,7 @@ class Minion {
 
         // Play walk animation
         if (this.sprite.anims) {
-            this.sprite.play('minion_walk', true);
+            this.sprite.anims.play('minion_walk', true);
         }
     }
 
@@ -830,7 +847,7 @@ class Minion {
 
             // Play walk animation
             if (this.sprite.anims.currentAnim?.key !== 'minion_walk') {
-                this.sprite.play('minion_walk');
+                this.sprite.anims.play('minion_walk');
             }
         } else {
             // Reached target, idle for a moment
@@ -839,7 +856,7 @@ class Minion {
 
             // Play idle animation
             if (this.sprite.anims.currentAnim?.key !== 'minion_idle') {
-                this.sprite.play('minion_idle');
+                this.sprite.anims.play('minion_idle');
             }
         }
     }
@@ -899,7 +916,7 @@ class Minion {
 
         // Play walk animation
         if (this.sprite.anims.currentAnim?.key !== 'minion_walk') {
-            this.sprite.play('minion_walk');
+            this.sprite.anims.play('minion_walk');
         }
     }
 
@@ -907,7 +924,8 @@ class Minion {
         // Find enemies closest to THIS minion, not the player
         const allEnemies = [
             ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.swordDemons || {})
+            ...Object.values(this.scene.swordDemons || {}),
+            ...Object.values(this.scene.minotaurs || {})
         ];
 
         if (allEnemies.length === 0) return null;
@@ -995,7 +1013,7 @@ class Minion {
 
             // Play walk animation
             if (this.sprite.anims.currentAnim?.key !== 'minion_walk') {
-                this.sprite.play('minion_walk');
+                this.sprite.anims.play('minion_walk');
             }
         } else {
             // At position - slow down
@@ -1003,7 +1021,7 @@ class Minion {
 
             // Play idle animation
             if (this.sprite.anims.currentAnim?.key !== 'minion_idle') {
-                this.sprite.play('minion_idle');
+                this.sprite.anims.play('minion_idle');
             }
         }
     }
@@ -1027,13 +1045,19 @@ class Minion {
 
         // Move towards formation position if not in position
         if (distance > 20) {
-            this.scene.physics.moveToObject(this.sprite, formationPosition, this.moveSpeed);
-            // Play walk animation
-            if (this.sprite.anims.currentAnim?.key !== 'minion_walk') {
-                this.sprite.play('minion_walk');
+            // Don't move if currently attacking
+            if (!this.isAttacking) {
+                this.scene.physics.moveToObject(this.sprite, formationPosition, this.moveSpeed);
+                // Play walk animation
+                if (this.sprite.anims.currentAnim?.key !== 'minion_walk') {
+                    this.sprite.anims.play('minion_walk');
+                }
             }
         } else {
-            this.sprite.body.setVelocity(0, 0);
+            // Stop movement when in position (unless attacking, then already stopped)
+            if (!this.isAttacking) {
+                this.sprite.body.setVelocity(0, 0);
+            }
 
             // Attack if cooldown is ready and in range of enemy
             const distToEnemy = Phaser.Math.Distance.Between(
@@ -1044,14 +1068,15 @@ class Minion {
             );
 
             const now = Date.now();
-            if (distToEnemy <= this.attackRange && now - this.lastAttackTime > this.attackCooldown) {
+            // Only attack if not already attacking and cooldown has passed
+            if (!this.isAttacking && distToEnemy <= this.attackRange && now - this.lastAttackTime > this.attackCooldown) {
                 this.performAttack(enemy);
                 this.lastAttackTime = now;
-            } else {
+            } else if (!this.isAttacking) {
                 // Only play idle if not currently attacking
                 const currentAnim = this.sprite.anims.currentAnim?.key;
                 if (currentAnim !== 'minion_attack' && currentAnim !== 'minion_idle') {
-                    this.sprite.play('minion_idle');
+                    this.sprite.anims.play('minion_idle');
                 }
             }
         }
@@ -1107,17 +1132,69 @@ class Minion {
     }
 
     performAttack(enemy) {
-        // Play attack animation
-        this.sprite.play('minion_attack');
+        // Set attacking flag to prevent interruption
+        this.isAttacking = true;
+        console.log(`⚔️ Minion ${this.minionId.slice(-8)} starting attack, isAttacking=${this.isAttacking}`);
 
-        // When attack animation completes, return to idle
-        this.sprite.once('animationcomplete', () => {
+        // STOP MOVEMENT during attack - this is critical!
+        this.sprite.body.setVelocity(0, 0);
+
+        // Play attack animation (force restart if already playing)
+        this.sprite.anims.play('minion_attack', true);
+
+        // Attack animation: 13 frames at 16fps = 812ms duration
+        // Add safety timeout to ensure flag clears even if animationcomplete doesn't fire
+        const ANIMATION_DURATION = 850; // 812ms + 38ms buffer
+
+        // Clear any existing attack timeout
+        if (this.attackAnimTimeout) {
+            clearTimeout(this.attackAnimTimeout);
+        }
+
+        // Set timeout fallback
+        this.attackAnimTimeout = setTimeout(() => {
+            console.log(`⏰ Attack animation timeout for ${this.minionId.slice(-8)}`);
+            this.isAttacking = false;
             if (this.isAlive && this.sprite && this.sprite.active) {
-                this.sprite.play('minion_idle');
+                this.sprite.anims.play('minion_idle');
+            }
+        }, ANIMATION_DURATION);
+
+        // When attack animation completes, return to idle and allow next attack
+        this.sprite.once('animationcomplete', (anim) => {
+            console.log(`✅ Attack animation completed for ${this.minionId.slice(-8)}, anim=${anim.key}`);
+            if (this.attackAnimTimeout) {
+                clearTimeout(this.attackAnimTimeout);
+            }
+            this.isAttacking = false; // Clear flag when animation completes
+            if (this.isAlive && this.sprite && this.sprite.active) {
+                this.sprite.anims.play('minion_idle');
             }
         });
 
-        // Visual attack effect
+        // Attack animation has 13 frames (0-12) at 16fps
+        // Double swing attack: damage at frame 5 (index 4) and frame 9 (index 8)
+        // Frame 5 timing: 4 / 16 = 0.25s = 250ms
+        // Frame 9 timing: 8 / 16 = 0.5s = 500ms
+        const FIRST_HIT_DELAY = 250;  // First swing
+        const SECOND_HIT_DELAY = 500; // Second swing
+
+        // First hit
+        this.scene.time.delayedCall(FIRST_HIT_DELAY, () => {
+            this.dealDamageToEnemy(enemy);
+        });
+
+        // Second hit
+        this.scene.time.delayedCall(SECOND_HIT_DELAY, () => {
+            this.dealDamageToEnemy(enemy);
+        });
+    }
+
+    dealDamageToEnemy(enemy) {
+        // Only deal damage if minion is still alive and enemy is still valid
+        if (!this.isAlive || !enemy || !enemy.isAlive) return;
+
+        // Visual attack effect (show at moment of impact)
         const attackLine = this.scene.add.line(
             0, 0,
             this.sprite.x, this.sprite.y,
@@ -1228,9 +1305,9 @@ class Minion {
             });
         }
 
-        // Notify server if this was a permanent minion
-        if (this.isPermanent && this.minionId) {
-            networkManager.trackPermanentMinion(this.minionId, 'remove');
+        // Notify server of minion death (only if owned by local player)
+        if (this.minionId && this.ownerId === networkManager.currentPlayer?.id) {
+            networkManager.reportMinionDeath(this.minionId, this.isPermanent);
         }
 
         // Death animation - fade out
@@ -1272,29 +1349,48 @@ class Minion {
         if (!this.isAlive) return;
 
         // For remote minions (not owned by local player), interpolate towards target position
-        if (this.targetX !== undefined && this.targetY !== undefined &&
-            this.ownerId !== networkManager.currentPlayer?.id) {
-            const dx = this.targetX - this.sprite.x;
-            const dy = this.targetY - this.sprite.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        // Handle animation based on whether we have a target or not
+        if (this.ownerId !== networkManager.currentPlayer?.id) {
+            // DEBUG: Log remote minion state occasionally
+            if (Math.random() < 0.005) { // 0.5% of frames
+                console.log(`🔍 REMOTE MINION UPDATE: ${this.id}, hasTarget: ${this.targetX !== undefined}, currentAnim: ${this.sprite.anims?.currentAnim?.key}`);
+            }
 
-            if (distance > 1) {
-                // Smooth interpolation - move 20% of the way each frame
-                const interpolationSpeed = 0.2;
-                this.sprite.x += dx * interpolationSpeed;
-                this.sprite.y += dy * interpolationSpeed;
+            // Remote minion - use Phaser physics for movement
+            // Animation will be handled automatically by velocity-based logic below
+            if (this.targetX !== undefined && this.targetY !== undefined) {
+                const dx = this.targetX - this.sprite.x;
+                const dy = this.targetY - this.sprite.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
 
-                // Update health bar
-                if (this.healthBar) {
-                    this.healthBar.x = this.sprite.x;
-                    this.healthBar.y = this.sprite.y - 20;
+                // Use larger threshold (3 pixels) to avoid jittering
+                if (distance > 3) {
+                    // Use Phaser's physics body for smooth movement
+                    // Calculate velocity needed to reach target
+                    const speed = 200; // pixels per second
+                    const angle = Math.atan2(dy, dx);
+
+                    this.sprite.body.setVelocity(
+                        Math.cos(angle) * speed,
+                        Math.sin(angle) * speed
+                    );
+
+                    // Update health bar
+                    if (this.healthBar) {
+                        this.healthBar.x = this.sprite.x;
+                        this.healthBar.y = this.sprite.y - 20;
+                    }
+                } else {
+                    // Close enough, stop movement
+                    this.sprite.body.setVelocity(0, 0);
+                    this.sprite.x = this.targetX;
+                    this.sprite.y = this.targetY;
+                    this.targetX = undefined;
+                    this.targetY = undefined;
                 }
             } else {
-                // Close enough, snap to target
-                this.sprite.x = this.targetX;
-                this.sprite.y = this.targetY;
-                this.targetX = undefined;
-                this.targetY = undefined;
+                // No target position - stop movement
+                this.sprite.body.setVelocity(0, 0);
             }
         }
 
@@ -1307,14 +1403,29 @@ class Minion {
             }
         }
 
-        // Update sprite facing direction based on velocity (cheap, keep every frame)
-        if (this.sprite && this.sprite.body) {
+        // Update sprite facing direction and animation based on velocity
+        // ONLY for local player's minions - remote minions get animation from network
+        if (this.sprite && this.sprite.body && this.ownerId === networkManager.currentPlayer?.id) {
+            const speed = Math.sqrt(this.sprite.body.velocity.x ** 2 + this.sprite.body.velocity.y ** 2);
+
             if (this.sprite.body.velocity.x < -10) {
                 // Moving left - flip sprite
                 this.sprite.setFlipX(true);
             } else if (this.sprite.body.velocity.x > 10) {
                 // Moving right - don't flip
                 this.sprite.setFlipX(false);
+            }
+
+            // Play walk or idle animation based on movement
+            // BUT don't interrupt attack animations!
+            if (this.sprite.anims && !this.isAttacking) {
+                const currentAnim = this.sprite.anims.currentAnim?.key;
+                const targetAnim = speed > 10 ? 'minion_walk' : 'minion_idle';
+
+                // Only switch if animation changed
+                if (currentAnim !== targetAnim) {
+                    this.sprite.anims.play(targetAnim, true);
+                }
             }
         }
 
@@ -1332,13 +1443,17 @@ class Minion {
     }
 
     sendPositionUpdate() {
-        // Send minion position to server so enemies can target it
-        const gridPosition = {
-            x: Math.floor(this.sprite.x / 32),
-            y: Math.floor(this.sprite.y / 32)
+        // Send minion PIXEL position to server for smooth multiplayer movement
+        const pixelPosition = {
+            x: Math.round(this.sprite.x),
+            y: Math.round(this.sprite.y)
         };
 
-        networkManager.updateMinionPosition(this.minionId, gridPosition, this.isPermanent);
+        // Include animation state for remote players
+        const animationState = this.sprite.anims?.currentAnim?.key || 'minion_idle';
+        const flipX = this.sprite.flipX || false;
+
+        networkManager.updateMinionPosition(this.minionId, pixelPosition, this.isPermanent, animationState, flipX);
     }
 
     destroy() {

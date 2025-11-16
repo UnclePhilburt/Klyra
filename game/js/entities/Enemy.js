@@ -6,6 +6,8 @@ class Enemy {
         this.health = data.health;
         this.maxHealth = data.maxHealth;
         this.isAlive = data.isAlive;
+        this.isAttacking = false; // Track if currently playing attack animation
+        this.lastAttackTime = 0; // Track when last attack started
 
         this.createSprite();
     }
@@ -50,12 +52,22 @@ class Enemy {
     }
 
     attack() {
+        // Prevent attack spam - enforce minimum cooldown (500ms)
+        const now = Date.now();
+        if (this.isAttacking || now - this.lastAttackTime < 500) {
+            return; // Still attacking or on cooldown
+        }
+
         // Play attack animation if available
         if (this.sprite && this.sprite.anims && this.isAlive) {
             if (this.scene.anims.exists('skullwolf_attack')) {
+                this.isAttacking = true;
+                this.lastAttackTime = now;
                 this.sprite.play('skullwolf_attack');
+
                 // Return to walk/idle after attack completes
                 this.scene.time.delayedCall(500, () => {
+                    this.isAttacking = false;
                     if (this.sprite && this.sprite.active && this.isAlive) {
                         const isMoving = Math.abs(this.sprite.x - this.lastX) > 0.5;
                         const animKey = isMoving ? 'skullwolf_walk' : 'skullwolf_idle';
@@ -80,6 +92,9 @@ class Enemy {
             this.sprite.clearTint();
         });
 
+        // Blood splatter effect
+        this.showBloodEffect();
+
         // PERFORMANCE: Removed damage numbers (saves text objects + tweens)
 
         // Show health bar when damaged
@@ -88,8 +103,101 @@ class Enemy {
         this.updateHealthBar();
     }
 
+    showBloodEffect() {
+        // Create dynamic blood particle effect - brighter and bigger
+        const particleCount = 12;
+        const particles = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5) * 0.5;
+            const speed = 30 + Math.random() * 40;
+            const size = 4 + Math.random() * 5;
+
+            const particle = this.scene.add.circle(
+                this.sprite.x,
+                this.sprite.y,
+                size,
+                0xff0000 // Bright red
+            );
+            particle.setDepth(9999);
+            particles.push(particle);
+
+            // Animate particle outward
+            this.scene.tweens.add({
+                targets: particle,
+                x: this.sprite.x + Math.cos(angle) * speed,
+                y: this.sprite.y + Math.sin(angle) * speed,
+                alpha: 0,
+                scale: 0.3,
+                duration: 400 + Math.random() * 300,
+                ease: 'Cubic.easeOut',
+                onComplete: () => particle.destroy()
+            });
+        }
+
+        // Add blood drip particles
+        for (let i = 0; i < 5; i++) {
+            const drip = this.scene.add.circle(
+                this.sprite.x + (Math.random() - 0.5) * 20,
+                this.sprite.y - 5,
+                3,
+                0xff0000 // Bright red
+            );
+            drip.setDepth(9999);
+
+            this.scene.tweens.add({
+                targets: drip,
+                y: drip.y + 20 + Math.random() * 15,
+                alpha: 0,
+                duration: 500 + Math.random() * 300,
+                ease: 'Sine.easeIn',
+                onComplete: () => drip.destroy()
+            });
+        }
+
+        // Create blood puddles on the ground
+        const puddleCount = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < puddleCount; i++) {
+            const offsetX = (Math.random() - 0.5) * 30;
+            const offsetY = (Math.random() - 0.5) * 30;
+            const puddleSize = 5 + Math.random() * 8;
+
+            const puddle = this.scene.add.circle(
+                this.sprite.x + offsetX,
+                this.sprite.y + offsetY,
+                puddleSize,
+                0xcc0000 // Dark red puddle
+            );
+            puddle.setDepth(1); // Below enemies but above ground
+            puddle.setAlpha(0.7);
+
+            // Fade out puddle after a few seconds
+            this.scene.tweens.add({
+                targets: puddle,
+                alpha: 0,
+                duration: 3000 + Math.random() * 2000,
+                delay: 500,
+                ease: 'Linear',
+                onComplete: () => puddle.destroy()
+            });
+        }
+    }
+
     die() {
         this.isAlive = false;
+
+        // Play death sound (40% chance)
+        if (Math.random() < 0.4 && this.scene.sound) {
+            const deathSounds = [
+                'death_bone_snap', 'death_crunch', 'death_crunch_quick',
+                'death_crunch_splat', 'death_crunch_splat_2', 'death_kick',
+                'death_punch', 'death_punch_2', 'death_punch_3', 'death_slap',
+                'death_splat_double', 'death_squelch_1', 'death_squelch_2',
+                'death_squelch_3', 'death_squelch_4'
+            ];
+            const randomSound = deathSounds[Math.floor(Math.random() * deathSounds.length)];
+            this.scene.sound.play(randomSound, { volume: 0.3 });
+        }
 
         // Death animation - explosion effect
         const particles = [];
@@ -176,22 +284,24 @@ class Enemy {
 
         // Update positions of UI elements
         if (this.sprite && this.sprite.active) {
-            // Track movement and update animation
-            const isMoving = Math.abs(this.sprite.x - this.lastX) > 0.5;
+            // Track movement and update animation (but don't interrupt attacks!)
+            if (!this.isAttacking) {
+                const isMoving = Math.abs(this.sprite.x - this.lastX) > 0.5;
 
-            if (isMoving) {
-                // Play walk animation when moving (ignoreIfPlaying prevents restart flicker)
-                if (this.sprite.anims.currentAnim?.key !== 'skullwolf_walk') {
-                    this.sprite.play('skullwolf_walk', true); // true = ignoreIfPlaying
-                }
+                if (isMoving) {
+                    // Play walk animation when moving (ignoreIfPlaying prevents restart flicker)
+                    if (this.sprite.anims.currentAnim?.key !== 'skullwolf_walk') {
+                        this.sprite.play('skullwolf_walk', true); // true = ignoreIfPlaying
+                    }
 
-                // Flip sprite based on direction (defaults to left, flip when moving right)
-                const movingRight = this.sprite.x > this.lastX;
-                this.sprite.setFlipX(movingRight);
-            } else {
-                // Play idle animation when not moving (ignoreIfPlaying prevents restart flicker)
-                if (this.sprite.anims.currentAnim?.key !== 'skullwolf_idle') {
-                    this.sprite.play('skullwolf_idle', true); // true = ignoreIfPlaying
+                    // Flip sprite based on direction (defaults to left, flip when moving right)
+                    const movingRight = this.sprite.x > this.lastX;
+                    this.sprite.setFlipX(movingRight);
+                } else {
+                    // Play idle animation when not moving (ignoreIfPlaying prevents restart flicker)
+                    if (this.sprite.anims.currentAnim?.key !== 'skullwolf_idle') {
+                        this.sprite.play('skullwolf_idle', true); // true = ignoreIfPlaying
+                    }
                 }
             }
 

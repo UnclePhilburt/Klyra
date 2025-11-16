@@ -162,6 +162,10 @@ class NetworkManager {
             this.emit('minion:moved', data);
         });
 
+        this.socket.on('minion:died', (data) => {
+            this.emit('minion:died', data);
+        });
+
         this.socket.on('minion:damaged', (data) => {
             this.emit('minion:damaged', data);
         });
@@ -212,6 +216,14 @@ class NetworkManager {
             console.log('🔄 Skills restored from server:', data);
             this.emit('skills:restored', data);
         });
+
+        // Malachar ability events
+        this.socket.on('ability:used', (data) => {
+            console.log(`🔔 Socket received ability:used from server:`, data);
+            console.log(`   Emitting to ${this.callbacks['ability:used']?.length || 0} listeners`);
+            this.emit('ability:used', data);
+            console.log(`   Emission complete`);
+        });
     }
 
     // Send player join
@@ -256,7 +268,7 @@ class NetworkManager {
             const dx = position.x - this.lastPosition.x;
             const dy = position.y - this.lastPosition.y;
 
-            // Only send if moved at least 1 tile
+            // Only send if moved at least 1 pixel (smooth movement)
             if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
                 return; // Skip redundant update
             }
@@ -296,9 +308,15 @@ class NetworkManager {
         this.socket.emit('player:death', { killedBy });
     }
 
+    // Report minion death
+    reportMinionDeath(minionId, isPermanent) {
+        this.socket.emit('minion:death', { minionId, isPermanent });
+        console.log(`💀 Reported minion death to server: ${minionId}`);
+    }
+
     // Update minion position (so enemies can target them)
-    updateMinionPosition(minionId, position, isPermanent = false) {
-        this.socket.emit('minion:position', { minionId, position, isPermanent });
+    updateMinionPosition(minionId, position, isPermanent = false, animationState = 'minion_idle', flipX = false) {
+        this.socket.emit('minion:position', { minionId, position, isPermanent, animationState, flipX });
     }
 
     // Change map (interior/exterior)
@@ -338,6 +356,32 @@ class NetworkManager {
     respawn() {
         this.socket.emit('player:respawn');
         console.log('💚 Requesting respawn');
+    }
+
+    // Send Malachar ability usage
+    useAbility(abilityKey, abilityName, targetPlayerId, effects) {
+        console.log('🚀 NetworkManager.useAbility() called with:', { abilityKey, abilityName, targetPlayerId, effects });
+        console.log('   Socket connected:', this.connected);
+        console.log('   Socket object:', this.socket);
+
+        this.socket.emit('ability:use', {
+            abilityKey,
+            abilityName,
+            targetPlayerId,
+            effects
+        });
+
+        console.log('   ✅ Event emitted to server');
+    }
+
+    // Send auto-attack effect (for visual sync across clients)
+    broadcastAutoAttack(autoAttackName, targetMinionId) {
+        this.socket.emit('ability:use', {
+            abilityKey: 'autoattack',
+            abilityName: autoAttackName,
+            targetMinionId: targetMinionId,
+            effects: {}
+        });
     }
 
     // Event emitter

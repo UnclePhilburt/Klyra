@@ -31,7 +31,7 @@ class GameScene extends Phaser.Scene {
             'player:joined', 'player:left', 'player:moved', 'player:changedMap', 'player:attacked',
             'player:damaged', 'player:levelup', 'player:died',
             'enemy:spawned', 'enemy:despawned', 'enemy:damaged', 'enemy:moved', 'enemy:killed',
-            'minion:spawned', 'minion:moved', 'minion:damaged', 'minion:healed',
+            'minion:spawned', 'minion:moved', 'minion:died', 'minion:damaged', 'minion:healed',
             'item:spawned', 'item:collected', 'chat:message'
         ];
 
@@ -67,6 +67,13 @@ class GameScene extends Phaser.Scene {
             debug.debug('AUDIO', 'Destroying MusicManager');
             this.musicManager.destroy();
             this.musicManager = null;
+        }
+
+        // Destroy footstep system
+        if (this.footstepManager) {
+            debug.debug('AUDIO', 'Destroying FootstepManager');
+            this.footstepManager.destroy();
+            this.footstepManager = null;
         }
 
         if (this.musicUI) {
@@ -227,6 +234,14 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // Register networkManager in game registry for global access
+        this.game.registry.set('networkManager', networkManager);
+        console.log('✅ NetworkManager registered in game registry');
+
+        // Initialize controller manager
+        this.input.gamepad.start();
+        this.controllerManager = new ControllerManager(this);
+
         // Show loading message
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
@@ -362,7 +377,9 @@ class GameScene extends Phaser.Scene {
         // Create local player
         const myData = this.gameData.players.find(p => p.id === networkManager.currentPlayer.id);
         if (myData) {
+            console.log(`👤 Creating local player with position:`, myData.position);
             this.localPlayer = new Player(this, myData, true);
+            console.log(`📍 Local player spawned at pixel position (${this.localPlayer.sprite.x}, ${this.localPlayer.sprite.y})`);
             this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.1, 0.1);
 
             // Set character's default auto-attack if available
@@ -376,14 +393,24 @@ class GameScene extends Phaser.Scene {
             this.allyManager = new AllyManager(this);
             console.log('✅ AllyManager initialized');
 
-            // Send initial position immediately
-            const tileSize = GameConfig.GAME.TILE_SIZE;
-            const gridPos = {
-                x: Math.floor(this.localPlayer.sprite.x / tileSize),
-                y: Math.floor(this.localPlayer.sprite.y / tileSize)
+            // Send initial position immediately (PIXEL coordinates for smooth movement)
+            const pixelPos = {
+                x: Math.round(this.localPlayer.sprite.x),
+                y: Math.round(this.localPlayer.sprite.y)
             };
-            console.log(`📍 Sending initial position: pixel(${this.localPlayer.sprite.x.toFixed(0)}, ${this.localPlayer.sprite.y.toFixed(0)}) -> grid(${gridPos.x}, ${gridPos.y})`);
-            networkManager.movePlayer(gridPos);
+            console.log(`📍 Sending initial pixel position: (${pixelPos.x}, ${pixelPos.y})`);
+            networkManager.movePlayer(pixelPos);
+
+            // Spawn permanent minion if local player is Malachar
+            if (myData.class === 'MALACHAR') {
+                this.spawnMinion(
+                    this.localPlayer.sprite.x + 40,
+                    this.localPlayer.sprite.y,
+                    myData.id,
+                    true // permanent
+                );
+                console.log('🔮 Spawned permanent minion for local Malachar player');
+            }
 
             // Show skill selector immediately at level 1 for path selection
             if (myData.level === 1) {
@@ -1586,6 +1613,9 @@ class GameScene extends Phaser.Scene {
         this.musicManager = new MusicManager(this);
         this.musicUI = new MusicUI(this, this.musicManager);
 
+        // Create footstep manager
+        this.footstepManager = new FootstepManager(this);
+
         // Start gameplay music
         this.musicManager.startGameplayMusic();
     }
@@ -1684,7 +1714,7 @@ class GameScene extends Phaser.Scene {
             'player:joined', 'player:left', 'player:moved', 'player:changedMap', 'player:attacked',
             'player:damaged', 'player:levelup', 'player:died',
             'enemy:spawned', 'enemy:despawned', 'enemy:damaged', 'enemy:moved', 'enemy:killed',
-            'minion:spawned', 'minion:moved', 'minion:damaged', 'minion:healed',
+            'minion:spawned', 'minion:moved', 'minion:died', 'minion:damaged', 'minion:healed',
             'item:spawned', 'item:collected', 'chat:message'
         ];
 
@@ -1778,6 +1808,11 @@ class GameScene extends Phaser.Scene {
         networkManager.on('player:attacked', (data) => {
             const player = this.otherPlayers[data.playerId] || this.localPlayer;
             if (player) {
+                // Play attack animation
+                if (player.spriteRenderer && player.spriteRenderer.playAttackAnimation) {
+                    player.spriteRenderer.playAttackAnimation();
+                }
+
                 // Show attack effect
                 this.showAttackEffect(data.position);
             }
@@ -1852,10 +1887,8 @@ class GameScene extends Phaser.Scene {
                     player.maxHealth = data.maxHealth;
                     player.level = data.level;
                     player.sprite.setAlpha(1);
-                    player.sprite.setPosition(
-                        data.position.x * this.tileSize + this.tileSize / 2,
-                        data.position.y * this.tileSize + this.tileSize / 2
-                    );
+                    // Position is already in pixels
+                    player.sprite.setPosition(data.position.x, data.position.y);
                 }
             }
         });
@@ -2002,28 +2035,69 @@ class GameScene extends Phaser.Scene {
                 return;
             }
 
-            // Calculate pixel position from grid position
+            // Position from server is in GRID coordinates, convert to pixels
             const tileSize = GameConfig.GAME.TILE_SIZE;
             const x = data.position.x * tileSize + tileSize / 2;
             const y = data.position.y * tileSize + tileSize / 2;
 
+            console.log(`🔮 Converting grid position (${data.position.x}, ${data.position.y}) to pixels (${x}, ${y})`);
+
             // Spawn the minion
-            this.spawnMinion(x, y, data.ownerId, data.isPermanent, data.minionId);
+            const minion = this.spawnMinion(x, y, data.ownerId, data.isPermanent, data.minionId);
+
+            // Apply initial animation state and flip if provided
+            if (minion && minion.sprite) {
+                if (data.animationState && minion.sprite.anims) {
+                    minion.sprite.anims.play(data.animationState, true);
+                }
+                if (data.flipX !== undefined) {
+                    minion.sprite.setFlipX(data.flipX);
+                }
+            }
         });
 
         // Minion position updated (from server broadcast)
         networkManager.on('minion:moved', (data) => {
             const minion = this.minions[data.minionId];
+
+            // DEBUG: Log every minion:moved event
+            if (Math.random() < 0.05) { // Log 5% to see if events are firing
+                console.log(`🔍 minion:moved - ID: ${data.minionId}, exists: ${!!minion}, ownerId: ${minion?.ownerId}, currentPlayer: ${networkManager.currentPlayer?.id}`);
+            }
+
             if (minion && minion.sprite && minion.sprite.active) {
-                // Calculate pixel position from grid position
-                const tileSize = GameConfig.GAME.TILE_SIZE;
-                const targetX = data.position.x * tileSize + tileSize / 2;
-                const targetY = data.position.y * tileSize + tileSize / 2;
+                // Position is now in PIXELS, use directly
+                const targetX = data.position.x;
+                const targetY = data.position.y;
+
+                // Apply animation state and sprite flip
+                if (data.animationState && minion.sprite.anims) {
+                    const currentAnim = minion.sprite.anims.currentAnim?.key;
+                    const isPlaying = minion.sprite.anims.isPlaying;
+
+                    // DEBUG: Log animation changes occasionally
+                    if (Math.random() < 0.01) {
+                        console.log(`🎬 Animation update - current: ${currentAnim}, target: ${data.animationState}, isPlaying: ${isPlaying}`);
+                    }
+
+                    // Always play the animation to ensure it's running
+                    if (currentAnim !== data.animationState || !isPlaying) {
+                        minion.sprite.anims.play(data.animationState, true);
+                    }
+                }
+                if (data.flipX !== undefined) {
+                    minion.sprite.setFlipX(data.flipX);
+                }
 
                 // Calculate distance to determine if we should snap or smooth move
                 const dx = targetX - minion.sprite.x;
                 const dy = targetY - minion.sprite.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // DEBUG: Log target position setting
+                if (Math.random() < 0.05) {
+                    console.log(`🎯 Setting target for ${data.minionId}: (${targetX}, ${targetY}), distance: ${distance.toFixed(2)}, snap: ${distance > 200}`);
+                }
 
                 // If distance is too large (teleport/spawn), snap instantly
                 // Otherwise use smooth interpolation
@@ -2039,6 +2113,21 @@ class GameScene extends Phaser.Scene {
                     minion.targetX = targetX;
                     minion.targetY = targetY;
                 }
+            } else if (!minion) {
+                // Debug: Log when we receive a move event for a minion that doesn't exist locally
+                if (Math.random() < 0.01) { // Log 1% of missing minions to avoid spam
+                    console.log(`⚠️ Received minion:moved for unknown minion: ${data.minionId}`);
+                }
+            }
+        });
+
+        // Minion died (from server broadcast)
+        networkManager.on('minion:died', (data) => {
+            const minion = this.minions[data.minionId];
+            if (minion && minion.sprite && minion.sprite.active) {
+                console.log(`💀 Remote minion died: ${data.minionId}`);
+                // Call die() to play death animation and destroy
+                minion.die();
             }
         });
 
@@ -2117,8 +2206,46 @@ class GameScene extends Phaser.Scene {
         // Player damaged by enemy
         networkManager.on('player:damaged', (data) => {
             if (data.playerId === networkManager.currentPlayer.id && this.localPlayer) {
-                this.localPlayer.health = data.health;
-                this.localPlayer.ui.updateHealthBar();
+                // CLIENT-SIDE VALIDATION: Verify enemy is actually close enough to attack
+                // Only validate if we have position data AND the enemy exists
+                if (data.attackerId && data.enemyPosition) {
+                    const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId];
+
+                    if (attacker && attacker.sprite) {
+                        const TILE_SIZE = GameConfig.GAME.TILE_SIZE;
+                        const MAX_ATTACK_RANGE = 3.0; // 3 tiles max attack range (generous to account for latency)
+
+                        // Convert enemy grid position to pixel position
+                        const enemyPixelX = data.enemyPosition.x * TILE_SIZE + TILE_SIZE / 2;
+                        const enemyPixelY = data.enemyPosition.y * TILE_SIZE + TILE_SIZE / 2;
+
+                        // Calculate distance between enemy and player
+                        const dx = this.localPlayer.sprite.x - enemyPixelX;
+                        const dy = this.localPlayer.sprite.y - enemyPixelY;
+                        const distanceInPixels = Math.sqrt(dx * dx + dy * dy);
+                        const distanceInTiles = distanceInPixels / TILE_SIZE;
+
+                        // If enemy is too far away, log warning and skip damage
+                        if (distanceInTiles > MAX_ATTACK_RANGE) {
+                            console.warn(`⚠️ Rejected attack from ${data.attackerId}: enemy at (${data.enemyPosition.x.toFixed(1)}, ${data.enemyPosition.y.toFixed(1)}) is ${distanceInTiles.toFixed(1)} tiles away (max: ${MAX_ATTACK_RANGE})`);
+                            console.warn(`   Player at pixels (${this.localPlayer.sprite.x.toFixed(0)}, ${this.localPlayer.sprite.y.toFixed(0)}), Enemy at pixels (${enemyPixelX.toFixed(0)}, ${enemyPixelY.toFixed(0)})`);
+                            return; // Skip damage
+                        }
+                    }
+                }
+
+                // Calculate damage and apply through takeDamage (respects shield)
+                const currentHealth = this.localPlayer.health;
+                const newHealth = data.health;
+                const damage = currentHealth - newHealth;
+
+                if (damage > 0) {
+                    this.localPlayer.takeDamage(damage);
+                } else {
+                    // If server sent health increase (healing), apply directly
+                    this.localPlayer.health = data.health;
+                    this.localPlayer.ui.updateHealthBar();
+                }
 
                 // Show damage effect
                 this.cameras.main.shake(100, 0.005);
@@ -2130,6 +2257,53 @@ class GameScene extends Phaser.Scene {
                 if (attacker && attacker.attack) {
                     attacker.attack();
                 }
+            }
+        });
+
+        // Malachar ability used
+        networkManager.on('ability:used', (data) => {
+            console.log(`📩 Received ability event:`, data);
+            console.log(`   My ID: ${this.localPlayer?.data?.id}, Target ID: ${data.targetPlayerId}`);
+            console.log(`   Match: ${data.targetPlayerId === this.localPlayer?.data?.id}`);
+
+            // Handle auto-attack visual effects (Command Bolt, etc.)
+            if (data.abilityKey === 'autoattack' && data.targetMinionId) {
+                console.log(`⚔️ Auto-attack visual effect: ${data.abilityName} on minion ${data.targetMinionId}`);
+                this.playAutoAttackVisual(data);
+                return;
+            }
+
+            // Only apply if we're the target player
+            if (this.localPlayer && data.targetPlayerId === this.localPlayer.data.id) {
+                console.log(`🎯 I AM THE TARGET! Applying ${data.abilityName} from ${data.playerName}`);
+
+                // Apply shield
+                if (data.effects && data.effects.shield) {
+                    const oldShield = this.localPlayer.shield || 0;
+                    this.localPlayer.shield = oldShield + data.effects.shield;
+                    console.log(`🛡️ Shield updated: ${oldShield} → ${this.localPlayer.shield}`);
+
+                    // Force HUD update
+                    const hud = this.hud || this.modernHUD;
+                    console.log(`   HUD object:`, hud ? 'EXISTS' : 'NULL');
+
+                    if (hud) {
+                        console.log(`   HUD.updateHealthBar:`, typeof hud.updateHealthBar);
+                        hud.updateHealthBar();
+                        console.log(`✅ HUD updated with shield: ${this.localPlayer.shield}`);
+                    } else {
+                        console.error(`❌ No HUD found!`);
+                    }
+
+                    // Also update PlayerUI if it exists (for other players viewing you)
+                    if (this.localPlayer.ui && this.localPlayer.ui.updateHealthBar) {
+                        this.localPlayer.ui.updateHealthBar();
+                    }
+
+                    console.log(`🛡️ Shield applied to me: +${data.effects.shield} (Total: ${this.localPlayer.shield})`);
+                }
+            } else {
+                console.log(`⏭️ Not for me, skipping`);
             }
         });
 
@@ -2688,8 +2862,8 @@ class GameScene extends Phaser.Scene {
     }
 
     spawnMinion(x, y, ownerId, isPermanent = false, providedMinionId = null, skipFormationUpdate = false) {
-        // Use provided ID if spawning from network, otherwise generate new one
-        const minionId = providedMinionId || `minion_${this.minionIdCounter++}`;
+        // Use provided ID if spawning from network, otherwise generate new one with player ID prefix
+        const minionId = providedMinionId || `${ownerId}_minion_${this.minionIdCounter++}`;
 
         console.log(`🔮 spawnMinion called: minionId=${minionId}, ownerId=${ownerId}, currentPlayerId=${networkManager.currentPlayer?.id}, providedId=${providedMinionId}`);
 
@@ -2887,18 +3061,14 @@ class GameScene extends Phaser.Scene {
             this.skillSelector.initializePlayerMultipliers();
         }
 
-        // Teleport to respawn position
+        // Teleport to respawn position (already in pixels)
         const respawnPos = playerData.respawnPosition || playerData.position;
         if (respawnPos) {
-            const tileSize = GameConfig.GAME.TILE_SIZE;
-            const pixelX = respawnPos.x * tileSize + tileSize / 2;
-            const pixelY = respawnPos.y * tileSize + tileSize / 2;
-
-            console.log(`🎯 Teleporting to (${respawnPos.x}, ${respawnPos.y}) = pixels (${pixelX}, ${pixelY})`);
+            console.log(`🎯 Teleporting to pixel position (${respawnPos.x}, ${respawnPos.y})`);
 
             // Update physics body position (this is the actual player position)
-            player.sprite.x = pixelX;
-            player.sprite.y = pixelY;
+            player.sprite.x = respawnPos.x;
+            player.sprite.y = respawnPos.y;
             player.sprite.body.setVelocity(0, 0);
 
             console.log(`✅ Physics body moved to (${player.sprite.x}, ${player.sprite.y})`);
@@ -3157,12 +3327,34 @@ class GameScene extends Phaser.Scene {
             this.abilityManager.update(time, delta);
         }
 
+        // Update controller manager
+        if (this.controllerManager) {
+            this.controllerManager.update();
+        }
+
+        // Controller ability buttons
+        if (this.controllerManager && this.abilityManager) {
+            if (this.controllerManager.isAbilityJustPressed('Q')) {
+                this.abilityManager.useAbility('q');
+            }
+            if (this.controllerManager.isAbilityJustPressed('E')) {
+                this.abilityManager.useAbility('e');
+            }
+            if (this.controllerManager.isAbilityJustPressed('R')) {
+                this.abilityManager.useAbility('r');
+            }
+        }
+
         // PERFORMANCE: Removed performance timing system (saves 21+ performance.now() calls per frame)
 
         // Player movement (with speed multiplier)
         let velocityX = 0;
         let velocityY = 0;
 
+        // Get controller input
+        const controllerVector = this.controllerManager ? this.controllerManager.getMovementVector() : { x: 0, y: 0 };
+
+        // Keyboard input
         if (this.cursors.left.isDown || this.wasd.left.isDown) {
             velocityX = -1;
         } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
@@ -3175,10 +3367,16 @@ class GameScene extends Phaser.Scene {
             velocityY = 1;
         }
 
-        // Normalize diagonal movement
-        if (velocityX !== 0 && velocityY !== 0) {
-            velocityX *= 0.707;
-            velocityY *= 0.707;
+        // Controller input (overrides keyboard if active)
+        if (Math.abs(controllerVector.x) > 0 || Math.abs(controllerVector.y) > 0) {
+            velocityX = controllerVector.x;
+            velocityY = controllerVector.y;
+        } else {
+            // Normalize diagonal movement for keyboard
+            if (velocityX !== 0 && velocityY !== 0) {
+                velocityX *= 0.707;
+                velocityY *= 0.707;
+            }
         }
 
         // Apply speed multiplier
@@ -3294,5 +3492,95 @@ class GameScene extends Phaser.Scene {
         // This saves massive performance (was updating 100s of sprites every frame)
 
         // PERFORMANCE: Removed frame time tracking and slow frame logging
+    }
+
+    // Play auto-attack visual effect for remote players
+    playAutoAttackVisual(data) {
+        // Find the player who cast it
+        const caster = data.playerId === networkManager.currentPlayer?.id
+            ? this.localPlayer
+            : this.otherPlayers[data.playerId];
+
+        if (!caster || !caster.spriteRenderer || !caster.spriteRenderer.sprite) {
+            console.warn(`⚠️ Cannot play auto-attack visual: caster not found`);
+            return;
+        }
+
+        // Find the target minion
+        const targetMinion = this.minions[data.targetMinionId];
+        if (!targetMinion || !targetMinion.sprite) {
+            console.warn(`⚠️ Cannot play auto-attack visual: target minion not found`);
+            return;
+        }
+
+        // Play Command Bolt visual effect
+        if (data.abilityName === 'Command Bolt') {
+            console.log(`✨ Playing Command Bolt visual from ${data.playerId} to minion ${data.targetMinionId}`);
+
+            // Create bone projectile sprite
+            const projectile = this.add.sprite(
+                caster.spriteRenderer.sprite.x,
+                caster.spriteRenderer.sprite.y - 10,
+                'autoattackbonecommander'
+            );
+            projectile.setOrigin(0.5, 0.5);
+            projectile.setScale(0.6);
+            projectile.setDepth(caster.spriteRenderer.sprite.depth + 1);
+            projectile.setAlpha(0.9);
+
+            // Play bone commander aura animation
+            projectile.play('bone_commander_aura');
+
+            // Calculate projectile travel
+            const dx = targetMinion.sprite.x - projectile.x;
+            const dy = targetMinion.sprite.y - projectile.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const speed = 400; // pixels per second
+            const travelTime = (distance / speed) * 1000;
+
+            // Animate projectile to target
+            this.tweens.add({
+                targets: projectile,
+                x: targetMinion.sprite.x,
+                y: targetMinion.sprite.y,
+                duration: travelTime,
+                ease: 'Linear',
+                onComplete: () => {
+                    // Show buff aura on minion
+                    const buffAura = this.add.sprite(
+                        targetMinion.sprite.x,
+                        targetMinion.sprite.y,
+                        'autoattackbonecommander'
+                    );
+                    buffAura.setOrigin(0.5, 0.5);
+                    buffAura.setScale(0.8);
+                    buffAura.setDepth(targetMinion.sprite.depth - 1);
+                    buffAura.setAlpha(0.6);
+                    buffAura.play('bone_commander_aura');
+
+                    // Follow minion during animation
+                    const updateAuraPosition = () => {
+                        if (buffAura && buffAura.active && targetMinion && targetMinion.sprite) {
+                            buffAura.setPosition(targetMinion.sprite.x, targetMinion.sprite.y);
+                            buffAura.setDepth(targetMinion.sprite.depth - 1);
+                        }
+                    };
+
+                    this.events.on('update', updateAuraPosition);
+
+                    buffAura.on('animationcomplete', () => {
+                        this.events.off('update', updateAuraPosition);
+                        buffAura.destroy();
+                    });
+
+                    // Destroy projectile
+                    projectile.destroy();
+                }
+            });
+
+            // Rotate projectile towards target
+            const angle = Math.atan2(dy, dx);
+            projectile.setRotation(angle);
+        }
     }
 }

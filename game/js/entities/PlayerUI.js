@@ -19,6 +19,7 @@ class PlayerUI {
         this.healthBarShadow = null;
         this.healthBarContainer = null;
         this.healthBar = null;
+        this.shieldBar = null; // Shield bar (rendered over health)
         this.healthBarGloss = null;
         this.nameTagShadow = null;
         this.nameTagBg = null;
@@ -30,6 +31,7 @@ class PlayerUI {
         this.lastUIX = null;
         this.lastUIY = null;
         this.lastHealth = null;
+        this.lastShield = null;
         this.currentDepth = 0;
 
         this.create();
@@ -89,6 +91,9 @@ class PlayerUI {
 
         // Health bar fill (dynamic)
         this.healthBar = this.scene.add.graphics();
+
+        // Shield bar (rendered over health bar)
+        this.shieldBar = this.scene.add.graphics();
 
         // Glossy overlay
         this.healthBarGloss = this.scene.add.graphics();
@@ -353,6 +358,7 @@ class PlayerUI {
 
         // Clear and redraw
         this.healthBar.clear();
+        if (this.shieldBar) this.shieldBar.clear();
 
         // Determine color
         let color, glowColor;
@@ -390,6 +396,37 @@ class PlayerUI {
             this.config.barRadius
         );
 
+        // Draw shield bar if player has shield
+        if (this.shieldBar && this.player.shield > 0) {
+            // Shield can extend beyond max health, cap it for display
+            const shieldWidth = Math.min(
+                (this.player.shield / this.player.maxHealth) * this.config.healthBarWidth,
+                this.config.healthBarWidth - currentWidth
+            );
+
+            if (shieldWidth > 0) {
+                // Shield glow (cyan/blue)
+                this.shieldBar.fillStyle(0x60a5fa, 0.4);
+                this.shieldBar.fillRoundedRect(
+                    this.currentNameX - this.config.healthBarWidth/2 + currentWidth - 1,
+                    this.currentHealthBarY - this.config.healthBarHeight/2 - 1,
+                    shieldWidth + 2,
+                    this.config.healthBarHeight + 2,
+                    this.config.barRadius
+                );
+
+                // Shield main bar
+                this.shieldBar.fillStyle(0x3b82f6, 0.9); // Blue
+                this.shieldBar.fillRoundedRect(
+                    this.currentNameX - this.config.healthBarWidth/2 + currentWidth,
+                    this.currentHealthBarY - this.config.healthBarHeight/2,
+                    shieldWidth,
+                    this.config.healthBarHeight,
+                    this.config.barRadius
+                );
+            }
+        }
+
         // Pulse animation on low health
         if (healthPercent <= 0.25) {
             this.scene.tweens.add({
@@ -418,6 +455,7 @@ class PlayerUI {
         if (this.healthBarShadow) this.healthBarShadow.destroy();
         if (this.healthBarContainer) this.healthBarContainer.destroy();
         if (this.healthBar) this.healthBar.destroy();
+        if (this.shieldBar) this.shieldBar.destroy();
         if (this.healthBarGloss) this.healthBarGloss.destroy();
         if (this.nameTagShadow) this.nameTagShadow.destroy();
         if (this.nameTagBg) this.nameTagBg.destroy();

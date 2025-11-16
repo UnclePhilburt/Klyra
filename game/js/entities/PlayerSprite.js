@@ -27,9 +27,9 @@ class PlayerSprite {
     }
 
     create() {
-        const tileSize = GameConfig.GAME.TILE_SIZE;
-        const x = this.position.x * tileSize + tileSize / 2;
-        const y = this.position.y * tileSize + tileSize / 2;
+        // Position is now in PIXELS, use directly
+        const x = this.position.x;
+        const y = this.position.y;
 
         this.character = CHARACTERS[this.characterClass] || CHARACTERS.MALACHAR;
         const textureKey = this.characterClass.toLowerCase();
@@ -378,12 +378,31 @@ class PlayerSprite {
                     this.sprite.play(runningAnimKey, true);
                 }
                 this.isMoving = true;
+
+                // Start footstep sounds
+                if (this.scene.footstepManager && !this.footstepTimer) {
+                    this.footstepTimer = this.scene.time.addEvent({
+                        delay: 400, // Play footstep every 400ms while moving
+                        callback: () => {
+                            if (this.isMoving && this.scene.footstepManager) {
+                                this.scene.footstepManager.playFootstep();
+                            }
+                        },
+                        loop: true
+                    });
+                }
             } else if (!isMoving && this.isMoving) {
                 // Stopped moving - switch to idle animation
                 if (this.scene.anims.exists(idleAnimKey)) {
                     this.sprite.play(idleAnimKey, true);
                 }
                 this.isMoving = false;
+
+                // Stop footstep sounds
+                if (this.footstepTimer) {
+                    this.footstepTimer.remove();
+                    this.footstepTimer = null;
+                }
             }
         }
     }
@@ -408,11 +427,22 @@ class PlayerSprite {
             if (this.scene.anims.exists(attackAnimKey)) {
                 this.sprite.play(attackAnimKey);
                 console.log(`⚔️ Playing attack animation: ${attackAnimKey}`);
+
+                // Play swipe sound for Kelise attacks
+                if (textureKey === 'kelise' && this.scene.sound) {
+                    this.scene.sound.play('swipe', { volume: 0.2 });
+                }
             }
         }
     }
 
     destroy() {
+        // Clean up footstep timer
+        if (this.footstepTimer) {
+            this.footstepTimer.remove();
+            this.footstepTimer = null;
+        }
+
         if (this.physicsBody) this.physicsBody.destroy();
         if (this.sprite) this.sprite.destroy();
         if (this.topLeft) this.topLeft.destroy();

@@ -314,24 +314,52 @@ class MainMenu {
         requestAnimationFrame(() => this.animate());
     }
     
+    // Add UI sounds to a button element
+    addButtonSounds(button) {
+        if (!button) return;
+
+        // Add hover sound
+        button.addEventListener('mouseenter', () => {
+            if (window.uiSoundManager) {
+                window.uiSoundManager.playHover();
+            }
+        });
+
+        // Add click sound
+        button.addEventListener('click', () => {
+            if (window.uiSoundManager) {
+                window.uiSoundManager.playClick();
+            }
+        });
+    }
+
     setupEventListeners() {
         window.addEventListener('resize', () => {
             this.resizeCanvas();
             this.calculatePortalCenter();
         });
-        
+
         const settingsBtn = document.getElementById('settingsBtn');
         const settingsPanel = document.getElementById('settingsPanel');
         const closeSettings = document.getElementById('closeSettings');
         const musicVolume = document.getElementById('musicVolume');
         const volumeValue = document.getElementById('volumeValue');
-        
+
+        // Add UI sounds to buttons
+        this.addButtonSounds(settingsBtn);
+        this.addButtonSounds(closeSettings);
+        this.addButtonSounds(document.querySelector('.enter-prompt'));
+        this.addButtonSounds(document.getElementById('startButton'));
+        this.addButtonSounds(document.getElementById('charactersBtn'));
+        this.addButtonSounds(document.getElementById('closeCharacterSelect'));
+        this.addButtonSounds(document.getElementById('fullscreenToggle'));
+
         if (settingsBtn) {
             settingsBtn.addEventListener('click', () => {
                 settingsPanel.classList.add('active');
             });
         }
-        
+
         if (closeSettings) {
             closeSettings.addEventListener('click', () => {
                 settingsPanel.classList.remove('active');
@@ -375,7 +403,7 @@ class MainMenu {
         this.menuMusic.loop = true;
 
         const savedVolume = localStorage.getItem('menuMusicVolume');
-        const volumeLevel = savedVolume !== null ? parseInt(savedVolume) / 100 : 0.1; // Default 10%
+        const volumeLevel = savedVolume !== null ? parseInt(savedVolume) / 100 : 0.05; // Default 5%
         this.menuMusic.volume = volumeLevel;
 
         console.log('🎵 Menu music loaded: Poltergeist and a Piano');

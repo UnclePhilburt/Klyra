@@ -17,6 +17,7 @@ class Player {
         // Player state
         this.health = data.health;
         this.maxHealth = data.maxHealth;
+        this.shield = 0; // Shield absorbs damage before health
         this.level = data.level;
         this.experience = data.experience || 0;
         this.class = data.class;
@@ -78,19 +79,24 @@ class Player {
     }
 
     moveToPosition(position) {
-        const tileSize = GameConfig.GAME.TILE_SIZE;
-        const targetX = position.x * tileSize + tileSize / 2;
-        const targetY = position.y * tileSize + tileSize / 2;
-
-        // Store target for interpolation
-        this.targetPosition = { x: targetX, y: targetY };
+        // Position is now in PIXELS, use directly for smooth movement
+        this.targetPosition = {
+            x: position.x,
+            y: position.y
+        };
     }
 
     // Smooth interpolation instead of instant teleport
     updateInterpolation() {
-        if (!this.targetPosition) return;
+        if (!this.targetPosition) {
+            // No target - play idle animation
+            if (this.spriteRenderer && this.spriteRenderer.updateMovementState) {
+                this.spriteRenderer.updateMovementState(0, 0);
+            }
+            return;
+        }
 
-        const lerpSpeed = 0.3; // Smooth interpolation
+        const lerpSpeed = 0.5; // Aggressive interpolation for smooth movement (same as minions)
         const dx = this.targetPosition.x - this.sprite.x;
         const dy = this.targetPosition.y - this.sprite.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -101,10 +107,23 @@ class Player {
             this.sprite.y = this.targetPosition.y;
             this.sprite.body.setVelocity(0, 0);
             this.targetPosition = null;
+
+            // Stop moving - play idle animation
+            if (this.spriteRenderer && this.spriteRenderer.updateMovementState) {
+                this.spriteRenderer.updateMovementState(0, 0);
+            }
         } else {
             // Smooth interpolation
             this.sprite.x += dx * lerpSpeed;
             this.sprite.y += dy * lerpSpeed;
+
+            // Update animation based on movement direction
+            if (this.spriteRenderer && this.spriteRenderer.updateMovementState) {
+                // Normalize direction for animation
+                const normalizedVelX = dx / distance;
+                const normalizedVelY = dy / distance;
+                this.spriteRenderer.updateMovementState(normalizedVelX, normalizedVelY);
+            }
         }
 
         if (this.usingSprite) {
@@ -116,18 +135,19 @@ class Player {
         const now = Date.now();
         if (!this.lastUpdate || now - this.lastUpdate > 50) {
             this.lastUpdate = now;
-            const tileSize = GameConfig.GAME.TILE_SIZE;
-            const gridPos = {
-                x: Math.floor(this.sprite.x / tileSize),
-                y: Math.floor(this.sprite.y / tileSize)
+
+            // Send PIXEL position instead of grid for smooth multiplayer movement
+            const pixelPos = {
+                x: Math.round(this.sprite.x),
+                y: Math.round(this.sprite.y)
             };
 
             // DEBUG: Log position updates occasionally
             if (Math.random() < 0.05) {
-                console.log(`📍 CLIENT: Sending position (${gridPos.x}, ${gridPos.y}), isAlive=${this.isAlive}`);
+                console.log(`📍 CLIENT: Sending pixel position (${pixelPos.x}, ${pixelPos.y}), isAlive=${this.isAlive}`);
             }
 
-            networkManager.movePlayer(gridPos);
+            networkManager.movePlayer(pixelPos);
         }
     }
 
@@ -189,7 +209,7 @@ class Player {
         this.lastAutoAttackTime = now;
 
         // Handle different auto-attack types
-        if (config.target === 'minion_or_ally') {
+        if (config.target === 'minion_or_ally' || config.target === 'minion_lowest_hp') {
             // Command Bolt: Buff nearest minion OR ally
             this.commandBolt();
         } else if (config.target === 'enemy') {
@@ -354,9 +374,9 @@ class Player {
             return; // Silently skip
         }
 
-        // Find nearest minion owned by this player
-        let nearestMinion = null;
-        let nearestDistance = Infinity;
+        // Find lowest HP minion owned by this player
+        let lowestHPMinion = null;
+        let lowestHPPercent = 1.0; // Start at 100%
         const range = this.autoAttackConfig.range * GameConfig.GAME.TILE_SIZE || 10 * GameConfig.GAME.TILE_SIZE;
 
         Object.values(this.scene.minions || {}).forEach(minion => {
@@ -368,19 +388,109 @@ class Player {
             const dy = minion.sprite.y - this.spriteRenderer.sprite.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < nearestDistance && distance <= range) {
-                nearestDistance = distance;
-                nearestMinion = minion;
+            if (distance <= range) {
+                const healthPercent = minion.health / minion.maxHealth;
+                if (healthPercent < lowestHPPercent) {
+                    lowestHPPercent = healthPercent;
+                    lowestHPMinion = minion;
+                }
             }
         });
 
-        // Buff the nearest minion
-        if (nearestMinion && nearestMinion.sprite) {
+        // Fire projectile at lowest HP minion
+        if (lowestHPMinion && lowestHPMinion.sprite) {
+            const targetMinion = lowestHPMinion;
             const buffEffect = this.autoAttackConfig.effects.onMinion;
             const duration = buffEffect.duration || 3000;
 
-            // Apply damage buff to minion
-            if (!nearestMinion.damageBuffs) nearestMinion.damageBuffs = [];
+            // Broadcast to other players so they see the visual effect
+            if (networkManager && networkManager.connected) {
+                networkManager.broadcastAutoAttack('Command Bolt', targetMinion.minionId);
+            }
+
+            // Create bone projectile sprite
+            const projectile = this.scene.add.sprite(
+                this.spriteRenderer.sprite.x,
+                this.spriteRenderer.sprite.y - 10, // Start slightly above player
+                'autoattackbonecommander'
+            );
+            projectile.setOrigin(0.5, 0.5);
+            projectile.setScale(0.6); // Smaller for projectile
+            projectile.setDepth(this.spriteRenderer.sprite.depth + 1);
+            projectile.setAlpha(0.9);
+
+            // Play bone commander aura animation on projectile
+            projectile.play('bone_commander_aura');
+
+            // Calculate projectile travel
+            const dx = targetMinion.sprite.x - projectile.x;
+            const dy = targetMinion.sprite.y - projectile.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const speed = this.autoAttackConfig.projectileSpeed || 400;
+            const travelTime = (distance / speed) * 1000; // Convert to ms
+
+            // Animate projectile to target
+            this.scene.tweens.add({
+                targets: projectile,
+                x: targetMinion.sprite.x,
+                y: targetMinion.sprite.y,
+                duration: travelTime,
+                ease: 'Linear',
+                onComplete: () => {
+                    // Apply effects when projectile hits
+                    this.applyCommandBoltEffects(targetMinion, buffEffect, duration);
+
+                    // Destroy projectile
+                    projectile.destroy();
+                }
+            });
+
+            // Rotate projectile towards target
+            const angle = Math.atan2(dy, dx);
+            projectile.setRotation(angle);
+        }
+    }
+
+    applyCommandBoltEffects(minion, buffEffect, duration) {
+        if (!minion || !minion.sprite || !minion.isAlive) return;
+
+        // Apply healing
+        if (buffEffect.heal) {
+            minion.health = Math.min(minion.maxHealth, minion.health + buffEffect.heal);
+
+            // Show heal number
+            const healText = this.scene.add.text(
+                minion.sprite.x,
+                minion.sprite.y - 30,
+                `+${buffEffect.heal}`,
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '16px',
+                    fontStyle: 'bold',
+                    fill: '#10b981',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                }
+            );
+            healText.setOrigin(0.5);
+            healText.setDepth(99999);
+
+            // Animate heal text
+            this.scene.tweens.add({
+                targets: healText,
+                y: healText.y - 30,
+                alpha: 0,
+                duration: 1000,
+                ease: 'Cubic.easeOut',
+                onComplete: () => healText.destroy()
+            });
+
+            console.log(`💚 Command Bolt healed ${minion.minionId} for ${buffEffect.heal} HP (${minion.health}/${minion.maxHealth})`);
+        }
+
+        // Apply damage buff
+        if (buffEffect.damageBonus) {
+            if (!minion.damageBuffs) minion.damageBuffs = [];
 
             const buffId = `command_bolt_${Date.now()}`;
             const buff = {
@@ -389,57 +499,92 @@ class Player {
                 endTime: Date.now() + duration
             };
 
-            nearestMinion.damageBuffs.push(buff);
+            minion.damageBuffs.push(buff);
 
-            // Visual effect - Bone Commander aura animation
-            const auraSprite = this.scene.add.sprite(
-                nearestMinion.sprite.x,
-                nearestMinion.sprite.y,
+            // Visual buff indicator - smaller aura at minion's feet
+            const buffAura = this.scene.add.sprite(
+                minion.sprite.x,
+                minion.sprite.y,
                 'autoattackbonecommander'
             );
-            auraSprite.setOrigin(0.5, 0.5);
-            auraSprite.setScale(1.0); // 64x64 sprite fits nicely under minion
-            auraSprite.setDepth(nearestMinion.sprite.depth - 1); // Behind minion
-            auraSprite.setAlpha(0.8);
+            buffAura.setOrigin(0.5, 0.5);
+            buffAura.setScale(0.8);
+            buffAura.setDepth(minion.sprite.depth - 1);
+            buffAura.setAlpha(0.6);
+            buffAura.play('bone_commander_aura');
 
-            // Play the bone commander aura animation
-            auraSprite.play('bone_commander_aura');
-
-            // Update aura position to follow minion during animation
+            // Follow minion during animation
             const updateAuraPosition = () => {
-                if (auraSprite && auraSprite.active && nearestMinion && nearestMinion.sprite) {
-                    auraSprite.setPosition(nearestMinion.sprite.x, nearestMinion.sprite.y);
-                    auraSprite.setDepth(nearestMinion.sprite.depth - 1); // Keep behind minion
+                if (buffAura && buffAura.active && minion && minion.sprite) {
+                    buffAura.setPosition(minion.sprite.x, minion.sprite.y);
+                    buffAura.setDepth(minion.sprite.depth - 1);
                 }
             };
 
-            // Add update listener to follow minion
             this.scene.events.on('update', updateAuraPosition);
 
-            // Destroy sprite after animation completes
-            auraSprite.on('animationcomplete', () => {
+            buffAura.on('animationcomplete', () => {
                 this.scene.events.off('update', updateAuraPosition);
-                auraSprite.destroy();
+                buffAura.destroy();
             });
 
             // Remove buff after duration
             this.scene.time.delayedCall(duration, () => {
-                const index = nearestMinion.damageBuffs.findIndex(b => b.id === buffId);
+                const index = minion.damageBuffs.findIndex(b => b.id === buffId);
                 if (index !== -1) {
-                    nearestMinion.damageBuffs.splice(index, 1);
+                    minion.damageBuffs.splice(index, 1);
                 }
             });
+
+            console.log(`⚔️ Command Bolt buffed ${minion.minionId} damage by ${buffEffect.damageBonus * 100}% for ${duration}ms`);
         }
     }
 
     takeDamage(amount) {
+        // Shield absorbs damage first
+        if (this.shield > 0) {
+            if (this.shield >= amount) {
+                // Shield absorbs all damage
+                this.shield -= amount;
+                console.log(`🛡️ Shield absorbed ${amount} damage (${this.shield} shield remaining)`);
+
+                // Update UI to show shield decrease (PlayerUI for other players)
+                if (this.ui && this.ui.updateHealthBar) {
+                    this.ui.updateHealthBar();
+                }
+
+                // Update HUD for local player (ModernHUD)
+                if (this === this.scene.localPlayer) {
+                    const hud = this.scene.hud || this.scene.modernHUD;
+                    if (hud && hud.updateHealthBar) {
+                        hud.updateHealthBar();
+                    }
+                }
+
+                // Blue flash for shield damage
+                this.spriteRenderer.tint(0x3b82f6);
+                this.scene.time.delayedCall(100, () => {
+                    this.spriteRenderer.clearTint();
+                });
+
+                return; // No health damage taken
+            } else {
+                // Shield absorbs partial damage, overflow goes to health
+                const overflow = amount - this.shield;
+                console.log(`🛡️ Shield absorbed ${this.shield} damage, ${overflow} overflow to health`);
+                this.shield = 0;
+                amount = overflow;
+            }
+        }
+
+        // Apply remaining damage to health
         this.health -= amount;
         if (this.health <= 0) {
             this.health = 0;
             this.die();
         }
 
-        // Damage flash
+        // Damage flash (red for health damage)
         this.spriteRenderer.tint(0xff0000);
         this.scene.time.delayedCall(100, () => {
             this.spriteRenderer.clearTint();
