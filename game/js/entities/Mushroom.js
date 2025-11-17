@@ -89,9 +89,9 @@ class Mushroom {
     }
 
     attack() {
-        // Prevent attack spam - enforce minimum cooldown (417ms to match animation)
+        // Prevent attack spam - enforce minimum cooldown (833ms to match animation)
         const now = Date.now();
-        if (this.isAttacking || now - this.lastAttackTime < 417) {
+        if (this.isAttacking || now - this.lastAttackTime < 833) {
             return; // Still attacking or on cooldown
         }
 
@@ -107,8 +107,8 @@ class Mushroom {
             } else {
                 console.warn(`   ❌ mushroom_attack animation does NOT exist`);
             }
-            // Return to previous animation after attack (5 frames at 12fps = ~417ms)
-            this.scene.time.delayedCall(417, () => {
+            // Return to previous animation after attack (10 frames at 12fps = ~833ms)
+            this.scene.time.delayedCall(833, () => {
                 this.isAttacking = false;
                 if (this.sprite && this.sprite.active && this.isAlive) {
                     const wasMoving = this.currentState === 'running';

@@ -407,10 +407,10 @@ class GameScene extends Phaser.Scene {
         console.log('✅ Created enemy animations: minotaur (idle, run, attack, damage, death)');
 
         // Create enemy animations - Mushroom (80x64 tiles, separate sprite sheets)
-        // Idle animation (5 frames)
+        // Idle animation (7 frames)
         this.anims.create({
             key: 'mushroom_idle',
-            frames: this.anims.generateFrameNumbers('mushroom-idle', { start: 0, end: 4 }),
+            frames: this.anims.generateFrameNumbers('mushroom-idle', { start: 0, end: 6 }),
             frameRate: 8,
             repeat: -1
         });
@@ -423,10 +423,10 @@ class GameScene extends Phaser.Scene {
             repeat: -1
         });
 
-        // Attack animation (5 frames)
+        // Attack animation (10 frames)
         this.anims.create({
             key: 'mushroom_attack',
-            frames: this.anims.generateFrameNumbers('mushroom-attack', { start: 0, end: 4 }),
+            frames: this.anims.generateFrameNumbers('mushroom-attack', { start: 0, end: 9 }),
             frameRate: 12,
             repeat: 0
         });
