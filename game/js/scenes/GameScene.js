@@ -6,6 +6,7 @@ class GameScene extends Phaser.Scene {
         this.enemies = {};
         this.swordDemons = {};
         this.minotaurs = {};
+        this.mushrooms = {};
         this.items = {};
         this.minions = {};
         this.minionIdCounter = 0;
@@ -222,6 +223,38 @@ class GameScene extends Phaser.Scene {
             margin: 0
         });
 
+        // Enemy sprites - Mushroom (80x64 tiles, individual animation files)
+        this.load.spritesheet('mushroom-idle', 'assets/sprites/mushroom/Mushroom-Idle.png', {
+            frameWidth: 80,
+            frameHeight: 64,
+            spacing: 0,
+            margin: 0
+        });
+        this.load.spritesheet('mushroom-run', 'assets/sprites/mushroom/Mushroom-Run.png', {
+            frameWidth: 80,
+            frameHeight: 64,
+            spacing: 0,
+            margin: 0
+        });
+        this.load.spritesheet('mushroom-attack', 'assets/sprites/mushroom/Mushroom-Attack.png', {
+            frameWidth: 80,
+            frameHeight: 64,
+            spacing: 0,
+            margin: 0
+        });
+        this.load.spritesheet('mushroom-hit', 'assets/sprites/mushroom/Mushroom-Hit.png', {
+            frameWidth: 80,
+            frameHeight: 64,
+            spacing: 0,
+            margin: 0
+        });
+        this.load.spritesheet('mushroom-die', 'assets/sprites/mushroom/Mushroom-Die.png', {
+            frameWidth: 80,
+            frameHeight: 64,
+            spacing: 0,
+            margin: 0
+        });
+
         console.log('✅ All tilesets queued for loading');
 
         // Debug: Log sword demon spritesheet info after load
@@ -373,6 +406,49 @@ class GameScene extends Phaser.Scene {
 
         console.log('✅ Created enemy animations: minotaur (idle, run, attack, damage, death)');
 
+        // Create enemy animations - Mushroom (80x64 tiles, separate sprite sheets)
+        // Idle animation (5 frames)
+        this.anims.create({
+            key: 'mushroom_idle',
+            frames: this.anims.generateFrameNumbers('mushroom-idle', { start: 0, end: 4 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        // Run animation (8 frames)
+        this.anims.create({
+            key: 'mushroom_run',
+            frames: this.anims.generateFrameNumbers('mushroom-run', { start: 0, end: 7 }),
+            frameRate: 12,
+            repeat: -1
+        });
+
+        // Attack animation (5 frames)
+        this.anims.create({
+            key: 'mushroom_attack',
+            frames: this.anims.generateFrameNumbers('mushroom-attack', { start: 0, end: 4 }),
+            frameRate: 12,
+            repeat: 0
+        });
+
+        // Damage animation (5 frames)
+        this.anims.create({
+            key: 'mushroom_damage',
+            frames: this.anims.generateFrameNumbers('mushroom-hit', { start: 0, end: 4 }),
+            frameRate: 12,
+            repeat: 0
+        });
+
+        // Death animation (15 frames)
+        this.anims.create({
+            key: 'mushroom_death',
+            frames: this.anims.generateFrameNumbers('mushroom-die', { start: 0, end: 14 }),
+            frameRate: 10,
+            repeat: 0
+        });
+
+        console.log('✅ Created enemy animations: mushroom (idle, run, attack, damage, death)');
+
         // Initialize tree collision array
         this.treeCollisions = [];
         this.treeSprites = [];
@@ -521,6 +597,24 @@ class GameScene extends Phaser.Scene {
                 }
 
                 console.log(`🐂 Created minotaur ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
+            } else if (enemyData.type === 'mushroom') {
+                // Skip dead mushrooms from initial game state
+                if (enemyData.isAlive === false) {
+                    console.log(`⚰️ Skipping dead mushroom ${enemyData.id}`);
+                    return;
+                }
+
+                const mushroom = new Mushroom(this, enemyData);
+                this.mushrooms[enemyData.id] = mushroom;
+
+                // Add castle collision to mushroom
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(mushroom.sprite, layer);
+                    });
+                }
+
+                console.log(`🍄 Created mushroom ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
             } else {
                 const enemy = new Enemy(this, enemyData);
                 this.enemies[enemyData.id] = enemy;
@@ -534,7 +628,7 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        console.log(`📊 Total enemies: ${Object.keys(this.enemies).length}, Total sword demons: ${Object.keys(this.swordDemons).length}, Total minotaurs: ${Object.keys(this.minotaurs).length}`);
+        console.log(`📊 Total enemies: ${Object.keys(this.enemies).length}, Total sword demons: ${Object.keys(this.swordDemons).length}, Total minotaurs: ${Object.keys(this.minotaurs).length}, Total mushrooms: ${Object.keys(this.mushrooms).length}`);
 
         // Create items
         this.gameData.gameState.items.forEach(itemData => {
@@ -2108,6 +2202,22 @@ class GameScene extends Phaser.Scene {
                         this.physics.add.collider(minotaur.sprite, layer);
                     });
                 }
+            } else if (data.enemy.type === 'mushroom') {
+                // Skip dead mushrooms
+                if (data.enemy.isAlive === false) {
+                    console.log(`⚰️ Skipping spawning dead mushroom ${data.enemy.id}`);
+                    return;
+                }
+
+                const mushroom = new Mushroom(this, data.enemy);
+                this.mushrooms[data.enemy.id] = mushroom;
+
+                // Add castle collision to mushroom
+                if (this.castleCollisionLayers) {
+                    this.castleCollisionLayers.forEach(layer => {
+                        this.physics.add.collider(mushroom.sprite, layer);
+                    });
+                }
             } else {
                 const enemy = new Enemy(this, data.enemy);
                 this.enemies[data.enemy.id] = enemy;
@@ -2125,6 +2235,7 @@ class GameScene extends Phaser.Scene {
         networkManager.on('enemy:despawned', (data) => {
             const swordDemon = this.swordDemons[data.enemyId];
             const minotaur = this.minotaurs[data.enemyId];
+            const mushroom = this.mushrooms[data.enemyId];
             const enemy = this.enemies[data.enemyId];
 
             if (swordDemon) {
@@ -2135,6 +2246,10 @@ class GameScene extends Phaser.Scene {
                 console.log(`🌙 Despawning minotaur ${data.enemyId}`);
                 minotaur.destroy();
                 delete this.minotaurs[data.enemyId];
+            } else if (mushroom) {
+                console.log(`🌙 Despawning mushroom ${data.enemyId}`);
+                mushroom.destroy();
+                delete this.mushrooms[data.enemyId];
             } else if (enemy) {
                 console.log(`🌙 Despawning enemy ${data.enemyId}`);
                 enemy.destroy();
@@ -2144,7 +2259,7 @@ class GameScene extends Phaser.Scene {
 
         // Enemy damaged
         networkManager.on('enemy:damaged', (data) => {
-            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId];
+            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId];
             if (enemy) {
                 enemy.takeDamage(data.damage);
             }
@@ -2976,10 +3091,16 @@ class GameScene extends Phaser.Scene {
                 minotaur.sprite.destroy();
             }
         });
+        Object.values(this.mushrooms).forEach(mushroom => {
+            if (mushroom.sprite) {
+                mushroom.sprite.destroy();
+            }
+        });
         this.enemies = {};
         this.swordDemons = {};
         this.minotaurs = {};
-        console.log('🧹 Cleared all enemies, sword demons, and minotaurs');
+        this.mushrooms = {};
+        console.log('🧹 Cleared all enemies, sword demons, minotaurs, and mushrooms');
     }
 
     healPlayer() {
@@ -3646,6 +3767,13 @@ class GameScene extends Phaser.Scene {
         Object.values(this.minotaurs).forEach(minotaur => {
             if (minotaur.isAlive) {
                 minotaur.update();
+            }
+        });
+
+        // Update mushrooms
+        Object.values(this.mushrooms).forEach(mushroom => {
+            if (mushroom.isAlive) {
+                mushroom.update();
             }
         });
 
