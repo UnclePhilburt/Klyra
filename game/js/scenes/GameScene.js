@@ -2381,8 +2381,8 @@ class GameScene extends Phaser.Scene {
             // Trigger attack animation for the attacker
             if (data.attackerId) {
                 console.log(`🎯 Minion damaged event - attackerId: ${data.attackerId}`);
-                const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId];
-                console.log(`   Found in enemies:`, !!this.enemies[data.attackerId], `Found in swordDemons:`, !!this.swordDemons[data.attackerId], `Found in minotaurs:`, !!this.minotaurs[data.attackerId]);
+                const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId] || this.mushrooms[data.attackerId];
+                console.log(`   Found in enemies:`, !!this.enemies[data.attackerId], `Found in swordDemons:`, !!this.swordDemons[data.attackerId], `Found in minotaurs:`, !!this.minotaurs[data.attackerId], `Found in mushrooms:`, !!this.mushrooms[data.attackerId]);
                 if (attacker && attacker.attack) {
                     console.log(`   Calling attack() method...`);
                     attacker.attack();
@@ -2425,7 +2425,7 @@ class GameScene extends Phaser.Scene {
 
         // Enemy moved
         networkManager.on('enemy:moved', (data) => {
-            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId];
+            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId];
 
             // Silently ignore movement for non-existent enemies (likely killed but server still sending updates)
             if (!enemy) {
