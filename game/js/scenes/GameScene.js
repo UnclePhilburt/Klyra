@@ -284,6 +284,9 @@ class GameScene extends Phaser.Scene {
         this.screenBloodContainer.setScrollFactor(0); // Fixed to camera
         this.screenBloodContainer.setDepth(10000); // On top of everything
 
+        // Initialize permanent ground blood puddles (never cleanup)
+        this.permanentBloodPuddles = [];
+
         // Create enemy animations - Sword Demon (64x64 tiles, 28 cols x 8 rows, odd tiles are blank)
         // Row 0: Idle (tiles 0,2,4,6,8,10,12)
         this.anims.create({

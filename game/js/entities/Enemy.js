@@ -156,8 +156,15 @@ class Enemy {
             puddle.setScale(0.6 + Math.random() * 0.4);
             puddle.setRotation(Math.random() * Math.PI * 2); // Random rotation for variety
 
-            // PERMANENT - no destroy, blood stays forever!
-            // Optional: very slow fade over long time
+            // Mark as permanent and add to permanent collection
+            puddle.isPermanentBlood = true;
+
+            // Add to scene's permanent blood collection (never gets cleaned up!)
+            if (this.scene.permanentBloodPuddles) {
+                this.scene.permanentBloodPuddles.push(puddle);
+            }
+
+            // PERMANENT - Optional: very slow fade over long time
             this.scene.tweens.add({
                 targets: puddle,
                 alpha: 0.4,
