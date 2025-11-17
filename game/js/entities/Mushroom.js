@@ -48,7 +48,7 @@ class Mushroom {
         this.sprite.body.setSize(hitboxSize, hitboxSize);
         this.sprite.body.setCollideWorldBounds(false);
         this.sprite.body.setImmovable(true); // Don't respond to physics collisions
-        this.sprite.body.moves = false; // Disable automatic position updates from velocity
+        // Note: body.moves = true (default) allows velocity-based movement
 
         // Store reference for collision detection (use 'enemyEntity' for compatibility)
         this.sprite.enemyEntity = this;
