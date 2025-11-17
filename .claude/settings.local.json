@@ -14,7 +14,12 @@
       "Bash(git commit:*)",
       "Bash(git push)",
       "Bash(dir:*)",
-      "Bash(.gitignore)"
+      "Bash(.gitignore)",
+      "Bash(powershell \"Stop-Process -Id 87124 -Force\")",
+      "Bash(powershell \"Get-Process -Id (Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue).OwningProcess -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(powershell \"Get-Process -Id (Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue).OwningProcess -ErrorAction SilentlyContinue | Where-Object {$_Id -ne 0} | Stop-Process -Force -ErrorAction SilentlyContinue\")",
+      "Bash(powershell \"Stop-Process -Name node -Force\")",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

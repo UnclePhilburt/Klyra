@@ -33,6 +33,10 @@
             transition: cursor 0.3s;
         }
 
+        body.cursor-kelise {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%238b5cf6" d="M12 0v8M12 16v8M0 12h8M16 12h8M12 10h2v2h-2z"/></svg>') 12 12, crosshair;
+        }
+
         body.cursor-malachar {
             cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23dc2626" d="M12 0v8M12 16v8M0 12h8M16 12h8M12 10h2v2h-2z"/></svg>') 12 12, crosshair;
         }
@@ -502,6 +506,10 @@
         }
 
         /* Character-specific colors */
+        .character-card[data-character="kelise"] {
+            --card-color: var(--neon-purple);
+        }
+
         .character-card[data-character="malachar"] {
             --card-color: var(--neon-red);
         }
@@ -998,6 +1006,7 @@
             <ul id="nav-menu">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="characters.html">Characters</a></li>
+                <li><a href="enemies.html">Enemies</a></li>
                 <li><a href="lore.html">Lore</a></li>
                 <li><a href="game/">Play</a></li>
             </ul>
@@ -1005,8 +1014,8 @@
     </header>
 
     <main>
-        <h1 class="page-title" id="page-title">Character</h1>
-        <p class="page-subtitle">Master the dark necromancer.</p>
+        <h1 class="page-title" id="page-title">Characters</h1>
+        <p class="page-subtitle">Choose your hero. Master your playstyle.</p>
 
         <!-- Filter/Sort Controls -->
         <div class="controls">
@@ -1034,6 +1043,62 @@
         </div>
 
         <div class="characters-grid" id="characters-grid">
+            <!-- Kelise -->
+            <div class="character-card" data-character="kelise" data-role="dps" data-hp="100" data-str="15" data-def="8" data-spd="12">
+                <div class="selection-indicator"></div>
+                <div class="flip-indicator">Click stats to flip</div>
+                <div class="card-inner">
+                    <div class="card-front">
+                        <div class="character-icon">
+                            <img src="/game/assets/sprites/kelise.png" alt="Kelise" style="width: 64px; height: 64px; image-rendering: pixelated; filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.8));">
+                        </div>
+                        <h2 class="character-name">KELISE</h2>
+                        <p class="character-role">Swift Blade Warrior</p>
+                        <p class="character-description">
+                            Lightning-fast melee assassin. Build momentum with consecutive strikes and shred enemies with incredible speed and critical damage.
+                        </p>
+                        <div class="character-stats">
+                            <div class="stat">
+                                <div class="stat-value">15</div>
+                                <div class="stat-label">STR</div>
+                                <div class="stat-bar"><div class="stat-bar-fill" style="--stat-width: 83%"></div></div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">100</div>
+                                <div class="stat-label">HP</div>
+                                <div class="stat-bar"><div class="stat-bar-fill" style="--stat-width: 67%"></div></div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">8</div>
+                                <div class="stat-label">DEF</div>
+                                <div class="stat-bar"><div class="stat-bar-fill" style="--stat-width: 44%"></div></div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">12</div>
+                                <div class="stat-label">SPD</div>
+                                <div class="stat-bar"><div class="stat-bar-fill" style="--stat-width: 86%"></div></div>
+                            </div>
+                        </div>
+                        <a href="#" class="view-details">Play Now →</a>
+                    </div>
+                    <div class="card-back">
+                        <h3 class="abilities-title">Passive Abilities</h3>
+                        <div class="ability">
+                            <div class="ability-name">Swift Strikes</div>
+                            <div class="ability-desc">1.2x attack speed. Strike faster than any other hero.</div>
+                        </div>
+                        <div class="ability">
+                            <div class="ability-name">Momentum</div>
+                            <div class="ability-desc">+10% damage per consecutive hit. Stacks infinitely. Reset on miss.</div>
+                        </div>
+                        <div class="ability">
+                            <div class="ability-name">Agile</div>
+                            <div class="ability-desc">+20% movement speed. 10% crit chance. 1.8x crit damage multiplier.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Malachar -->
             <div class="character-card" data-character="malachar" data-role="summoner" data-hp="115" data-str="16" data-def="10" data-spd="9">
                 <div class="selection-indicator"></div>
@@ -1041,19 +1106,18 @@
                 <div class="card-inner">
                     <div class="card-front">
                         <div class="character-icon">
-                            <!-- <img src="/assets/sprites/malachar.png" alt="Malachar" style="width: 128px; height: 128px; image-rendering: pixelated;"> -->
                             <img src="/game/assets/sprites/malachar.png" alt="Malachar" style="width: 128px; height: 128px; image-rendering: pixelated; filter: drop-shadow(0 0 30px rgba(220, 38, 38, 0.8));">
                         </div>
                         <h2 class="character-name">MALACHAR</h2>
                         <p class="character-role">Necromancer Summoner</p>
                         <p class="character-description">
-                            Master of death and decay. Raise skeleton armies from fallen enemies and overwhelm your foes with undead hordes.
+                            Master of death and decay. Choose from 4 build paths at level 1. Command skeleton armies with intelligent formation AI. Solo or co-op specialist.
                         </p>
                         <div class="character-stats">
                             <div class="stat">
                                 <div class="stat-value">16</div>
                                 <div class="stat-label">STR</div>
-                                <div class="stat-bar"><div class="stat-bar-fill" style="--stat-width: 53%"></div></div>
+                                <div class="stat-bar"><div class="stat-bar-fill" style="--stat-width: 89%"></div></div>
                             </div>
                             <div class="stat">
                                 <div class="stat-value">115</div>
@@ -1074,18 +1138,22 @@
                         <a href="characters/malachar.html" class="view-details">View Details →</a>
                     </div>
                     <div class="card-back">
-                        <h3 class="abilities-title">Abilities</h3>
+                        <h3 class="abilities-title">Build Paths</h3>
                         <div class="ability">
-                            <div class="ability-name">Raise Dead</div>
-                            <div class="ability-desc">Summon 2 skeletons from fallen enemies to fight alongside you.</div>
+                            <div class="ability-name">Bone Commander</div>
+                            <div class="ability-desc">Co-op specialist. 5 permanent minions. +20% stats per nearby ally.</div>
                         </div>
-                        <div class="ability locked">
-                            <div class="ability-name">Death's Embrace</div>
-                            <div class="ability-desc">Drain life from enemies to heal yourself and your minions.</div>
+                        <div class="ability">
+                            <div class="ability-name">Death Caller</div>
+                            <div class="ability-desc">Co-op swarm. Spawn temps from ally kills. Up to 15 minions.</div>
                         </div>
-                        <div class="ability locked">
-                            <div class="ability-name">Necrotic Storm</div>
-                            <div class="ability-desc">Unleash a wave of dark energy that damages all enemies.</div>
+                        <div class="ability">
+                            <div class="ability-name">Warlord</div>
+                            <div class="ability-desc">Solo tank. 4 bodyguards. 28 base damage. 5s invulnerability ult.</div>
+                        </div>
+                        <div class="ability">
+                            <div class="ability-name">Reaper</div>
+                            <div class="ability-desc">Solo carry. Exponential scaling. Consume minions for permanent power.</div>
                         </div>
                     </div>
                 </div>

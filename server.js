@@ -461,6 +461,33 @@ class Lobby {
         };
     }
 
+    // Get the dominant biome for a region
+    getRegionBiome(regionX, regionY) {
+        const REGION_SIZE = 50;
+        const CHUNK_SIZE = 100;
+        const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
+        // Biome distribution thresholds
+        const greenThreshold = 0.33;
+        const darkGreenThreshold = 0.66;
+
+        // Get center of region
+        const regionCenterX = regionX * REGION_SIZE + REGION_SIZE / 2;
+        const regionCenterY = regionY * REGION_SIZE + REGION_SIZE / 2;
+
+        // Determine chunk for region center
+        const chunkX = Math.floor(regionCenterX / CHUNK_SIZE);
+        const chunkY = Math.floor(regionCenterY / CHUNK_SIZE);
+
+        // Use chunk coordinates to determine biome
+        const chunkHash = this.seededRandom(seed + chunkX * 1000 + chunkY);
+
+        // Return biome based on hash
+        if (chunkHash < greenThreshold) return 'green';
+        else if (chunkHash < darkGreenThreshold) return 'dark_green';
+        else return 'red';
+    }
+
     // Spawn enemies in a region (called when players explore new areas)
     spawnEnemiesInRegion(regionX, regionY) {
         const regionKey = `${regionX},${regionY}`;
@@ -614,6 +641,10 @@ class Lobby {
         const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const regionSeed = seed + regionX * 7919 + regionY * 6563;
 
+        // Determine biome for this region
+        const biome = this.getRegionBiome(regionX, regionY);
+        console.log(`🌍 Spawning enemies in region ${regionKey} | Biome: ${biome}`);
+
         // Spawn packs
         for (let packIndex = 0; packIndex < packsToSpawn; packIndex++) {
             const packSeed = regionSeed + packIndex * 10000;
@@ -641,136 +672,93 @@ class Lobby {
             const hasBoss = this.seededRandom(packSeed + 3) < bossChance;
             let bossSpawned = false;
 
-            // Spawn wolves in pack (clustered together)
-            for (let i = 0; i < packSize; i++) {
-                const wolfSeed = packSeed + i * 100;
+            // Determine enemy type based on biome
+            let shouldSpawnSwordDemon;
+            let shouldSpawnMinotaur;
 
-                // Position wolves in tight cluster (within 5 tiles of pack center)
-                const offsetX = Math.floor((this.seededRandom(wolfSeed + 10) - 0.5) * 10);
-                const offsetY = Math.floor((this.seededRandom(wolfSeed + 11) - 0.5) * 10);
-                const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
-                const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+            if (biome === 'red') {
+                // RED biome: 80% sword demons, 20% minotaurs
+                shouldSpawnSwordDemon = this.seededRandom(packSeed + 50) < 0.8;
+                shouldSpawnMinotaur = !shouldSpawnSwordDemon;
+            } else if (biome === 'dark_green') {
+                // DARK_GREEN biome: 40% sword demons, 60% minotaurs
+                shouldSpawnSwordDemon = this.seededRandom(packSeed + 50) < 0.4;
+                shouldSpawnMinotaur = !shouldSpawnSwordDemon;
+            } else {
+                // GREEN biome: 20% sword demons, 80% minotaurs
+                shouldSpawnSwordDemon = this.seededRandom(packSeed + 50) < 0.2;
+                shouldSpawnMinotaur = !shouldSpawnSwordDemon;
+            }
 
-                // Determine wolf variant
-                let variant = 'normal';
+            // Spawn appropriate enemy type in pack
+            if (shouldSpawnSwordDemon) {
+                // Spawn sword demons (wolves) in pack
+                for (let i = 0; i < packSize; i++) {
+                    const wolfSeed = packSeed + i * 100;
 
-                if (hasBoss && !bossSpawned && i === 0) {
-                    // First wolf in pack with boss becomes the boss
-                    variant = 'boss';
-                    bossSpawned = true;
-                } else if (distanceFromSpawn < 100) {
-                    // Close to spawn: mostly small wolves
-                    variant = this.seededRandom(wolfSeed + 20) < 0.7 ? 'small' : 'normal';
-                } else if (distanceFromSpawn < 200) {
-                    // Medium distance: mix of small and normal
-                    variant = this.seededRandom(wolfSeed + 20) < 0.3 ? 'small' : 'normal';
-                } else {
-                    // Far from spawn: all normal wolves (except boss)
-                    variant = 'normal';
+                    // Position in tight cluster (within 5 tiles of pack center)
+                    const offsetX = Math.floor((this.seededRandom(wolfSeed + 10) - 0.5) * 10);
+                    const offsetY = Math.floor((this.seededRandom(wolfSeed + 11) - 0.5) * 10);
+                    const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
+                    const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+
+                    // Determine sword demon variant
+                    let variant = 'normal';
+
+                    if (hasBoss && !bossSpawned && i === 0) {
+                        variant = 'boss';
+                        bossSpawned = true;
+                    } else if (distanceFromSpawn < 100) {
+                        variant = this.seededRandom(wolfSeed + 20) < 0.7 ? 'small' : 'normal';
+                    } else if (distanceFromSpawn < 200) {
+                        variant = this.seededRandom(wolfSeed + 20) < 0.3 ? 'small' : 'normal';
+                    } else {
+                        variant = 'normal';
+                    }
+
+                    const wolfId = `${this.id}_wolf_${regionKey}_p${packIndex}_${i}`;
+                    const wolf = this.createWolfVariant(variant, wolfId, { x, y }, healthMultiplier);
+
+                    // Track region
+                    wolf.regionKey = regionKey;
+                    this.regionEnemies.get(regionKey).add(wolf.id);
+
+                    this.gameState.enemies.push(wolf);
+                    newEnemies.push(wolf);
                 }
+            } else if (shouldSpawnMinotaur) {
+                // Spawn minotaurs in pack (smaller packs since they're tougher)
+                const minotaurPackSize = Math.max(1, Math.floor(packSize / 2)); // Half the size
+                for (let i = 0; i < minotaurPackSize; i++) {
+                    const minotaurSeed = packSeed + i * 100;
 
-                const wolfId = `${this.id}_wolf_${regionKey}_p${packIndex}_${i}`;
-                const wolf = this.createWolfVariant(variant, wolfId, { x, y }, healthMultiplier);
+                    // Position in cluster
+                    const offsetX = Math.floor((this.seededRandom(minotaurSeed + 10) - 0.5) * 10);
+                    const offsetY = Math.floor((this.seededRandom(minotaurSeed + 11) - 0.5) * 10);
+                    const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
+                    const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
 
-                // DYNAMIC: Track which region this wolf belongs to
-                wolf.regionKey = regionKey;
-                this.regionEnemies.get(regionKey).add(wolf.id);
+                    // Determine minotaur variant
+                    let variant = 'normal';
+                    if (hasBoss && !bossSpawned && i === 0) {
+                        variant = 'boss';
+                        bossSpawned = true;
+                    }
 
-                this.gameState.enemies.push(wolf);
-                newEnemies.push(wolf);
+                    const minotaurId = `${this.id}_minotaur_${regionKey}_p${packIndex}_${i}`;
+                    const minotaur = this.createMinotaurVariant(variant, minotaurId, { x, y }, healthMultiplier);
+
+                    // Track region
+                    minotaur.regionKey = regionKey;
+                    this.regionEnemies.get(regionKey).add(minotaur.id);
+
+                    this.gameState.enemies.push(minotaur);
+                    newEnemies.push(minotaur);
+                }
             }
         }
 
-        console.log(`✨ Spawned ${newEnemies.length} wolves in ${packsToSpawn} pack(s) at region (${regionX}, ${regionY}) [Distance: ${Math.floor(distanceFromSpawn)}]`);
-
-        // Spawn minotaurs in forested areas (1-2 groups per region)
-        const minotaurGroupsToSpawn = distanceFromSpawn > 100 ? (Math.random() < 0.6 ? 1 : 2) : 0;
-        let minotaurBossChance = 0;
-        let minMinotaurGroupSize = 1;
-        let maxMinotaurGroupSize = 2;
-
-        if (distanceFromSpawn < 200) {
-            // Close to spawn: Small minotaur groups, no boss
-            minotaurBossChance = 0;
-            minMinotaurGroupSize = 1;
-            maxMinotaurGroupSize = 2;
-        } else if (distanceFromSpawn < 400) {
-            // Medium distance: Medium groups, small boss chance
-            minotaurBossChance = 0.08;
-            minMinotaurGroupSize = 1;
-            maxMinotaurGroupSize = 3;
-        } else {
-            // Far from spawn: Larger groups, higher boss chance
-            minotaurBossChance = 0.15;
-            minMinotaurGroupSize = 2;
-            maxMinotaurGroupSize = 3;
-        }
-
-        for (let groupIndex = 0; groupIndex < minotaurGroupsToSpawn; groupIndex++) {
-            const groupSeed = regionSeed + 50000 + groupIndex * 20000;
-
-            // Determine group size
-            const groupSize = Math.floor(
-                minMinotaurGroupSize + this.seededRandom(groupSeed) * (maxMinotaurGroupSize - minMinotaurGroupSize + 1)
-            );
-
-            // Choose group location in region (prefer forested tiles)
-            const groupX = regionX * REGION_SIZE + Math.floor(this.seededRandom(groupSeed + 1) * REGION_SIZE);
-            const groupY = regionY * REGION_SIZE + Math.floor(this.seededRandom(groupSeed + 2) * REGION_SIZE);
-
-            // Check if in safe zone
-            const isInSafeZone = (
-                groupX >= (worldCenterX - safeZoneRadius) &&
-                groupX < (worldCenterX + safeZoneRadius) &&
-                groupY >= (worldCenterY - safeZoneRadius) &&
-                groupY < (worldCenterY + safeZoneRadius)
-            );
-
-            if (isInSafeZone) continue;
-
-            // Decide if this group has a boss
-            const hasBoss = this.seededRandom(groupSeed + 3) < minotaurBossChance;
-            let bossSpawned = false;
-
-            // Spawn minotaurs in group
-            for (let i = 0; i < groupSize; i++) {
-                const minotaurSeed = groupSeed + i * 100;
-
-                // Position minotaurs in cluster (within 4 tiles of group center)
-                const offsetX = Math.floor((this.seededRandom(minotaurSeed + 10) - 0.5) * 8);
-                const offsetY = Math.floor((this.seededRandom(minotaurSeed + 11) - 0.5) * 8);
-                const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, groupX + offsetX));
-                const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, groupY + offsetY));
-
-                // Determine minotaur variant
-                let variant = 'normal';
-
-                if (hasBoss && !bossSpawned && i === 0) {
-                    variant = 'boss';
-                    bossSpawned = true;
-                } else if (distanceFromSpawn < 250) {
-                    // Close to spawn: mix of small and normal
-                    variant = this.seededRandom(minotaurSeed + 20) < 0.5 ? 'small' : 'normal';
-                } else {
-                    // Far from spawn: all normal (except boss)
-                    variant = 'normal';
-                }
-
-                const minotaurId = `${this.id}_minotaur_${regionKey}_g${groupIndex}_${i}`;
-                const minotaur = this.createMinotaurVariant(variant, minotaurId, { x, y }, healthMultiplier);
-
-                // Track which region this minotaur belongs to
-                minotaur.regionKey = regionKey;
-                this.regionEnemies.get(regionKey).add(minotaur.id);
-
-                this.gameState.enemies.push(minotaur);
-                newEnemies.push(minotaur);
-            }
-        }
-
-        if (minotaurGroupsToSpawn > 0) {
-            console.log(`🐂 Spawned minotaurs in ${minotaurGroupsToSpawn} group(s) at region (${regionX}, ${regionY})`);
-        }
+        console.log(`✨ Spawned ${newEnemies.length} enemies in ${packsToSpawn} pack(s) at region (${regionX}, ${regionY}) | Biome: ${biome} [Distance: ${Math.floor(distanceFromSpawn)}]`);
 
         return newEnemies;
     }

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enemies - KLYRA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --neon-pink: #ff006e;
+            --neon-purple: #8b5cf6;
+            --neon-blue: #3b82f6;
+            --neon-cyan: #06b6d4;
+            --neon-green: #10b981;
+            --neon-red: #dc2626;
+            --neon-orange: #ff8800;
+            --blood-red: #8b0000;
+        }
+
+        body {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="red" d="M12 0v8M12 16v8M0 12h8M16 12h8M12 10h2v2h-2z"/></svg>') 12 12, crosshair;
+            font-family: 'Space Mono', monospace;
+            background: #000000;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Parallax Grid background */
+        #grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(220, 38, 38, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(220, 38, 38, 0.15) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Blood red orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.5;
+            animation: float 15s ease-in-out infinite;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--blood-red), transparent);
+            top: -300px;
+            left: -300px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--neon-red), transparent);
+            top: 20%;
+            right: -250px;
+            animation-delay: 5s;
+        }
+
+        .orb-3 {
+            width: 550px;
+            height: 550px;
+            background: radial-gradient(circle, var(--neon-orange), transparent);
+            bottom: -200px;
+            left: 40%;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(80px, 120px) scale(1.1); }
+            66% { transform: translate(-80px, 80px) scale(0.9); }
+        }
+
+        /* Scanlines */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 999;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 1px solid rgba(220, 38, 38, 0.3);
+            z-index: 1000;
+        }
+
+        .logo {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, var(--neon-pink), var(--neon-red), var(--neon-orange));
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s linear infinite;
+            filter: drop-shadow(0 0 20px rgba(220, 38, 38, 0.8));
+            text-decoration: none;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2.5rem;
+        }
+
+        nav a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 700;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        nav a:hover {
+            color: var(--neon-red);
+            text-shadow: 0 0 10px var(--neon-red);
+        }
+
+        /* Main content */
+        main {
+            position: relative;
+            z-index: 10;
+            padding: 150px 3rem 6rem;
+            min-height: 100vh;
+        }
+
+        .page-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            background: linear-gradient(90deg, var(--neon-red), var(--blood-red), var(--neon-orange));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 30px var(--neon-red));
+            animation: glitchTitle 5s infinite;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .page-title.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @keyframes glitchTitle {
+            0%, 98%, 100% { transform: translate(0, 0); }
+            99% { transform: translate(-3px, 2px); }
+            99.5% { transform: translate(3px, -2px); }
+        }
+
+        .page-subtitle {
+            text-align: center;
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 4rem;
+            letter-spacing: 2px;
+        }
+
+        /* Enemy grid */
+        .enemies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 3rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .enemy-card {
+            background: rgba(220, 38, 38, 0.05);
+            border: 3px solid rgba(220, 38, 38, 0.4);
+            padding: 3rem;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: visible;
+            opacity: 0;
+            transform: translateY(50px);
+            min-height: 600px;
+        }
+
+        .enemy-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .enemy-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--neon-red), var(--blood-red), var(--neon-orange));
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .enemy-card:hover::before {
+            opacity: 1;
+        }
+
+        .enemy-card::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, var(--card-color, var(--neon-red)), transparent);
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.5s;
+            z-index: -2;
+            filter: blur(60px);
+        }
+
+        .enemy-card:hover::after {
+            opacity: 0.6;
+        }
+
+        .enemy-card[data-enemy="sworddemon"] {
+            --card-color: var(--neon-orange);
+        }
+
+        .enemy-card[data-enemy="minotaur"] {
+            --card-color: var(--blood-red);
+        }
+
+        .enemy-icon {
+            text-align: center;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .enemy-icon img {
+            image-rendering: pixelated;
+            filter: drop-shadow(0 0 30px var(--card-color));
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .enemy-card:hover .enemy-icon img {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 50px var(--card-color)) brightness(1.2);
+        }
+
+        .boss-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 136, 0, 0.2);
+            border: 2px solid var(--neon-orange);
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--neon-orange);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 1rem;
+        }
+
+        .enemy-name {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            color: var(--neon-red);
+            letter-spacing: 2px;
+        }
+
+        .enemy-type {
+            text-align: center;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 2rem;
+        }
+
+        .enemy-description {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .enemy-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 2rem 0;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5rem;
+            color: var(--neon-red);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .abilities-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .abilities-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            color: var(--neon-red);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .ability {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(220, 38, 38, 0.1);
+            border-left: 3px solid var(--neon-red);
+        }
+
+        .ability-name {
+            font-weight: 700;
+            color: var(--neon-red);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .ability-desc {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+        }
+
+        .variants-section {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(255, 136, 0, 0.1);
+            border: 2px solid rgba(255, 136, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .variants-title {
+            font-weight: 700;
+            color: var(--neon-orange);
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .variant {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid var(--neon-orange);
+        }
+
+        .variant-name {
+            font-weight: 700;
+            color: var(--neon-orange);
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .variant-desc {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .enemies-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            main {
+                padding: 120px 1.5rem 3rem;
+            }
+
+            header {
+                padding: 1rem 1.5rem;
+            }
+
+            .enemy-card {
+                padding: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="grid-bg"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <header>
+        <a href="index.html" class="logo">KLYRA</a>
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="characters.html">Characters</a></li>
+                <li><a href="enemies.html">Enemies</a></li>
+                <li><a href="lore.html">Lore</a></li>
+                <li><a href="game/">Play</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <h1 class="page-title" id="page-title">Enemies</h1>
+        <p class="page-subtitle">Face the horrors of Klyra. Survive or perish.</p>
+
+        <div class="enemies-grid">
+            <!-- Sword Demon -->
+            <div class="enemy-card" data-enemy="sworddemon">
+                <div class="enemy-icon">
+                    <img src="/game/assets/sprites/Sword.png" alt="Sword Demon" style="height: 200px;">
+                    <div class="boss-badge">ELITE BOSS VARIANT</div>
+                </div>
+                <h2 class="enemy-name">SWORD DEMON</h2>
+                <p class="enemy-type">Elite Enemy • Height: 3.875 Tiles</p>
+                <p class="enemy-description">
+                    Towering menace that looms over the battlefield. The Sword Demon is an imposing 124 pixels tall, wielding devastating melee attacks with fluid 8-frame attack animations. When defeated, explodes into 16 blood particles.
+                </p>
+
+                <div class="enemy-stats">
+                    <div class="stat">
+                        <div class="stat-value">124px</div>
+                        <div class="stat-label">Height</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">8</div>
+                        <div class="stat-label">Attack Frames</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">16</div>
+                        <div class="stat-label">Death Particles</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">HIGH</div>
+                        <div class="stat-label">Threat Level</div>
+                    </div>
+                </div>
+
+                <div class="abilities-section">
+                    <h3 class="abilities-title">Animations</h3>
+                    <div class="ability">
+                        <div class="ability-name">Idle Animation</div>
+                        <div class="ability-desc">7 frames of menacing presence</div>
+                    </div>
+                    <div class="ability">
+                        <div class="ability-name">Walk Cycle</div>
+                        <div class="ability-desc">4 frames of deliberate movement</div>
+                    </div>
+                    <div class="ability">
+                        <div class="ability-name">Attack Sequence</div>
+                        <div class="ability-desc">8 devastating frames of blade fury</div>
+                    </div>
+                    <div class="ability">
+                        <div class="ability-name">Damage State</div>
+                        <div class="ability-desc">2 frames of hit reaction with white flash</div>
+                    </div>
+                    <div class="ability">
+                        <div class="ability-name">Death Animation</div>
+                        <div class="ability-desc">9 frames culminating in massive particle explosion</div>
+                    </div>
+                </div>
+
+                <div class="variants-section">
+                    <div class="variants-title">Boss Variant Features</div>
+                    <div class="variant">
+                        <div class="variant-name">Crown Indicator</div>
+                        <div class="variant-desc">Visual crown above sprite marking boss status</div>
+                    </div>
+                    <div class="variant">
+                        <div class="variant-name">Enhanced Glow</div>
+                        <div class="variant-desc">Custom glow colors per variant type</div>
+                    </div>
+                    <div class="variant">
+                        <div class="variant-name">Massive Explosion</div>
+                        <div class="variant-desc">16 particles on death with larger explosion radius</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Minotaur -->
+            <div class="enemy-card" data-enemy="minotaur">
+                <div class="enemy-icon">
+                    <img src="/game/assets/sprites/minotaur.png" alt="Minotaur" style="height: 180px;">
+                    <div class="boss-badge">ELITE TANK BOSS</div>
+                </div>
+                <h2 class="enemy-name">MINOTAUR</h2>
+                <p class="enemy-type">Tank Enemy • Height: 3 Tiles</p>
+                <p class="enemy-description">
+                    Massive tanky brute standing 96 pixels tall. The Minotaur is a defensive powerhouse with thick armor and crushing attacks. Slower than other enemies but nearly unstoppable once it closes the distance. Brown-themed boss variant available.
+                </p>
+
+                <div class="enemy-stats">
+                    <div class="stat">
+                        <div class="stat-value">96px</div>
+                        <div class="stat-label">Height</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">9</div>
+                        <div class="stat-label">Attack Frames</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">TANK</div>
+                        <div class="stat-label">Role</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">EXTREME</div>
+                        <div class="stat-label">Threat Level</div>
+                    </div>
+                </div>
+
+                <div class="abilities-section">
+                    <h3 class="abilities-title">Animations</h3>
+                    <div class="ability">
+                        <div class="ability-name">Idle Animation</div>
+                        <div class="ability-desc">5 frames of intimidating stance</div>
+                    </div>
+                    <div class="ability">
+                        <div class="ability-name">Run Cycle</div>
+                        <div class="ability-desc">5 frames of thundering charge</div>
+                    </div>
+                    <div class="ability">
+                        <div class="ability-name">Attack Sequence</div>
+                        <div class="ability-desc">9 crushing frames of devastating power</div>
+                    </div>
+                    <div class="ability">
+                        <div class="ability-name">Damage State</div>
+                        <div class="ability-desc">3 frames showing hit reaction and armor resistance</div>
+                    </div>
+                    <div class="ability">
+                        <div class="ability-name">Death Animation</div>
+                        <div class="ability-desc">6 frames as the titan falls with enhanced particle effects</div>
+                    </div>
+                </div>
+
+                <div class="variants-section">
+                    <div class="variants-title">Boss Variant Features</div>
+                    <div class="variant">
+                        <div class="variant-name">Crown Indicator</div>
+                        <div class="variant-desc">Golden crown marking elite boss status</div>
+                    </div>
+                    <div class="variant">
+                        <div class="variant-name">Brown Theme</div>
+                        <div class="variant-desc">Unique brown color palette for boss variant</div>
+                    </div>
+                    <div class="variant">
+                        <div class="variant-name">Enhanced Particles</div>
+                        <div class="variant-desc">Amplified blood effects and death explosions</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 5rem; padding: 3rem; background: rgba(220, 38, 38, 0.1); border: 2px solid rgba(220, 38, 38, 0.3); border-radius: 16px; max-width: 800px; margin-left: auto; margin-right: auto;">
+            <h3 style="font-family: 'Press Start 2P', cursive; font-size: 1.2rem; color: var(--neon-red); margin-bottom: 1.5rem;">Universal Enemy Features</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; text-align: left;">
+                <div>
+                    <div style="font-weight: 700; color: var(--neon-orange); margin-bottom: 0.5rem;">Blood Effects</div>
+                    <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7);">12-particle splatter burst, 5 dripping particles, 3-6 ground puddles that fade over 3-5 seconds</div>
+                </div>
+                <div>
+                    <div style="font-weight: 700; color: var(--neon-orange); margin-bottom: 0.5rem;">Damage Flash</div>
+                    <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7);">White tint for 100ms on hit</div>
+                </div>
+                <div>
+                    <div style="font-weight: 700; color: var(--neon-orange); margin-bottom: 0.5rem;">Death Sounds</div>
+                    <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7);">15 unique sound variations (40% play chance): bone snaps, crunches, splats, squelches</div>
+                </div>
+                <div>
+                    <div style="font-weight: 700; color: var(--neon-orange); margin-bottom: 0.5rem;">Health Bars</div>
+                    <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7);">Appear when damaged with green→yellow→red transitions</div>
+                </div>
+                <div>
+                    <div style="font-weight: 700; color: var(--neon-orange); margin-bottom: 0.5rem;">Smart AI</div>
+                    <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7);">Track and attack minions if closer than player. Smooth position interpolation</div>
+                </div>
+                <div>
+                    <div style="font-weight: 700; color: var(--neon-orange); margin-bottom: 0.5rem;">Stun Mechanics</div>
+                    <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7);">Can be stunned and frozen in place by player abilities</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Parallax effect
+        let scrollY = 0;
+        window.addEventListener('scroll', () => {
+            scrollY = window.scrollY;
+            const grid = document.getElementById('grid-bg');
+            const orbs = document.querySelectorAll('.orb');
+
+            grid.style.transform = `translate(${scrollY * 0.02}px, ${scrollY * 0.02}px)`;
+
+            orbs.forEach((orb, index) => {
+                const speed = 0.1 + (index * 0.05);
+                orb.style.transform = `translate(${scrollY * speed}px, ${scrollY * speed}px)`;
+            });
+        });
+
+        // Scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        const enemyCards = document.querySelectorAll('.enemy-card');
+        enemyCards.forEach((card, index) => {
+            card.style.transitionDelay = `${index * 0.2}s`;
+            observer.observe(card);
+        });
+
+        // Title animation
+        const pageTitle = document.getElementById('page-title');
+        setTimeout(() => {
+            pageTitle.classList.add('visible');
+        }, 200);
+
+        // Console message
+        console.log('%c⚔️ KLYRA - Enemy Bestiary', 'color: #dc2626; font-size: 20px; font-weight: bold;');
+        console.log('%cFace the horrors. Learn their patterns. Survive.', 'color: #ff8800; font-size: 14px;');
+    </script>
+</body>
+</html>

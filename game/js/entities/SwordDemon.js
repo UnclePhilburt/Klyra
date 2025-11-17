@@ -244,7 +244,7 @@ class SwordDemon {
                 'death_squelch_3', 'death_squelch_4'
             ];
             const randomSound = deathSounds[Math.floor(Math.random() * deathSounds.length)];
-            this.scene.sound.play(randomSound, { volume: 0.3 });
+            this.scene.sound.play(randomSound, { volume: 0.15 });
         }
 
         // Play death animation
