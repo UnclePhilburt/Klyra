@@ -1721,9 +1721,9 @@ class GameScene extends Phaser.Scene {
         this.ambientParticles = [];
         this.ambientParticleTimer = 0;
 
-        // Particle spawn settings
-        this.particleSpawnRate = 200; // Spawn particle every 200ms
-        this.maxAmbientParticles = 150; // Max particles on screen
+        // Particle spawn settings - DENSE atmosphere
+        this.particleSpawnRate = 100; // Spawn particle every 100ms (2x faster)
+        this.maxAmbientParticles = 300; // Max particles on screen (2x more)
 
         console.log('✨ Ambient particle system initialized');
     }
