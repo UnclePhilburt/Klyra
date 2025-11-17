@@ -849,6 +849,8 @@ class Lobby {
                     const mushroomId = `${this.id}_mushroom_${regionKey}_p${packIndex}_${i}`;
                     const mushroom = this.createMushroomVariant(variant, mushroomId, { x, y }, healthMultiplier);
 
+                    console.log(`🍄 Spawning mushroom: ${mushroomId} at (${x}, ${y}) - variant: ${variant}`);
+
                     // Track region
                     mushroom.regionKey = regionKey;
                     this.regionEnemies.get(regionKey).add(mushroom.id);
@@ -1810,7 +1812,11 @@ io.on('connection', (socket) => {
 
             const enemy = lobby.gameState.enemies.find(e => e.id === data.enemyId);
             if (!enemy || !enemy.isAlive) {
-                console.log(`❌ Enemy not found or not alive: ${data.enemyId} (found: ${!!enemy}, alive: ${enemy?.isAlive})`);
+                const mushroomCount = lobby.gameState.enemies.filter(e => e.type === 'mushroom').length;
+                const allEnemyIds = lobby.gameState.enemies.map(e => e.id).join(', ');
+                console.log(`❌ Enemy not found or not alive: ${data.enemyId}`);
+                console.log(`   Total enemies: ${lobby.gameState.enemies.length} (mushrooms: ${mushroomCount})`);
+                console.log(`   Enemy IDs: ${allEnemyIds}`);
                 return;
             }
 
