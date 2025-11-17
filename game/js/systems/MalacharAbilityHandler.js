@@ -220,9 +220,12 @@ class MalacharAbilityHandler {
 
             // Deal damage to enemies in radius
             const enemiesHit = this.getEnemiesInRadius(minion.sprite.x, minion.sprite.y, explosionRadius);
+            console.log(`💥 Explosion at (${Math.round(minion.sprite.x)}, ${Math.round(minion.sprite.y)}) found ${enemiesHit.length} enemies in ${explosionRadius}px radius`);
+
             enemiesHit.forEach(enemy => {
                 if (enemy.takeDamage) {
                     enemy.takeDamage(ability.effect.explosionDamage);
+                    console.log(`  💀 Dealt ${ability.effect.explosionDamage} damage to enemy at (${Math.round(enemy.sprite.x)}, ${Math.round(enemy.sprite.y)})`);
                 }
             });
             totalEnemiesHit += enemiesHit.length;
@@ -804,7 +807,9 @@ class MalacharAbilityHandler {
     getEnemiesInRadius(x, y, radius) {
         const allEnemies = [
             ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.wolves || {})
+            ...Object.values(this.scene.wolves || {}),
+            ...Object.values(this.scene.swordDemons || {}),
+            ...Object.values(this.scene.minotaurs || {})
         ];
 
         return allEnemies.filter(enemy => {
