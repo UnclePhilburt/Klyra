@@ -191,9 +191,18 @@ class MalacharAbilityHandler {
 
     usePactOfBones(ability) {
         // Get all player's minions
-        const myMinions = Object.values(this.scene.minions || {}).filter(m =>
-            m.ownerId === this.player.data.id && m.isAlive
-        );
+        const allMinions = Object.values(this.scene.minions || {});
+        console.log(`🔍 Total minions in scene: ${allMinions.length}`);
+        console.log(`🔍 My player ID: ${this.player.data.id}`);
+
+        const myMinions = allMinions.filter(m => {
+            const isOwner = m.ownerId === this.player.data.id;
+            const isAlive = m.isAlive;
+            console.log(`   Minion ${m.minionId}: owner=${m.ownerId}, isOwner=${isOwner}, isAlive=${isAlive}`);
+            return isOwner && isAlive;
+        });
+
+        console.log(`🔍 My alive minions: ${myMinions.length}`);
 
         if (myMinions.length === 0) {
             console.log('❌ No minions to explode');
@@ -202,6 +211,24 @@ class MalacharAbilityHandler {
 
         const explosionRadius = ability.effect.explosionRadius * 32; // Convert tiles to pixels
         let totalEnemiesHit = 0;
+
+        // Broadcast ability to other players
+        const minionData = myMinions.map((m, index) => ({
+            minionId: m.minionId,
+            explosionX: m.sprite.x,
+            explosionY: m.sprite.y,
+            // Calculate teleport position (same as the local logic)
+            teleportX: this.player.sprite.x + ((index % 3 - 1) * 40),
+            teleportY: this.player.sprite.y + (Math.floor(index / 3) * 40)
+        }));
+
+        networkManager.useAbility('e', 'Pact of Bones', null, {
+            minions: minionData,
+            explosionRadius: explosionRadius,
+            playerId: this.player.data.id,
+            playerX: this.player.sprite.x,
+            playerY: this.player.sprite.y
+        });
 
         // Explode each minion
         myMinions.forEach((minion, index) => {
@@ -214,9 +241,21 @@ class MalacharAbilityHandler {
 
             // Deal damage to enemies in radius
             const enemiesHit = this.getEnemiesInRadius(explosionX, explosionY, explosionRadius);
+            console.log(`💥 Pact of Bones explosion at (${explosionX}, ${explosionY}) - Found ${enemiesHit.length} enemies`);
             enemiesHit.forEach(enemy => {
-                if (enemy.takeDamage) {
-                    enemy.takeDamage(ability.effect.explosionDamage);
+                if (enemy.data && enemy.data.id) {
+                    // Send damage to server
+                    const explosionPos = {
+                        x: Math.floor(explosionX / 32),
+                        y: Math.floor(explosionY / 32)
+                    };
+                    console.log(`💥 Sending ${ability.effect.explosionDamage} damage to enemy ${enemy.data.id}`);
+                    networkManager.hitEnemy(
+                        enemy.data.id,
+                        ability.effect.explosionDamage,
+                        this.player.data.id,
+                        explosionPos
+                    );
                 }
             });
             totalEnemiesHit += enemiesHit.length;
@@ -375,7 +414,18 @@ class MalacharAbilityHandler {
             // Damage enemies
             const enemies = this.getEnemiesInRadius(minion.sprite.x, minion.sprite.y, ability.effect.explosionRadius * 32);
             enemies.forEach(enemy => {
-                enemy.takeDamage(ability.effect.explosionDamage);
+                if (enemy.data && enemy.data.id) {
+                    const explosionPos = {
+                        x: Math.floor(minion.sprite.x / 32),
+                        y: Math.floor(minion.sprite.y / 32)
+                    };
+                    networkManager.hitEnemy(
+                        enemy.data.id,
+                        ability.effect.explosionDamage,
+                        this.player.data.id,
+                        explosionPos
+                    );
+                }
             });
 
             // Find allies in explosion
@@ -502,7 +552,18 @@ class MalacharAbilityHandler {
             // Damage enemies
             const enemies = this.getEnemiesInRadius(minion.sprite.x, minion.sprite.y, 60);
             enemies.forEach(enemy => {
-                enemy.takeDamage(ability.effect.explosionDamagePerTemp);
+                if (enemy.data && enemy.data.id) {
+                    const explosionPos = {
+                        x: Math.floor(minion.sprite.x / 32),
+                        y: Math.floor(minion.sprite.y / 32)
+                    };
+                    networkManager.hitEnemy(
+                        enemy.data.id,
+                        ability.effect.explosionDamagePerTemp,
+                        this.player.data.id,
+                        explosionPos
+                    );
+                }
             });
 
             // Remove minion
@@ -807,14 +868,21 @@ class MalacharAbilityHandler {
             ...Object.values(this.scene.enemies || {}),
             ...Object.values(this.scene.wolves || {}),
             ...Object.values(this.scene.swordDemons || {}),
-            ...Object.values(this.scene.minotaurs || {})
+            ...Object.values(this.scene.minotaurs || {}),
+            ...Object.values(this.scene.mushrooms || {})
         ];
 
-        return allEnemies.filter(enemy => {
+        console.log(`🔍 Checking for enemies in radius ${radius} at (${x}, ${y})`);
+        console.log(`   Total enemies in scene: ${allEnemies.length}`);
+
+        const enemiesInRange = allEnemies.filter(enemy => {
             if (!enemy || !enemy.sprite || !enemy.isAlive) return false;
             const dist = Phaser.Math.Distance.Between(x, y, enemy.sprite.x, enemy.sprite.y);
             return dist <= radius;
         });
+
+        console.log(`   Enemies in radius: ${enemiesInRange.length}`);
+        return enemiesInRange;
     }
 
     // ===================================================================
@@ -909,8 +977,17 @@ class MalacharAbilityHandler {
                     enemy.inFire = true;
 
                     // Deal damage
-                    if (enemy.takeDamage) {
-                        enemy.takeDamage(fire.damage);
+                    if (enemy.data && enemy.data.id) {
+                        const firePos = {
+                            x: Math.floor(fire.x / 32),
+                            y: Math.floor(fire.y / 32)
+                        };
+                        networkManager.hitEnemy(
+                            enemy.data.id,
+                            fire.damage,
+                            this.player.data.id,
+                            firePos
+                        );
                     }
 
                     // Remove fire flag after damage tick

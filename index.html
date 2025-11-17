@@ -1027,20 +1027,20 @@
 
         <div class="stats">
             <div class="stat">
-                <div class="stat-number" data-target="10">10</div>
-                <div class="stat-label">Player Co-op</div>
+                <div class="stat-number" id="total-kills" data-target="0">0</div>
+                <div class="stat-label">Total Kills</div>
             </div>
             <div class="stat">
-                <div class="stat-number" data-target="4">4</div>
-                <div class="stat-label">Necro Builds</div>
+                <div class="stat-number" id="total-deaths" data-target="0">0</div>
+                <div class="stat-label">Total Deaths</div>
             </div>
             <div class="stat">
-                <div class="stat-number" data-target="2">2</div>
-                <div class="stat-label">Playable Heroes</div>
+                <div class="stat-number" id="total-players" data-target="0">0</div>
+                <div class="stat-label">Total Players</div>
             </div>
             <div class="stat">
-                <div class="stat-number" data-target="3">3</div>
-                <div class="stat-label">Elite Enemies</div>
+                <div class="stat-number" id="active-players" data-target="0">0</div>
+                <div class="stat-label">Players Online</div>
             </div>
         </div>
     </section>
@@ -1153,6 +1153,44 @@
     </footer>
 
     <script>
+        // Fetch Global Stats from Database
+        async function fetchGlobalStats() {
+            try {
+                const response = await fetch('/global-stats');
+                const data = await response.json();
+
+                // Update stat elements
+                const totalKills = document.getElementById('total-kills');
+                const totalDeaths = document.getElementById('total-deaths');
+                const totalPlayers = document.getElementById('total-players');
+                const activePlayers = document.getElementById('active-players');
+
+                if (totalKills) {
+                    totalKills.dataset.target = data.totalKills || 0;
+                    totalKills.textContent = '0'; // Reset for animation
+                }
+                if (totalDeaths) {
+                    totalDeaths.dataset.target = data.totalDeaths || 0;
+                    totalDeaths.textContent = '0';
+                }
+                if (totalPlayers) {
+                    totalPlayers.dataset.target = data.totalPlayers || 0;
+                    totalPlayers.textContent = '0';
+                }
+                if (activePlayers) {
+                    activePlayers.dataset.target = data.activePlayers || 0;
+                    activePlayers.textContent = '0';
+                }
+
+                console.log('📊 Global stats loaded:', data);
+            } catch (error) {
+                console.error('Failed to load global stats:', error);
+            }
+        }
+
+        // Load stats immediately on page load
+        fetchGlobalStats();
+
         // Mobile Menu Toggle
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
         const navMenu = document.getElementById('navMenu');

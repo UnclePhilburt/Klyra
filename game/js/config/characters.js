@@ -29,9 +29,9 @@ const CHARACTERS = {
         },
         autoAttack: {
             name: "Swift Strike",
-            damage: 15,
-            cooldown: 800,  // Fast attack speed for warrior
-            range: 4,       // 4 tiles
+            damage: 30, // HORDE MODE: Increased for balance
+            cooldown: 500,  // Very fast attack speed - 0.5s between attacks
+            range: 2.5,     // 2.5 tiles - shorter range for melee feel
             target: "enemy",
             effects: {
                 onHit: {
@@ -42,8 +42,8 @@ const CHARACTERS = {
         stats: {
             base: {
                 maxHP: 100,
-                damage: 12,
-                moveSpeed: 200,
+                damage: 24, // HORDE MODE: Increased for balance
+                moveSpeed: 240, // Increased from 200 for more mobility
                 attackSpeed: 1.2,
                 critChance: 0.10,
                 critDamage: 1.8,
@@ -51,7 +51,7 @@ const CHARACTERS = {
             },
             growth: {
                 hpPerLevel: 10,
-                damagePerLevel: 2.5
+                damagePerLevel: 5.0 // HORDE MODE: Increased for balance
             }
         },
         passives: [
@@ -94,7 +94,7 @@ const CHARACTERS = {
         stats: {
             base: {
                 maxHP: 70,
-                damage: 8,
+                damage: 16, // HORDE MODE: Increased for balance
                 moveSpeed: 150,
                 attackSpeed: 0.8,
                 critChance: 0.05,
@@ -104,7 +104,7 @@ const CHARACTERS = {
             },
             growth: {
                 hpPerLevel: 7,
-                damagePerLevel: 2
+                damagePerLevel: 4 // HORDE MODE: Increased for balance
             }
         },
         passives: [

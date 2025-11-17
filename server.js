@@ -1,8 +1,11 @@
+require('dotenv').config(); // Load environment variables
+
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
+const db = require('./database');
 
 const app = express();
 const server = http.createServer(app);
@@ -66,7 +69,10 @@ class Player {
         this.stats = this.getClassStats('warrior');
         this.kills = 0;
         this.deaths = 0;
+        this.damageDealt = 0; // Track damage dealt for stats
+        this.damageTaken = 0; // Track damage taken for stats
         this.itemsCollected = 0;
+        this.sessionStartTime = Date.now(); // Track playtime
         this.lastActivity = Date.now();
         this.isReconnecting = false;
         this.disconnectedAt = null;
@@ -93,7 +99,7 @@ class Player {
         this.minionLifesteal = 0;
         this.minionRegen = 0;
         this.minionKnockback = false;
-        this.minionStun = 0;
+        // Removed minionStun - replaced with bleed mechanic
         this.minionCleave = false;
         this.minionUnstoppable = false;
         this.minionCritChance = 0;
@@ -207,7 +213,7 @@ class Player {
             minionLifesteal: this.minionLifesteal,
             minionRegen: this.minionRegen,
             minionKnockback: this.minionKnockback,
-            minionStun: this.minionStun,
+            // minionStun removed - replaced with bleed mechanic
             minionCleave: this.minionCleave,
             minionUnstoppable: this.minionUnstoppable,
             minionCritChance: this.minionCritChance,
@@ -356,9 +362,9 @@ class Lobby {
         const variants = {
             small: {
                 scale: 0.7,
-                health: 60,  // Balanced for moderate enemy counts
-                maxHealth: 60,
-                damage: 3,
+                health: 30,  // HORDE MODE: 50% health
+                maxHealth: 30,
+                damage: 2,  // HORDE MODE: 40% less damage
                 speed: 70,
                 sightRange: 12,
                 glowColor: 0xff6666, // Light red
@@ -366,9 +372,9 @@ class Lobby {
             },
             normal: {
                 scale: 1.0,
-                health: 100,  // Balanced - enemies are threats but not tanks
-                maxHealth: 100,
-                damage: 5,
+                health: 50,  // HORDE MODE: 50% health
+                maxHealth: 50,
+                damage: 3,  // HORDE MODE: 40% less damage
                 speed: 80,
                 sightRange: 15,
                 glowColor: 0xff0000, // Red
@@ -376,9 +382,9 @@ class Lobby {
             },
             boss: {
                 scale: 1.5,
-                health: 200,  // Strong but not unkillable
-                maxHealth: 200,
-                damage: 10,
+                health: 100,  // HORDE MODE: 50% health
+                maxHealth: 100,
+                damage: 6,  // HORDE MODE: 40% less damage
                 speed: 90,
                 sightRange: 20,
                 glowColor: 0xff0066, // Dark pink/red
@@ -415,25 +421,25 @@ class Lobby {
         const variants = {
             small: {
                 scale: 0.8,
-                health: 120,  // Mini-boss level threat
-                maxHealth: 120,
-                damage: 8,
+                health: 60,  // HORDE MODE: 50% health
+                maxHealth: 60,
+                damage: 5,  // HORDE MODE: 40% less damage
                 speed: 50,
                 sightRange: 10
             },
             normal: {
                 scale: 1.0,
-                health: 200,  // Real threat, requires focus
-                maxHealth: 200,
-                damage: 12,
+                health: 100,  // HORDE MODE: 50% health
+                maxHealth: 100,
+                damage: 7,  // HORDE MODE: 40% less damage
                 speed: 60,
                 sightRange: 12
             },
             boss: {
                 scale: 1.3,
-                health: 350,  // Boss fight worthy
-                maxHealth: 350,
-                damage: 18,
+                health: 175,  // HORDE MODE: 50% health
+                maxHealth: 175,
+                damage: 11,  // HORDE MODE: 40% less damage
                 speed: 70,
                 sightRange: 15
             }
@@ -466,25 +472,25 @@ class Lobby {
         const variants = {
             small: {
                 scale: 0.8,
-                health: 40,  // Weaker than wolves
-                maxHealth: 40,
-                damage: 4,
+                health: 20,  // HORDE MODE: 50% health
+                maxHealth: 20,
+                damage: 2,  // HORDE MODE: 40% less damage
                 speed: 35,
                 sightRange: 8
             },
             normal: {
                 scale: 1.0,
-                health: 70,  // Medium threat
-                maxHealth: 70,
-                damage: 6,
+                health: 35,  // HORDE MODE: 50% health
+                maxHealth: 35,
+                damage: 4,  // HORDE MODE: 40% less damage
                 speed: 45,
                 sightRange: 10
             },
             boss: {
                 scale: 1.4,
-                health: 180,  // Tough mushroom boss
-                maxHealth: 180,
-                damage: 12,
+                health: 90,  // HORDE MODE: 50% health
+                maxHealth: 90,
+                damage: 7,  // HORDE MODE: 40% less damage
                 speed: 55,
                 sightRange: 14
             }
@@ -617,35 +623,35 @@ class Lobby {
         let bossChance = 0;
 
         if (distanceFromSpawn < 80) {
-            // Near spawn: Moderate horde - 6-8 packs, 2-3 enemies each (~12-24 total)
-            packsToSpawn = 6 + Math.floor(Math.random() * 3); // 6-8 packs
-            minPackSize = 2;
-            maxPackSize = 3;
+            // Near spawn: HORDE MODE - 8-10 packs, 6-9 enemies each (~48-90 total)
+            packsToSpawn = 8 + Math.floor(Math.random() * 3); // 8-10 packs
+            minPackSize = 6;
+            maxPackSize = 9;
             bossChance = 0;
         } else if (distanceFromSpawn < 150) {
-            // Close to spawn: Growing threat - 5-7 packs, 3-4 enemies (~15-28 total)
-            packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
-            minPackSize = 3;
-            maxPackSize = 4;
-            bossChance = 0.03;
+            // Close to spawn: HORDE MODE - 7-9 packs, 9-12 enemies (~63-108 total)
+            packsToSpawn = 7 + Math.floor(Math.random() * 3); // 7-9 packs
+            minPackSize = 9;
+            maxPackSize = 12;
+            bossChance = 0.02;
         } else if (distanceFromSpawn < 250) {
-            // Medium distance: Dangerous - 5-7 packs, 3-4 enemies, 8% boss (~15-28 total)
-            packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
-            minPackSize = 3;
-            maxPackSize = 4;
-            bossChance = 0.08;
+            // Medium distance: HORDE MODE - 6-8 packs, 9-12 enemies (~54-96 total)
+            packsToSpawn = 6 + Math.floor(Math.random() * 3); // 6-8 packs
+            minPackSize = 9;
+            maxPackSize = 12;
+            bossChance = 0.05;
         } else if (distanceFromSpawn < 450) {
-            // Far: Challenging - 4-6 packs, 4-6 enemies, 15% boss (~16-36 total)
-            packsToSpawn = 4 + Math.floor(Math.random() * 3); // 4-6 packs
-            minPackSize = 4;
-            maxPackSize = 6;
-            bossChance = 0.15;
+            // Far: HORDE MODE - 5-7 packs, 12-18 enemies (~60-126 total)
+            packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
+            minPackSize = 12;
+            maxPackSize = 18;
+            bossChance = 0.10;
         } else {
-            // Very far: Deadly - 4-6 packs, 5-7 enemies, 25% boss (~20-42 total)
-            packsToSpawn = 4 + Math.floor(Math.random() * 3); // 4-6 packs
-            minPackSize = 5;
-            maxPackSize = 7;
-            bossChance = 0.25;
+            // Very far: MASSIVE HORDE - 5-7 packs, 15-21 enemies (~75-147 total)
+            packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
+            minPackSize = 15;
+            maxPackSize = 21;
+            bossChance = 0.15;
         }
 
         // CO-OP SCALING: Diablo-style diminishing returns
@@ -1160,17 +1166,6 @@ class Lobby {
         this.gameState.enemies.forEach(enemy => {
             if (!enemy.isAlive) return;
 
-            // Check if stunned - skip movement if stunned
-            if (enemy.isStunned && now < enemy.stunnedUntil) {
-                return; // Skip this enemy's update while stunned
-            }
-
-            // Clear stun flag if expired
-            if (enemy.isStunned && now >= enemy.stunnedUntil) {
-                enemy.isStunned = false;
-                enemy.stunnedUntil = 0;
-            }
-
             // Update every 100ms
             if (now - enemy.lastMove < 100) return;
             enemy.lastMove = now;
@@ -1378,6 +1373,12 @@ class Lobby {
                     const damageTarget = Array.from(this.players.values()).find(p => p.id === target.id);
                     if (damageTarget && damageTarget.isAlive) {
                         damageTarget.health -= enemy.damage;
+
+                        // Track damage taken for stats
+                        if (damageTarget.damageTaken !== undefined) {
+                            damageTarget.damageTaken += enemy.damage;
+                        }
+
                         if (damageTarget.health <= 0) {
                             damageTarget.isAlive = false;
                             damageTarget.health = 0;
@@ -1829,11 +1830,66 @@ io.on('connection', (socket) => {
             enemy.health -= damage;
             player.updateActivity();
 
-            // Apply effects (stun, knockback, etc.)
+            // Track damage dealt for stats
+            if (player.damageDealt !== undefined) {
+                player.damageDealt += damage;
+            }
+
+            // Apply effects (bleed, knockback, etc.)
             if (data.effects) {
-                if (data.effects.stun) {
-                    enemy.isStunned = true;
-                    enemy.stunnedUntil = Date.now() + data.effects.stun;
+                if (data.effects.bleed && !data.effects.isBleedDamage) {
+                    // Initialize bleed tracking
+                    if (!enemy.bleedStacks) {
+                        enemy.bleedStacks = 0;
+                        enemy.bleedTimers = [];
+                    }
+
+                    // Add bleed stack (max 10 stacks)
+                    enemy.bleedStacks = Math.min(enemy.bleedStacks + 1, 10);
+
+                    const bleedConfig = data.effects.bleed;
+
+                    // Start bleed damage timer for this stack
+                    const bleedInterval = setInterval(() => {
+                        if (enemy.isAlive && enemy.bleedStacks > 0) {
+                            const bleedDamage = bleedConfig.damagePerStack * enemy.bleedStacks;
+                            enemy.health -= bleedDamage;
+
+                            // Broadcast bleed damage
+                            lobby.broadcast('enemy:damaged', {
+                                enemyId: enemy.id,
+                                damage: bleedDamage,
+                                health: enemy.health,
+                                maxHealth: enemy.maxHealth,
+                                isBleed: true
+                            });
+
+                            // Check if enemy died from bleed
+                            if (enemy.health <= 0) {
+                                enemy.isAlive = false;
+                                lobby.broadcast('enemy:died', {
+                                    enemyId: enemy.id,
+                                    killerId: player.id,
+                                    position: enemy.position
+                                });
+                                clearInterval(bleedInterval);
+                            }
+                        } else {
+                            clearInterval(bleedInterval);
+                        }
+                    }, bleedConfig.tickRate);
+
+                    enemy.bleedTimers.push(bleedInterval);
+
+                    // Remove this bleed stack after duration
+                    setTimeout(() => {
+                        if (enemy.bleedStacks > 0) {
+                            enemy.bleedStacks--;
+                        }
+                        clearInterval(bleedInterval);
+                        const index = enemy.bleedTimers.indexOf(bleedInterval);
+                        if (index > -1) enemy.bleedTimers.splice(index, 1);
+                    }, bleedConfig.duration);
                 }
                 if (data.effects.knockback && enemy.position) {
                     // Convert pixel positions to tile positions
@@ -1862,7 +1918,7 @@ io.on('connection', (socket) => {
                                 x: enemy.position.x,
                                 y: enemy.position.y
                             },
-                            isStunned: enemy.isStunned
+                            bleedStacks: enemy.bleedStacks || 0
                         });
                     }
                 }
@@ -2375,10 +2431,23 @@ io.on('connection', (socket) => {
     });
 
     // Handle disconnection
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
         console.log(`🔌 Client disconnected: ${socket.id}`);
 
         const player = players.get(socket.id);
+
+        // Save player stats to database
+        if (player && process.env.DATABASE_URL) {
+            const sessionPlaytime = Date.now() - player.sessionStartTime;
+            await db.updatePlayerStats(player.id, player.username, {
+                kills: player.kills || 0,
+                deaths: player.deaths || 0,
+                damageDealt: player.damageDealt || 0,
+                damageTaken: player.damageTaken || 0,
+                playtime: sessionPlaytime
+            }).catch(err => console.error('Failed to save player stats:', err));
+        }
+
         if (player && player.lobbyId) {
             const lobby = lobbies.get(player.lobbyId);
 
@@ -2455,6 +2524,42 @@ app.get('/stats', (req, res) => {
     });
 });
 
+// Global stats endpoint (from database)
+app.get('/global-stats', async (req, res) => {
+    try {
+        if (!process.env.DATABASE_URL) {
+            return res.json({
+                totalKills: 0,
+                totalDeaths: 0,
+                totalPlayers: 0,
+                error: 'Database not configured'
+            });
+        }
+
+        const result = await db.pool.query(`
+            SELECT
+                COALESCE(SUM(total_kills), 0) as total_kills,
+                COALESCE(SUM(total_deaths), 0) as total_deaths,
+                COALESCE(SUM(total_damage_dealt), 0) as total_damage_dealt,
+                COUNT(*) as total_players
+            FROM player_stats
+        `);
+
+        const stats = result.rows[0];
+        res.json({
+            totalKills: parseInt(stats.total_kills),
+            totalDeaths: parseInt(stats.total_deaths),
+            totalDamageDealt: parseInt(stats.total_damage_dealt),
+            totalPlayers: parseInt(stats.total_players),
+            activePlayers: players.size,
+            activeLobbies: lobbies.size
+        });
+    } catch (error) {
+        console.error('Error fetching global stats:', error);
+        res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+});
+
 // Metrics endpoint
 app.get('/metrics', (req, res) => {
     res.json({
@@ -2502,7 +2607,7 @@ setInterval(() => {
 }, 600000); // Every 10 minutes
 
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════╗
 ║     🎮 KLYRA MULTIPLAYER SERVER v2.0                 ║
@@ -2516,6 +2621,13 @@ server.listen(PORT, () => {
 ║  - GET /metrics  - Performance metrics                ║
 ╚═══════════════════════════════════════════════════════╝
     `);
+
+    // Initialize database
+    if (process.env.DATABASE_URL) {
+        await db.initDatabase();
+    } else {
+        console.warn('⚠️  DATABASE_URL not set - stats will not persist');
+    }
 });
 
 // Graceful shutdown

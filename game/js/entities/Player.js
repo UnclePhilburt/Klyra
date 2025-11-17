@@ -263,12 +263,18 @@ class Player {
             this.spriteRenderer.playAttackAnimation();
 
             enemiesInFront.forEach(enemy => {
-                // Stun enemy for 1000ms (1 second)
-                const stunDuration = 1000;
+                // Apply bleed stack (stackable DoT)
+                const bleedDamagePerStack = 2; // Damage per tick per stack
+                const bleedTickRate = 500; // Damage every 500ms
+                const bleedDuration = 5000; // 5 seconds
 
-                // Deal damage with stun effect
+                // Deal damage with bleed effect
                 networkManager.hitEnemy(enemy.data.id, damage, this.data.id, playerPos, {
-                    stun: stunDuration,
+                    bleed: {
+                        damagePerStack: bleedDamagePerStack,
+                        tickRate: bleedTickRate,
+                        duration: bleedDuration
+                    },
                     knockback: {
                         distance: 50,
                         sourceX: playerPos.x,
@@ -276,18 +282,33 @@ class Player {
                     }
                 });
 
-                // Apply client-side stun immediately for responsiveness
-                enemy.isStunned = true;
-                enemy.stunnedUntil = Date.now() + stunDuration;
-
-                // Store velocity before stunning
-                if (enemy.sprite.body) {
-                    enemy.preStunVelocity = {
-                        x: enemy.sprite.body.velocity.x,
-                        y: enemy.sprite.body.velocity.y
-                    };
-                    enemy.sprite.body.setVelocity(0, 0);
+                // Apply client-side bleed stack immediately for responsiveness
+                if (!enemy.bleedStacks) {
+                    enemy.bleedStacks = 0;
+                    enemy.bleedTimers = [];
                 }
+
+                enemy.bleedStacks = Math.min((enemy.bleedStacks || 0) + 1, 10); // Max 10 stacks
+
+                // Start bleed damage timer
+                const bleedTimer = setInterval(() => {
+                    if (enemy.isAlive && enemy.bleedStacks > 0) {
+                        const bleedDamage = bleedDamagePerStack * enemy.bleedStacks;
+                        networkManager.hitEnemy(enemy.data.id, bleedDamage, this.data.id, playerPos, { isBleedDamage: true });
+                    }
+                }, bleedTickRate);
+
+                enemy.bleedTimers.push(bleedTimer);
+
+                // Remove this bleed stack after duration
+                this.scene.time.delayedCall(bleedDuration, () => {
+                    if (enemy.bleedStacks > 0) {
+                        enemy.bleedStacks--;
+                    }
+                    clearInterval(bleedTimer);
+                    const index = enemy.bleedTimers.indexOf(bleedTimer);
+                    if (index > -1) enemy.bleedTimers.splice(index, 1);
+                });
 
                 // Apply client-side knockback immediately for instant feedback
                 // Server will sync the authoritative position
@@ -309,41 +330,39 @@ class Player {
                         ease: 'Power2',
                         onComplete: () => {
                             // Update target positions after tween
-                            if (enemy.setTargetPosition) {
-                                enemy.setTargetPosition(enemy.sprite.x, enemy.sprite.y);
-                            } else if (enemy.targetX !== undefined) {
-                                enemy.targetX = enemy.sprite.x;
-                                enemy.targetY = enemy.sprite.y;
+                            if (enemy && enemy.sprite) {
+                                if (enemy.setTargetPosition) {
+                                    enemy.setTargetPosition(enemy.sprite.x, enemy.sprite.y);
+                                } else if (enemy.targetX !== undefined) {
+                                    enemy.targetX = enemy.sprite.x;
+                                    enemy.targetY = enemy.sprite.y;
+                                }
                             }
                         }
                     });
                 }
 
-                // Visual stun indicator - stars/sparkles
-                const stunEffect = this.scene.add.text(
+                // Visual bleed indicator - red droplets
+                const bleedEffect = this.scene.add.text(
                     enemy.sprite.x,
                     enemy.sprite.y - 40,
-                    '★',
+                    `🩸x${enemy.bleedStacks}`,
                     {
-                        fontSize: '24px',
-                        color: '#FFFF00'
+                        fontSize: '20px',
+                        color: '#FF0000',
+                        stroke: '#000000',
+                        strokeThickness: 2
                     }
                 );
-                stunEffect.setOrigin(0.5);
-                stunEffect.setDepth(10001);
+                bleedEffect.setOrigin(0.5);
+                bleedEffect.setDepth(10001);
 
                 this.scene.tweens.add({
-                    targets: stunEffect,
+                    targets: bleedEffect,
                     y: enemy.sprite.y - 50,
                     alpha: 0,
-                    duration: 1000,
-                    onComplete: () => stunEffect.destroy()
-                });
-
-                // Remove stun after duration
-                this.scene.time.delayedCall(stunDuration, () => {
-                    enemy.isStunned = false;
-                    enemy.stunnedUntil = 0;
+                    duration: 800,
+                    onComplete: () => bleedEffect.destroy()
                 });
 
                 // Visual effect - slash at enemy

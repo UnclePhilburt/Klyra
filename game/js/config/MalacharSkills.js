@@ -21,11 +21,11 @@ const MalacharSkillTree = {
                 minionType: 'permanent',
                 
                 stats: {
-                    playerDamage: 5, // Weak personal damage
+                    playerDamage: 10, // HORDE MODE: Increased for balance
                     startingMinions: 5,
                     minionCap: 5,
                     minionHealth: 100,
-                    minionDamage: 20,
+                    minionDamage: 30, // HORDE MODE: Increased for balance
                     allyScaling: 0.20 // +20% minion stats per ally in 8 tiles
                 },
                 
@@ -69,7 +69,7 @@ const MalacharSkillTree = {
                         cooldown: 15000,
                         effect: {
                             explodeMinions: true,
-                            explosionDamage: 250,
+                            explosionDamage: 375, // HORDE MODE: Increased for balance
                             explosionRadius: 3,
                             instantRespawn: true,
                             respawnInvulnDuration: 1000
@@ -84,7 +84,7 @@ const MalacharSkillTree = {
                             reviveAll: true,
                             spawnPerAlly: 2,
                             tempDuration: 15000,
-                            tempStats: { health: 80, damage: 18 },
+                            tempStats: { health: 80, damage: 27 }, // HORDE MODE: Increased for balance
                             allMinionBonus: 0.40
                         }
                     }
@@ -100,24 +100,24 @@ const MalacharSkillTree = {
                 minionType: 'temporary',
                 
                 stats: {
-                    playerDamage: 12,
+                    playerDamage: 24, // HORDE MODE: Increased for balance
                     startingMinions: 3,
                     minionCap: 3, // Permanent cap
                     tempMinionCap: 15, // Temp cap
                     minionHealth: 80,
-                    minionDamage: 16,
+                    minionDamage: 24, // HORDE MODE: Increased for balance
                     spawnChance: 0.15, // Your kills
                     allySpawnChance: 0.10, // Ally kills
                     allySpawnRange: 10,
                     tempDuration: 10000,
-                    tempStats: { health: 50, damage: 14 }
+                    tempStats: { health: 50, damage: 21 } // HORDE MODE: Increased for balance
                 },
                 
                 autoAttack: {
                     name: 'Death Bolt',
                     description: 'Shadow bolt that kills enemies',
                     target: 'enemy',
-                    damage: 12,
+                    damage: 24, // HORDE MODE: Increased for balance
                     cooldown: 1000
                 },
                 
@@ -141,7 +141,7 @@ const MalacharSkillTree = {
                         cooldown: 20000,
                         effect: {
                             explodeAllTemps: true,
-                            explosionDamage: 50,
+                            explosionDamage: 75, // HORDE MODE: Increased for balance
                             explosionRadius: 4,
                             allyAttackSpeedBonus: 0.30,
                             allyHeal: 25,
@@ -157,7 +157,7 @@ const MalacharSkillTree = {
                             everyKillSpawns: true,
                             tempDamageBonus: 0.50,
                             spawnElitesPerAlly: 3,
-                            eliteStats: { health: 100, damage: 25 },
+                            eliteStats: { health: 100, damage: 38 }, // HORDE MODE: Increased for balance
                             eliteDuration: 20000
                         }
                     }
@@ -173,11 +173,11 @@ const MalacharSkillTree = {
                 minionType: 'permanent',
                 
                 stats: {
-                    playerDamage: 28, // Strong personal damage
+                    playerDamage: 56, // HORDE MODE: Strong personal damage
                     startingMinions: 4,
                     minionCap: 4,
                     minionHealth: 120, // Tanky
-                    minionDamage: 12, // Low damage
+                    minionDamage: 18, // HORDE MODE: Increased for balance
                     minionTauntRange: 4 // Minions taunt enemies
                 },
                 
@@ -185,7 +185,7 @@ const MalacharSkillTree = {
                     name: 'Shadow Lance',
                     description: 'Strong shadow bolt',
                     target: 'enemy',
-                    damage: 28,
+                    damage: 56, // HORDE MODE: Increased for balance
                     cooldown: 1000
                 },
                 
@@ -237,22 +237,22 @@ const MalacharSkillTree = {
                 minionType: 'temporary',
                 
                 stats: {
-                    playerDamage: 24,
+                    playerDamage: 48, // HORDE MODE: Increased for balance
                     startingMinions: 2, // Weak permanent minions
                     minionCap: 2,
                     tempMinionCap: 20,
                     minionHealth: 60,
-                    minionDamage: 10,
+                    minionDamage: 15, // HORDE MODE: Increased for balance
                     spawnChance: 0.25,
                     tempDuration: 8000,
-                    tempStats: { health: 45, damage: 20 }
+                    tempStats: { health: 45, damage: 30 } // HORDE MODE: Increased for balance
                 },
                 
                 autoAttack: {
                     name: 'Soul Bolt',
                     description: 'Shadow bolt that scales with kills',
                     target: 'enemy',
-                    damage: 24,
+                    damage: 48, // HORDE MODE: Increased for balance
                     cooldown: 1000
                 },
                 
@@ -277,7 +277,7 @@ const MalacharSkillTree = {
                             damagePerTemp: 0.08,
                             damageStackDuration: 10000,
                             healPerTemp: 15,
-                            explosionDamagePerTemp: 30
+                            explosionDamagePerTemp: 45 // HORDE MODE: Increased for balance
                         }
                     },
                     r: {
@@ -289,7 +289,7 @@ const MalacharSkillTree = {
                             spawnsPerKill: 3,
                             playerDamageBonus: 1.00,
                             tempExplodeOnDeath: true,
-                            explosionDamage: 40,
+                            explosionDamage: 60, // HORDE MODE: Increased for balance
                             explosionRadius: 3
                         }
                     }

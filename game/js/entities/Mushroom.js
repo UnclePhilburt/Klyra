@@ -88,7 +88,7 @@ class Mushroom {
         }
     }
 
-    attack() {
+    attack(targetX = null, targetY = null) {
         // Prevent attack spam - enforce minimum cooldown (833ms to match animation)
         const now = Date.now();
         if (this.isAttacking || now - this.lastAttackTime < 833) {
@@ -96,6 +96,15 @@ class Mushroom {
         }
 
         console.log(`⚔️ Mushroom attack() called`);
+
+        // Face the target before attacking (inverted because sprite faces wrong way)
+        if (targetX !== null && this.sprite) {
+            const dx = targetX - this.sprite.x;
+            if (Math.abs(dx) > 5) { // Only flip if target is significantly to one side
+                this.sprite.setFlipX(dx > 0); // Inverted for mushroom sprite
+            }
+        }
+
         // Play attack animation
         if (this.sprite && this.sprite.anims && this.isAlive) {
             console.log(`   Checking animation exists...`);
@@ -131,6 +140,9 @@ class Mushroom {
 
         // Blood splatter effect
         this.showBloodEffect();
+
+        // Show damage number
+        this.showDamageNumber(amount);
 
         // Play damage animation
         if (this.sprite && this.sprite.anims && this.health > 0) {
@@ -274,6 +286,33 @@ class Mushroom {
         }
     }
 
+    showDamageNumber(amount) {
+        // Create floating damage text
+        const damageText = this.scene.add.text(
+            this.sprite.x,
+            this.sprite.y - 20,
+            Math.round(amount).toString(),
+            {
+                font: 'bold 20px monospace',
+                fill: '#ff4444',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+        damageText.setOrigin(0.5);
+        damageText.setDepth(10000);
+
+        // Animate the damage number
+        this.scene.tweens.add({
+            targets: damageText,
+            y: damageText.y - 40,
+            alpha: 0,
+            duration: 800,
+            ease: 'Cubic.easeOut',
+            onComplete: () => damageText.destroy()
+        });
+    }
+
     die() {
         this.isAlive = false;
 
@@ -409,8 +448,12 @@ class Mushroom {
             }
 
             // Flip sprite based on movement direction (inverted because sprite faces wrong way)
-            if (Math.abs(dx) > 0.5) {
-                this.sprite.setFlipX(dx > 0);
+            if (Math.abs(dx) > 2) { // Increased threshold to prevent rapid flipping
+                const shouldFlipLeft = dx > 0; // Inverted for mushroom sprite
+                // Only flip if it's different from current state
+                if (this.sprite.flipX !== shouldFlipLeft) {
+                    this.sprite.setFlipX(shouldFlipLeft);
+                }
             }
         }
 

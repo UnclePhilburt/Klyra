@@ -1,438 +1,200 @@
-// PlayerUI - Handles all UI elements above a player (name tag, health bar, level badge)
+// PlayerUI - Clean, modern health bars for other players
 class PlayerUI {
     constructor(scene, player, config = {}) {
         this.scene = scene;
         this.player = player;
         this.config = {
-            healthBarWidth: config.healthBarWidth || 70,
-            healthBarHeight: config.healthBarHeight || 6,
-            barRadius: config.barRadius || 3,
-            nameTagHeight: config.nameTagHeight || 20,
-            yOffset: config.yOffset || 105,
-            visualOffsetX: config.visualOffsetX || 32,
-            visualOffsetY: config.visualOffsetY || 55,
-            useSprite: config.useSprite || false,
-            isLocalPlayer: config.isLocalPlayer || false
+            isLocalPlayer: config.isLocalPlayer || false,
+            yOffset: config.yOffset || 40
         };
 
-        // Graphics objects
-        this.healthBarShadow = null;
-        this.healthBarContainer = null;
-        this.healthBar = null;
-        this.shieldBar = null; // Shield bar (rendered over health)
-        this.healthBarGloss = null;
-        this.nameTagShadow = null;
-        this.nameTagBg = null;
-        this.nameTag = null;
+        // UI elements
+        this.container = null;
+        this.healthBarBg = null;
+        this.healthBarFill = null;
+        this.shieldBarFill = null;
+        this.healthText = null;
+        this.nameText = null;
         this.levelBadge = null;
-        this.levelText = null;
 
-        // Cache for optimization
-        this.lastUIX = null;
-        this.lastUIY = null;
-        this.lastHealth = null;
-        this.lastShield = null;
-        this.currentDepth = 0;
+        // Cache
+        this.lastHealth = -1;
+        this.lastMaxHealth = -1;
+        this.lastShield = -1;
 
-        this.create();
+        if (!this.config.isLocalPlayer) {
+            this.create();
+        }
     }
 
     create() {
-        // Skip UI creation for local player (has HUD in top right)
-        if (this.config.isLocalPlayer) {
-            return;
-        }
+        const sprite = this.player.spriteRenderer?.sprite || this.player.sprite;
+        if (!sprite) return;
 
-        const pos = this.getUIPosition();
-        const healthBarY = pos.nameY - 20;
+        // Create container for all UI elements
+        this.container = this.scene.add.container(sprite.x, sprite.y - this.config.yOffset);
 
-        this.createHealthBar(pos.nameX, healthBarY);
-        this.createNameTag(pos.nameX, pos.nameY);
-        this.createLevelBadge(pos.nameX, pos.nameY);
+        // Health bar background (dark with border)
+        this.healthBarBg = this.scene.add.graphics();
+        this.healthBarBg.fillStyle(0x000000, 0.7);
+        this.healthBarBg.fillRoundedRect(-40, -5, 80, 10, 3);
+        this.healthBarBg.lineStyle(2, 0x333333, 1);
+        this.healthBarBg.strokeRoundedRect(-40, -5, 80, 10, 3);
+        this.container.add(this.healthBarBg);
 
-        // Initial draw
-        this.lastUIX = pos.nameX;
-        this.lastUIY = pos.nameY;
-        this.updateHealthBar();
-    }
+        // Health bar fill (will be drawn dynamically)
+        this.healthBarFill = this.scene.add.graphics();
+        this.container.add(this.healthBarFill);
 
-    createHealthBar(x, y) {
-        const { healthBarWidth, healthBarHeight, barRadius } = this.config;
+        // Shield bar fill (rendered over health)
+        this.shieldBarFill = this.scene.add.graphics();
+        this.container.add(this.shieldBarFill);
 
-        // Drop shadow
-        this.healthBarShadow = this.scene.add.graphics();
-        this.healthBarShadow.fillStyle(0x000000, 0.3);
-        this.healthBarShadow.fillRoundedRect(
-            x - healthBarWidth/2 + 1,
-            y - healthBarHeight/2 + 2,
-            healthBarWidth,
-            healthBarHeight,
-            barRadius
-        );
-
-        // Container/background (glass effect)
-        this.healthBarContainer = this.scene.add.graphics();
-        this.healthBarContainer.fillStyle(0x000000, 0.6);
-        this.healthBarContainer.fillRoundedRect(
-            x - healthBarWidth/2,
-            y - healthBarHeight/2,
-            healthBarWidth,
-            healthBarHeight,
-            barRadius
-        );
-        this.healthBarContainer.lineStyle(1, 0x444444, 0.8);
-        this.healthBarContainer.strokeRoundedRect(
-            x - healthBarWidth/2,
-            y - healthBarHeight/2,
-            healthBarWidth,
-            healthBarHeight,
-            barRadius
-        );
-
-        // Health bar fill (dynamic)
-        this.healthBar = this.scene.add.graphics();
-
-        // Shield bar (rendered over health bar)
-        this.shieldBar = this.scene.add.graphics();
-
-        // Glossy overlay
-        this.healthBarGloss = this.scene.add.graphics();
-        this.healthBarGloss.fillStyle(0xffffff, 0.15);
-        this.healthBarGloss.fillRoundedRect(
-            x - healthBarWidth/2,
-            y - healthBarHeight/2,
-            healthBarWidth,
-            healthBarHeight * 0.4,
-            barRadius
-        );
-    }
-
-    createNameTag(x, y) {
-        const nameWidth = Math.max(80, this.player.data.username.length * 8 + 20);
-        const nameHeight = this.config.nameTagHeight;
-
-        // Drop shadow
-        this.nameTagShadow = this.scene.add.graphics();
-        this.nameTagShadow.fillStyle(0x000000, 0.4);
-        this.nameTagShadow.fillRoundedRect(
-            x - nameWidth/2 + 1,
-            y - nameHeight/2 + 2,
-            nameWidth,
-            nameHeight,
-            6
-        );
-
-        // Background (glassmorphism)
-        this.nameTagBg = this.scene.add.graphics();
-        this.nameTagBg.fillStyle(0x0a0a0a, 0.85);
-        this.nameTagBg.fillRoundedRect(
-            x - nameWidth/2,
-            y - nameHeight/2,
-            nameWidth,
-            nameHeight,
-            6
-        );
-        this.nameTagBg.lineStyle(1, 0x555555, 0.6);
-        this.nameTagBg.strokeRoundedRect(
-            x - nameWidth/2,
-            y - nameHeight/2,
-            nameWidth,
-            nameHeight,
-            6
-        );
-
-        // Name text
-        this.nameTag = this.scene.add.text(x, y, this.player.data.username, {
-            font: 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial',
+        // Health text (shows HP numbers)
+        this.healthText = this.scene.add.text(0, 0, '', {
+            font: 'bold 10px monospace',
             fill: '#ffffff',
             stroke: '#000000',
-            strokeThickness: 3,
+            strokeThickness: 3
+        }).setOrigin(0.5);
+        this.container.add(this.healthText);
+
+        // Player name
+        this.nameText = this.scene.add.text(0, 12, this.player.data.username, {
+            font: 'bold 12px Arial',
+            fill: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4,
             shadow: {
                 offsetX: 0,
-                offsetY: 1,
+                offsetY: 2,
                 color: '#000000',
-                blur: 2,
+                blur: 4,
                 fill: true
             }
         }).setOrigin(0.5);
-    }
+        this.container.add(this.nameText);
 
-    createLevelBadge(x, y) {
-        if (!this.player.level || this.player.level <= 1) return;
-
-        const nameWidth = Math.max(80, this.player.data.username.length * 8 + 20);
-        const nameHeight = this.config.nameTagHeight;
-
-        this.levelBadge = this.scene.add.graphics();
-        this.levelBadge.fillStyle(0x6366f1, 0.9);
-        this.levelBadge.fillRoundedRect(
-            x - nameWidth/2 + 4,
-            y - nameHeight/2 + 4,
-            22,
-            12,
-            4
-        );
-
-        this.levelText = this.scene.add.text(
-            x - nameWidth/2 + 15,
-            y,
-            `${this.player.level}`,
-            {
-                font: 'bold 9px Arial',
-                fill: '#ffffff'
-            }
-        ).setOrigin(0.5);
-    }
-
-    getUIPosition() {
-        const offsetX = this.config.useSprite ? this.config.visualOffsetX : 0;
-        const offsetY = this.config.useSprite ? this.config.visualOffsetY : 0;
-        const yOffset = this.config.useSprite ? this.config.yOffset : 25;
-
-        const sprite = this.player.sprite;
-        const nameX = sprite.x + offsetX;
-        const nameY = sprite.y - yOffset + offsetY;
-
-        return { nameX, nameY };
-    }
-
-    update(spriteDepth) {
-        // Skip UI updates for local player
-        if (this.config.isLocalPlayer) {
-            return;
+        // Level badge (if level > 1)
+        if (this.player.level && this.player.level > 1) {
+            this.levelBadge = this.scene.add.text(-45, 12, `${this.player.level}`, {
+                font: 'bold 10px Arial',
+                fill: '#ffffff',
+                backgroundColor: '#6366f1',
+                padding: { x: 5, y: 2 }
+            }).setOrigin(0.5);
+            this.container.add(this.levelBadge);
         }
 
-        const pos = this.getUIPosition();
-        const healthBarY = pos.nameY - 20;
+        this.updateHealthBar();
+    }
 
-        // Check if position changed significantly
-        const posChanged = !this.lastUIX || !this.lastUIY ||
-                          Math.abs(pos.nameX - this.lastUIX) > 0.5 ||
-                          Math.abs(pos.nameY - this.lastUIY) > 0.5;
+    update() {
+        if (this.config.isLocalPlayer || !this.container) return;
 
-        if (posChanged) {
-            this.updatePosition(pos.nameX, pos.nameY, healthBarY, spriteDepth);
-            this.lastUIX = pos.nameX;
-            this.lastUIY = pos.nameY;
-        }
+        const sprite = this.player.spriteRenderer?.sprite || this.player.sprite;
+        if (!sprite) return;
 
-        // Update depths (cheap operation)
-        this.updateDepths(spriteDepth);
+        // Update container position
+        this.container.setPosition(sprite.x, sprite.y - this.config.yOffset);
+        this.container.setDepth(sprite.depth + 100);
 
-        // Update health bar fill if health changed
-        if (!this.lastHealth || this.player.health !== this.lastHealth) {
-            this.lastHealth = this.player.health;
+        // Update health bar if health changed
+        const health = this.player.health || 0;
+        const maxHealth = this.player.maxHealth || 100;
+        const shield = this.player.shield || 0;
+
+        if (health !== this.lastHealth || maxHealth !== this.lastMaxHealth || shield !== this.lastShield) {
+            this.lastHealth = health;
+            this.lastMaxHealth = maxHealth;
+            this.lastShield = shield;
             this.updateHealthBar();
         }
-    }
 
-    updatePosition(nameX, nameY, healthBarY, spriteDepth) {
-        const { healthBarWidth, healthBarHeight, barRadius } = this.config;
-        const nameWidth = Math.max(80, this.player.data.username.length * 8 + 20);
-        const nameHeight = this.config.nameTagHeight;
-
-        // Update health bar shadow
-        if (this.healthBarShadow) {
-            this.healthBarShadow.clear();
-            this.healthBarShadow.fillStyle(0x000000, 0.3);
-            this.healthBarShadow.fillRoundedRect(
-                nameX - healthBarWidth/2 + 1,
-                healthBarY - healthBarHeight/2 + 2,
-                healthBarWidth,
-                healthBarHeight,
-                barRadius
-            );
+        // Update level badge if level changed
+        if (this.player.level && this.player.level > 1 && !this.levelBadge) {
+            this.levelBadge = this.scene.add.text(-45, 12, `${this.player.level}`, {
+                font: 'bold 10px Arial',
+                fill: '#ffffff',
+                backgroundColor: '#6366f1',
+                padding: { x: 5, y: 2 }
+            }).setOrigin(0.5);
+            this.container.add(this.levelBadge);
+        } else if (this.levelBadge && this.player.level) {
+            this.levelBadge.setText(`${this.player.level}`);
         }
-
-        // Update health bar container
-        if (this.healthBarContainer) {
-            this.healthBarContainer.clear();
-            this.healthBarContainer.fillStyle(0x000000, 0.6);
-            this.healthBarContainer.fillRoundedRect(
-                nameX - healthBarWidth/2,
-                healthBarY - healthBarHeight/2,
-                healthBarWidth,
-                healthBarHeight,
-                barRadius
-            );
-            this.healthBarContainer.lineStyle(1, 0x444444, 0.8);
-            this.healthBarContainer.strokeRoundedRect(
-                nameX - healthBarWidth/2,
-                healthBarY - healthBarHeight/2,
-                healthBarWidth,
-                healthBarHeight,
-                barRadius
-            );
-        }
-
-        // Update glossy overlay
-        if (this.healthBarGloss) {
-            this.healthBarGloss.clear();
-            this.healthBarGloss.fillStyle(0xffffff, 0.15);
-            this.healthBarGloss.fillRoundedRect(
-                nameX - healthBarWidth/2,
-                healthBarY - healthBarHeight/2,
-                healthBarWidth,
-                healthBarHeight * 0.4,
-                barRadius
-            );
-        }
-
-        // Update name tag shadow
-        if (this.nameTagShadow) {
-            this.nameTagShadow.clear();
-            this.nameTagShadow.fillStyle(0x000000, 0.4);
-            this.nameTagShadow.fillRoundedRect(
-                nameX - nameWidth/2 + 1,
-                nameY - nameHeight/2 + 2,
-                nameWidth,
-                nameHeight,
-                6
-            );
-        }
-
-        // Update name tag background
-        if (this.nameTagBg) {
-            this.nameTagBg.clear();
-            this.nameTagBg.fillStyle(0x0a0a0a, 0.85);
-            this.nameTagBg.fillRoundedRect(
-                nameX - nameWidth/2,
-                nameY - nameHeight/2,
-                nameWidth,
-                nameHeight,
-                6
-            );
-            this.nameTagBg.lineStyle(1, 0x555555, 0.6);
-            this.nameTagBg.strokeRoundedRect(
-                nameX - nameWidth/2,
-                nameY - nameHeight/2,
-                nameWidth,
-                nameHeight,
-                6
-            );
-        }
-
-        // Update level badge
-        if (this.levelBadge && this.player.level > 1) {
-            this.levelBadge.clear();
-            this.levelBadge.fillStyle(0x6366f1, 0.9);
-            this.levelBadge.fillRoundedRect(
-                nameX - nameWidth/2 + 4,
-                nameY - nameHeight/2 + 4,
-                22,
-                12,
-                4
-            );
-        }
-
-        // Update level text
-        if (this.levelText && this.player.level > 1) {
-            this.levelText.setPosition(nameX - nameWidth/2 + 15, nameY);
-        }
-
-        // Update name tag text
-        this.nameTag.setPosition(nameX, nameY);
-
-        // Store position for health bar updates
-        this.currentNameX = nameX;
-        this.currentHealthBarY = healthBarY;
-    }
-
-    updateDepths(spriteDepth) {
-        if (this.healthBarShadow) this.healthBarShadow.setDepth(spriteDepth);
-        if (this.healthBarContainer) this.healthBarContainer.setDepth(spriteDepth + 1);
-        if (this.healthBar) this.healthBar.setDepth(spriteDepth + 2);
-        if (this.healthBarGloss) this.healthBarGloss.setDepth(spriteDepth + 3);
-        if (this.nameTagShadow) this.nameTagShadow.setDepth(spriteDepth + 1);
-        if (this.nameTagBg) this.nameTagBg.setDepth(spriteDepth + 2);
-        if (this.levelBadge) this.levelBadge.setDepth(spriteDepth + 3);
-        if (this.levelText) this.levelText.setDepth(spriteDepth + 4);
-        if (this.nameTag) this.nameTag.setDepth(spriteDepth + 4);
     }
 
     updateHealthBar() {
-        if (!this.healthBar) return;
+        if (!this.healthBarFill || !this.shieldBarFill) return;
 
-        const healthPercent = this.player.health / this.player.maxHealth;
-        const currentWidth = this.config.healthBarWidth * healthPercent;
+        const health = Math.max(0, this.player.health || 0);
+        const maxHealth = this.player.maxHealth || 100;
+        const shield = Math.max(0, this.player.shield || 0);
 
-        // Clear and redraw
-        this.healthBar.clear();
-        if (this.shieldBar) this.shieldBar.clear();
+        // Calculate bar widths
+        const barWidth = 76; // Slightly smaller than background
+        const healthPercent = health / maxHealth;
+        const healthWidth = barWidth * healthPercent;
+        const shieldPercent = Math.min(shield / maxHealth, 1 - healthPercent);
+        const shieldWidth = barWidth * shieldPercent;
 
-        // Determine color
-        let color, glowColor;
+        // Clear previous drawings
+        this.healthBarFill.clear();
+        this.shieldBarFill.clear();
+
+        // Determine health color based on percentage
+        let healthColor, healthGlowColor;
         if (healthPercent > 0.6) {
-            color = 0x10b981; // Emerald green
-            glowColor = 0x34d399;
-        } else if (healthPercent > 0.4) {
-            color = 0xfbbf24; // Amber
-            glowColor = 0xfcd34d;
-        } else if (healthPercent > 0.25) {
-            color = 0xf97316; // Orange
-            glowColor = 0xfb923c;
+            healthColor = 0x22c55e;      // Green
+            healthGlowColor = 0x4ade80;
+        } else if (healthPercent > 0.3) {
+            healthColor = 0xf59e0b;      // Amber
+            healthGlowColor = 0xfbbf24;
         } else {
-            color = 0xef4444; // Red
-            glowColor = 0xf87171;
+            healthColor = 0xef4444;      // Red
+            healthGlowColor = 0xf87171;
         }
 
-        // Draw glow
-        this.healthBar.fillStyle(glowColor, 0.3);
-        this.healthBar.fillRoundedRect(
-            this.currentNameX - this.config.healthBarWidth/2 - 1,
-            this.currentHealthBarY - this.config.healthBarHeight/2 - 1,
-            currentWidth + 2,
-            this.config.healthBarHeight + 2,
-            this.config.barRadius
-        );
+        // Draw health bar with glow
+        if (healthWidth > 0) {
+            // Outer glow
+            this.healthBarFill.fillStyle(healthGlowColor, 0.5);
+            this.healthBarFill.fillRoundedRect(-38 - 1, -3 - 1, healthWidth + 2, 6 + 2, 2);
 
-        // Draw main bar
-        this.healthBar.fillStyle(color, 1);
-        this.healthBar.fillRoundedRect(
-            this.currentNameX - this.config.healthBarWidth/2,
-            this.currentHealthBarY - this.config.healthBarHeight/2,
-            currentWidth,
-            this.config.healthBarHeight,
-            this.config.barRadius
-        );
+            // Main bar
+            this.healthBarFill.fillStyle(healthColor, 1);
+            this.healthBarFill.fillRoundedRect(-38, -3, healthWidth, 6, 2);
+        }
 
         // Draw shield bar if player has shield
-        if (this.shieldBar && this.player.shield > 0) {
-            // Shield can extend beyond max health, cap it for display
-            const shieldWidth = Math.min(
-                (this.player.shield / this.player.maxHealth) * this.config.healthBarWidth,
-                this.config.healthBarWidth - currentWidth
-            );
+        if (shieldWidth > 0) {
+            const shieldX = -38 + healthWidth;
 
-            if (shieldWidth > 0) {
-                // Shield glow (cyan/blue)
-                this.shieldBar.fillStyle(0x60a5fa, 0.4);
-                this.shieldBar.fillRoundedRect(
-                    this.currentNameX - this.config.healthBarWidth/2 + currentWidth - 1,
-                    this.currentHealthBarY - this.config.healthBarHeight/2 - 1,
-                    shieldWidth + 2,
-                    this.config.healthBarHeight + 2,
-                    this.config.barRadius
-                );
+            // Shield glow
+            this.shieldBarFill.fillStyle(0x60a5fa, 0.6);
+            this.shieldBarFill.fillRoundedRect(shieldX - 1, -3 - 1, shieldWidth + 2, 6 + 2, 2);
 
-                // Shield main bar
-                this.shieldBar.fillStyle(0x3b82f6, 0.9); // Blue
-                this.shieldBar.fillRoundedRect(
-                    this.currentNameX - this.config.healthBarWidth/2 + currentWidth,
-                    this.currentHealthBarY - this.config.healthBarHeight/2,
-                    shieldWidth,
-                    this.config.healthBarHeight,
-                    this.config.barRadius
-                );
-            }
+            // Shield main bar
+            this.shieldBarFill.fillStyle(0x3b82f6, 1);
+            this.shieldBarFill.fillRoundedRect(shieldX, -3, shieldWidth, 6, 2);
         }
 
-        // Pulse animation on low health
-        if (healthPercent <= 0.25) {
+        // Update health text
+        let healthString;
+        if (shield > 0) {
+            healthString = `${Math.round(health)}+${Math.round(shield)}/${maxHealth}`;
+        } else {
+            healthString = `${Math.round(health)}/${maxHealth}`;
+        }
+        this.healthText.setText(healthString);
+
+        // Low health pulse animation
+        if (healthPercent <= 0.25 && healthPercent > 0) {
             this.scene.tweens.add({
-                targets: this.healthBar,
-                alpha: 0.7,
-                duration: 500,
+                targets: this.healthBarFill,
+                alpha: 0.6,
+                duration: 400,
                 yoyo: true,
                 repeat: 0
             });
@@ -440,27 +202,15 @@ class PlayerUI {
     }
 
     setAlpha(alpha) {
-        if (this.healthBarShadow) this.healthBarShadow.setAlpha(alpha);
-        if (this.healthBarContainer) this.healthBarContainer.setAlpha(alpha);
-        if (this.healthBar) this.healthBar.setAlpha(alpha);
-        if (this.healthBarGloss) this.healthBarGloss.setAlpha(alpha);
-        if (this.nameTagShadow) this.nameTagShadow.setAlpha(alpha);
-        if (this.nameTagBg) this.nameTagBg.setAlpha(alpha);
-        if (this.nameTag) this.nameTag.setAlpha(alpha);
-        if (this.levelBadge) this.levelBadge.setAlpha(alpha);
-        if (this.levelText) this.levelText.setAlpha(alpha);
+        if (this.container) {
+            this.container.setAlpha(alpha);
+        }
     }
 
     destroy() {
-        if (this.healthBarShadow) this.healthBarShadow.destroy();
-        if (this.healthBarContainer) this.healthBarContainer.destroy();
-        if (this.healthBar) this.healthBar.destroy();
-        if (this.shieldBar) this.shieldBar.destroy();
-        if (this.healthBarGloss) this.healthBarGloss.destroy();
-        if (this.nameTagShadow) this.nameTagShadow.destroy();
-        if (this.nameTagBg) this.nameTagBg.destroy();
-        if (this.nameTag) this.nameTag.destroy();
-        if (this.levelBadge) this.levelBadge.destroy();
-        if (this.levelText) this.levelText.destroy();
+        if (this.container) {
+            this.container.destroy();
+            this.container = null;
+        }
     }
 }

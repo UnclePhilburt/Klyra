@@ -26,47 +26,152 @@ class AbilityManager {
         const centerX = width / 2;
         const bottomY = height - 80;
 
-        // Simple text-based UI for testing
+        // Unique color themes for each ability
+        const colorThemes = {
+            q: {
+                primary: 0x06b6d4,    // Cyan
+                secondary: 0x0891b2,  // Dark cyan
+                glow: 0x22d3ee,       // Light cyan
+                particle: 0x67e8f9    // Bright cyan
+            },
+            e: {
+                primary: 0xa855f7,    // Purple
+                secondary: 0x7c3aed,  // Dark purple
+                glow: 0xc084fc,       // Light purple
+                particle: 0xd8b4fe    // Bright purple
+            },
+            r: {
+                primary: 0xf97316,    // Orange (ultimate)
+                secondary: 0xea580c,  // Dark orange
+                glow: 0xfb923c,       // Light orange
+                particle: 0xfed7aa    // Bright orange
+            }
+        };
+
+        // Create UI with color themes
         this.cooldownUI = {
-            q: this.createMinimalDisplay(centerX - 150, bottomY, 'Q'),
-            e: this.createMinimalDisplay(centerX, bottomY, 'E'),
-            r: this.createMinimalDisplay(centerX + 150, bottomY, 'R')
+            q: this.createMinimalDisplay(centerX - 180, bottomY, 'Q', colorThemes.q),
+            e: this.createMinimalDisplay(centerX, bottomY, 'E', colorThemes.e),
+            r: this.createMinimalDisplay(centerX + 180, bottomY, 'R', colorThemes.r)
         };
     }
 
-    createMinimalDisplay(x, y, key) {
+    createMinimalDisplay(x, y, key, colorTheme) {
         const container = this.scene.add.container(x, y);
         container.setScrollFactor(0);
         container.setDepth(10000);
 
-        // Simple background box
-        const bg = this.scene.add.rectangle(0, 0, 120, 40, 0x000000, 0.7);
-        bg.setStrokeStyle(2, 0x444444);
+        // STUNNING GRADIENT DESIGN
+        const boxWidth = 170;
+        const boxHeight = 55;
+        const circleRadius = 22;
+
+        // Outer glow layers (multiple for depth)
+        const outerGlow1 = this.scene.add.graphics();
+        outerGlow1.setAlpha(0);
+        container.add(outerGlow1);
+
+        const outerGlow2 = this.scene.add.graphics();
+        outerGlow2.setAlpha(0);
+        container.add(outerGlow2);
+
+        // Shimmer effect layer
+        const shimmer = this.scene.add.graphics();
+        shimmer.setAlpha(0);
+        container.add(shimmer);
+
+        // Main background with gradient
+        const bg = this.scene.add.graphics();
         container.add(bg);
 
-        // Key + ability name
-        const label = this.scene.add.text(0, -10, `[${key}] ...`, {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '12px',
-            fill: '#ffffff',
-            align: 'center'
+        // Circular progress ring (around key)
+        const progressRing = this.scene.add.graphics();
+        container.add(progressRing);
+
+        // Secondary progress ring (inner)
+        const progressRingInner = this.scene.add.graphics();
+        container.add(progressRingInner);
+
+        // Key circle (left side)
+        const keyCircle = this.scene.add.circle(-boxWidth/2 + circleRadius + 10, 0, circleRadius, 0x1a1a2e, 0.9);
+        keyCircle.setStrokeStyle(2, 0x374151, 0.8);
+        container.add(keyCircle);
+
+        // Inner key circle for gradient effect
+        const keyCircleInner = this.scene.add.circle(-boxWidth/2 + circleRadius + 10, 0, circleRadius - 4, 0x0a0a0f, 0);
+        container.add(keyCircleInner);
+
+        const keyText = this.scene.add.text(-boxWidth/2 + circleRadius + 10, 0, key, {
+            fontFamily: 'Arial',
+            fontSize: '20px',
+            fontStyle: 'bold',
+            fill: '#6b7280',
+            stroke: '#000000',
+            strokeThickness: 3
         }).setOrigin(0.5);
+        container.add(keyText);
+
+        // Ability name (center-right)
+        const label = this.scene.add.text(-boxWidth/2 + 62, -10, '...', {
+            fontFamily: 'Arial',
+            fontSize: '14px',
+            fontStyle: 'bold',
+            fill: '#f3f4f6',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0, 0.5);
         container.add(label);
 
-        // Cooldown text
-        const cooldownText = this.scene.add.text(0, 8, 'Ready', {
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '10px',
-            fill: '#00ff00',
-            align: 'center'
-        }).setOrigin(0.5);
+        // Cooldown/Status text (below name)
+        const cooldownText = this.scene.add.text(-boxWidth/2 + 62, 10, 'READY', {
+            fontFamily: 'Arial',
+            fontSize: '11px',
+            fontStyle: 'bold',
+            fill: '#10b981',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0, 0.5);
         container.add(cooldownText);
+
+        // Animated particles (more for dramatic effect)
+        const particles = [];
+        for (let i = 0; i < 5; i++) {
+            const particle = this.scene.add.circle(0, 0, 2.5, colorTheme.particle, 0);
+            container.add(particle);
+            particles.push(particle);
+        }
+
+        // Sparkle effects
+        const sparkles = [];
+        for (let i = 0; i < 3; i++) {
+            const sparkle = this.scene.add.circle(0, 0, 1.5, 0xffffff, 0);
+            container.add(sparkle);
+            sparkles.push(sparkle);
+        }
 
         return {
             container,
             bg,
+            outerGlow1,
+            outerGlow2,
+            shimmer,
+            keyCircle,
+            keyCircleInner,
+            progressRing,
+            progressRingInner,
+            keyText,
             label,
-            cooldownText
+            cooldownText,
+            particles,
+            sparkles,
+            boxWidth,
+            boxHeight,
+            circleRadius,
+            colorTheme,
+            readyPulse: null,
+            shimmerTween: null,
+            particleTweens: [],
+            sparkleTweens: []
         };
     }
 
@@ -152,30 +257,277 @@ class AbilityManager {
             const ui = this.cooldownUI[key];
             const cooldown = this.cooldowns[key];
             const ability = this.player.abilities ? this.player.abilities[key] : null;
+            const colors = ui.colorTheme;
+
+            const centerX = -ui.boxWidth/2 + ui.circleRadius + 10;
 
             // Update ability name
             if (ability) {
-                ui.label.setText(`[${key.toUpperCase()}] ${ability.name}`);
+                ui.label.setText(ability.name);
             } else {
-                ui.label.setText(`[${key.toUpperCase()}] ...`);
+                ui.label.setText('...');
             }
 
-            // Update cooldown display
-            if (cooldown > 0) {
-                const seconds = Math.ceil(cooldown / 1000);
-                ui.cooldownText.setText(`${seconds}s`);
-                ui.cooldownText.setColor('#ff4444');
-                ui.bg.setStrokeStyle(2, 0x444444);
-            } else {
-                if (ability) {
-                    ui.cooldownText.setText('Ready');
-                    ui.cooldownText.setColor('#00ff00');
-                    ui.bg.setStrokeStyle(2, 0x00ff00);
-                } else {
-                    ui.cooldownText.setText('...');
-                    ui.cooldownText.setColor('#666666');
-                    ui.bg.setStrokeStyle(2, 0x333333);
+            // COOLDOWN STATE
+            if (cooldown > 0 && ability) {
+                const totalCooldown = ability.cooldown;
+                const remaining = cooldown / 1000;
+                const progress = 1 - (cooldown / totalCooldown);
+
+                // Stop all ready animations
+                if (ui.readyPulse) {
+                    ui.readyPulse.stop();
+                    ui.readyPulse = null;
                 }
+                if (ui.shimmerTween) {
+                    ui.shimmerTween.stop();
+                    ui.shimmerTween = null;
+                }
+                ui.particleTweens.forEach(t => t.stop());
+                ui.particleTweens = [];
+                ui.sparkleTweens.forEach(t => t.stop());
+                ui.sparkleTweens = [];
+                ui.particles.forEach(p => p.setAlpha(0));
+                ui.sparkles.forEach(s => s.setAlpha(0));
+
+                // GRADIENT BACKGROUND (cooldown state)
+                ui.bg.clear();
+
+                // Subtle dark gradient
+                ui.bg.fillStyle(0x18181b, 0.85);
+                ui.bg.fillRoundedRect(-ui.boxWidth/2, -ui.boxHeight/2, ui.boxWidth, ui.boxHeight, 8);
+
+                // Gradient border using multiple layers
+                ui.bg.lineStyle(2, colors.secondary, 0.3);
+                ui.bg.strokeRoundedRect(-ui.boxWidth/2 - 1, -ui.boxHeight/2 - 1, ui.boxWidth + 2, ui.boxHeight + 2, 8);
+
+                ui.bg.lineStyle(2, 0x3f3f46, 0.6);
+                ui.bg.strokeRoundedRect(-ui.boxWidth/2, -ui.boxHeight/2, ui.boxWidth, ui.boxHeight, 8);
+
+                // DUAL CIRCULAR PROGRESS RINGS (gradient effect)
+                ui.progressRing.clear();
+                ui.progressRingInner.clear();
+
+                const startAngle = -Math.PI / 2;
+                const endAngle = startAngle + (Math.PI * 2 * progress);
+
+                // Outer ring (colored)
+                ui.progressRing.lineStyle(3, colors.secondary, 0.8);
+                ui.progressRing.beginPath();
+                ui.progressRing.arc(centerX, 0, ui.circleRadius + 5, startAngle, endAngle, false);
+                ui.progressRing.strokePath();
+
+                // Inner ring (brighter)
+                ui.progressRingInner.lineStyle(2, colors.primary, 1);
+                ui.progressRingInner.beginPath();
+                ui.progressRingInner.arc(centerX, 0, ui.circleRadius + 3, startAngle, endAngle, false);
+                ui.progressRingInner.strokePath();
+
+                // Gradient key circle
+                ui.keyCircle.setStrokeStyle(3, colors.secondary, 0.5);
+                ui.keyCircle.setFillStyle(0x1a1a2e, 0.9);
+                ui.keyCircleInner.setAlpha(0.3);
+                ui.keyCircleInner.setFillStyle(colors.primary, 0.15);
+
+                // Update texts with themed colors
+                ui.cooldownText.setText(remaining.toFixed(1) + 's');
+                ui.cooldownText.setColor(Phaser.Display.Color.RGBToString(
+                    Phaser.Display.Color.IntegerToRGB(colors.primary).r,
+                    Phaser.Display.Color.IntegerToRGB(colors.primary).g,
+                    Phaser.Display.Color.IntegerToRGB(colors.primary).b
+                ));
+                ui.keyText.setColor('#9ca3af');
+                ui.label.setColor('#d1d5db');
+
+                ui.outerGlow1.clear();
+                ui.outerGlow2.clear();
+                ui.shimmer.clear();
+
+            // READY STATE - STUNNING GRADIENT ANIMATIONS
+            } else if (ability) {
+                // Clear progress rings
+                ui.progressRing.clear();
+                ui.progressRingInner.clear();
+
+                // GORGEOUS GRADIENT BACKGROUND
+                ui.bg.clear();
+
+                // Multi-layer gradient glow (outer to inner)
+                ui.bg.fillStyle(colors.glow, 0.15);
+                ui.bg.fillRoundedRect(-ui.boxWidth/2 - 4, -ui.boxHeight/2 - 4, ui.boxWidth + 8, ui.boxHeight + 8, 10);
+
+                ui.bg.fillStyle(colors.primary, 0.08);
+                ui.bg.fillRoundedRect(-ui.boxWidth/2 - 2, -ui.boxHeight/2 - 2, ui.boxWidth + 4, ui.boxHeight + 4, 9);
+
+                // Main background with gradient
+                ui.bg.fillStyle(0x0a0a0f, 0.95);
+                ui.bg.fillRoundedRect(-ui.boxWidth/2, -ui.boxHeight/2, ui.boxWidth, ui.boxHeight, 8);
+
+                // Inner gradient layer
+                ui.bg.fillStyle(colors.primary, 0.05);
+                ui.bg.fillRoundedRect(-ui.boxWidth/2 + 2, -ui.boxHeight/2 + 2, ui.boxWidth - 4, ui.boxHeight - 4, 6);
+
+                // VIBRANT GRADIENT BORDER (triple layer)
+                ui.bg.lineStyle(3, colors.glow, 0.6);
+                ui.bg.strokeRoundedRect(-ui.boxWidth/2 - 2, -ui.boxHeight/2 - 2, ui.boxWidth + 4, ui.boxHeight + 4, 9);
+
+                ui.bg.lineStyle(2, colors.primary, 1);
+                ui.bg.strokeRoundedRect(-ui.boxWidth/2, -ui.boxHeight/2, ui.boxWidth, ui.boxHeight, 8);
+
+                ui.bg.lineStyle(1, colors.glow, 0.8);
+                ui.bg.strokeRoundedRect(-ui.boxWidth/2 + 2, -ui.boxHeight/2 + 2, ui.boxWidth - 4, ui.boxHeight - 4, 6);
+
+                // GLOWING KEY CIRCLE with gradient
+                ui.keyCircle.setStrokeStyle(4, colors.primary, 1);
+                ui.keyCircle.setFillStyle(colors.primary, 0.2);
+                ui.keyCircleInner.setAlpha(0.5);
+                ui.keyCircleInner.setFillStyle(colors.glow, 0.3);
+
+                // Update texts with themed colors
+                const colorStr = '#' + colors.primary.toString(16).padStart(6, '0');
+                ui.cooldownText.setText('⚡ READY');
+                ui.cooldownText.setColor(colorStr);
+                ui.keyText.setColor(colorStr);
+                ui.label.setColor('#ffffff');
+
+                // ANIMATED MULTI-LAYER GLOWS
+                if (!ui.readyPulse) {
+                    // Outer glow layer 1 (large slow pulse)
+                    ui.outerGlow1.clear();
+                    ui.outerGlow1.fillStyle(colors.glow, 0.2);
+                    ui.outerGlow1.fillCircle(centerX, 0, ui.circleRadius + 16);
+
+                    // Outer glow layer 2 (medium fast pulse)
+                    ui.outerGlow2.clear();
+                    ui.outerGlow2.fillStyle(colors.primary, 0.25);
+                    ui.outerGlow2.fillCircle(centerX, 0, ui.circleRadius + 10);
+
+                    // Pulsing animations (different speeds for depth)
+                    ui.readyPulse = this.scene.tweens.add({
+                        targets: ui.outerGlow1,
+                        alpha: { from: 0.25, to: 0 },
+                        duration: 2000,
+                        ease: 'Sine.easeInOut',
+                        repeat: -1,
+                        yoyo: true
+                    });
+
+                    this.scene.tweens.add({
+                        targets: ui.outerGlow2,
+                        alpha: { from: 0.35, to: 0.05 },
+                        duration: 1200,
+                        ease: 'Sine.easeInOut',
+                        repeat: -1,
+                        yoyo: true
+                    });
+
+                    // SHIMMER EFFECT (sweeping light)
+                    ui.shimmer.clear();
+                    ui.shimmer.lineStyle(2, colors.glow, 0.5);
+                    ui.shimmer.strokeRoundedRect(-ui.boxWidth/2, -ui.boxHeight/2, ui.boxWidth, ui.boxHeight, 8);
+
+                    ui.shimmerTween = this.scene.tweens.add({
+                        targets: ui.shimmer,
+                        alpha: { from: 0, to: 0.8 },
+                        x: { from: -20, to: 20 },
+                        duration: 1500,
+                        ease: 'Sine.easeInOut',
+                        repeat: -1,
+                        yoyo: true
+                    });
+
+                    // ORBITING PARTICLES (colored)
+                    ui.particles.forEach((particle, i) => {
+                        const angle = (i / ui.particles.length) * Math.PI * 2;
+                        const radius = ui.circleRadius + 12;
+
+                        particle.setPosition(
+                            centerX + Math.cos(angle) * radius,
+                            Math.sin(angle) * radius
+                        );
+                        particle.setAlpha(0.9);
+                        particle.setFillStyle(colors.particle);
+
+                        const tween = this.scene.tweens.add({
+                            targets: particle,
+                            angle: angle + Math.PI * 2,
+                            duration: 3000,
+                            repeat: -1,
+                            onUpdate: () => {
+                                const currentAngle = Phaser.Math.DegToRad(particle.angle);
+                                particle.setPosition(
+                                    centerX + Math.cos(currentAngle) * radius,
+                                    Math.sin(currentAngle) * radius
+                                );
+                            }
+                        });
+                        ui.particleTweens.push(tween);
+                    });
+
+                    // SPARKLES (random twinkling)
+                    ui.sparkles.forEach((sparkle, i) => {
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = ui.circleRadius + 6 + Math.random() * 8;
+
+                        sparkle.setPosition(
+                            centerX + Math.cos(angle) * radius,
+                            Math.sin(angle) * radius
+                        );
+                        sparkle.setFillStyle(0xffffff);
+
+                        const tween = this.scene.tweens.add({
+                            targets: sparkle,
+                            alpha: { from: 0, to: 1 },
+                            scale: { from: 0.5, to: 1.5 },
+                            duration: 800 + Math.random() * 400,
+                            delay: i * 300,
+                            ease: 'Sine.easeInOut',
+                            repeat: -1,
+                            yoyo: true
+                        });
+                        ui.sparkleTweens.push(tween);
+                    });
+                }
+
+            // NO ABILITY EQUIPPED
+            } else {
+                // Stop animations
+                if (ui.readyPulse) {
+                    ui.readyPulse.stop();
+                    ui.readyPulse = null;
+                }
+                if (ui.shimmerTween) {
+                    ui.shimmerTween.stop();
+                    ui.shimmerTween = null;
+                }
+                ui.particleTweens.forEach(t => t.stop());
+                ui.particleTweens = [];
+                ui.sparkleTweens.forEach(t => t.stop());
+                ui.sparkleTweens = [];
+                ui.particles.forEach(p => p.setAlpha(0));
+                ui.sparkles.forEach(s => s.setAlpha(0));
+
+                ui.progressRing.clear();
+                ui.progressRingInner.clear();
+                ui.outerGlow1.clear();
+                ui.outerGlow2.clear();
+                ui.shimmer.clear();
+
+                // Dim inactive background
+                ui.bg.clear();
+                ui.bg.fillStyle(0x0a0a0f, 0.6);
+                ui.bg.fillRoundedRect(-ui.boxWidth/2, -ui.boxHeight/2, ui.boxWidth, ui.boxHeight, 8);
+                ui.bg.lineStyle(2, 0x1a1a1f, 0.5);
+                ui.bg.strokeRoundedRect(-ui.boxWidth/2, -ui.boxHeight/2, ui.boxWidth, ui.boxHeight, 8);
+
+                ui.keyCircle.setStrokeStyle(2, 0x27272a, 0.6);
+                ui.keyCircle.setFillStyle(0x18181b, 0.8);
+                ui.keyCircleInner.setAlpha(0);
+
+                ui.cooldownText.setText('---');
+                ui.cooldownText.setColor('#3f3f46');
+                ui.keyText.setColor('#52525b');
+                ui.label.setColor('#52525b');
             }
         });
     }
@@ -682,6 +1034,23 @@ class AbilityManager {
     destroy() {
         if (this.cooldownUI) {
             Object.values(this.cooldownUI).forEach(ui => {
+                // Stop all animations
+                if (ui.readyPulse) {
+                    ui.readyPulse.stop();
+                    ui.readyPulse = null;
+                }
+                if (ui.shimmerTween) {
+                    ui.shimmerTween.stop();
+                    ui.shimmerTween = null;
+                }
+                if (ui.particleTweens) {
+                    ui.particleTweens.forEach(t => t.stop());
+                    ui.particleTweens = [];
+                }
+                if (ui.sparkleTweens) {
+                    ui.sparkleTweens.forEach(t => t.stop());
+                    ui.sparkleTweens = [];
+                }
                 if (ui.container) {
                     ui.container.destroy();
                 }

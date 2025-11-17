@@ -85,7 +85,7 @@ class Minotaur {
         }
     }
 
-    attack() {
+    attack(targetX = null, targetY = null) {
         // Prevent attack spam - enforce minimum cooldown (750ms to match animation)
         const now = Date.now();
         if (this.isAttacking || now - this.lastAttackTime < 750) {
@@ -93,6 +93,15 @@ class Minotaur {
         }
 
         console.log(`⚔️ Minotaur attack() called`);
+
+        // Face the target before attacking
+        if (targetX !== null && this.sprite) {
+            const dx = targetX - this.sprite.x;
+            if (Math.abs(dx) > 5) { // Only flip if target is significantly to one side
+                this.sprite.setFlipX(dx < 0);
+            }
+        }
+
         // Play attack animation
         if (this.sprite && this.sprite.anims && this.isAlive) {
             if (this.scene.anims.exists('minotaur_attack')) {
@@ -127,6 +136,9 @@ class Minotaur {
 
         // Blood splatter effect
         this.showBloodEffect();
+
+        // Show damage number
+        this.showDamageNumber(amount);
 
         // Play damage animation
         if (this.sprite && this.sprite.anims && this.health > 0) {
@@ -259,6 +271,33 @@ class Minotaur {
         }
     }
 
+    showDamageNumber(amount) {
+        // Create floating damage text
+        const damageText = this.scene.add.text(
+            this.sprite.x,
+            this.sprite.y - 30,
+            Math.round(amount).toString(),
+            {
+                font: 'bold 24px monospace',
+                fill: '#ff4444',
+                stroke: '#000000',
+                strokeThickness: 4
+            }
+        );
+        damageText.setOrigin(0.5);
+        damageText.setDepth(10000);
+
+        // Animate the damage number
+        this.scene.tweens.add({
+            targets: damageText,
+            y: damageText.y - 50,
+            alpha: 0,
+            duration: 800,
+            ease: 'Cubic.easeOut',
+            onComplete: () => damageText.destroy()
+        });
+    }
+
     die() {
         this.isAlive = false;
 
@@ -384,9 +423,13 @@ class Minotaur {
                 }
             }
 
-            // Flip sprite based on movement direction
-            if (Math.abs(dx) > 0.5) {
-                this.sprite.setFlipX(dx < 0);
+            // Flip sprite based on movement direction (only if moving significantly horizontally)
+            if (Math.abs(dx) > 2) { // Increased threshold to prevent rapid flipping
+                const shouldFlipLeft = dx < 0;
+                // Only flip if it's different from current state
+                if (this.sprite.flipX !== shouldFlipLeft) {
+                    this.sprite.setFlipX(shouldFlipLeft);
+                }
             }
         }
 

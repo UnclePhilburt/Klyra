@@ -465,7 +465,13 @@ class GameScene extends Phaser.Scene {
             console.log(`👤 Creating local player with position:`, myData.position);
             this.localPlayer = new Player(this, myData, true);
             console.log(`📍 Local player spawned at pixel position (${this.localPlayer.sprite.x}, ${this.localPlayer.sprite.y})`);
-            this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.1, 0.1);
+
+            // Smooth camera with dead zone
+            this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.08, 0.08); // Smoother lerp
+            this.cameras.main.setDeadzone(100, 80); // Dead zone: 100px wide, 80px tall
+
+            // Initialize off-screen player indicators
+            this.playerIndicators = {};
 
             // Set character's default auto-attack if available
             const characterDef = CHARACTERS[myData.class];
@@ -983,6 +989,101 @@ class GameScene extends Phaser.Scene {
         // Simple seeded random using sin (stateless)
         const x = Math.sin(seed) * 10000;
         return x - Math.floor(x);
+    }
+
+    updatePlayerIndicators() {
+        if (!this.localPlayer || !this.localPlayer.spriteRenderer || !this.localPlayer.spriteRenderer.sprite) return;
+
+        const camera = this.cameras.main;
+        const screenWidth = camera.width;
+        const screenHeight = camera.height;
+        const padding = 30; // Distance from screen edge
+
+        // Check each other player
+        Object.keys(this.otherPlayers).forEach(playerId => {
+            const player = this.otherPlayers[playerId];
+            if (!player || !player.spriteRenderer || !player.spriteRenderer.sprite) {
+                // Clean up indicator if player is gone
+                if (this.playerIndicators[playerId]) {
+                    this.playerIndicators[playerId].destroy();
+                    delete this.playerIndicators[playerId];
+                }
+                return;
+            }
+
+            const playerSprite = player.spriteRenderer.sprite;
+            const worldX = playerSprite.x;
+            const worldY = playerSprite.y;
+
+            // Convert to screen position
+            const screenX = worldX - camera.scrollX;
+            const screenY = worldY - camera.scrollY;
+
+            // Check if player is off-screen
+            const isOffScreen = screenX < 0 || screenX > screenWidth || screenY < 0 || screenY > screenHeight;
+
+            if (isOffScreen) {
+                // Create indicator if it doesn't exist
+                if (!this.playerIndicators[playerId]) {
+                    this.playerIndicators[playerId] = this.add.text(0, 0, '▶', {
+                        fontSize: '24px',
+                        color: '#00FF00',
+                        stroke: '#000000',
+                        strokeThickness: 3
+                    });
+                    this.playerIndicators[playerId].setOrigin(0.5);
+                    this.playerIndicators[playerId].setScrollFactor(0);
+                    this.playerIndicators[playerId].setDepth(10000);
+                }
+
+                const indicator = this.playerIndicators[playerId];
+
+                // Calculate position on screen edge
+                let edgeX = screenX;
+                let edgeY = screenY;
+                let angle = 0;
+
+                // Clamp to screen bounds with padding
+                if (screenX < 0) {
+                    edgeX = padding;
+                    angle = 180;
+                } else if (screenX > screenWidth) {
+                    edgeX = screenWidth - padding;
+                    angle = 0;
+                }
+
+                if (screenY < 0) {
+                    edgeY = padding;
+                    angle = screenX < screenWidth / 2 ? 225 : 315;
+                } else if (screenY > screenHeight) {
+                    edgeY = screenHeight - padding;
+                    angle = screenX < screenWidth / 2 ? 135 : 45;
+                }
+
+                // Calculate actual angle to player
+                const dx = worldX - (camera.scrollX + screenWidth / 2);
+                const dy = worldY - (camera.scrollY + screenHeight / 2);
+                angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                // Set position and rotation
+                indicator.setPosition(edgeX, edgeY);
+                indicator.setAngle(angle);
+                indicator.setVisible(true);
+            } else {
+                // Hide indicator if player is on-screen
+                if (this.playerIndicators[playerId]) {
+                    this.playerIndicators[playerId].setVisible(false);
+                }
+            }
+        });
+
+        // Clean up indicators for players that no longer exist
+        Object.keys(this.playerIndicators).forEach(playerId => {
+            if (!this.otherPlayers[playerId]) {
+                this.playerIndicators[playerId].destroy();
+                delete this.playerIndicators[playerId];
+            }
+        });
     }
 
     renderDecoration(x, y, type) {
@@ -2383,9 +2484,10 @@ class GameScene extends Phaser.Scene {
                 console.log(`🎯 Minion damaged event - attackerId: ${data.attackerId}`);
                 const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId] || this.mushrooms[data.attackerId];
                 console.log(`   Found in enemies:`, !!this.enemies[data.attackerId], `Found in swordDemons:`, !!this.swordDemons[data.attackerId], `Found in minotaurs:`, !!this.minotaurs[data.attackerId], `Found in mushrooms:`, !!this.mushrooms[data.attackerId]);
-                if (attacker && attacker.attack) {
+                if (attacker && attacker.attack && minion && minion.sprite) {
                     console.log(`   Calling attack() method...`);
-                    attacker.attack();
+                    // Pass target position so attacker faces the right way
+                    attacker.attack(minion.sprite.x, minion.sprite.y);
                 } else {
                     console.warn(`   ❌ Attacker not found or no attack method`);
                 }
@@ -2493,9 +2595,10 @@ class GameScene extends Phaser.Scene {
 
             // Trigger attack animation for the attacker
             if (data.attackerId) {
-                const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId];
-                if (attacker && attacker.attack) {
-                    attacker.attack();
+                const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId] || this.mushrooms[data.attackerId];
+                if (attacker && attacker.attack && this.localPlayer && this.localPlayer.spriteRenderer && this.localPlayer.spriteRenderer.sprite) {
+                    // Pass player position so attacker faces the right way
+                    attacker.attack(this.localPlayer.spriteRenderer.sprite.x, this.localPlayer.spriteRenderer.sprite.y);
                 }
             }
         });
@@ -2510,6 +2613,18 @@ class GameScene extends Phaser.Scene {
             if (data.abilityKey === 'autoattack' && data.targetMinionId) {
                 console.log(`⚔️ Auto-attack visual effect: ${data.abilityName} on minion ${data.targetMinionId}`);
                 this.playAutoAttackVisual(data);
+                return;
+            }
+
+            // Handle Pact of Bones visual effects for other players
+            if (data.abilityName === 'Pact of Bones' && data.effects && data.effects.minions) {
+                // Don't play visuals for the caster (they already see their own effects)
+                if (data.effects.playerId === this.localPlayer?.data?.id) {
+                    console.log(`💀 Pact of Bones - I'm the caster, skipping visual replay`);
+                    return;
+                }
+                console.log(`💀 Pact of Bones visual effect from ${data.playerName}`);
+                this.playPactOfBonesVisual(data.effects);
                 return;
             }
 
@@ -2558,6 +2673,13 @@ class GameScene extends Phaser.Scene {
                 this.addScreenBloodSplatter();
 
                 enemy.die();
+
+                // Track kill if local player killed this enemy
+                if (data.killedBy === networkManager.currentPlayer.id) {
+                    if (this.modernHUD) {
+                        this.modernHUD.addKill();
+                    }
+                }
 
                 // Delete from correct collection
                 if (this.enemies[data.enemyId]) {
@@ -2623,6 +2745,13 @@ class GameScene extends Phaser.Scene {
 
                 enemy.die();
                 delete this.enemies[data.enemyId];
+
+                // Track kill if local player killed this enemy
+                if (data.killerId === networkManager.currentPlayer.id) {
+                    if (this.modernHUD) {
+                        this.modernHUD.addKill();
+                    }
+                }
 
                 // Check if killer is Malachar with dark_harvest passive
                 if (data.killerId) {
@@ -3717,6 +3846,9 @@ class GameScene extends Phaser.Scene {
             player.updateInterpolation(); // Smooth movement
         });
 
+        // Update off-screen player indicators
+        this.updatePlayerIndicators();
+
         // Update UI elements (name tags, health bars) less frequently
         if (!this.uiUpdateCounter) this.uiUpdateCounter = 0;
         this.uiUpdateCounter++;
@@ -3910,5 +4042,106 @@ class GameScene extends Phaser.Scene {
             const angle = Math.atan2(dy, dx);
             projectile.setRotation(angle);
         }
+    }
+
+    playPactOfBonesVisual(effects) {
+        console.log(`💀 Playing Pact of Bones visual effects`, effects);
+
+        if (!effects.minions || !Array.isArray(effects.minions)) {
+            console.warn('⚠️ No minion data for Pact of Bones visual');
+            return;
+        }
+
+        const explosionRadius = effects.explosionRadius || 96; // 3 tiles default
+
+        effects.minions.forEach((minionData, index) => {
+            const { explosionX, explosionY, minionId, teleportX, teleportY } = minionData;
+
+            // Create explosion visual effect at explosion location
+            const explosion = this.add.circle(explosionX, explosionY, explosionRadius, 0x8B008B, 0.3);
+            explosion.setDepth(9999);
+
+            this.tweens.add({
+                targets: explosion,
+                scale: 1.5,
+                alpha: 0,
+                duration: 500,
+                ease: 'Power2',
+                onComplete: () => explosion.destroy()
+            });
+
+            // Spawn fire at explosion location (after short delay)
+            this.time.delayedCall(200, () => {
+                this.spawnFireVisual(explosionX, explosionY);
+            });
+
+            // Teleport minion to new position
+            const minion = this.minions[minionId];
+            if (minion && minion.sprite && teleportX !== undefined && teleportY !== undefined) {
+                // Hide minion briefly
+                minion.sprite.setAlpha(0);
+
+                // Teleport after brief delay
+                this.time.delayedCall(300, () => {
+                    if (minion && minion.sprite && minion.sprite.scene) {
+                        minion.sprite.x = teleportX;
+                        minion.sprite.y = teleportY;
+                        minion.sprite.setAlpha(1);
+
+                        // Show respawn effect
+                        const respawnCircle = this.add.circle(teleportX, teleportY, 20, 0x8B008B, 0.6);
+                        this.tweens.add({
+                            targets: respawnCircle,
+                            scale: 1.5,
+                            alpha: 0,
+                            duration: 300,
+                            ease: 'Power2',
+                            onComplete: () => respawnCircle.destroy()
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    spawnFireVisual(x, y) {
+        // Random fire sprite selection
+        const fireSprites = ['4_2', '4_4', '4_5', '5_1', '5_2', '5_4', '5_5', '6_1', '6_2', '6_4', '6_5', '7_1', '7_2', '7_4', '7_5'];
+        const randomSprite = Phaser.Utils.Array.GetRandom(fireSprites);
+
+        // Create fire sprite
+        const fireSprite = this.add.sprite(x, y, `fire_${randomSprite}`);
+        fireSprite.play(`fire_${randomSprite}_anim`);
+        fireSprite.setDepth(5); // Above ground, below players
+
+        // Spawn additional fires nearby for spreading effect (2-3 extra fires)
+        const spreadCount = 2 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < spreadCount; i++) {
+            this.time.delayedCall(800 + (i * 400), () => {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 20 + Math.random() * 40;
+                const spreadX = x + Math.cos(angle) * distance;
+                const spreadY = y + Math.sin(angle) * distance;
+
+                const spreadSprite = Phaser.Utils.Array.GetRandom(fireSprites);
+                const spreadFire = this.add.sprite(spreadX, spreadY, `fire_${spreadSprite}`);
+                spreadFire.play(`fire_${spreadSprite}_anim`);
+                spreadFire.setDepth(5);
+
+                // Spread fires last 2 seconds
+                this.time.delayedCall(2000, () => {
+                    if (spreadFire && spreadFire.scene) {
+                        spreadFire.destroy();
+                    }
+                });
+            });
+        }
+
+        // Clean up main fire after 5 seconds
+        this.time.delayedCall(5000, () => {
+            if (fireSprite && fireSprite.scene) {
+                fireSprite.destroy();
+            }
+        });
     }
 }

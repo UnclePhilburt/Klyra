@@ -51,11 +51,19 @@ class Enemy {
         this.updateHealthBar();
     }
 
-    attack() {
+    attack(targetX = null, targetY = null) {
         // Prevent attack spam - enforce minimum cooldown (500ms)
         const now = Date.now();
         if (this.isAttacking || now - this.lastAttackTime < 500) {
             return; // Still attacking or on cooldown
+        }
+
+        // Face the target before attacking
+        if (targetX !== null && this.sprite) {
+            const dx = targetX - this.sprite.x;
+            if (Math.abs(dx) > 5) { // Only flip if target is significantly to one side
+                this.sprite.setFlipX(dx > 0);
+            }
         }
 
         // Play attack animation if available
@@ -95,7 +103,8 @@ class Enemy {
         // Blood splatter effect
         this.showBloodEffect();
 
-        // PERFORMANCE: Removed damage numbers (saves text objects + tweens)
+        // Show damage number
+        this.showDamageNumber(amount);
 
         // Show health bar when damaged
         this.healthBar.setVisible(true);
@@ -172,6 +181,33 @@ class Enemy {
                 ease: 'Linear'
             });
         }
+    }
+
+    showDamageNumber(amount) {
+        // Create floating damage text
+        const damageText = this.scene.add.text(
+            this.sprite.x,
+            this.sprite.y - 20,
+            Math.round(amount).toString(),
+            {
+                font: 'bold 20px monospace',
+                fill: '#ff4444',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+        damageText.setOrigin(0.5);
+        damageText.setDepth(10000); // Above everything
+
+        // Animate the damage number
+        this.scene.tweens.add({
+            targets: damageText,
+            y: damageText.y - 40,
+            alpha: 0,
+            duration: 800,
+            ease: 'Cubic.easeOut',
+            onComplete: () => damageText.destroy()
+        });
     }
 
     die() {
@@ -286,9 +322,14 @@ class Enemy {
                         this.sprite.play('skullwolf_walk', true); // true = ignoreIfPlaying
                     }
 
-                    // Flip sprite based on direction (defaults to left, flip when moving right)
-                    const movingRight = this.sprite.x > this.lastX;
-                    this.sprite.setFlipX(movingRight);
+                    // Flip sprite based on direction (only if moving significantly horizontally)
+                    const dx = this.sprite.x - this.lastX;
+                    if (Math.abs(dx) > 1) { // Threshold to prevent rapid flipping
+                        const movingRight = dx > 0;
+                        if (this.sprite.flipX !== movingRight) {
+                            this.sprite.setFlipX(movingRight);
+                        }
+                    }
                 } else {
                     // Play idle animation when not moving (ignoreIfPlaying prevents restart flicker)
                     if (this.sprite.anims.currentAnim?.key !== 'skullwolf_idle') {
