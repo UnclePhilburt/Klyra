@@ -195,6 +195,8 @@ class MalacharAbilityHandler {
             m.ownerId === this.player.data.id && m.isAlive
         );
 
+        console.log(`🔍 Found ${myMinions.length} minions to explode for player ${this.player.data.id}`);
+
         if (myMinions.length === 0) {
             console.log('❌ No minions to explode');
             return;
@@ -203,11 +205,10 @@ class MalacharAbilityHandler {
         const explosionRadius = ability.effect.explosionRadius * 32; // Convert tiles to pixels
         let totalEnemiesHit = 0;
 
-        // Store minion data for respawning
-        const minionDataToRespawn = [];
-
         // Explode each minion
         myMinions.forEach((minion, index) => {
+            console.log(`💥 Processing minion ${index + 1}/${myMinions.length}: ${minion.minionId}`);
+
             // Store explosion position
             const explosionX = minion.sprite.x;
             const explosionY = minion.sprite.y;
@@ -247,6 +248,8 @@ class MalacharAbilityHandler {
                     minion.sprite.y = this.player.sprite.y + offsetY;
                     minion.sprite.setAlpha(1); // Make visible again
 
+                    console.log(`✨ Teleported minion ${index + 1} to (${Math.round(minion.sprite.x)}, ${Math.round(minion.sprite.y)})`);
+
                     // Show respawn effect
                     const respawnCircle = this.scene.add.circle(minion.sprite.x, minion.sprite.y, 20, 0x8B008B, 0.6);
                     this.scene.tweens.add({
@@ -256,6 +259,12 @@ class MalacharAbilityHandler {
                         duration: 300,
                         ease: 'Power2',
                         onComplete: () => respawnCircle.destroy()
+                    });
+                } else {
+                    console.warn(`⚠️ Minion ${index + 1} invalid for teleport:`, {
+                        hasMinion: !!minion,
+                        hasSprite: !!minion?.sprite,
+                        hasScene: !!minion?.sprite?.scene
                     });
                 }
             });
