@@ -21,6 +21,7 @@ pool.on('error', (err) => {
 // Initialize database tables
 async function initDatabase() {
     try {
+        // Create table if it doesn't exist
         await pool.query(`
             CREATE TABLE IF NOT EXISTS player_stats (
                 id SERIAL PRIMARY KEY,
@@ -32,28 +33,51 @@ async function initDatabase() {
                 total_damage_taken BIGINT DEFAULT 0,
                 total_playtime_ms BIGINT DEFAULT 0,
                 games_played INTEGER DEFAULT 0,
-                boss_kills INTEGER DEFAULT 0,
-                elite_kills INTEGER DEFAULT 0,
-                deepest_floor INTEGER DEFAULT 0,
-                total_floors INTEGER DEFAULT 0,
-                games_completed INTEGER DEFAULT 0,
-                total_gold BIGINT DEFAULT 0,
-                legendary_items INTEGER DEFAULT 0,
-                rare_items INTEGER DEFAULT 0,
-                total_items INTEGER DEFAULT 0,
-                distance_traveled BIGINT DEFAULT 0,
-                abilities_used INTEGER DEFAULT 0,
-                potions_consumed INTEGER DEFAULT 0,
-                mushrooms_killed INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+        `);
 
+        // Add new columns if they don't exist (migration)
+        const newColumns = [
+            'boss_kills INTEGER DEFAULT 0',
+            'elite_kills INTEGER DEFAULT 0',
+            'deepest_floor INTEGER DEFAULT 0',
+            'total_floors INTEGER DEFAULT 0',
+            'games_completed INTEGER DEFAULT 0',
+            'total_gold BIGINT DEFAULT 0',
+            'legendary_items INTEGER DEFAULT 0',
+            'rare_items INTEGER DEFAULT 0',
+            'total_items INTEGER DEFAULT 0',
+            'distance_traveled BIGINT DEFAULT 0',
+            'abilities_used INTEGER DEFAULT 0',
+            'potions_consumed INTEGER DEFAULT 0',
+            'mushrooms_killed INTEGER DEFAULT 0'
+        ];
+
+        for (const columnDef of newColumns) {
+            const columnName = columnDef.split(' ')[0];
+            try {
+                await pool.query(`
+                    ALTER TABLE player_stats
+                    ADD COLUMN IF NOT EXISTS ${columnDef}
+                `);
+            } catch (err) {
+                // Column might already exist, ignore error
+                if (err.code !== '42701') { // duplicate_column error code
+                    console.log(`Note: Column ${columnName} - ${err.message}`);
+                }
+            }
+        }
+
+        // Create indexes
+        await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_player_id ON player_stats(player_id);
             CREATE INDEX IF NOT EXISTS idx_total_kills ON player_stats(total_kills DESC);
             CREATE INDEX IF NOT EXISTS idx_total_damage_dealt ON player_stats(total_damage_dealt DESC);
             CREATE INDEX IF NOT EXISTS idx_deepest_floor ON player_stats(deepest_floor DESC);
         `);
+
         console.log('✅ Database tables initialized');
     } catch (error) {
         console.error('❌ Failed to initialize database:', error);
