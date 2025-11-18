@@ -432,6 +432,29 @@ class PlayerSprite {
                 if (textureKey === 'kelise' && this.scene.sound) {
                     this.scene.sound.play('swipe', { volume: 0.2 });
                 }
+
+                // Return to appropriate animation when attack completes
+                this.sprite.once('animationcomplete', (anim) => {
+                    if (anim.key === attackAnimKey) {
+                        // Check current movement state and play correct animation
+                        const idleAnimKey = `${textureKey}_idle`;
+                        let runningAnimKey = `${textureKey}_running`;
+                        if (!this.scene.anims.exists(runningAnimKey)) {
+                            runningAnimKey = `${textureKey}_walk`;
+                        }
+
+                        // Play running animation if currently moving, otherwise idle
+                        if (this.isMoving) {
+                            if (this.scene.anims.exists(runningAnimKey)) {
+                                this.sprite.play(runningAnimKey, true);
+                            }
+                        } else {
+                            if (this.scene.anims.exists(idleAnimKey)) {
+                                this.sprite.play(idleAnimKey, true);
+                            }
+                        }
+                    }
+                });
             }
         }
     }
