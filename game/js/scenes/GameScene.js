@@ -258,34 +258,34 @@ class GameScene extends Phaser.Scene {
             margin: 0
         });
 
-        // Enemy sprites - Emberclaw (64x64 tiles, individual animation files)
+        // Enemy sprites - Emberclaw (81x71px tiles, individual animation files)
         this.load.spritesheet('emberclaw-idle', 'assets/sprites/Emberclaw/IDLE.png', {
-            frameWidth: 64,
-            frameHeight: 64,
+            frameWidth: 81,
+            frameHeight: 71,
             spacing: 0,
             margin: 0
         });
         this.load.spritesheet('emberclaw-flying', 'assets/sprites/Emberclaw/FLYING.png', {
-            frameWidth: 64,
-            frameHeight: 64,
+            frameWidth: 81,
+            frameHeight: 71,
             spacing: 0,
             margin: 0
         });
         this.load.spritesheet('emberclaw-attack', 'assets/sprites/Emberclaw/ATTACK.png', {
-            frameWidth: 64,
-            frameHeight: 64,
+            frameWidth: 81,
+            frameHeight: 71,
             spacing: 0,
             margin: 0
         });
         this.load.spritesheet('emberclaw-hurt', 'assets/sprites/Emberclaw/HURT.png', {
-            frameWidth: 64,
-            frameHeight: 64,
+            frameWidth: 81,
+            frameHeight: 71,
             spacing: 0,
             margin: 0
         });
         this.load.spritesheet('emberclaw-death', 'assets/sprites/Emberclaw/DEATH.png', {
-            frameWidth: 64,
-            frameHeight: 64,
+            frameWidth: 81,
+            frameHeight: 71,
             spacing: 0,
             margin: 0
         });

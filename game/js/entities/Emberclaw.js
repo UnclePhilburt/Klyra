@@ -28,8 +28,8 @@ class Emberclaw {
         const x = this.data.position.x * tileSize + tileSize / 2;
         const y = this.data.position.y * tileSize + tileSize / 2;
 
-        // Emberclaw is 64x64 pixels
-        const scale = 1.0;
+        // Emberclaw is 81x71 pixels - scale down slightly to fit better
+        const scale = 0.8;
 
         // Create sprite
         this.sprite = this.scene.add.sprite(x, y, 'emberclaw-idle', 0);
