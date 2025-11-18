@@ -456,7 +456,7 @@ class MainMenu {
                     if (nameDisplay) {
                         nameDisplay.innerHTML = `
                             <div class="name-label" style="margin-bottom: 10px;">WELCOME BACK</div>
-                            <div style="font-size: 24px; color: #FFD700; font-family: 'Press Start 2P', monospace; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">
+                            <div style="font-size: 24px; background: linear-gradient(135deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-family: 'Press Start 2P', monospace; text-shadow: 0 0 20px rgba(139, 92, 246, 0.8);">
                                 ${user.username.toUpperCase()}
                             </div>
                         `;
