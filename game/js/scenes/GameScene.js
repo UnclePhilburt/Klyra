@@ -2576,8 +2576,8 @@ class GameScene extends Phaser.Scene {
             // Trigger attack animation for the attacker
             if (data.attackerId) {
                 console.log(`🎯 Minion damaged event - attackerId: ${data.attackerId}`);
-                const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId] || this.mushrooms[data.attackerId];
-                console.log(`   Found in enemies:`, !!this.enemies[data.attackerId], `Found in swordDemons:`, !!this.swordDemons[data.attackerId], `Found in minotaurs:`, !!this.minotaurs[data.attackerId], `Found in mushrooms:`, !!this.mushrooms[data.attackerId]);
+                const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId] || this.mushrooms[data.attackerId] || this.emberclaws[data.attackerId];
+                console.log(`   Found in enemies:`, !!this.enemies[data.attackerId], `Found in swordDemons:`, !!this.swordDemons[data.attackerId], `Found in minotaurs:`, !!this.minotaurs[data.attackerId], `Found in mushrooms:`, !!this.mushrooms[data.attackerId], `Found in emberclaws:`, !!this.emberclaws[data.attackerId]);
                 if (attacker && attacker.attack && minion && minion.sprite) {
                     console.log(`   Calling attack() method...`);
                     // Pass target position so attacker faces the right way
