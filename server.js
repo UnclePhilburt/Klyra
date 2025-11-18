@@ -3286,6 +3286,34 @@ app.get('/metrics', (req, res) => {
     });
 });
 
+// Reset all stats endpoint (admin only - requires confirmation token)
+app.post('/admin/reset-stats', async (req, res) => {
+    try {
+        const { confirmToken } = req.body;
+
+        // Simple confirmation token check
+        if (confirmToken !== 'RESET_ALL_STATS_CONFIRM') {
+            return res.status(403).json({ error: 'Invalid confirmation token' });
+        }
+
+        if (!process.env.DATABASE_URL) {
+            return res.status(400).json({ error: 'Database not configured' });
+        }
+
+        // Delete all player stats
+        await db.pool.query('TRUNCATE TABLE player_stats RESTART IDENTITY');
+
+        console.log('⚠️  ALL PLAYER STATS HAVE BEEN RESET!');
+        res.json({
+            success: true,
+            message: 'All player stats have been reset to zero'
+        });
+    } catch (error) {
+        console.error('Error resetting stats:', error);
+        res.status(500).json({ error: 'Failed to reset stats' });
+    }
+});
+
 // AFK check interval
 setInterval(() => {
     players.forEach((player, socketId) => {
