@@ -97,20 +97,32 @@ class ModernHUD {
         this.compactHub.setScrollFactor(0);
         this.compactHub.setDepth(99500);
 
-        // Compact background (simple for performance)
+        // Compact background (simple for performance) - made taller for username
         const compactBg = this.scene.add.graphics();
         compactBg.fillStyle(0x0a0a0f, 0.9);
-        compactBg.fillRect(0, 0, 200, 85);
+        compactBg.fillRect(0, 0, 200, 105);
         compactBg.lineStyle(2, 0x6366f1, 0.6);
-        compactBg.strokeRect(0, 0, 200, 85);
+        compactBg.strokeRect(0, 0, 200, 105);
         this.compactHub.add(compactBg);
 
-        // Level badge (circular)
-        const levelBadge = this.scene.add.circle(30, 30, 22, 0x6366f1, 0.2);
+        // Username display at top
+        const username = this.player.username || 'Player';
+        this.usernameText = this.scene.add.text(100, 8, username, {
+            fontFamily: 'Arial',
+            fontSize: '13px',
+            fontStyle: 'bold',
+            fill: '#fbbf24',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5, 0);
+        this.compactHub.add(this.usernameText);
+
+        // Level badge (circular) - moved down to make room for username
+        const levelBadge = this.scene.add.circle(30, 45, 22, 0x6366f1, 0.2);
         levelBadge.setStrokeStyle(3, 0x6366f1, 1);
         this.compactHub.add(levelBadge);
 
-        this.levelText = this.scene.add.text(30, 30, '1', {
+        this.levelText = this.scene.add.text(30, 45, '1', {
             fontFamily: 'Arial',
             fontSize: '20px',
             fontStyle: 'bold',
@@ -127,7 +139,7 @@ class ModernHUD {
         this.xpBarFill = this.scene.add.graphics();
         this.compactHub.add(this.xpBarFill);
 
-        this.xpText = this.scene.add.text(100, 35, 'XP: 0 / 100', {
+        this.xpText = this.scene.add.text(100, 50, 'XP: 0 / 100', {
             fontFamily: 'Arial',
             fontSize: '11px',
             fill: '#a5b4fc',
@@ -136,8 +148,8 @@ class ModernHUD {
         }).setOrigin(0.5, 0);
         this.compactHub.add(this.xpText);
 
-        // Quick stats (kills, time)
-        this.quickStatsText = this.scene.add.text(12, 60, '⚔ 0  ⏱ 0:00', {
+        // Quick stats (kills, time) - moved down
+        this.quickStatsText = this.scene.add.text(12, 80, '⚔ 0  ⏱ 0:00', {
             fontFamily: 'Arial',
             fontSize: '12px',
             fill: '#d1d5db',
@@ -146,8 +158,8 @@ class ModernHUD {
         }).setOrigin(0);
         this.compactHub.add(this.quickStatsText);
 
-        // Tab hint (static for performance)
-        this.tabHint = this.scene.add.text(200, 74, '[TAB]', {
+        // Tab hint (static for performance) - moved down
+        this.tabHint = this.scene.add.text(200, 94, '[TAB]', {
             fontFamily: 'Arial',
             fontSize: '9px',
             fill: '#9ca3af',
@@ -495,7 +507,7 @@ class ModernHUD {
         const barWidth = 140;
         const barHeight = 6;
         const barX = 60;
-        const barY = 48;
+        const barY = 63;
 
         // Simple background
         this.xpBarBg.fillStyle(0x000000, 0.6);
