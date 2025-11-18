@@ -1167,19 +1167,27 @@
 
                 if (totalKills) {
                     totalKills.dataset.target = data.totalKills || 0;
+                    totalKills.dataset.animated = 'false'; // Reset animation flag
                     totalKills.textContent = '0'; // Reset for animation
+                    animateCounter(totalKills);
                 }
                 if (totalDeaths) {
                     totalDeaths.dataset.target = data.totalDeaths || 0;
+                    totalDeaths.dataset.animated = 'false';
                     totalDeaths.textContent = '0';
+                    animateCounter(totalDeaths);
                 }
                 if (totalPlayers) {
                     totalPlayers.dataset.target = data.totalPlayers || 0;
+                    totalPlayers.dataset.animated = 'false';
                     totalPlayers.textContent = '0';
+                    animateCounter(totalPlayers);
                 }
                 if (activePlayers) {
                     activePlayers.dataset.target = data.activePlayers || 0;
+                    activePlayers.dataset.animated = 'false';
                     activePlayers.textContent = '0';
+                    animateCounter(activePlayers);
                 }
 
                 console.log('📊 Global stats loaded:', data);
