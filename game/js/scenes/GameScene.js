@@ -2653,7 +2653,8 @@ class GameScene extends Phaser.Scene {
                 // CLIENT-SIDE VALIDATION: Verify enemy is actually close enough to attack
                 // Only validate if we have position data AND the enemy exists
                 if (data.attackerId && data.enemyPosition) {
-                    const attacker = this.enemies[data.attackerId] || this.swordDemons[data.attackerId] || this.minotaurs[data.attackerId];
+                    // Use dynamic enemy finder
+                    const attacker = this.findEnemyById(data.attackerId);
 
                     if (attacker && attacker.sprite) {
                         const TILE_SIZE = GameConfig.GAME.TILE_SIZE;
