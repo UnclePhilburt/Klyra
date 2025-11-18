@@ -327,7 +327,7 @@ class Emberclaw {
                     // Hit!
                     console.log(`🔥 Emberclaw projectile hit player for ${proj.damage} damage`);
 
-                    // Send damage to server
+                    // Send damage to server (server will broadcast damage to all clients)
                     if (networkManager && networkManager.connected) {
                         networkManager.socket.emit('player:hit', {
                             playerId: this.scene.localPlayer.data.id,
@@ -336,8 +336,8 @@ class Emberclaw {
                         });
                     }
 
-                    // Apply damage locally
-                    this.scene.localPlayer.takeDamage(proj.damage);
+                    // Don't apply damage locally - server handles it and broadcasts to all clients
+                    // this.scene.localPlayer.takeDamage(proj.damage); // REMOVED - was causing double damage!
 
                     // Destroy projectile
                     proj.sprite.destroy();
