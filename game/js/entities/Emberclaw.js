@@ -329,6 +329,11 @@ class Emberclaw {
     }
 
     updateProjectiles() {
+        // DEBUG: Log projectile count occasionally
+        if (this.projectiles.length > 0 && Math.random() < 0.05) {
+            console.log(`🔥 Emberclaw has ${this.projectiles.length} active projectiles`);
+        }
+
         // Check each projectile for player collisions
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const proj = this.projectiles[i];
@@ -346,6 +351,11 @@ class Emberclaw {
                     this.scene.localPlayer.sprite.x,
                     this.scene.localPlayer.sprite.y
                 );
+
+                // DEBUG: Log distance checks occasionally
+                if (Math.random() < 0.02) {
+                    console.log(`🎯 Projectile distance to player: ${dist.toFixed(1)}px (hit at <30px)`);
+                }
 
                 if (dist < 30) {
                     // Hit!
