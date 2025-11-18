@@ -2781,7 +2781,7 @@ class GameScene extends Phaser.Scene {
 
         // Enemy killed
         networkManager.on('enemy:killed', (data) => {
-            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.emberclaws[data.enemyId];
+            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId] || this.emberclaws[data.enemyId];
             if (enemy) {
                 const deathX = enemy.sprite.x;
                 const deathY = enemy.sprite.y;
@@ -2808,6 +2808,8 @@ class GameScene extends Phaser.Scene {
                     delete this.swordDemons[data.enemyId];
                 } else if (this.minotaurs[data.enemyId]) {
                     delete this.minotaurs[data.enemyId];
+                } else if (this.mushrooms[data.enemyId]) {
+                    delete this.mushrooms[data.enemyId];
                 } else if (this.emberclaws[data.enemyId]) {
                     delete this.emberclaws[data.enemyId];
                 }
