@@ -24,9 +24,6 @@ const io = socketIO(server, {
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from root directory (for index.html, etc.)
-app.use(express.static('.'));
-
 // Serve static game files
 app.use(express.static('game'));
 
