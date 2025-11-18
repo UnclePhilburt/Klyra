@@ -233,7 +233,8 @@ class Player {
             ...Object.values(this.scene.enemies || {}),
             ...Object.values(this.scene.swordDemons || {}),
             ...Object.values(this.scene.minotaurs || {}),
-            ...Object.values(this.scene.mushrooms || {})
+            ...Object.values(this.scene.mushrooms || {}),
+            ...Object.values(this.scene.emberclaws || {})
         ];
 
         const enemiesInFront = [];
