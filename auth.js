@@ -28,6 +28,17 @@ if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) 
             pass: process.env.EMAIL_PASS
         }
     });
+    console.log('✅ Email transporter configured:', {
+        host: process.env.EMAIL_HOST,
+        port: process.env.EMAIL_PORT || 587,
+        user: process.env.EMAIL_USER
+    });
+} else {
+    console.log('⚠️ Email not configured. Missing:', {
+        EMAIL_HOST: !!process.env.EMAIL_HOST,
+        EMAIL_USER: !!process.env.EMAIL_USER,
+        EMAIL_PASS: !!process.env.EMAIL_PASS
+    });
 }
 
 // Initialize users table
@@ -118,10 +129,14 @@ async function registerUser(username, email, password) {
         // Send verification email (if email is configured)
         if (emailTransporter) {
             try {
+                console.log(`📧 Attempting to send verification email to ${email}`);
                 await sendVerificationEmail(email, username, verificationToken);
+                console.log(`✅ Verification email sent successfully to ${email}`);
             } catch (err) {
-                console.error('Failed to send verification email:', err);
+                console.error('❌ Failed to send verification email:', err);
             }
+        } else {
+            console.log('⚠️ Email transporter not configured - skipping verification email');
         }
 
         return {
@@ -395,11 +410,16 @@ async function changePassword(userId, currentPassword, newPassword) {
 
 // Send verification email
 async function sendVerificationEmail(email, username, token) {
-    if (!emailTransporter) return;
+    if (!emailTransporter) {
+        console.log('⚠️ Cannot send email - transporter not initialized');
+        return;
+    }
 
     const verificationUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
 
-    await emailTransporter.sendMail({
+    console.log(`📧 Sending email from: ${process.env.EMAIL_FROM || 'noreply@klyra.lol'} to: ${email}`);
+
+    const info = await emailTransporter.sendMail({
         from: process.env.EMAIL_FROM || 'noreply@klyra.lol',
         to: email,
         subject: 'Verify your KLYRA account',
@@ -410,6 +430,8 @@ async function sendVerificationEmail(email, username, token) {
             <p>If you didn't create this account, please ignore this email.</p>
         `
     });
+
+    console.log('📬 Email sent! Message ID:', info.messageId);
 }
 
 // Send password reset email
