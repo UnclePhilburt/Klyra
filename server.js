@@ -862,34 +862,34 @@ class Lobby {
         let bossChance = 0;
 
         if (distanceFromSpawn < 80) {
-            // Near spawn: HORDE MODE - 8-10 packs, 6-9 enemies each (~48-90 total)
-            packsToSpawn = 8 + Math.floor(Math.random() * 3); // 8-10 packs
-            minPackSize = 6;
-            maxPackSize = 9;
+            // Near spawn: MEGA HORDE - 12-15 packs, 8-12 enemies each (~96-180 total)
+            packsToSpawn = 12 + Math.floor(Math.random() * 4); // 12-15 packs
+            minPackSize = 8;
+            maxPackSize = 12;
             bossChance = 0;
         } else if (distanceFromSpawn < 150) {
-            // Close to spawn: HORDE MODE - 7-9 packs, 9-12 enemies (~63-108 total)
-            packsToSpawn = 7 + Math.floor(Math.random() * 3); // 7-9 packs
-            minPackSize = 9;
-            maxPackSize = 12;
+            // Close to spawn: MEGA HORDE - 10-14 packs, 12-16 enemies (~120-224 total)
+            packsToSpawn = 10 + Math.floor(Math.random() * 5); // 10-14 packs
+            minPackSize = 12;
+            maxPackSize = 16;
             bossChance = 0.02;
         } else if (distanceFromSpawn < 250) {
-            // Medium distance: HORDE MODE - 6-8 packs, 9-12 enemies (~54-96 total)
-            packsToSpawn = 6 + Math.floor(Math.random() * 3); // 6-8 packs
-            minPackSize = 9;
-            maxPackSize = 12;
+            // Medium distance: MEGA HORDE - 9-12 packs, 14-18 enemies (~126-216 total)
+            packsToSpawn = 9 + Math.floor(Math.random() * 4); // 9-12 packs
+            minPackSize = 14;
+            maxPackSize = 18;
             bossChance = 0.05;
         } else if (distanceFromSpawn < 450) {
-            // Far: HORDE MODE - 5-7 packs, 12-18 enemies (~60-126 total)
-            packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
-            minPackSize = 12;
-            maxPackSize = 18;
+            // Far: MASSIVE HORDE - 8-11 packs, 18-24 enemies (~144-264 total)
+            packsToSpawn = 8 + Math.floor(Math.random() * 4); // 8-11 packs
+            minPackSize = 18;
+            maxPackSize = 24;
             bossChance = 0.10;
         } else {
-            // Very far: MASSIVE HORDE - 5-7 packs, 15-21 enemies (~75-147 total)
-            packsToSpawn = 5 + Math.floor(Math.random() * 3); // 5-7 packs
-            minPackSize = 15;
-            maxPackSize = 21;
+            // Very far: INSANE HORDE - 8-12 packs, 22-30 enemies (~176-360 total)
+            packsToSpawn = 8 + Math.floor(Math.random() * 5); // 8-12 packs
+            minPackSize = 22;
+            maxPackSize = 30;
             bossChance = 0.15;
         }
 
@@ -921,10 +921,10 @@ class Lobby {
         // Apply spawn multiplier
         packsToSpawn = Math.floor(packsToSpawn * spawnMultiplier);
 
-        // Hard cap: Max 80 enemies per region (safety net)
+        // Hard cap: Max 200 enemies per region (increased for mega hordes)
         const estimatedEnemies = packsToSpawn * ((minPackSize + maxPackSize) / 2);
-        if (estimatedEnemies > 80) {
-            const scale = 80 / estimatedEnemies;
+        if (estimatedEnemies > 200) {
+            const scale = 200 / estimatedEnemies;
             packsToSpawn = Math.floor(packsToSpawn * scale);
         }
 
