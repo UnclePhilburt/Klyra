@@ -297,6 +297,30 @@ class Emberclaw {
     update() {
         if (!this.isAlive || !this.sprite || !this.sprite.active) return;
 
+        // Interpolate to target position if set
+        if (this.targetX !== undefined && this.targetY !== undefined) {
+            const dx = this.targetX - this.sprite.x;
+            const dy = this.targetY - this.sprite.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 1) {
+                // Move gradually towards target
+                const lerpSpeed = 0.15;
+                this.sprite.x += dx * lerpSpeed;
+                this.sprite.y += dy * lerpSpeed;
+
+                // Face movement direction
+                if (Math.abs(dx) > 1) {
+                    this.sprite.setFlipX(dx < 0);
+                }
+
+                // Play flying animation while moving
+                if (!this.isAttacking && this.scene.anims.exists('emberclaw_flying')) {
+                    this.sprite.play('emberclaw_flying', true);
+                }
+            }
+        }
+
         // Update health bar position
         this.updateHealthBar();
 
@@ -347,31 +371,10 @@ class Emberclaw {
     moveToPosition(position) {
         if (!this.sprite || !this.sprite.body) return;
 
+        // Set target position - update() will interpolate to it
         const tileSize = GameConfig.GAME.TILE_SIZE;
         this.targetX = position.x * tileSize + tileSize / 2;
         this.targetY = position.y * tileSize + tileSize / 2;
-
-        // Smooth movement
-        const currentX = this.sprite.x;
-        const currentY = this.sprite.y;
-
-        const dx = this.targetX - currentX;
-        const dy = this.targetY - currentY;
-
-        // Move gradually
-        const lerpSpeed = 0.15;
-        this.sprite.x += dx * lerpSpeed;
-        this.sprite.y += dy * lerpSpeed;
-
-        // Face movement direction
-        if (Math.abs(dx) > 1) {
-            this.sprite.setFlipX(dx < 0);
-        }
-
-        // Play flying animation while moving
-        if (!this.isAttacking && this.scene.anims.exists('emberclaw_flying')) {
-            this.sprite.play('emberclaw_flying', true);
-        }
     }
 
     destroy() {
