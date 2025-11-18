@@ -309,6 +309,12 @@ class GameScene extends Phaser.Scene {
         this.game.registry.set('networkManager', networkManager);
         console.log('✅ NetworkManager registered in game registry');
 
+        // Register mobile optimizer with this scene
+        if (typeof mobileOptimizer !== 'undefined') {
+            mobileOptimizer.setGameScene(this);
+            console.log('📱 MobileOptimizer integrated with GameScene');
+        }
+
         // Initialize controller manager
         this.input.gamepad.start();
         this.controllerManager = new ControllerManager(this);

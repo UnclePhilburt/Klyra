@@ -248,9 +248,19 @@ class SkillSelector {
                 if (this.selectedIndex === index) {
                     // Already selected, confirm it
                     this.confirmSelection();
+
+                    // Haptic feedback - success pattern
+                    if (typeof mobileOptimizer !== 'undefined') {
+                        mobileOptimizer.success();
+                    }
                 } else {
                     // Not selected, highlight it
                     this.selectCard(index);
+
+                    // Haptic feedback - light tap
+                    if (typeof mobileOptimizer !== 'undefined') {
+                        mobileOptimizer.lightTap();
+                    }
                 }
             }
         });

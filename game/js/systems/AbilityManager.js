@@ -156,8 +156,23 @@ class AbilityManager {
         container.add(touchArea);
 
         // Touch/click handler to use ability
-        touchArea.on('pointerdown', () => {
-            this.useAbility(key);
+        touchArea.on('pointerdown', (pointer) => {
+            const success = this.useAbility(key);
+
+            // Haptic feedback
+            if (typeof mobileOptimizer !== 'undefined') {
+                if (success) {
+                    mobileOptimizer.mediumTap();
+                } else {
+                    mobileOptimizer.lightTap(); // Lighter tap for cooldown/unavailable
+                }
+            }
+
+            // Touch ripple effect
+            if (typeof mobileOptimizer !== 'undefined' && this.scene) {
+                const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+                mobileOptimizer.createTouchRipple(worldPoint.x, worldPoint.y, ui.colorTheme.primary);
+            }
         });
 
         // Visual feedback on hover (desktop)

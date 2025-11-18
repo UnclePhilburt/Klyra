@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
     <title>KLYRA - Multiplayer Roguelike</title>
 
     <!-- Fonts -->
@@ -166,6 +169,7 @@
     <script src="js/utils/Debug.js"></script>
     <script src="js/utils/MinionDebug.js?v=1.3"></script>
     <script src="js/utils/BiomeGenerator.js?v=2.0"></script>
+    <script src="js/utils/MobileOptimizer.js?v=1.0"></script>
     <script src="js/utils/MobileControls.js?v=2.0"></script>
     <!-- Load MainMenu before ScreenManager since ScreenManager depends on it -->
     <script src="mainmenu/mainmenu.js?v=5.0"></script>

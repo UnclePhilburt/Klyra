@@ -63,7 +63,7 @@ class MobileControls {
     }
 
     setupTouchControls() {
-        // Create virtual joystick container
+        // Create virtual joystick container - more visible and polished
         const joystickContainer = document.createElement('div');
         joystickContainer.id = 'virtualJoystick';
         joystickContainer.style.cssText = `
@@ -72,29 +72,31 @@ class MobileControls {
             left: 40px;
             width: 150px;
             height: 150px;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(139, 92, 246, 0.1) 50%, transparent 70%);
+            border: 3px solid rgba(139, 92, 246, 0.6);
             border-radius: 50%;
             display: none;
             z-index: 1000;
             touch-action: none;
             user-select: none;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4), inset 0 0 20px rgba(139, 92, 246, 0.2);
+            transition: opacity 0.2s ease;
         `;
 
-        // Create joystick knob
+        // Create joystick knob - more visible with glow
         const joystickKnob = document.createElement('div');
         joystickKnob.id = 'joystickKnob';
         joystickKnob.style.cssText = `
             position: absolute;
             width: 60px;
             height: 60px;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.4) 100%);
+            background: radial-gradient(circle, rgba(236, 72, 153, 1) 0%, rgba(139, 92, 246, 0.8) 100%);
             border: 3px solid rgba(255, 255, 255, 0.9);
             border-radius: 50%;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 30px rgba(236, 72, 153, 0.8), 0 0 15px rgba(139, 92, 246, 0.6);
             transition: transform 0.05s;
         `;
 
@@ -182,6 +184,11 @@ class MobileControls {
             this.joystick.centerX = x;
             this.joystick.centerY = y;
             this.joystickActive = true;
+
+            // Haptic feedback - light tap when joystick activates
+            if (typeof mobileOptimizer !== 'undefined') {
+                mobileOptimizer.lightTap();
+            }
         };
 
         const handleTouchMove = (e) => {
@@ -236,6 +243,11 @@ class MobileControls {
             this.joystickActive = false;
             this.joystickVector.x = 0;
             this.joystickVector.y = 0;
+
+            // Haptic feedback - light tap when joystick releases
+            if (typeof mobileOptimizer !== 'undefined') {
+                mobileOptimizer.lightTap();
+            }
         };
 
         // Attach touch listeners
