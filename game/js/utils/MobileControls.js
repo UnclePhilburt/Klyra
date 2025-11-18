@@ -115,11 +115,32 @@ class MobileControls {
         const handleTouchStart = (e) => {
             // Check if touch started on a UI element
             const target = e.target;
+
+            // Check if touching any menu/UI screens
+            const isMenuScreen = target.closest('#startScreen') ||
+                                target.closest('#lobbyScreen') ||
+                                target.closest('#characterSelectModal') ||
+                                target.closest('#settingsModal') ||
+                                target.id === 'startScreen' ||
+                                target.id === 'lobbyScreen' ||
+                                target.id === 'characterSelectModal' ||
+                                target.id === 'settingsModal';
+
+            if (isMenuScreen) {
+                return; // Don't activate joystick on menu screens
+            }
+
             const isUIElement = target.tagName === 'BUTTON' ||
                                target.tagName === 'INPUT' ||
                                target.closest('button') ||
                                target.closest('input') ||
                                target.closest('.settings-panel') ||
+                               target.classList.contains('enter-prompt') ||
+                               target.classList.contains('start-button') ||
+                               target.id === 'portalClick' ||
+                               target.id === 'startButton' ||
+                               target.id === 'charactersBtn' ||
+                               target.id === 'settingsBtn' ||
                                target.id === 'game-container';
 
             if (isUIElement && target.id !== 'game-container') {
