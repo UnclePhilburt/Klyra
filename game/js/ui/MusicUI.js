@@ -211,7 +211,14 @@ class MusicUI {
         button.setAlpha(0.7);
         button.setInteractive({ useHandCursor: true });
 
-        button.on('pointerdown', callback);
+        button.on('pointerdown', () => {
+            callback();
+
+            // Haptic feedback
+            if (typeof mobileOptimizer !== 'undefined') {
+                mobileOptimizer.lightTap();
+            }
+        });
 
         button.on('pointerover', () => {
             this.scene.tweens.add({
