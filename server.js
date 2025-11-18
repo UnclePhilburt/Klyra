@@ -31,23 +31,75 @@ app.use(express.static('game'));
 const PORT = process.env.PORT || 3001;
 
 // Family-safe random name generator for guests
-const ADJECTIVES = [
-    'Happy', 'Swift', 'Brave', 'Clever', 'Mighty', 'Silent', 'Noble', 'Wise',
-    'Bold', 'Quick', 'Strong', 'Calm', 'Bright', 'Lucky', 'Fierce', 'Gentle',
-    'Mystic', 'Golden', 'Silver', 'Crystal', 'Thunder', 'Shadow', 'Frost', 'Flame'
+// Cute random username components (internet-style fun names)
+const CUTE_WORDS = [
+    'Smol', 'Chonky', 'Sleepy', 'Cozy', 'Snuggly', 'Fuzzy', 'Fluffy', 'Silly',
+    'Mighty', 'Tiny', 'Mega', 'Super', 'Ultra', 'Epic', 'Legendary', 'Cool',
+    'Happy', 'Jolly', 'Merry', 'Sunny', 'Starry', 'Dreamy', 'Cloudy', 'Breezy',
+    'Sweet', 'Sugar', 'Honey', 'Candy', 'Cookie', 'Mocha', 'Latte', 'Matcha',
+    'Fully', 'Partly', 'Mostly', 'Totally', 'Literally', 'Actually', 'Probably', 'Maybe'
 ];
 
-const NOUNS = [
-    'Knight', 'Warrior', 'Mage', 'Ranger', 'Hunter', 'Guardian', 'Champion', 'Hero',
-    'Dragon', 'Phoenix', 'Tiger', 'Wolf', 'Bear', 'Eagle', 'Lion', 'Hawk',
-    'Storm', 'Blade', 'Arrow', 'Shield', 'Axe', 'Star', 'Moon', 'Sun'
+const CUTE_ANIMALS = [
+    'Bunny', 'Puppy', 'Kitty', 'Birb', 'Doggo', 'Catto', 'Pupper', 'Floof',
+    'Panda', 'Koala', 'Otter', 'Seal', 'Penguin', 'Hamster', 'Hedgehog', 'Axolotl',
+    'Dragon', 'Unicorn', 'Phoenix', 'Griffin', 'Chimera', 'Pegasus', 'Wyrm', 'Drake'
+];
+
+const CUTE_THINGS = [
+    'Cloud', 'Star', 'Moon', 'Sun', 'Rainbow', 'Thunder', 'Lightning', 'Aurora',
+    'Bean', 'Potato', 'Nugget', 'Muffin', 'Biscuit', 'Waffle', 'Pancake', 'Toast',
+    'Wizard', 'Knight', 'Ninja', 'Pirate', 'Hero', 'Legend', 'Champion', 'Master',
+    'Gamer', 'Player', 'Noob', 'Pro', 'Boss', 'King', 'Queen', 'Prince'
+];
+
+const CUTE_MODIFIERS = [
+    'Boi', 'Girl', 'Bro', 'Sis', 'Dude', 'Pal', 'Buddy', 'Friend',
+    'Lord', 'Lady', 'Sir', 'Dame', 'Fan', 'Lover', 'Stan', 'Simp',
+    'McFly', 'Face', 'Pants', 'Boots', 'Hat', 'Squad', 'Gang', 'Crew',
+    'inator', 'omatic', 'tron', 'bot', 'zilla', 'saurus', 'corn', 'puff'
 ];
 
 function generateGuestName() {
-    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-    const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-    const number = Math.floor(Math.random() * 100);
-    return `${adjective}${noun}${number}`;
+    const patterns = [
+        // "FullyBunnt" style (word + animal/thing with letter doubling)
+        () => {
+            const word = CUTE_WORDS[Math.floor(Math.random() * CUTE_WORDS.length)];
+            const thing = Math.random() > 0.5
+                ? CUTE_ANIMALS[Math.floor(Math.random() * CUTE_ANIMALS.length)]
+                : CUTE_THINGS[Math.floor(Math.random() * CUTE_THINGS.length)];
+            // Double a random letter for internet style
+            const doubled = thing.replace(/[aeiou]/i, match => match + match);
+            return word + doubled;
+        },
+        // "UnicornRCool" style (thing + R + adjective)
+        () => {
+            const thing = Math.random() > 0.5
+                ? CUTE_ANIMALS[Math.floor(Math.random() * CUTE_ANIMALS.length)]
+                : CUTE_THINGS[Math.floor(Math.random() * CUTE_THINGS.length)];
+            const word = CUTE_WORDS[Math.floor(Math.random() * CUTE_WORDS.length)];
+            return thing + 'R' + word;
+        },
+        // "SmolBeanBoi" style (word + thing + modifier)
+        () => {
+            const word = CUTE_WORDS[Math.floor(Math.random() * CUTE_WORDS.length)];
+            const thing = Math.random() > 0.5
+                ? CUTE_ANIMALS[Math.floor(Math.random() * CUTE_ANIMALS.length)]
+                : CUTE_THINGS[Math.floor(Math.random() * CUTE_THINGS.length)];
+            const modifier = CUTE_MODIFIERS[Math.floor(Math.random() * CUTE_MODIFIERS.length)];
+            return word + thing + modifier;
+        },
+        // "CozyCatto123" style (word + animal + number)
+        () => {
+            const word = CUTE_WORDS[Math.floor(Math.random() * CUTE_WORDS.length)];
+            const animal = CUTE_ANIMALS[Math.floor(Math.random() * CUTE_ANIMALS.length)];
+            const num = Math.floor(Math.random() * 1000);
+            return word + animal + num;
+        }
+    ];
+
+    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+    return pattern();
 }
 
 // Game constants

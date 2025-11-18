@@ -253,7 +253,7 @@ class MainMenu {
                 }
 
                 // Check if user is logged in
-                let name = 'Adventurer';
+                let name = '';
                 const token = localStorage.getItem('klyra_token');
                 const userData = localStorage.getItem('klyra_user');
 
@@ -269,11 +269,10 @@ class MainMenu {
                     }
                 }
 
-                // If not logged in, use input field or saved name
-                if (!token && playerNameInput) {
-                    name = playerNameInput.value.trim() || 'Adventurer';
-                    // Save player name to localStorage for guests
-                    localStorage.setItem('klyraPlayerName', name);
+                // If not logged in, send empty name - server will generate cute random name
+                if (!token) {
+                    name = '';
+                    console.log('👤 Guest mode - server will generate random username');
                 }
 
                 enterButton.style.pointerEvents = 'none';
@@ -462,7 +461,7 @@ class MainMenu {
             try {
                 const user = JSON.parse(userData);
                 if (user.username) {
-                    // User is logged in - show welcome message instead of input
+                    // User is logged in - show welcome message
                     if (nameInscription) {
                         nameInscription.innerHTML = `
                             <div class="name-label" style="margin-bottom: 10px;">WELCOME BACK</div>
@@ -479,12 +478,30 @@ class MainMenu {
             }
         }
 
-        // Not logged in - load saved guest name or show input
-        const savedName = localStorage.getItem('klyraPlayerName');
-        if (savedName && playerNameInput) {
-            playerNameInput.value = savedName;
-            console.log('✅ Loaded saved player name:', savedName);
+        // Not logged in - show guest message
+        if (nameInscription) {
+            nameInscription.innerHTML = `
+                <div class="name-label" style="margin-bottom: 15px;">PLAYING AS GUEST</div>
+                <div style="font-size: 12px; color: #AAA; font-family: 'Press Start 2P', monospace; line-height: 1.6; margin-bottom: 10px;">
+                    You'll get a random username
+                </div>
+                <a href="../account.html" style="
+                    display: inline-block;
+                    padding: 10px 20px;
+                    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+                    color: white;
+                    text-decoration: none;
+                    font-family: 'Press Start 2P', monospace;
+                    font-size: 10px;
+                    border-radius: 5px;
+                    transition: transform 0.3s, box-shadow 0.3s;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 20px rgba(139, 92, 246, 0.4)';"
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                    CREATE ACCOUNT FOR CUSTOM NAME
+                </a>
+            `;
         }
+        console.log('👤 Guest mode - random username will be assigned');
     }
 }
 
