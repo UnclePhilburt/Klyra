@@ -148,6 +148,10 @@ class NetworkManager {
             this.emit('enemy:killed', data);
         });
 
+        this.socket.on('enemy:attack', (data) => {
+            this.emit('enemy:attack', data);
+        });
+
         // Item events
         this.socket.on('item:picked', (data) => {
             this.emit('item:picked', data);
