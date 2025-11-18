@@ -10,7 +10,7 @@ const GameConfig = {
     },
 
     PLAYER: {
-        SPEED: 200,
+        SPEED: 120,  // Reduced from 200 for more tactical kiting gameplay
         HEALTH: 100,
         // XP formula: baseXP * level^exponent
         XP_BASE: 100,

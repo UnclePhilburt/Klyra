@@ -455,7 +455,7 @@ class Lobby {
                 health: 20,  // Reduced from 30
                 maxHealth: 20,
                 damage: 1,  // Reduced from 2
-                speed: 70,
+                speed: 45,   // Reduced from 70 for tactical gameplay
                 sightRange: 12,
                 glowColor: 0xff6666, // Light red
                 glowSize: 6
@@ -465,7 +465,7 @@ class Lobby {
                 health: 35,  // Reduced from 50
                 maxHealth: 35,
                 damage: 2,  // Reduced from 3
-                speed: 80,
+                speed: 50,   // Reduced from 80 for tactical gameplay
                 sightRange: 15,
                 glowColor: 0xff0000, // Red
                 glowSize: 8
@@ -475,7 +475,7 @@ class Lobby {
                 health: 70,  // Reduced from 100
                 maxHealth: 70,
                 damage: 4,  // Reduced from 6
-                speed: 90,
+                speed: 55,   // Reduced from 90 for tactical gameplay
                 sightRange: 20,
                 glowColor: 0xff0066, // Dark pink/red
                 glowSize: 12
@@ -514,7 +514,7 @@ class Lobby {
                 health: 40,  // Reduced from 60
                 maxHealth: 40,
                 damage: 3,  // Reduced from 5
-                speed: 50,
+                speed: 32,   // Reduced from 50 for tactical gameplay
                 sightRange: 10
             },
             normal: {
@@ -522,7 +522,7 @@ class Lobby {
                 health: 70,  // Reduced from 100
                 maxHealth: 70,
                 damage: 5,  // Reduced from 7
-                speed: 60,
+                speed: 38,   // Reduced from 60 for tactical gameplay
                 sightRange: 12
             },
             boss: {
@@ -530,7 +530,7 @@ class Lobby {
                 health: 120,  // Reduced from 175
                 maxHealth: 120,
                 damage: 7,  // Reduced from 11
-                speed: 70,
+                speed: 45,   // Reduced from 70 for tactical gameplay
                 sightRange: 15
             }
         };
@@ -565,7 +565,7 @@ class Lobby {
                 health: 15,  // Reduced from 20
                 maxHealth: 15,
                 damage: 1,  // Reduced from 2
-                speed: 35,
+                speed: 22,   // Reduced from 35 for tactical gameplay
                 sightRange: 8
             },
             normal: {
@@ -573,7 +573,7 @@ class Lobby {
                 health: 25,  // Reduced from 35
                 maxHealth: 25,
                 damage: 2,  // Reduced from 4
-                speed: 45,
+                speed: 28,   // Reduced from 45 for tactical gameplay
                 sightRange: 10
             },
             boss: {
@@ -581,7 +581,7 @@ class Lobby {
                 health: 60,  // Reduced from 90
                 maxHealth: 60,
                 damage: 4,  // Reduced from 7
-                speed: 55,
+                speed: 35,   // Reduced from 55 for tactical gameplay
                 sightRange: 14
             }
         };
@@ -614,7 +614,7 @@ class Lobby {
             health: 20,      // Low health - glass cannon
             maxHealth: 20,
             damage: 15,      // High damage
-            speed: 50,       // Fast movement for kiting
+            speed: 32,       // Reduced from 50 for tactical kiting gameplay
             sightRange: 12,  // Long sight range
             attackRange: 8,  // Ranged attack distance (tiles)
             attackCooldown: 2000  // 2 seconds between shots
