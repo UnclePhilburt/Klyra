@@ -424,6 +424,19 @@ class Minion {
             ...Object.values(this.scene.emberclaws || {})
         ];
 
+        // DEBUG: Log enemy counts occasionally
+        if (Math.random() < 0.02) {
+            console.log(`🔍 Minion ${this.data.id} finding enemies:`, {
+                enemies: Object.keys(this.scene.enemies || {}).length,
+                swordDemons: Object.keys(this.scene.swordDemons || {}).length,
+                minotaurs: Object.keys(this.scene.minotaurs || {}).length,
+                mushrooms: Object.keys(this.scene.mushrooms || {}).length,
+                emberclaws: Object.keys(this.scene.emberclaws || {}).length,
+                total: allEnemies.length,
+                alive: allEnemies.filter(e => e.isAlive).length
+            });
+        }
+
         if (allEnemies.length === 0) {
             return null;
         }
