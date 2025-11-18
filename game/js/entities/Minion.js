@@ -415,14 +415,8 @@ class Minion {
             }
         }
 
-        // Combine all enemy types
-        const allEnemies = [
-            ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.swordDemons || {}),
-            ...Object.values(this.scene.minotaurs || {}),
-            ...Object.values(this.scene.mushrooms || {}),
-            ...Object.values(this.scene.emberclaws || {})
-        ];
+        // Get all enemies dynamically (automatically includes all enemy types)
+        const allEnemies = this.scene.getAllEnemies();
 
         // DEBUG: Log enemy counts occasionally
         if (Math.random() < 0.02) {
@@ -479,14 +473,7 @@ class Minion {
 
     // INTELLIGENT FORMATION: Detect nearby threats
     detectThreats() {
-        const allEnemies = [
-            ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.swordDemons || {}),
-            ...Object.values(this.scene.minotaurs || {}),
-            ...Object.values(this.scene.mushrooms || {}),
-            ...Object.values(this.scene.emberclaws || {})
-        ];
-
+        const allEnemies = this.scene.getAllEnemies();
         const threats = [];
         const searchRadiusSquared = this.vigilanceRadius * this.vigilanceRadius;
 
@@ -950,13 +937,7 @@ class Minion {
 
     findNearestEnemyToSelf(searchRadius) {
         // Find enemies closest to THIS minion, not the player
-        const allEnemies = [
-            ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.swordDemons || {}),
-            ...Object.values(this.scene.minotaurs || {}),
-            ...Object.values(this.scene.mushrooms || {}),
-            ...Object.values(this.scene.emberclaws || {})
-        ];
+        const allEnemies = this.scene.getAllEnemies();
 
         if (allEnemies.length === 0) return null;
 

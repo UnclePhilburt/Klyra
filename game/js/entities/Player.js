@@ -228,14 +228,8 @@ class Player {
         // Determine facing direction based on sprite flip
         const facingLeft = this.spriteRenderer.sprite && this.spriteRenderer.sprite.flipX;
 
-        // Get all enemies
-        const allEnemies = [
-            ...Object.values(this.scene.enemies || {}),
-            ...Object.values(this.scene.swordDemons || {}),
-            ...Object.values(this.scene.minotaurs || {}),
-            ...Object.values(this.scene.mushrooms || {}),
-            ...Object.values(this.scene.emberclaws || {})
-        ];
+        // Get all enemies dynamically (automatically includes all enemy types)
+        const allEnemies = this.scene.getAllEnemies();
 
         const enemiesInFront = [];
 

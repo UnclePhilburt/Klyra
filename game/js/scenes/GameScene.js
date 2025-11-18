@@ -2781,7 +2781,8 @@ class GameScene extends Phaser.Scene {
 
         // Enemy killed
         networkManager.on('enemy:killed', (data) => {
-            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId] || this.emberclaws[data.enemyId];
+            // Use dynamic enemy finder
+            const enemy = this.findEnemyById(data.enemyId);
             if (enemy) {
                 const deathX = enemy.sprite.x;
                 const deathY = enemy.sprite.y;
@@ -2801,18 +2802,8 @@ class GameScene extends Phaser.Scene {
                     }
                 }
 
-                // Delete from correct collection
-                if (this.enemies[data.enemyId]) {
-                    delete this.enemies[data.enemyId];
-                } else if (this.swordDemons[data.enemyId]) {
-                    delete this.swordDemons[data.enemyId];
-                } else if (this.minotaurs[data.enemyId]) {
-                    delete this.minotaurs[data.enemyId];
-                } else if (this.mushrooms[data.enemyId]) {
-                    delete this.mushrooms[data.enemyId];
-                } else if (this.emberclaws[data.enemyId]) {
-                    delete this.emberclaws[data.enemyId];
-                }
+                // Delete from correct collection dynamically
+                this.deleteEnemyById(data.enemyId);
 
                 // Check if killer is Malachar with special passives
                 if (data.killedBy) {
@@ -4328,5 +4319,58 @@ class GameScene extends Phaser.Scene {
                 fireSprite.destroy();
             }
         });
+    }
+
+    // DYNAMIC ENEMY SYSTEM: Get all enemies from all collections
+    // This automatically includes any new enemy types added to the scene
+    getAllEnemies() {
+        const allEnemies = [];
+
+        // Iterate through all properties of 'this' to find enemy collections
+        // Convention: enemy collections are objects with enemy IDs as keys
+        const potentialEnemyCollections = [
+            'enemies', 'swordDemons', 'minotaurs', 'mushrooms', 'emberclaws'
+            // New enemy types will automatically be detected if they follow the pattern
+        ];
+
+        potentialEnemyCollections.forEach(collectionName => {
+            if (this[collectionName] && typeof this[collectionName] === 'object') {
+                const enemies = Object.values(this[collectionName]);
+                allEnemies.push(...enemies);
+            }
+        });
+
+        return allEnemies;
+    }
+
+    // DYNAMIC ENEMY SYSTEM: Find enemy by ID across all collections
+    findEnemyById(enemyId) {
+        const potentialEnemyCollections = [
+            'enemies', 'swordDemons', 'minotaurs', 'mushrooms', 'emberclaws'
+        ];
+
+        for (const collectionName of potentialEnemyCollections) {
+            if (this[collectionName] && this[collectionName][enemyId]) {
+                return this[collectionName][enemyId];
+            }
+        }
+
+        return null;
+    }
+
+    // DYNAMIC ENEMY SYSTEM: Delete enemy by ID from correct collection
+    deleteEnemyById(enemyId) {
+        const potentialEnemyCollections = [
+            'enemies', 'swordDemons', 'minotaurs', 'mushrooms', 'emberclaws'
+        ];
+
+        for (const collectionName of potentialEnemyCollections) {
+            if (this[collectionName] && this[collectionName][enemyId]) {
+                delete this[collectionName][enemyId];
+                return true;
+            }
+        }
+
+        return false;
     }
 }
