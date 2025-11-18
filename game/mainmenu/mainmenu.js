@@ -241,30 +241,49 @@ class MainMenu {
         const playerNameInput = document.getElementById('playerName');
         const statusText = document.getElementById('statusText');
         const lobbyScreen = document.getElementById('lobbyScreen');
-        
+
         if (enterButton) {
             enterButton.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                
+
                 if (!this.serverOnline || this.checkingServer) {
                     statusText.textContent = 'Server not ready...';
                     statusText.style.color = '#FF4444';
                     return;
                 }
-                
-                const name = playerNameInput.value.trim() || 'Adventurer';
-                
-                // Save player name to localStorage
-                localStorage.setItem('klyraPlayerName', name);
-                
+
+                // Check if user is logged in
+                let name = 'Adventurer';
+                const token = localStorage.getItem('klyra_token');
+                const userData = localStorage.getItem('klyra_user');
+
+                if (token && userData) {
+                    try {
+                        const user = JSON.parse(userData);
+                        if (user.username) {
+                            name = user.username;
+                            console.log('🔐 Using account username:', name);
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse user data:', e);
+                    }
+                }
+
+                // If not logged in, use input field or saved name
+                if (!token && playerNameInput) {
+                    name = playerNameInput.value.trim() || 'Adventurer';
+                    // Save player name to localStorage for guests
+                    localStorage.setItem('klyraPlayerName', name);
+                }
+
                 enterButton.style.pointerEvents = 'none';
                 statusText.textContent = 'Starting adventure...';
                 statusText.style.color = '#4AE290';
-                
+
                 setTimeout(() => {
                     lobbyScreen.classList.add('portal-activated');
                 }, 100);
-                
+
                 try {
                     if (window.game) {
                         await window.game.connect(name);
@@ -432,8 +451,36 @@ class MainMenu {
     
     loadSavedPlayerName() {
         const playerNameInput = document.getElementById('playerName');
+        const nameLabel = document.querySelector('.name-label');
+        const nameInscription = document.querySelector('.name-inscription');
+
+        // Check if user is logged in
+        const token = localStorage.getItem('klyra_token');
+        const userData = localStorage.getItem('klyra_user');
+
+        if (token && userData) {
+            try {
+                const user = JSON.parse(userData);
+                if (user.username) {
+                    // User is logged in - show welcome message instead of input
+                    if (nameInscription) {
+                        nameInscription.innerHTML = `
+                            <div class="name-label" style="margin-bottom: 10px;">WELCOME BACK</div>
+                            <div style="font-size: 24px; color: #FFD700; font-family: 'Press Start 2P', monospace; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">
+                                ${user.username.toUpperCase()}
+                            </div>
+                        `;
+                    }
+                    console.log('✅ Logged in as:', user.username);
+                    return;
+                }
+            } catch (e) {
+                console.error('Failed to parse user data:', e);
+            }
+        }
+
+        // Not logged in - load saved guest name or show input
         const savedName = localStorage.getItem('klyraPlayerName');
-        
         if (savedName && playerNameInput) {
             playerNameInput.value = savedName;
             console.log('✅ Loaded saved player name:', savedName);
