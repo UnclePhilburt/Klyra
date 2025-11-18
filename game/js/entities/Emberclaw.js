@@ -142,7 +142,7 @@ class Emberclaw {
         const projectile = this.scene.add.sprite(startX, startY, 'emberclaw-projectile');
         projectile.setScale(1.0);
         projectile.setDepth(3);
-        projectile.setRotation(Math.atan2(dy, dx)); // Face direction of travel
+        projectile.setRotation(Math.atan2(dy, dx) + Math.PI); // Face direction of travel (add PI to flip)
 
         // Add physics
         this.scene.physics.add.existing(projectile);
