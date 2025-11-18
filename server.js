@@ -2317,6 +2317,79 @@ io.on('connection', (socket) => {
     });
 
     // Handle item pickup
+    // Player hit by enemy projectile (client-side collision detection)
+    socket.on('player:hit', (data) => {
+        try {
+            const targetPlayer = players.get(socket.id);
+            if (!targetPlayer || !targetPlayer.lobbyId) return;
+
+            const lobby = lobbies.get(targetPlayer.lobbyId);
+            if (!lobby || lobby.status !== 'active') return;
+
+            // Find the player that was hit
+            const hitPlayer = Array.from(lobby.players.values()).find(p => p.id === data.playerId);
+            if (!hitPlayer || !hitPlayer.isAlive) return;
+
+            const damage = data.damage || 10;
+
+            console.log(`🔥 Player ${hitPlayer.username} hit by ${data.attackerId} for ${damage} damage`);
+
+            // Apply damage
+            hitPlayer.health -= damage;
+
+            // Track damage taken
+            if (hitPlayer.damageTaken !== undefined) {
+                hitPlayer.damageTaken += damage;
+            }
+
+            // Check if player died
+            if (hitPlayer.health <= 0) {
+                hitPlayer.health = 0;
+                hitPlayer.isAlive = false;
+
+                // Respawn after delay
+                setTimeout(() => {
+                    hitPlayer.isAlive = true;
+                    hitPlayer.health = hitPlayer.maxHealth;
+
+                    const worldCenterGrid = lobby.WORLD_SIZE / 2;
+                    const TILE_SIZE = 32;
+                    hitPlayer.position = {
+                        x: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2,
+                        y: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2
+                    };
+
+                    lobby.broadcast('player:died', {
+                        playerId: hitPlayer.id,
+                        playerName: hitPlayer.username,
+                        killedBy: data.attackerId,
+                        position: hitPlayer.position
+                    });
+
+                    lobby.broadcast('player:respawned', {
+                        playerId: hitPlayer.id,
+                        playerName: hitPlayer.username,
+                        position: hitPlayer.position,
+                        health: hitPlayer.health,
+                        maxHealth: hitPlayer.maxHealth,
+                        level: hitPlayer.level
+                    });
+                }, 3000);
+            } else {
+                // Player still alive, broadcast damage
+                lobby.broadcast('player:damaged', {
+                    playerId: hitPlayer.id,
+                    health: hitPlayer.health,
+                    maxHealth: hitPlayer.maxHealth,
+                    damage: damage,
+                    attackerId: data.attackerId
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error handling player:hit:', error);
+        }
+    });
+
     socket.on('item:pickup', (data) => {
         try {
             const player = players.get(socket.id);
