@@ -15,6 +15,7 @@ class Player {
         this.data = data;
 
         // Player state
+        this.username = data.username || 'Player';
         this.health = data.health;
         this.maxHealth = data.maxHealth;
         this.shield = 0; // Shield absorbs damage before health

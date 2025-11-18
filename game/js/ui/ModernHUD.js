@@ -522,6 +522,13 @@ class ModernHUD {
         this.xpText.setText(`${xp} / ${xpToNext}`);
     }
 
+    // Update username display
+    updateUsername(username) {
+        if (this.usernameText && username) {
+            this.usernameText.setText(username);
+        }
+    }
+
     // Methods to track stats (call these from game events)
     addKill() {
         this.playerStats.kills++;

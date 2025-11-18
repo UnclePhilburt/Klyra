@@ -1810,6 +1810,11 @@ class GameScene extends Phaser.Scene {
         // Create modern HUD system
         this.modernHUD = new ModernHUD(this, this.localPlayer);
 
+        // Update username in HUD (in case it wasn't set during player creation)
+        if (this.localPlayer && this.localPlayer.username) {
+            this.modernHUD.updateUsername(this.localPlayer.username);
+        }
+
         // Create skill selector system
         this.skillSelector = new SkillSelector(this);
 
