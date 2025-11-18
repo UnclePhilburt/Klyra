@@ -3931,6 +3931,9 @@ class GameScene extends Phaser.Scene {
         // Get controller input
         const controllerVector = this.controllerManager ? this.controllerManager.getMovementVector() : { x: 0, y: 0 };
 
+        // Get mobile joystick input
+        const mobileInput = typeof mobileControls !== 'undefined' ? mobileControls.getInput() : { x: 0, y: 0, active: false };
+
         // Keyboard input
         if (this.cursors.left.isDown || this.wasd.left.isDown) {
             velocityX = -1;
@@ -3944,8 +3947,13 @@ class GameScene extends Phaser.Scene {
             velocityY = 1;
         }
 
-        // Controller input (overrides keyboard if active)
-        if (Math.abs(controllerVector.x) > 0 || Math.abs(controllerVector.y) > 0) {
+        // Mobile joystick input (overrides keyboard if active)
+        if (mobileInput.active) {
+            velocityX = mobileInput.x;
+            velocityY = mobileInput.y;
+        }
+        // Controller input (overrides keyboard and mobile if active)
+        else if (Math.abs(controllerVector.x) > 0 || Math.abs(controllerVector.y) > 0) {
             velocityX = controllerVector.x;
             velocityY = controllerVector.y;
         } else {

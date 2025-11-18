@@ -238,8 +238,35 @@ class SkillSelector {
         bg.setStrokeStyle(2, 0x52525b, 0.5);
         bg.setScrollFactor(0);
         bg.setDepth(100001);
+        bg.setInteractive({ useHandCursor: true }); // Make clickable
         card.elements.push(bg);
         card.background = bg;
+
+        // Add click/touch handler for mobile support
+        bg.on('pointerdown', () => {
+            if (this.isActive) {
+                if (this.selectedIndex === index) {
+                    // Already selected, confirm it
+                    this.confirmSelection();
+                } else {
+                    // Not selected, highlight it
+                    this.selectCard(index);
+                }
+            }
+        });
+
+        // Hover effect for desktop
+        bg.on('pointerover', () => {
+            if (this.isActive && this.selectedIndex !== index) {
+                bg.setStrokeStyle(2, 0x8b5cf6, 0.7);
+            }
+        });
+
+        bg.on('pointerout', () => {
+            if (this.isActive && this.selectedIndex !== index) {
+                bg.setStrokeStyle(2, 0x52525b, 0.5);
+            }
+        });
 
         // Number indicator
         const numberBadge = this.scene.add.circle(x - width / 2 + 20, y - height / 2 + 20, 14, 0x8b5cf6, 0.3);
