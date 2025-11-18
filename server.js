@@ -1498,7 +1498,7 @@ class Lobby {
                         });
                     }
                 }
-                // If in attack range, shoot
+                // If in attack range, shoot projectile
                 else if (distance <= attackRange) {
                     const now = Date.now();
                     if (now - enemy.lastAttack >= enemy.attackCooldown) {
@@ -1506,29 +1506,22 @@ class Lobby {
 
                         // Calculate target position in pixels for projectile
                         const TILE_SIZE = 32;
-                        const targetPixelX = target.position.x * TILE_SIZE;
-                        const targetPixelY = target.position.y * TILE_SIZE;
+                        const targetPixelX = target.position.x * TILE_SIZE + TILE_SIZE / 2;
+                        const targetPixelY = target.position.y * TILE_SIZE + TILE_SIZE / 2;
 
-                        // Trigger attack animation on clients
-                        this.broadcast('player:damaged', {
-                            playerId: target.id,
-                            health: Math.max(0, target.health - enemy.damage),
-                            damage: enemy.damage,
-                            attackerId: enemy.id
+                        console.log(`🔥 Emberclaw ${enemy.id} shooting at ${target.isMinion ? 'minion' : 'player'} ${target.id}`);
+
+                        // Broadcast to clients to trigger shooting animation
+                        // Clients will handle projectile collision and send player:hit when it connects
+                        this.broadcast('enemy:attack', {
+                            enemyId: enemy.id,
+                            targetX: targetPixelX,
+                            targetY: targetPixelY,
+                            targetId: target.id
                         });
 
-                        // Deal damage to target
-                        if (target.isMinion) {
-                            // Minion hit - handle minion damage
-                            console.log(`🔥 Emberclaw shot minion ${target.id} for ${enemy.damage} damage`);
-                        } else {
-                            // Player hit
-                            const player = this.players.get(target.id);
-                            if (player) {
-                                player.health = Math.max(0, player.health - enemy.damage);
-                                console.log(`🔥 Emberclaw shot ${player.username} for ${enemy.damage} damage`);
-                            }
-                        }
+                        // Note: Damage will be applied when the projectile actually hits via player:hit event
+                        // This prevents instant damage before the projectile visual reaches the target
                     }
                 }
                 // If too far, move closer (but maintain distance)

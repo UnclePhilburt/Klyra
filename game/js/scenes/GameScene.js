@@ -2751,6 +2751,14 @@ class GameScene extends Phaser.Scene {
             }
         });
 
+        // Enemy attack (Emberclaw shooting)
+        networkManager.on('enemy:attack', (data) => {
+            const emberclaw = this.emberclaws[data.enemyId];
+            if (emberclaw && emberclaw.shootProjectile) {
+                emberclaw.shootProjectile(data.targetX, data.targetY);
+            }
+        });
+
         // Enemy killed
         networkManager.on('enemy:killed', (data) => {
             const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.emberclaws[data.enemyId];
