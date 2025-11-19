@@ -635,6 +635,20 @@ class Player {
 
         console.log(`🎉 Level Up! Now level ${this.level}`);
 
+        // Play level up sound for local player
+        if (this === this.scene.localPlayer && this.scene.sound) {
+            try {
+                this.scene.sound.play('levelup', { volume: 0.4 });
+            } catch (e) {
+                console.warn('Could not play level up sound:', e);
+            }
+        }
+
+        // Check for ability unlocks (Malachar's Q/E/R abilities)
+        if (this.scene && this.scene.checkAndUnlockAbilities && this === this.scene.localPlayer) {
+            this.scene.checkAndUnlockAbilities(this, this.level);
+        }
+
         // Show level up notification
         if (this === this.scene.localPlayer) {
             const levelUpText = this.scene.add.text(

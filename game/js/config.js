@@ -1,6 +1,6 @@
 // Game Configuration v5.9 - Force cache break
 const GameConfig = {
-    SERVER_URL: 'https://klyra-server.onrender.com',
+    SERVER_URL: 'http://localhost:3002',
 
     GAME: {
         WIDTH: 1280,
@@ -12,9 +12,9 @@ const GameConfig = {
     PLAYER: {
         SPEED: 120,  // Reduced from 200 for more tactical kiting gameplay
         HEALTH: 100,
-        // XP formula: baseXP * level^exponent
+        // XP: 100 XP per level (1 orb = 1 level)
         XP_BASE: 100,
-        XP_EXPONENT: 1.5
+        XP_EXPONENT: 1.0  // Linear progression: 100 XP per level
     },
 
     DEBUG: {

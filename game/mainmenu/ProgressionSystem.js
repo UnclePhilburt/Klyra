@@ -52,6 +52,7 @@ class ProgressionSystem {
             unlockedCharacters: [
                 'MALACHAR',    // Necromancer - Unlocked by default
                 'KELISE',      // Warrior - Unlocked by default
+                'ALDRIC',      // Tank/Fighter - Unlocked by default
             ],
             stats: {
                 totalRuns: 0,

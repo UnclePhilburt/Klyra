@@ -11,7 +11,6 @@ class PlayerSprite {
         this.topRight = null;
         this.bottomLeft = null;
         this.bottomRight = null;
-        this.collisionDebug = null;
 
         // Fallback elements
         this.circle = null;
@@ -66,7 +65,11 @@ class PlayerSprite {
         // Calculate scale based on sprite size
         // Kelise (32px) should be ~48px (scale 1.5)
         // Malachar (140px) should be ~112px (scale 0.8) - 2.3x bigger
-        const targetSize = frameWidth > 100 ? 112 : 48;
+        // Aldric (67px) should be scaled up a bit more
+        let targetSize = frameWidth > 100 ? 112 : 48;
+        if (textureKey === 'aldric') {
+            targetSize = 60; // Make Aldric bigger
+        }
         const scale = targetSize / frameWidth;
 
         const collisionWidth = 32;
@@ -75,15 +78,6 @@ class PlayerSprite {
         // Create physics body (invisible rectangle)
         this.physicsBody = this.scene.add.rectangle(x, y + 8, collisionWidth, collisionHeight, 0x000000, 0);
         this.scene.physics.add.existing(this.physicsBody);
-
-        // Debug collision box
-        this.collisionDebug = this.scene.add.rectangle(x, y + 8, collisionWidth, collisionHeight, 0x00ff00, 0);
-        this.collisionDebug.setStrokeStyle(2, 0x00ff00, 1);
-        this.collisionDebug.setDepth(9999);
-
-        if (this.scene.devSettings) {
-            this.collisionDebug.setVisible(this.scene.devSettings.showCollisionBoxes);
-        }
 
         // Create single sprite for 1x1 character
         // For Malachar, use the idle texture key since animations reference separate sprite sheets
@@ -122,15 +116,6 @@ class PlayerSprite {
         this.physicsBody = this.scene.add.rectangle(x, y + 12, collisionWidth, collisionHeight, 0x000000, 0);
         this.scene.physics.add.existing(this.physicsBody);
 
-        // Debug collision box
-        this.collisionDebug = this.scene.add.rectangle(x, y + 12, collisionWidth, collisionHeight, 0x00ff00, 0);
-        this.collisionDebug.setStrokeStyle(2, 0x00ff00, 1);
-        this.collisionDebug.setDepth(9999);
-
-        if (this.scene.devSettings) {
-            this.collisionDebug.setVisible(this.scene.devSettings.showCollisionBoxes);
-        }
-
         // Create visual sprites (4 tiles for 2x2)
         this.topLeft = this.scene.add.sprite(0, 0, textureKey, frames.topLeft);
         this.topRight = this.scene.add.sprite(0, 0, textureKey, frames.topRight);
@@ -154,18 +139,18 @@ class PlayerSprite {
         console.log(`⚠️ No sprite found, using fallback for ${this.characterClass}`);
 
         this.circle = this.scene.add.circle(x, y, 12, character.display.color);
-        this.circle.setDepth(y + 1000);
+        this.circle.setDepth(y); // Use Y position directly for proper depth sorting with trees
         this.scene.physics.add.existing(this.circle);
         this.physicsBody = this.circle;
 
         // Glow effect
         this.glow = this.scene.add.circle(x, y, 14, character.display.color, 0.3);
-        this.glow.setDepth(y + 999);
+        this.glow.setDepth(y - 1); // Slightly behind main circle
 
         // Weapon indicator
         this.weapon = this.scene.add.rectangle(x + 15, y, 20, 4, 0xffffff);
         this.weapon.setOrigin(0, 0.5);
-        this.weapon.setDepth(y + 1000);
+        this.weapon.setDepth(y); // Same depth as circle
 
         this.usingSprite = false;
     }
@@ -181,10 +166,6 @@ class PlayerSprite {
             // 1x1 sprite - simple position update
             this.sprite.setPosition(x, y);
             this.sprite.setDepth(depth);
-
-            if (this.collisionDebug) {
-                this.collisionDebug.setPosition(x, y + 8);
-            }
         } else if (!this.is1x1 && this.topLeft) {
             // 2x2 sprite - update all 4 tiles
             const spriteSize = 48;
@@ -207,18 +188,23 @@ class PlayerSprite {
             this.topRight.setDepth(depth);
             this.bottomLeft.setDepth(depth);
             this.bottomRight.setDepth(depth);
-
-            if (this.collisionDebug) {
-                this.collisionDebug.setPosition(x, y + 12);
-            }
         }
     }
 
     updateDepth() {
-        const depth = this.physicsBody.y + 1000;
+        // Use Y position directly for depth sorting with trees and environment
+        // Higher Y = further down screen = higher depth (renders in front)
+        const depth = this.physicsBody.y;
 
         if (this.usingSprite) {
             this.physicsBody.setDepth(depth);
+
+            // Update 1x1 sprite depth
+            if (this.sprite) {
+                this.sprite.setDepth(depth);
+            }
+
+            // Update 2x2 sprite depths
             if (this.topLeft) {
                 this.topLeft.setDepth(depth);
                 this.topRight.setDepth(depth);
@@ -226,6 +212,7 @@ class PlayerSprite {
                 this.bottomRight.setDepth(depth);
             }
         } else {
+            // Fallback circle character
             if (this.circle) this.circle.setDepth(depth);
             if (this.glow) this.glow.setDepth(depth - 1);
             if (this.weapon) this.weapon.setDepth(depth);
@@ -375,7 +362,11 @@ class PlayerSprite {
             if (isMoving && !this.isMoving) {
                 // Started moving - switch to running/walk animation
                 if (this.scene.anims.exists(runningAnimKey)) {
-                    this.sprite.play(runningAnimKey, true);
+                    try {
+                        this.sprite.play(runningAnimKey, true);
+                    } catch (error) {
+                        console.error(`Failed to play animation ${runningAnimKey}:`, error);
+                    }
                 }
                 this.isMoving = true;
 
@@ -422,7 +413,13 @@ class PlayerSprite {
     playAttackAnimation() {
         if (this.is1x1 && this.sprite) {
             const textureKey = this.characterClass.toLowerCase();
-            const attackAnimKey = `${textureKey}_attack`;
+            let attackAnimKey = `${textureKey}_attack`;
+
+            // For Aldric, randomly choose between 3 attack animations
+            if (textureKey === 'aldric') {
+                const attackVariants = ['aldric_attack', 'aldric_attack2', 'aldric_attack3'];
+                attackAnimKey = attackVariants[Math.floor(Math.random() * attackVariants.length)];
+            }
 
             if (this.scene.anims.exists(attackAnimKey)) {
                 this.sprite.play(attackAnimKey);
@@ -433,9 +430,16 @@ class PlayerSprite {
                     this.scene.sound.play('swipe', { volume: 0.2 });
                 }
 
+                // Play random attack sound for Aldric attacks
+                if (textureKey === 'aldric' && this.scene.sound) {
+                    const attackSounds = ['aldric_attack1', 'aldric_attack2', 'aldric_attack3'];
+                    const randomSound = attackSounds[Math.floor(Math.random() * attackSounds.length)];
+                    this.scene.sound.play(randomSound, { volume: 0.25 });
+                }
+
                 // Return to appropriate animation when attack completes
                 this.sprite.once('animationcomplete', (anim) => {
-                    if (anim.key === attackAnimKey) {
+                    if (anim.key === attackAnimKey || anim.key.startsWith(textureKey + '_attack')) {
                         // Check current movement state and play correct animation
                         const idleAnimKey = `${textureKey}_idle`;
                         let runningAnimKey = `${textureKey}_running`;
@@ -472,7 +476,6 @@ class PlayerSprite {
         if (this.topRight) this.topRight.destroy();
         if (this.bottomLeft) this.bottomLeft.destroy();
         if (this.bottomRight) this.bottomRight.destroy();
-        if (this.collisionDebug) this.collisionDebug.destroy();
         if (this.circle) this.circle.destroy();
         if (this.glow) this.glow.destroy();
         if (this.weapon) this.weapon.destroy();

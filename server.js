@@ -253,7 +253,8 @@ class Player {
             archer: { strength: 12, defense: 8, speed: 12, health: 100 },
             paladin: { strength: 13, defense: 15, speed: 7, health: 130 },
             necromancer: { strength: 9, defense: 7, speed: 9, health: 85 },
-            malachar: { strength: 16, defense: 10, speed: 9, health: 115 }
+            malachar: { strength: 16, defense: 10, speed: 9, health: 115 },
+            aldric: { strength: 14, defense: 18, speed: 8, health: 150 }
         };
 
         const stats = classStats[characterClass] || classStats.warrior;
@@ -379,6 +380,11 @@ class Lobby {
         this.regionClearedTime = new Map(); // regionKey -> timestamp when region was cleared
         this.REGION_INACTIVE_TIMEOUT = 120000; // Despawn wolves after 2 minutes of no players
         this.REGION_RESPAWN_COOLDOWN = 30000; // Wait 30 seconds before respawning in cleared region
+
+        // FLANKING HORDE SYSTEM: Spawn additional hordes to pincer players
+        this.playerFlankingCooldowns = new Map(); // playerId -> timestamp of last flanking spawn
+        this.FLANKING_COOLDOWN = 20000; // 20 seconds between flanking spawns per player
+        this.FLANKING_ENEMY_THRESHOLD = 15; // Trigger when fighting 15+ enemies
 
         // Start dynamic cleanup interval - runs every 30 seconds
         this.dynamicSpawnCleanup = setInterval(() => {
@@ -1045,6 +1051,102 @@ class Lobby {
         return players;
     }
 
+    // FLANKING HORDE SYSTEM: Spawn enemies to pincer/flank players in combat
+    checkAndSpawnFlankingHorde(player) {
+        const now = Date.now();
+        const TILE_SIZE = 32;
+
+        // Check cooldown
+        const lastFlankTime = this.playerFlankingCooldowns.get(player.id) || 0;
+        if (now - lastFlankTime < this.FLANKING_COOLDOWN) {
+            return; // Still on cooldown
+        }
+
+        // Count nearby enemies (within 15 tiles)
+        const playerGridX = Math.floor(player.position.x / TILE_SIZE);
+        const playerGridY = Math.floor(player.position.y / TILE_SIZE);
+        const nearbyEnemies = this.gameState.enemies.filter(enemy => {
+            if (!enemy.isAlive) return false;
+            const enemyGridX = Math.floor(enemy.position.x / TILE_SIZE);
+            const enemyGridY = Math.floor(enemy.position.y / TILE_SIZE);
+            const dist = Math.sqrt(
+                Math.pow(enemyGridX - playerGridX, 2) +
+                Math.pow(enemyGridY - playerGridY, 2)
+            );
+            return dist < 15; // Within 15 tiles
+        });
+
+        // Only spawn flanking horde if fighting a big group
+        if (nearbyEnemies.length < this.FLANKING_ENEMY_THRESHOLD) {
+            return;
+        }
+
+        // Determine flanking spawn direction (opposite side or perpendicular)
+        // Find the average direction of current enemies
+        let avgDx = 0;
+        let avgDy = 0;
+        nearbyEnemies.forEach(enemy => {
+            const ex = Math.floor(enemy.position.x / TILE_SIZE);
+            const ey = Math.floor(enemy.position.y / TILE_SIZE);
+            avgDx += (ex - playerGridX);
+            avgDy += (ey - playerGridY);
+        });
+        avgDx /= nearbyEnemies.length;
+        avgDy /= nearbyEnemies.length;
+
+        // Spawn from opposite direction (behind the player relative to enemy horde)
+        // Add some randomness (±45 degrees) to make it less predictable
+        const angle = Math.atan2(avgDy, avgDx) + Math.PI + (Math.random() - 0.5) * (Math.PI / 2);
+        const spawnDistance = 10 + Math.floor(Math.random() * 5); // 10-14 tiles away
+
+        const flankX = playerGridX + Math.floor(Math.cos(angle) * spawnDistance);
+        const flankY = playerGridY + Math.floor(Math.sin(angle) * spawnDistance);
+
+        // Clamp to world bounds
+        const spawnX = Math.max(5, Math.min(this.WORLD_SIZE - 5, flankX));
+        const spawnY = Math.max(5, Math.min(this.WORLD_SIZE - 5, flankY));
+
+        // Spawn a smaller flanking pack (5-8 enemies)
+        const flankPackSize = 5 + Math.floor(Math.random() * 4);
+        const newEnemies = [];
+
+        for (let i = 0; i < flankPackSize; i++) {
+            const offsetX = Math.floor((Math.random() - 0.5) * 6);
+            const offsetY = Math.floor((Math.random() - 0.5) * 6);
+            const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, spawnX + offsetX));
+            const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, spawnY + offsetY));
+
+            // Random enemy type (wolf/minotaur/mushroom)
+            const types = ['wolf', 'minotaur', 'mushroom'];
+            const enemyType = types[Math.floor(Math.random() * types.length)];
+
+            const flankingId = `${this.id}_flanking_${player.id}_${now}_${i}`;
+            let enemy;
+
+            if (enemyType === 'wolf') {
+                enemy = this.createWolfVariant('normal', flankingId, { x, y }, 1.0);
+            } else if (enemyType === 'minotaur') {
+                enemy = this.createMinotaurVariant('normal', flankingId, { x, y }, 1.0);
+            } else {
+                enemy = this.createMushroomVariant('normal', flankingId, { x, y }, 1.0);
+            }
+
+            enemy.isFlanking = true; // Mark as flanking enemy
+            this.gameState.enemies.push(enemy);
+            newEnemies.push(enemy);
+        }
+
+        // Update cooldown
+        this.playerFlankingCooldowns.set(player.id, now);
+
+        // Broadcast flanking enemies to all players
+        newEnemies.forEach(enemy => {
+            this.broadcast('enemy:spawned', { enemy });
+        });
+
+        console.log(`⚔️ FLANKING HORDE spawned ${flankPackSize} enemies behind ${player.username} (fighting ${nearbyEnemies.length} enemies)`);
+    }
+
     // DYNAMIC SPAWN SYSTEM: Cleanup wolves from inactive regions
     cleanupInactiveRegions() {
         const now = Date.now();
@@ -1311,6 +1413,15 @@ class Lobby {
         if (now - this.lastCleanup > 10000) { // Every 10 seconds
             this.cleanupDistantEnemies();
             this.lastCleanup = now;
+        }
+
+        // Check for flanking horde spawns every 2 seconds
+        if (!this.lastFlankingCheck) this.lastFlankingCheck = 0;
+        if (now - this.lastFlankingCheck > 2000) { // Every 2 seconds
+            this.players.forEach(player => {
+                this.checkAndSpawnFlankingHorde(player);
+            });
+            this.lastFlankingCheck = now;
         }
 
         // Debug: Check if we have enemies
@@ -2316,23 +2427,33 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Handle item pickup
     // Player hit by enemy projectile (client-side collision detection)
+    console.log(`🎮 Registering player:hit handler for socket ${socket.id}`);
     socket.on('player:hit', (data) => {
+        console.log(`🎯 SERVER RECEIVED player:hit event:`, data);
         try {
             const targetPlayer = players.get(socket.id);
-            if (!targetPlayer || !targetPlayer.lobbyId) return;
+            if (!targetPlayer || !targetPlayer.lobbyId) {
+                console.log(`⚠️ player:hit rejected: no player or lobby (socketId: ${socket.id})`);
+                return;
+            }
 
             const lobby = lobbies.get(targetPlayer.lobbyId);
-            if (!lobby || lobby.status !== 'active') return;
+            if (!lobby || lobby.status !== 'active') {
+                console.log(`⚠️ player:hit rejected: invalid lobby status`);
+                return;
+            }
 
             // Find the player that was hit
             const hitPlayer = Array.from(lobby.players.values()).find(p => p.id === data.playerId);
-            if (!hitPlayer || !hitPlayer.isAlive) return;
+            if (!hitPlayer || !hitPlayer.isAlive) {
+                console.log(`⚠️ player:hit rejected: player not found or dead (playerId: ${data.playerId})`);
+                return;
+            }
 
             const damage = data.damage || 10;
 
-            console.log(`🔥 Player ${hitPlayer.username} hit by ${data.attackerId} for ${damage} damage`);
+            console.log(`🔥 Player ${hitPlayer.username} hit by ${data.attackerId} for ${damage} damage (${hitPlayer.health} -> ${hitPlayer.health - damage})`);
 
             // Apply damage
             hitPlayer.health -= damage;

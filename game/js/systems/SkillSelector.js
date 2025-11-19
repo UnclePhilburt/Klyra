@@ -140,6 +140,10 @@ class SkillSelector {
     }
 
     show(playerClass, currentLevel) {
+        // DISABLED: Using new seamless notification system instead
+        console.log(`⏭️ Skill selector UI disabled - using seamless notifications`);
+        return;
+
         if (this.isActive) return;
         this.isActive = true;
 

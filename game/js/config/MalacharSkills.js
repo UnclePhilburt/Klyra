@@ -305,18 +305,66 @@ const MalacharSkillTree = {
 
 /**
  * Get available choices for a given level
+ * Malachar now has a single fixed path: Bone Commander
+ * Abilities unlock at: E (level 1), Q (level 5), R (level 10)
  * @param {number} level - The level to get choices for
  * @param {array} unlockedSkills - Array of unlocked skill IDs
  * @returns {array} - Array of skill choices (empty if no choices for this level)
  */
 function getAvailableChoices(level, unlockedSkills = []) {
-    // Only allow skill selection at level 1
-    if (level === 1) {
-        return MalacharSkillTree.tier1.choices;
+    const boneCommander = MalacharSkillTree.tier1.choices.find(c => c.id === 'bone_commander');
+
+    if (!boneCommander) {
+        console.error('❌ Bone Commander build not found!');
+        return [];
     }
 
-    // No skill selections after level 1
-    console.log(`🔒 Malachar Tier 1 only - no skills available for level ${level}`);
+    // Level 1: Unlock E ability (Pact of Bones)
+    if (level === 1) {
+        return [{
+            id: 'bone_commander_e',
+            name: boneCommander.abilities.e.name,
+            description: boneCommander.abilities.e.description,
+            type: 'ability',
+            abilityKey: 'e',
+            build: boneCommander,
+            effects: boneCommander.abilities.e.effect,
+            cooldown: boneCommander.abilities.e.cooldown
+        }];
+    }
+
+    // Level 5: Unlock Q ability (Unified Front)
+    if (level === 5) {
+        return [{
+            id: 'bone_commander_q',
+            name: boneCommander.abilities.q.name,
+            description: boneCommander.abilities.q.description,
+            type: 'ability',
+            abilityKey: 'q',
+            build: boneCommander,
+            effects: boneCommander.abilities.q.effect,
+            cooldown: boneCommander.abilities.q.cooldown,
+            duration: boneCommander.abilities.q.duration
+        }];
+    }
+
+    // Level 10: Unlock R ability (Legion's Call)
+    if (level === 10) {
+        return [{
+            id: 'bone_commander_r',
+            name: boneCommander.abilities.r.name,
+            description: boneCommander.abilities.r.description,
+            type: 'ability',
+            abilityKey: 'r',
+            build: boneCommander,
+            effects: boneCommander.abilities.r.effect,
+            cooldown: boneCommander.abilities.r.cooldown,
+            duration: boneCommander.abilities.r.duration
+        }];
+    }
+
+    // No abilities for other levels
+    console.log(`🔒 No abilities unlock at level ${level}`);
     return [];
 }
 

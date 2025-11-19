@@ -88,6 +88,65 @@ class BootScene extends Phaser.Scene {
             spacing: 0
         });
 
+        // Aldric sprite sheets (individual animation files, all 83x86 frames)
+        this.load.spritesheet('aldric_attack1', 'assets/sprites/Aldric/Attack 1.png', {
+            frameWidth: 83,
+            frameHeight: 86,
+            margin: 0,
+            spacing: 0
+        });
+
+        this.load.spritesheet('aldric_dead', 'assets/sprites/Aldric/Dead.png', {
+            frameWidth: 83,
+            frameHeight: 86,
+            margin: 0,
+            spacing: 0
+        });
+
+        this.load.spritesheet('aldric_defend', 'assets/sprites/Aldric/Defend.png', {
+            frameWidth: 83,
+            frameHeight: 86,
+            margin: 0,
+            spacing: 0
+        });
+
+        this.load.spritesheet('aldric_hurt', 'assets/sprites/Aldric/Hurt.png', {
+            frameWidth: 83,
+            frameHeight: 86,
+            margin: 0,
+            spacing: 0
+        });
+
+        // Aldric sprite sheets (107x86 frames)
+        this.load.spritesheet('aldric_attack2', 'assets/sprites/Aldric/Attack 2.png', {
+            frameWidth: 107,
+            frameHeight: 86,
+            margin: 0,
+            spacing: 0
+        });
+
+        this.load.spritesheet('aldric_attack3', 'assets/sprites/Aldric/Attack 3.png', {
+            frameWidth: 107,
+            frameHeight: 86,
+            margin: 0,
+            spacing: 0
+        });
+
+        // Aldric sprite sheets (67x86 frames for idle)
+        this.load.spritesheet('aldric_idle', 'assets/sprites/Aldric/Idle.png', {
+            frameWidth: 67,
+            frameHeight: 86,
+            margin: 0,
+            spacing: 0
+        });
+
+        this.load.spritesheet('aldric_move', 'assets/sprites/Aldric/Run.png', {
+            frameWidth: 72,
+            frameHeight: 86,
+            margin: 0,
+            spacing: 0
+        });
+
         // Malachar's Minion sprite sheet (5 rows x 13 columns, 64x64px)
         this.load.spritesheet('malacharminion', 'assets/sprites/malacharminion.png', {
             frameWidth: 64,
@@ -199,6 +258,28 @@ class BootScene extends Phaser.Scene {
         this.load.audio('minion_punch', 'assets/soundeffects/punch.wav');
         console.log('📦 Loading minion attack sound');
 
+        // Load minion explosion sound (Pact of Bones ability)
+        this.load.audio('minionexplosion', 'assets/soundeffects/minionexplosion.mp3');
+        console.log('📦 Loading minion explosion sound');
+
+        // Load orb collection and level up sounds
+        this.load.audio('orbcollect', 'assets/soundeffects/orbcollect.mp3');
+        this.load.audio('levelup', 'assets/soundeffects/levelup.mp3');
+        console.log('📦 Loading orb collection and level up sounds');
+
+        // Load Aldric attack sounds
+        this.load.audio('aldric_attack1', 'assets/soundeffects/aldrick/attack1.mp3');
+        this.load.audio('aldric_attack2', 'assets/soundeffects/aldrick/attack2.mp3');
+        this.load.audio('aldric_attack3', 'assets/soundeffects/aldrick/attack3.mp3');
+        console.log('📦 Loading Aldric attack sounds (3 variations)');
+
+        // Load potions sprite sheet (16x16px, 14 frames per row)
+        this.load.spritesheet('potions', 'assets/sprites/potions.png', {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        console.log('📦 Loading potions sprite sheet (for XP orbs)');
+
         console.log('✅ Loaded character sprites: kelise, malachar');
     }
 
@@ -266,6 +347,65 @@ class BootScene extends Phaser.Scene {
         });
 
         console.log('✅ Created Malachar animations: idle (10 frames), walk (8 frames), attack (13 frames), death (18 frames)');
+
+        // Create Aldric animations (1x1 character with varying frame sizes)
+        this.anims.create({
+            key: 'aldric_idle',
+            frames: this.anims.generateFrameNumbers('aldric_idle', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'aldric_running',
+            frames: this.anims.generateFrameNumbers('aldric_move', { start: 0, end: 5 }),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'aldric_attack',
+            frames: this.anims.generateFrameNumbers('aldric_attack1', { start: 0, end: 4 }),
+            frameRate: 16,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'aldric_attack2',
+            frames: this.anims.generateFrameNumbers('aldric_attack2', { start: 0, end: 3 }),
+            frameRate: 16,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'aldric_attack3',
+            frames: this.anims.generateFrameNumbers('aldric_attack3', { start: 0, end: 2 }),
+            frameRate: 16,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'aldric_death',
+            frames: this.anims.generateFrameNumbers('aldric_dead', { start: 0, end: 4 }),
+            frameRate: 8,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'aldric_defend',
+            frames: this.anims.generateFrameNumbers('aldric_defend', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'aldric_hurt',
+            frames: this.anims.generateFrameNumbers('aldric_hurt', { start: 0, end: 0 }),
+            frameRate: 8,
+            repeat: 0
+        });
+
+        console.log('✅ Created Aldric animations: idle (4 frames), running (6 frames), attack1 (5 frames), attack2 (4 frames), attack3 (3 frames), death (5 frames), defend (4 frames), hurt (1 frame)');
 
         // Create minion animations
         // 5 rows x 13 columns, 64x64px

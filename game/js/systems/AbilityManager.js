@@ -295,13 +295,34 @@ class AbilityManager {
             const ability = this.player.abilities ? this.player.abilities[key] : null;
             const colors = ui.colorTheme;
 
+            // Debug: Log ability status for Q
+            if (key === 'q') { // Always log for debugging
+                const state = (cooldown > 0 && ability) ? 'COOLDOWN' :
+                             (ability) ? 'READY' : 'NO_ABILITY';
+                console.log(`🔍 Q Ability Status:`, {
+                    state: state,
+                    cooldown: cooldown,
+                    hasAbility: !!ability,
+                    abilityData: ability,
+                    playerAbilities: this.player.abilities,
+                    keyText: ui.keyText.text,
+                    labelText: ui.label.text
+                });
+            }
+
             const centerX = -ui.boxWidth/2 + ui.circleRadius + 10;
 
             // Update ability name
             if (ability) {
                 ui.label.setText(ability.name);
             } else {
-                ui.label.setText('...');
+                // Show locked state with level requirement
+                const lockLevel = key === 'q' ? 5 : key === 'r' ? 10 : null;
+                if (lockLevel) {
+                    ui.label.setText(`🔒 LVL ${lockLevel}`);
+                } else {
+                    ui.label.setText('...');
+                }
             }
 
             // COOLDOWN STATE
@@ -372,6 +393,7 @@ class AbilityManager {
                     Phaser.Display.Color.IntegerToRGB(colors.primary).g,
                     Phaser.Display.Color.IntegerToRGB(colors.primary).b
                 ));
+                ui.keyText.setText(key.toUpperCase()); // Show key letter during cooldown
                 ui.keyText.setColor('#9ca3af');
                 ui.label.setColor('#d1d5db');
 
@@ -423,6 +445,7 @@ class AbilityManager {
                 const colorStr = '#' + colors.primary.toString(16).padStart(6, '0');
                 ui.cooldownText.setText('⚡ READY');
                 ui.cooldownText.setColor(colorStr);
+                ui.keyText.setText(key.toUpperCase()); // Show key letter when ready
                 ui.keyText.setColor(colorStr);
                 ui.label.setColor('#ffffff');
 
@@ -549,7 +572,9 @@ class AbilityManager {
                 ui.outerGlow2.clear();
                 ui.shimmer.clear();
 
-                // Dim inactive background
+                // Locked state styling - only show lock if ability doesn't exist
+                const lockLevel = !ability && (key === 'q' ? 5 : key === 'r' ? 10 : null);
+
                 ui.bg.clear();
                 ui.bg.fillStyle(0x0a0a0f, 0.6);
                 ui.bg.fillRoundedRect(-ui.boxWidth/2, -ui.boxHeight/2, ui.boxWidth, ui.boxHeight, 8);
@@ -560,10 +585,19 @@ class AbilityManager {
                 ui.keyCircle.setFillStyle(0x18181b, 0.8);
                 ui.keyCircleInner.setAlpha(0);
 
+                // Show lock icon or key based on state
+                if (lockLevel) {
+                    ui.keyText.setText('🔒');
+                    ui.keyText.setColor('#71717a'); // Lighter gray for lock icon
+                    ui.label.setColor('#a1a1aa'); // Lighter text for locked abilities
+                } else {
+                    ui.keyText.setText(key.toUpperCase());
+                    ui.keyText.setColor('#52525b');
+                    ui.label.setColor('#52525b');
+                }
+
                 ui.cooldownText.setText('---');
                 ui.cooldownText.setColor('#3f3f46');
-                ui.keyText.setColor('#52525b');
-                ui.label.setColor('#52525b');
             }
         });
     }

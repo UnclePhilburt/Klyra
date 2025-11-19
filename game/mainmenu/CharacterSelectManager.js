@@ -151,7 +151,7 @@ class CharacterSelectManager {
                 this.musicVolume.value = savedVolume;
                 this.updateVolumeBar(savedVolume);
             } else {
-                this.updateVolumeBar(30); // Default
+                this.updateVolumeBar(5); // Default 5%
             }
             
             // Use both 'input' and 'change' events for better compatibility

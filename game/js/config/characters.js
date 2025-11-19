@@ -117,6 +117,70 @@ const CHARACTERS = {
             background: "Malachar commands the forces of death itself. Once a noble mage, he embraced forbidden necromancy to save his kingdom - only to become the very thing he fought against.",
             quote: "Death is not the end. It is merely a new beginning under my command."
         }
+    },
+
+    ALDRIC: {
+        id: "ALDRIC",
+        display: {
+            name: "Aldric",
+            description: "Stalwart defender with unyielding resolve",
+            class: "Tank/Fighter",
+            color: 0x4169E1,
+            locked: false,
+            avatar: "assets/sprites/Aldric/Idle.png"
+        },
+        sprite: {
+            frameWidth: 67,
+            frameHeight: 86,
+            frames: {
+                // Aldric is 1x1 tile with varying frame sizes
+                idle: { start: 0, end: 3 },      // 4 frames (67x86)
+                running: { start: 0, end: 5 },   // 6 frames (72x86) - uses move spritesheet
+                death: { start: 0, end: 4 },     // 5 frames (83x86)
+                attack: { start: 0, end: 4 }     // 5 frames (83x86)
+            },
+            tileSize: 1  // 1x1 character
+        },
+        equipment: {
+            startingWeapon: "iron_sword"
+        },
+        autoAttack: {
+            name: "Crushing Blow",
+            damage: 35,
+            cooldown: 900,  // Slower attack speed - 0.9s between attacks to enjoy animation
+            range: 3.5,     // 3.5 tiles - increased range to compensate
+            target: "enemy",
+            effects: {
+                onHit: {
+                    damageBonus: 0
+                }
+            }
+        },
+        stats: {
+            base: {
+                maxHP: 150,
+                damage: 28,
+                moveSpeed: 260,
+                attackSpeed: 0.9,
+                critChance: 0.05,
+                critDamage: 1.6,
+                armor: 12
+            },
+            growth: {
+                hpPerLevel: 15,
+                damagePerLevel: 4.5
+            }
+        },
+        passives: [
+            { id: "shield_wall", name: "Shield Wall", description: "+50% armor when below 50% HP" },
+            { id: "iron_will", name: "Iron Will", description: "+10% damage reduction" },
+            { id: "steadfast", name: "Steadfast", description: "Cannot be slowed below 70% movement speed" }
+        ],
+        lore: {
+            title: "The Iron Guardian",
+            background: "Aldric stands as an immovable fortress on the battlefield. Trained in the ancient defensive arts, he protects his allies while crushing those foolish enough to challenge him.",
+            quote: "I am the wall that will never fall."
+        }
     }
 };
 

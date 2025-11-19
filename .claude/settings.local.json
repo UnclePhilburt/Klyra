@@ -37,7 +37,9 @@
       "Bash(del C:klyraCONNECTION_TEST.txt C:klyraRESTART_TEST.txt)",
       "Bash(curl:*)",
       "Bash(git pull:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(git remote:*)",
+      "Bash(PORT=3002 node:*)"
     ],
     "deny": [],
     "ask": []

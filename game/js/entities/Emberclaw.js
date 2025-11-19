@@ -362,12 +362,20 @@ class Emberclaw {
                     console.log(`🔥 Emberclaw projectile hit player for ${proj.damage} damage`);
 
                     // Send damage to server (server will handle damage and broadcast to all clients)
+                    const networkManager = this.scene.game.registry.get('networkManager');
                     if (networkManager && networkManager.connected) {
+                        console.log(`📡 Emitting player:hit to server:`, {
+                            playerId: this.scene.localPlayer.data.id,
+                            damage: proj.damage,
+                            attackerId: proj.ownerId
+                        });
                         networkManager.socket.emit('player:hit', {
                             playerId: this.scene.localPlayer.data.id,
                             damage: proj.damage,
                             attackerId: proj.ownerId
                         });
+                    } else {
+                        console.warn('⚠️ NetworkManager not available or not connected');
                     }
 
                     // Destroy projectile

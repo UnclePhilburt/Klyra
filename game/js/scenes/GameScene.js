@@ -571,6 +571,26 @@ class GameScene extends Phaser.Scene {
             this.allyManager = new AllyManager(this);
             console.log('✅ AllyManager initialized');
 
+            // Initialize character build and unlock starting ability (delayed slightly to ensure everything is initialized)
+            this.time.delayedCall(500, () => {
+                try {
+                    if (!this.localPlayer) {
+                        console.error('❌ localPlayer not initialized');
+                        return;
+                    }
+
+                    console.log('🎮 Initializing character build and abilities...');
+
+                    // Apply character's starting build (e.g., Bone Commander for Malachar)
+                    this.applyCharacterBuild(this.localPlayer);
+
+                    // Then unlock first ability
+                    this.checkAndUnlockAbilities(this.localPlayer, 1);
+                } catch (error) {
+                    console.error('❌ Error in character initialization:', error);
+                }
+            });
+
             // Send initial position immediately (PIXEL coordinates for smooth movement)
             const pixelPos = {
                 x: Math.round(this.localPlayer.sprite.x),
@@ -579,16 +599,7 @@ class GameScene extends Phaser.Scene {
             console.log(`📍 Sending initial pixel position: (${pixelPos.x}, ${pixelPos.y})`);
             networkManager.movePlayer(pixelPos);
 
-            // Spawn permanent minion if local player is Malachar
-            if (myData.class === 'MALACHAR') {
-                this.spawnMinion(
-                    this.localPlayer.sprite.x + 40,
-                    this.localPlayer.sprite.y,
-                    myData.id,
-                    true // permanent
-                );
-                console.log('🔮 Spawned permanent minion for local Malachar player');
-            }
+            // Minions are now spawned via applyCharacterBuild() system
 
             // Show skill selector immediately at level 1 for path selection
             if (myData.level === 1) {
@@ -625,15 +636,7 @@ class GameScene extends Phaser.Scene {
                     });
                 }
 
-                // Spawn permanent minion if player is Malachar
-                if (playerData.class === 'MALACHAR') {
-                    this.spawnMinion(
-                        otherPlayer.sprite.x + 40,
-                        otherPlayer.sprite.y,
-                        playerData.id,
-                        true // permanent
-                    );
-                }
+                // Minions are now spawned via applyCharacterBuild() system
             }
         });
 
@@ -1218,6 +1221,11 @@ class GameScene extends Phaser.Scene {
             const collisionTile = (TREE_TILES === TREE_TWO) ? 101 : 65;
             let collisionY = 0;
 
+            // Calculate tree depth based on bottom of tree (collision position + tileSize)
+            // This will be the same for all tiles in the tree for proper Y-sorting
+            // We'll update this once we find the collision tile, then apply to all sprites
+            let treeDepth = py; // Default to tree base position
+
             for (let row = 0; row < TREE_TILES.length; row++) {
                 const rowTiles = TREE_TILES[row];
 
@@ -1235,7 +1243,7 @@ class GameScene extends Phaser.Scene {
                     const tileSprite = this.add.sprite(tilePx, tilePy, 'objects_d', tileFrame);
                     tileSprite.setOrigin(0, 0);
                     tileSprite.setScale(scale);
-                    tileSprite.setDepth(tilePy + tileSize); // Depth based on bottom of tile for Y-sorting
+                    // Depth will be set after we find collision tile
 
                     // Don't add to tileContainer - add directly to scene for proper depth sorting
                     treeGroup.push(tileSprite);
@@ -1243,6 +1251,7 @@ class GameScene extends Phaser.Scene {
                     // Add collision on specific tile
                     if (tileFrame === collisionTile) {
                         collisionY = tilePy;  // Top of the collision tile for depth sorting
+                        treeDepth = collisionY + tileSize; // Bottom of collision tile = tree's ground position
 
                         // Create collision rectangle at the tile's actual position
                         // Use tilePx which already has xOffset applied for TREE_TWO
@@ -1279,6 +1288,12 @@ class GameScene extends Phaser.Scene {
                     }
                 }
             }
+
+            // Set depth for all tree tiles based on the tree's ground position
+            // This ensures the entire tree (including top foliage) is sorted based on trunk position
+            treeGroup.forEach(sprite => {
+                sprite.setDepth(treeDepth);
+            });
 
             // Store tree sprites with collision Y for depth sorting
             this.treeSprites.push({
@@ -1359,6 +1374,10 @@ class GameScene extends Phaser.Scene {
 
             let collisionY = 0;
 
+            // Calculate tree depth based on bottom of tree (collision position + tileSize)
+            // This will be the same for all tiles in the tree for proper Y-sorting
+            let treeDepth = py; // Default to tree base position
+
             // Render all tree tiles
             for (let row = 0; row < TREE_TILES.length; row++) {
                 const rowTiles = TREE_TILES[row];
@@ -1378,13 +1397,14 @@ class GameScene extends Phaser.Scene {
                     const tileSprite = this.add.sprite(tilePx, tilePy, 'red_trees', tileFrame);
                     tileSprite.setOrigin(0, 0);
                     tileSprite.setScale(scale);
-                    tileSprite.setDepth(tilePy + tileSize);
+                    // Depth will be set after we find collision tile
 
                     treeGroup.push(tileSprite);
 
                     // Add collision on the specified tile
                     if (row === collisionRow && col === collisionCol) {
                         collisionY = tilePy;
+                        treeDepth = collisionY + tileSize; // Bottom of collision tile = tree's ground position
 
                         const collisionRect = this.add.rectangle(
                             tilePx + (tileSize / 2),
@@ -1407,6 +1427,12 @@ class GameScene extends Phaser.Scene {
                     }
                 }
             }
+
+            // Set depth for all tree tiles based on the tree's ground position
+            // This ensures the entire tree (including top foliage) is sorted based on trunk position
+            treeGroup.forEach(sprite => {
+                sprite.setDepth(treeDepth);
+            });
 
             // Store red tree sprites
             this.treeSprites.push({
@@ -2152,15 +2178,7 @@ class GameScene extends Phaser.Scene {
                 // Initialize map tracking (new players start on exterior)
                 newPlayer.currentMap = data.player.currentMap || 'exterior';
 
-                // Spawn permanent minion if player is Malachar
-                if (data.player.class === 'MALACHAR') {
-                    this.spawnMinion(
-                        newPlayer.sprite.x + 40,
-                        newPlayer.sprite.y,
-                        data.player.id,
-                        true // permanent
-                    );
-                }
+                // Minions are now spawned via applyCharacterBuild() system
 
                 // Add tree collisions to new player
                 if (this.treeCollisions) {
@@ -2351,16 +2369,8 @@ class GameScene extends Phaser.Scene {
                         );
                     }
 
-                    // Show skill selector only at milestone levels (new skill tree v2)
-                    const milestones = [1, 5, 10, 15];
-                    const isMilestone = milestones.includes(data.level) || data.level >= 16;
-
-                    if (this.skillSelector && isMilestone) {
-                        debug.info('SKILLS', `Milestone level ${data.level} - showing skill selector`);
-                        this.skillSelector.show(player.class, data.level);
-                    } else {
-                        debug.debug('SKILLS', `Level ${data.level} - no skill choices (milestones: 1, 5, 10, 15, 16+)`);
-                    }
+                    // Auto-unlock abilities at specific levels with notification
+                    this.checkAndUnlockAbilities(player, data.level);
                 }
             }
         });
@@ -2792,7 +2802,9 @@ class GameScene extends Phaser.Scene {
                 this.addScreenBloodSplatter();
 
                 // Spawn experience orb at death location
-                this.spawnExperienceOrb(deathX, deathY);
+                // 20% chance for rare orb (100 XP), 80% chance for common orb (10 XP)
+                const orbValue = Math.random() < 0.2 ? 100 : 10;
+                this.spawnExperienceOrb(deathX, deathY, orbValue);
 
                 enemy.die();
 
@@ -3447,7 +3459,8 @@ class GameScene extends Phaser.Scene {
         const orb = new ExperienceOrb(this, { x, y, expValue });
         this.experienceOrbs[orbId] = orb;
 
-        console.log(`💎 Spawned experience orb [${orbId}] at (${x.toFixed(0)}, ${y.toFixed(0)}) worth ${expValue} XP`);
+        const orbType = expValue >= 100 ? 'RARE' : 'common';
+        console.log(`💎 Spawned ${orbType} experience orb [${orbId}] at (${x.toFixed(0)}, ${y.toFixed(0)}) worth ${expValue} XP`);
 
         return orb;
     }
@@ -3609,7 +3622,7 @@ class GameScene extends Phaser.Scene {
             }
 
             // Center camera on respawn point
-            this.cameras.main.centerOn(pixelX, pixelY);
+            this.cameras.main.centerOn(respawnPos.x, respawnPos.y);
             this.cameras.main.startFollow(player.sprite);
 
             console.log(`📍 Respawned at (${respawnPos.x}, ${respawnPos.y})`);
@@ -4058,8 +4071,8 @@ class GameScene extends Phaser.Scene {
         Object.keys(this.experienceOrbs).forEach(orbId => {
             const orb = this.experienceOrbs[orbId];
             if (orb && orb.checkCollision(playerX, playerY)) {
-                // Collect the orb
-                orb.collect();
+                // Collect the orb and pass player position
+                orb.collect(playerX, playerY);
 
                 // Add experience to local player
                 this.localPlayer.addExperience(orb.expValue);
@@ -4115,13 +4128,30 @@ class GameScene extends Phaser.Scene {
         // Higher Y = further down screen = higher depth (in front)
         // PERFORMANCE: Only update depth for moving objects (players), NOT static objects (trees)
 
-        // Set player depth based on Y position
-        this.localPlayer.sprite.setDepth(this.localPlayer.sprite.y);
+        // Set player depth based on Y position using PlayerSprite's updateDepth method
+        // This properly updates all visual sprites (1x1 or 2x2), not just the collision box
+        if (this.localPlayer && this.localPlayer.spriteRenderer) {
+            this.localPlayer.spriteRenderer.updateDepth();
+        }
 
         // Update other players' depth
         Object.values(this.otherPlayers).forEach(player => {
-            if (player.sprite && player.sprite.active) {
-                player.sprite.setDepth(player.sprite.y);
+            if (player && player.spriteRenderer && player.sprite && player.sprite.active) {
+                player.spriteRenderer.updateDepth();
+            }
+        });
+
+        // Update enemies' depth for Y-sorting with trees
+        Object.values(this.enemies).forEach(enemy => {
+            if (enemy && enemy.sprite && enemy.sprite.active) {
+                enemy.sprite.setDepth(enemy.sprite.y);
+            }
+        });
+
+        // Update minions' depth for Y-sorting with trees
+        Object.values(this.minions || {}).forEach(minion => {
+            if (minion && minion.sprite && minion.sprite.active) {
+                minion.sprite.setDepth(minion.sprite.y);
             }
         });
 
@@ -4231,53 +4261,62 @@ class GameScene extends Phaser.Scene {
 
         const explosionRadius = effects.explosionRadius || 96; // 3 tiles default
 
+        // Staggered domino effect - 250ms delay between each explosion
         effects.minions.forEach((minionData, index) => {
+            const delay = index * 250;
             const { explosionX, explosionY, minionId, teleportX, teleportY } = minionData;
 
-            // Create explosion visual effect at explosion location
-            const explosion = this.add.circle(explosionX, explosionY, explosionRadius, 0x8B008B, 0.3);
-            explosion.setDepth(9999);
+            this.time.delayedCall(delay, () => {
+                // Play explosion sound effect (quieter)
+                if (this.sound) {
+                    this.sound.play('minionexplosion', { volume: 0.15 });
+                }
 
-            this.tweens.add({
-                targets: explosion,
-                scale: 1.5,
-                alpha: 0,
-                duration: 500,
-                ease: 'Power2',
-                onComplete: () => explosion.destroy()
-            });
+                // Create explosion visual effect at explosion location
+                const explosion = this.add.circle(explosionX, explosionY, explosionRadius, 0x8B008B, 0.3);
+                explosion.setDepth(9999);
 
-            // Spawn fire at explosion location (after short delay)
-            this.time.delayedCall(200, () => {
-                this.spawnFireVisual(explosionX, explosionY);
-            });
-
-            // Teleport minion to new position
-            const minion = this.minions[minionId];
-            if (minion && minion.sprite && teleportX !== undefined && teleportY !== undefined) {
-                // Hide minion briefly
-                minion.sprite.setAlpha(0);
-
-                // Teleport after brief delay
-                this.time.delayedCall(300, () => {
-                    if (minion && minion.sprite && minion.sprite.scene) {
-                        minion.sprite.x = teleportX;
-                        minion.sprite.y = teleportY;
-                        minion.sprite.setAlpha(1);
-
-                        // Show respawn effect
-                        const respawnCircle = this.add.circle(teleportX, teleportY, 20, 0x8B008B, 0.6);
-                        this.tweens.add({
-                            targets: respawnCircle,
-                            scale: 1.5,
-                            alpha: 0,
-                            duration: 300,
-                            ease: 'Power2',
-                            onComplete: () => respawnCircle.destroy()
-                        });
-                    }
+                this.tweens.add({
+                    targets: explosion,
+                    scale: 1.5,
+                    alpha: 0,
+                    duration: 500,
+                    ease: 'Power2',
+                    onComplete: () => explosion.destroy()
                 });
-            }
+
+                // Spawn fire at explosion location (after short delay)
+                this.time.delayedCall(200, () => {
+                    this.spawnFireVisual(explosionX, explosionY);
+                });
+
+                // Teleport minion to new position
+                const minion = this.minions[minionId];
+                if (minion && minion.sprite && teleportX !== undefined && teleportY !== undefined) {
+                    // Hide minion briefly
+                    minion.sprite.setAlpha(0);
+
+                    // Teleport after brief delay
+                    this.time.delayedCall(300, () => {
+                        if (minion && minion.sprite && minion.sprite.scene) {
+                            minion.sprite.x = teleportX;
+                            minion.sprite.y = teleportY;
+                            minion.sprite.setAlpha(1);
+
+                            // Show respawn effect
+                            const respawnCircle = this.add.circle(teleportX, teleportY, 20, 0x8B008B, 0.6);
+                            this.tweens.add({
+                                targets: respawnCircle,
+                                scale: 1.5,
+                                alpha: 0,
+                                duration: 300,
+                                ease: 'Power2',
+                                onComplete: () => respawnCircle.destroy()
+                            });
+                        }
+                    });
+                }
+            });
         });
     }
 
@@ -4373,5 +4412,332 @@ class GameScene extends Phaser.Scene {
         }
 
         return false;
+    }
+
+    // Apply character's starting build (stats, minions, auto-attack)
+    applyCharacterBuild(player) {
+        if (!player) {
+            console.error('❌ applyCharacterBuild: player is null');
+            return;
+        }
+
+        const characterId = player.data?.characterId || player.class;
+        console.log(`🔍 applyCharacterBuild - characterId: ${characterId}`);
+
+        // For Malachar, apply Bone Commander build
+        if (characterId === 'MALACHAR' && typeof window.getBuildById === 'function') {
+            const boneCommander = window.getBuildById('bone_commander');
+
+            if (boneCommander) {
+                console.log('🦴 Applying Bone Commander build to Malachar');
+
+                // Apply base stats
+                if (boneCommander.stats) {
+                    player.baseDamage = boneCommander.stats.playerDamage || 10;
+                    player.baseMinionHealth = boneCommander.stats.minionHealth || 100;
+                    player.baseMinionDamage = boneCommander.stats.minionDamage || 30;
+                    player.minionCap = boneCommander.stats.minionCap || 5;
+                }
+
+                // Apply auto-attack
+                if (boneCommander.autoAttack) {
+                    player.autoAttackConfig = boneCommander.autoAttack;
+                    console.log(`⚔️ Bone Commander auto-attack: ${boneCommander.autoAttack.name}`);
+                }
+
+                // Initialize Malachar Ability Handler for Q/E/R abilities
+                if (typeof MalacharAbilityHandler !== 'undefined') {
+                    this.malacharAbilityHandler = new MalacharAbilityHandler(this, player, boneCommander);
+                    console.log(`✨ Malachar Ability Handler initialized`);
+                } else {
+                    console.error('❌ MalacharAbilityHandler class not found!');
+                }
+
+                // Spawn starting minions
+                const networkManager = this.game.registry.get('networkManager');
+                if (networkManager && boneCommander.stats.startingMinions) {
+                    const startingCount = boneCommander.stats.startingMinions;
+                    console.log(`👥 Spawning ${startingCount} starting minions for player ${player.data.id}`);
+
+                    // Get player position
+                    const playerX = player.sprite.x;
+                    const playerY = player.sprite.y;
+
+                    // Spawn minions around player
+                    for (let i = 0; i < startingCount; i++) {
+                        console.log(`   Spawning minion ${i + 1}/${startingCount}`);
+
+                        // Calculate spawn position in a circle around player
+                        const angle = (Math.PI * 2 * i) / startingCount;
+                        const spawnRadius = 80; // Spawn 80 pixels away from player
+                        const spawnX = playerX + Math.cos(angle) * spawnRadius;
+                        const spawnY = playerY + Math.sin(angle) * spawnRadius;
+
+                        // Use the spawnMinion method which handles server communication
+                        this.spawnMinion(spawnX, spawnY, player.data.id, true);
+                    }
+                    console.log(`✅ Requested ${startingCount} minions from server`);
+                } else {
+                    console.error('❌ Cannot spawn minions:', {
+                        hasNetworkManager: !!networkManager,
+                        startingMinions: boneCommander.stats.startingMinions
+                    });
+                }
+
+                console.log('✅ Bone Commander build applied');
+            }
+        }
+
+        // TODO: Add builds for Kelise and Aldric
+    }
+
+    // Auto-unlock abilities at specific levels with seamless notification
+    checkAndUnlockAbilities(player, level) {
+        if (!player) {
+            console.error('❌ checkAndUnlockAbilities: player is null');
+            return;
+        }
+
+        // Get character class (normalize to uppercase)
+        const characterId = (player.data?.characterId || player.data?.class || player.class || '').toUpperCase();
+
+        console.log(`🔍 === ABILITY UNLOCK CHECK ===`);
+        console.log(`🔍 Character ID: ${characterId}`);
+        console.log(`🔍 Level: ${level}`);
+        console.log(`🔍 player.data.characterId: ${player.data?.characterId}`);
+        console.log(`🔍 player.data.class: ${player.data?.class}`);
+        console.log(`🔍 player.class: ${player.class}`);
+        console.log(`🔍 getAvailableChoices exists: ${typeof window.getAvailableChoices === 'function'}`);
+
+        // For Malachar, check ability unlocks
+        if (characterId === 'MALACHAR' && typeof window.getAvailableChoices === 'function') {
+            console.log(`🔍 ✅ Calling getAvailableChoices for level ${level}`);
+            const abilities = window.getAvailableChoices(level, []);
+
+            console.log(`🔍 getAvailableChoices returned:`, abilities);
+
+            if (abilities && abilities.length > 0) {
+                const ability = abilities[0]; // Only one ability per level
+
+                console.log(`🎯 Unlocking ability:`, ability);
+
+                // Track unlocked abilities internally
+                if (!this.unlockedAbilities) {
+                    this.unlockedAbilities = [];
+                }
+                this.unlockedAbilities.push(ability);
+
+                // Also update skillSelector for compatibility (but don't show UI)
+                if (this.skillSelector) {
+                    this.skillSelector.selectedSkills.push(ability);
+                }
+
+                // Register ability directly on player object so it shows in ability bar
+                if (ability.abilityKey) {
+                    console.log(`📝 Registering ability ${ability.name} with key ${ability.abilityKey}`);
+
+                    // Initialize abilities object if needed
+                    if (!player.abilities) {
+                        player.abilities = {};
+                    }
+
+                    // Register ability on player (AbilityManager reads from player.abilities)
+                    player.abilities[ability.abilityKey] = {
+                        name: ability.name,
+                        cooldown: ability.cooldown || 10000,
+                        duration: ability.duration,
+                        build: ability.build || {},
+                        effect: ability.effects || {},
+                        bonusEffect: {}
+                    };
+
+                    console.log(`✅ Ability registered:`, player.abilities[ability.abilityKey]);
+
+                    // Force update the ability UI to show the new ability
+                    if (this.abilityManager && this.abilityManager.updateCooldownUI) {
+                        this.abilityManager.updateCooldownUI();
+                        console.log(`🔄 Triggered ability UI update`);
+                    }
+                }
+
+                // Show seamless notification instead of menu
+                this.showAbilityUnlockedNotification(ability);
+
+                console.log(`✅ Auto-unlocked ${ability.name} at level ${level}`);
+            } else {
+                console.log(`⚠️ No abilities available for level ${level}`);
+            }
+        } else {
+            console.log(`⚠️ Skipping ability unlock - characterId: ${characterId}, getAvailableChoices exists: ${typeof window.getAvailableChoices === 'function'}`);
+        }
+
+        // TODO: Add Kelise and Aldric ability unlocks here
+    }
+
+    // Show a sleek ability unlock notification
+    showAbilityUnlockedNotification(ability) {
+        try {
+            console.log(`🎨 Showing ability notification for:`, ability.name);
+
+            const width = this.cameras.main.width;
+            const height = this.cameras.main.height;
+
+        // Create notification container
+        const notifY = height / 2 - 100;
+        const notifWidth = 400;
+        const notifHeight = 120;
+
+        // Background panel with gradient effect
+        const panel = this.add.rectangle(
+            width / 2,
+            notifY,
+            notifWidth,
+            notifHeight,
+            0x1a1a2e,
+            0.95
+        );
+        panel.setStrokeStyle(3, 0x8b00ff, 1);
+        panel.setScrollFactor(0);
+        panel.setDepth(10000);
+
+        // Glow effect
+        const glow = this.add.rectangle(
+            width / 2,
+            notifY,
+            notifWidth + 10,
+            notifHeight + 10,
+            0x8b00ff,
+            0.3
+        );
+        glow.setScrollFactor(0);
+        glow.setDepth(9999);
+
+        // "ABILITY UNLOCKED" text
+        const titleText = this.add.text(
+            width / 2,
+            notifY - 35,
+            'ABILITY UNLOCKED',
+            {
+                font: 'bold 16px monospace',
+                fill: '#ff00ff',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+        titleText.setOrigin(0.5);
+        titleText.setScrollFactor(0);
+        titleText.setDepth(10001);
+
+        // Ability name
+        const nameText = this.add.text(
+            width / 2,
+            notifY - 5,
+            ability.name,
+            {
+                font: 'bold 20px monospace',
+                fill: '#00ffff',
+                stroke: '#000000',
+                strokeThickness: 4
+            }
+        );
+        nameText.setOrigin(0.5);
+        nameText.setScrollFactor(0);
+        nameText.setDepth(10001);
+
+        // Key binding hint
+        const keyText = this.add.text(
+            width / 2,
+            notifY + 25,
+            `Press [${ability.abilityKey?.toUpperCase()}] to activate`,
+            {
+                font: '14px monospace',
+                fill: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 2
+            }
+        );
+        keyText.setOrigin(0.5);
+        keyText.setScrollFactor(0);
+        keyText.setDepth(10001);
+
+        // Particle burst effect
+        for (let i = 0; i < 20; i++) {
+            const angle = (Math.PI * 2 * i) / 20;
+            const distance = 60;
+            const particle = this.add.circle(
+                width / 2,
+                notifY,
+                4,
+                Math.random() > 0.5 ? 0xff00ff : 0x00ffff,
+                1
+            );
+            particle.setScrollFactor(0);
+            particle.setDepth(10002);
+
+            this.tweens.add({
+                targets: particle,
+                x: width / 2 + Math.cos(angle) * distance,
+                y: notifY + Math.sin(angle) * distance,
+                alpha: 0,
+                scale: 0,
+                duration: 800,
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+
+        // Animate notification in
+        panel.setScale(0);
+        glow.setScale(0);
+        titleText.setAlpha(0);
+        nameText.setAlpha(0);
+        keyText.setAlpha(0);
+
+        this.tweens.add({
+            targets: [panel, glow],
+            scale: 1,
+            duration: 300,
+            ease: 'Back.easeOut'
+        });
+
+        this.tweens.add({
+            targets: [titleText, nameText, keyText],
+            alpha: 1,
+            duration: 400,
+            delay: 200,
+            ease: 'Power2'
+        });
+
+        // Pulse glow effect
+        this.tweens.add({
+            targets: glow,
+            alpha: 0.5,
+            scale: 1.05,
+            duration: 600,
+            yoyo: true,
+            repeat: 2,
+            ease: 'Sine.easeInOut'
+        });
+
+        // Auto-dismiss after 3 seconds
+        this.time.delayedCall(3000, () => {
+            this.tweens.add({
+                targets: [panel, glow, titleText, nameText, keyText],
+                alpha: 0,
+                y: notifY - 50,
+                duration: 400,
+                ease: 'Power2',
+                onComplete: () => {
+                    panel.destroy();
+                    glow.destroy();
+                    titleText.destroy();
+                    nameText.destroy();
+                    keyText.destroy();
+                }
+            });
+        });
+        } catch (error) {
+            console.error('❌ Error showing ability notification:', error);
+        }
     }
 }

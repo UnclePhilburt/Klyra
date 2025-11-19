@@ -230,67 +230,77 @@ class MalacharAbilityHandler {
             playerY: this.player.sprite.y
         });
 
-        // Explode each minion
+        // Domino effect: Explode each minion with staggered timing (slower, more dramatic)
         myMinions.forEach((minion, index) => {
-            // Store explosion position
-            const explosionX = minion.sprite.x;
-            const explosionY = minion.sprite.y;
+            // Stagger explosions by 250ms each for dramatic domino effect
+            const delay = index * 250;
 
-            // Create explosion visual effect
-            this.createExplosionVisual(explosionX, explosionY, explosionRadius);
+            this.scene.time.delayedCall(delay, () => {
+                // Store explosion position
+                const explosionX = minion.sprite.x;
+                const explosionY = minion.sprite.y;
 
-            // Deal damage to enemies in radius
-            const enemiesHit = this.getEnemiesInRadius(explosionX, explosionY, explosionRadius);
-            console.log(`💥 Pact of Bones explosion at (${explosionX}, ${explosionY}) - Found ${enemiesHit.length} enemies`);
-            enemiesHit.forEach(enemy => {
-                if (enemy.data && enemy.data.id) {
-                    // Send damage to server
-                    const explosionPos = {
-                        x: Math.floor(explosionX / 32),
-                        y: Math.floor(explosionY / 32)
-                    };
-                    console.log(`💥 Sending ${ability.effect.explosionDamage} damage to enemy ${enemy.data.id}`);
-                    networkManager.hitEnemy(
-                        enemy.data.id,
-                        ability.effect.explosionDamage,
-                        this.player.data.id,
-                        explosionPos
-                    );
+                // Play explosion sound effect (quieter)
+                if (this.scene.sound) {
+                    this.scene.sound.play('minionexplosion', { volume: 0.15 });
                 }
-            });
-            totalEnemiesHit += enemiesHit.length;
 
-            // Spawn fire at explosion location (after short delay)
-            this.scene.time.delayedCall(200, () => {
-                this.spawnFireAtLocation(explosionX, explosionY);
-            });
+                // Create explosion visual effect
+                this.createExplosionVisual(explosionX, explosionY, explosionRadius);
 
-            // Hide minion briefly, then teleport to player
-            if (minion.sprite) {
-                minion.sprite.setAlpha(0); // Make invisible during transition
-            }
+                // Deal damage to enemies in radius
+                const enemiesHit = this.getEnemiesInRadius(explosionX, explosionY, explosionRadius);
+                console.log(`💥 Pact of Bones explosion ${index + 1}/${myMinions.length} at (${explosionX}, ${explosionY}) - Found ${enemiesHit.length} enemies`);
+                enemiesHit.forEach(enemy => {
+                    if (enemy.data && enemy.data.id) {
+                        // Send damage to server
+                        const explosionPos = {
+                            x: Math.floor(explosionX / 32),
+                            y: Math.floor(explosionY / 32)
+                        };
+                        console.log(`💥 Sending ${ability.effect.explosionDamage} damage to enemy ${enemy.data.id}`);
+                        networkManager.hitEnemy(
+                            enemy.data.id,
+                            ability.effect.explosionDamage,
+                            this.player.data.id,
+                            explosionPos
+                        );
+                    }
+                });
+                totalEnemiesHit += enemiesHit.length;
 
-            // Teleport minion to player position after brief delay
-            this.scene.time.delayedCall(300, () => {
-                if (minion && minion.sprite && minion.sprite.scene) {
-                    const offsetX = (index % 3 - 1) * 40;
-                    const offsetY = Math.floor(index / 3) * 40;
+                // Spawn fire at explosion location (after short delay)
+                this.scene.time.delayedCall(200, () => {
+                    this.spawnFireAtLocation(explosionX, explosionY);
+                });
 
-                    minion.sprite.x = this.player.sprite.x + offsetX;
-                    minion.sprite.y = this.player.sprite.y + offsetY;
-                    minion.sprite.setAlpha(1); // Make visible again
-
-                    // Show respawn effect
-                    const respawnCircle = this.scene.add.circle(minion.sprite.x, minion.sprite.y, 20, 0x8B008B, 0.6);
-                    this.scene.tweens.add({
-                        targets: respawnCircle,
-                        scale: 1.5,
-                        alpha: 0,
-                        duration: 300,
-                        ease: 'Power2',
-                        onComplete: () => respawnCircle.destroy()
-                    });
+                // Hide minion briefly, then teleport to player
+                if (minion.sprite) {
+                    minion.sprite.setAlpha(0); // Make invisible during transition
                 }
+
+                // Teleport minion to player position after brief delay
+                this.scene.time.delayedCall(300, () => {
+                    if (minion && minion.sprite && minion.sprite.scene) {
+                        const offsetX = (index % 3 - 1) * 40;
+                        const offsetY = Math.floor(index / 3) * 40;
+
+                        minion.sprite.x = this.player.sprite.x + offsetX;
+                        minion.sprite.y = this.player.sprite.y + offsetY;
+                        minion.sprite.setAlpha(1); // Make visible again
+
+                        // Show respawn effect
+                        const respawnCircle = this.scene.add.circle(minion.sprite.x, minion.sprite.y, 20, 0x8B008B, 0.6);
+                        this.scene.tweens.add({
+                            targets: respawnCircle,
+                            scale: 1.5,
+                            alpha: 0,
+                            duration: 300,
+                            ease: 'Power2',
+                            onComplete: () => respawnCircle.destroy()
+                        });
+                    }
+                });
             });
         });
 

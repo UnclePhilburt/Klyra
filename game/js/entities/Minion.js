@@ -936,29 +936,65 @@ class Minion {
     }
 
     findNearestEnemyToSelf(searchRadius) {
-        // Find enemies closest to THIS minion, not the player
+        // Find enemies closest to THIS minion with target spreading
         const allEnemies = this.scene.getAllEnemies();
 
         if (allEnemies.length === 0) return null;
 
-        let nearestEnemy = null;
-        let nearestDistSquared = searchRadius * searchRadius;
+        // Get all friendly minions (same owner)
+        const friendlyMinions = Object.values(this.scene.minions || {})
+            .filter(m => m.ownerId === this.ownerId && m.isAlive && m !== this);
+
+        // Count how many minions are targeting each enemy
+        const targetCounts = new Map();
+
+        // Collect enemies within range with their distances
+        const enemiesInRange = [];
+        const searchRadiusSquared = searchRadius * searchRadius;
 
         for (const enemy of allEnemies) {
-            if (!enemy.isAlive) continue;
+            if (!enemy.isAlive || !enemy.data) continue;
 
             // Distance from THIS minion to enemy
             const dx = this.sprite.x - enemy.sprite.x;
             const dy = this.sprite.y - enemy.sprite.y;
             const distSquared = dx * dx + dy * dy;
 
-            if (distSquared < nearestDistSquared) {
-                nearestDistSquared = distSquared;
-                nearestEnemy = enemy;
+            if (distSquared <= searchRadiusSquared) {
+                const dist = Math.sqrt(distSquared);
+                enemiesInRange.push({ enemy, dist });
+                targetCounts.set(enemy.data.id, 0);
             }
         }
 
-        return nearestEnemy;
+        if (enemiesInRange.length === 0) return null;
+
+        // Count current targets
+        friendlyMinions.forEach(minion => {
+            if (minion.target && minion.target.data && targetCounts.has(minion.target.data.id)) {
+                const count = targetCounts.get(minion.target.data.id);
+                targetCounts.set(minion.target.data.id, count + 1);
+            }
+        });
+
+        // Find best target: prioritize enemies with FEWER minions attacking them
+        let bestEnemy = null;
+        let bestScore = Infinity;
+
+        for (const { enemy, dist } of enemiesInRange) {
+            const targetCount = targetCounts.get(enemy.data.id) || 0;
+
+            // Score: weight target count heavily, distance slightly
+            // Lower score = better target
+            const score = (targetCount * 200) + dist;
+
+            if (score < bestScore) {
+                bestScore = score;
+                bestEnemy = enemy;
+            }
+        }
+
+        return bestEnemy;
     }
 
     leadPlayer(owner) {

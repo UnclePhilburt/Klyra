@@ -284,18 +284,27 @@ class MainMenu {
 
                 try {
                     if (window.game) {
+                        console.log('🚀 Starting game.connect()...');
                         await window.game.connect(name);
+                        console.log('✅ game.connect() completed successfully');
 
                         setTimeout(() => {
                             // Use ScreenManager for clean transition
                             if (window.screenManager) {
+                                console.log('🎬 Transitioning to game screen');
                                 window.screenManager.transitionToGame();
+                            } else {
+                                console.error('❌ screenManager not found!');
                             }
                         }, 500);
+                    } else {
+                        console.error('❌ window.game not found!');
+                        throw new Error('Game not initialized');
                     }
                 } catch (error) {
-                    console.error('Gateway refused entry:', error);
-                    statusText.textContent = 'Connection failed... Try again.';
+                    console.error('❌ Gateway refused entry:', error);
+                    console.error('Error details:', error.message, error.stack);
+                    statusText.textContent = `Connection failed: ${error.message}`;
                     statusText.style.color = '#FF4444';
                     enterButton.style.pointerEvents = 'all';
                     lobbyScreen.classList.remove('portal-activated');
