@@ -246,6 +246,116 @@ class VisualEffectsManager {
         });
     }
 
+    createDamageNumber(x, y, damage, options = {}) {
+        const {
+            isCrit = false,
+            damageType = 'physical', // physical, magic, fire, poison, true
+            isHeal = false
+        } = options;
+
+        // Randomize position slightly to avoid stacking
+        const offsetX = (Math.random() - 0.5) * 20;
+        const offsetY = -20 + (Math.random() - 0.5) * 10;
+
+        // Determine color and styling based on type
+        let color, fontSize, strokeColor, prefix = '';
+
+        if (isHeal) {
+            color = '#10b981'; // Green
+            strokeColor = '#065f46';
+            fontSize = isCrit ? '20px' : '16px';
+            prefix = '+';
+        } else if (isCrit) {
+            color = '#fbbf24'; // Gold for crits
+            strokeColor = '#92400e';
+            fontSize = '24px';
+        } else {
+            // Damage type colors
+            switch(damageType) {
+                case 'physical':
+                    color = '#ffffff'; // White
+                    strokeColor = '#000000';
+                    break;
+                case 'magic':
+                    color = '#a855f7'; // Purple
+                    strokeColor = '#581c87';
+                    break;
+                case 'fire':
+                    color = '#f97316'; // Orange
+                    strokeColor = '#7c2d12';
+                    break;
+                case 'poison':
+                    color = '#84cc16'; // Lime green
+                    strokeColor = '#365314';
+                    break;
+                case 'true':
+                    color = '#ec4899'; // Pink
+                    strokeColor = '#831843';
+                    break;
+                default:
+                    color = '#ffffff';
+                    strokeColor = '#000000';
+            }
+            fontSize = '16px';
+        }
+
+        // Create damage text
+        const damageText = this.scene.add.text(
+            x + offsetX,
+            y + offsetY,
+            `${prefix}${Math.floor(damage)}${isCrit ? '!' : ''}`,
+            {
+                fontFamily: 'Arial',
+                fontSize: fontSize,
+                fontStyle: 'bold',
+                fill: color,
+                stroke: strokeColor,
+                strokeThickness: 4
+            }
+        ).setOrigin(0.5).setDepth(10000);
+
+        // Add "CRIT" text for critical hits
+        if (isCrit && !isHeal) {
+            const critText = this.scene.add.text(
+                x + offsetX,
+                y + offsetY - 20,
+                'CRIT',
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '12px',
+                    fontStyle: 'bold',
+                    fill: '#fbbf24',
+                    stroke: '#92400e',
+                    strokeThickness: 3
+                }
+            ).setOrigin(0.5).setDepth(10000);
+
+            this.scene.tweens.add({
+                targets: critText,
+                y: y + offsetY - 40,
+                alpha: 0,
+                scale: 1.3,
+                duration: 800,
+                ease: 'Power2',
+                onComplete: () => critText.destroy()
+            });
+        }
+
+        // Animate damage number
+        const animDuration = isCrit ? 1200 : 1000;
+        const floatDistance = isCrit ? 60 : 40;
+
+        this.scene.tweens.add({
+            targets: damageText,
+            y: y + offsetY - floatDistance,
+            alpha: 0,
+            scale: isCrit ? 1.3 : 1.0,
+            duration: animDuration,
+            ease: 'Power2',
+            onComplete: () => damageText.destroy()
+        });
+    }
+
     createHealEffect(x, y, amount) {
         // Green healing particles rising up
         const particles = this.scene.add.particles(x, y, 'particle', {
@@ -261,24 +371,8 @@ class VisualEffectsManager {
         particles.setDepth(1001);
         particles.explode();
 
-        // Heal number
-        const healText = this.scene.add.text(x, y - 20, `+${amount}`, {
-            fontFamily: 'Arial',
-            fontSize: '16px',
-            fontStyle: 'bold',
-            fill: '#10b981',
-            stroke: '#000000',
-            strokeThickness: 3
-        }).setOrigin(0.5).setDepth(10000);
-
-        this.scene.tweens.add({
-            targets: healText,
-            y: y - 50,
-            alpha: 0,
-            duration: 1000,
-            ease: 'Power2',
-            onComplete: () => healText.destroy()
-        });
+        // Use new damage number system for heal
+        this.createDamageNumber(x, y, amount, { isHeal: true });
 
         this.scene.time.delayedCall(1000, () => particles.destroy());
     }

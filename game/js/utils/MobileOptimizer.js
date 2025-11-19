@@ -106,21 +106,25 @@ class MobileOptimizer {
 
     // ============ VISIBILITY HANDLING ============
     setupVisibilityHandling() {
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.onGameHidden();
-            } else {
-                this.onGameVisible();
-            }
-        });
+        // DISABLED: Don't pause when switching tabs/windows
+        // This allows multiple game instances to run simultaneously
+        console.log('⏯️ Visibility handling disabled - game will not pause when in background');
 
-        // Also handle blur/focus
-        window.addEventListener('blur', () => this.onGameHidden());
-        window.addEventListener('focus', () => this.onGameVisible());
+        // document.addEventListener('visibilitychange', () => {
+        //     if (document.hidden) {
+        //         this.onGameHidden();
+        //     } else {
+        //         this.onGameVisible();
+        //     }
+        // });
 
-        // Handle phone calls, notifications, etc
-        window.addEventListener('pagehide', () => this.onGameHidden());
-        window.addEventListener('pageshow', () => this.onGameVisible());
+        // // Also handle blur/focus
+        // window.addEventListener('blur', () => this.onGameHidden());
+        // window.addEventListener('focus', () => this.onGameVisible());
+
+        // // Handle phone calls, notifications, etc
+        // window.addEventListener('pagehide', () => this.onGameHidden());
+        // window.addEventListener('pageshow', () => this.onGameVisible());
     }
 
     onGameHidden() {

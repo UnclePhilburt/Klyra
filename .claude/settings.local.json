@@ -39,7 +39,12 @@
       "Bash(git pull:*)",
       "Bash(git fetch:*)",
       "Bash(git remote:*)",
-      "Bash(PORT=3002 node:*)"
+      "Bash(PORT=3002 node:*)",
+      "Bash(cmd.exe /c \"taskkill /F /IM node.exe\")",
+      "Bash(del C:klyragamejssystemsWeatherManager.js)",
+      "Bash(timeout /t 1 /nobreak)",
+      "Bash(set PORT=3002)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []

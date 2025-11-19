@@ -65,12 +65,12 @@ class PlayerSprite {
         const frameWidth = spriteConfig.frameWidth || 32;
 
         // Calculate scale based on sprite size
-        // Kelise (32px) should be ~80px (scale 2.5)
-        // Malachar (140px) should be ~140px (scale 1.0)
-        // Aldric (67px) should be ~100px (scale 1.5)
-        let targetSize = frameWidth > 100 ? 140 : 80;
+        // Kelise (32px) should be ~56px (scale 1.75)
+        // Malachar (140px) should be ~126px (scale 0.9)
+        // Aldric (67px) should be ~70px (scale 1.05)
+        let targetSize = frameWidth > 100 ? 126 : 56;
         if (textureKey === 'aldric') {
-            targetSize = 100; // Make Aldric bigger
+            targetSize = 70; // Make Aldric sized appropriately
         }
         const scale = targetSize / frameWidth;
 

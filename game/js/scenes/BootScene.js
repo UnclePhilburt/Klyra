@@ -147,6 +147,14 @@ class BootScene extends Phaser.Scene {
             spacing: 0
         });
 
+        // Aldric's Shockwave ability sprite sheet (64x64px, row 5 frames 0-8 = tiles 50-58)
+        this.load.spritesheet('aldric_shockwave', 'assets/sprites/Aldric/shockwave.png', {
+            frameWidth: 64,
+            frameHeight: 64,
+            margin: 0,
+            spacing: 0
+        });
+
         // Malachar's Minion sprite sheet (5 rows x 13 columns, 64x64px)
         this.load.spritesheet('malacharminion', 'assets/sprites/malacharminion.png', {
             frameWidth: 64,
@@ -271,7 +279,8 @@ class BootScene extends Phaser.Scene {
         this.load.audio('aldric_attack1', 'assets/soundeffects/aldrick/attack1.mp3');
         this.load.audio('aldric_attack2', 'assets/soundeffects/aldrick/attack2.mp3');
         this.load.audio('aldric_attack3', 'assets/soundeffects/aldrick/attack3.mp3');
-        console.log('📦 Loading Aldric attack sounds (3 variations)');
+        this.load.audio('aldric_shockwave', 'assets/soundeffects/aldrick/shockwave.mp3');
+        console.log('📦 Loading Aldric attack sounds (3 variations + shockwave)');
 
         // Load potions sprite sheet (16x16px, 14 frames per row)
         this.load.spritesheet('potions', 'assets/sprites/potions.png', {

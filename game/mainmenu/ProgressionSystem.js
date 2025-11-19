@@ -15,7 +15,7 @@ class ProgressionSystem {
     }
 
     ensureDefaultCharactersUnlocked() {
-        const defaultUnlocked = ['MALACHAR', 'KELISE'];
+        const defaultUnlocked = ['MALACHAR', 'KELISE', 'ALDRIC'];
         let updated = false;
 
         for (const charId of defaultUnlocked) {

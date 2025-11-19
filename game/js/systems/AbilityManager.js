@@ -295,20 +295,7 @@ class AbilityManager {
             const ability = this.player.abilities ? this.player.abilities[key] : null;
             const colors = ui.colorTheme;
 
-            // Debug: Log ability status for Q
-            if (key === 'q') { // Always log for debugging
-                const state = (cooldown > 0 && ability) ? 'COOLDOWN' :
-                             (ability) ? 'READY' : 'NO_ABILITY';
-                console.log(`🔍 Q Ability Status:`, {
-                    state: state,
-                    cooldown: cooldown,
-                    hasAbility: !!ability,
-                    abilityData: ability,
-                    playerAbilities: this.player.abilities,
-                    keyText: ui.keyText.text,
-                    labelText: ui.label.text
-                });
-            }
+            // Debug logging removed to reduce console spam
 
             const centerX = -ui.boxWidth/2 + ui.circleRadius + 10;
 
@@ -665,6 +652,26 @@ class AbilityManager {
                     return; // Handler executed successfully
                 }
             }
+        }
+
+        // ALDRIC: Shockwave ability
+        if (ability.effect && ability.effect.type === 'shockwave') {
+            // Broadcast to other players
+            if (typeof networkManager !== 'undefined') {
+                networkManager.useAbility(key, ability.name, null, {
+                    type: 'shockwave',
+                    facingRight: this.player.spriteRenderer && this.player.spriteRenderer.sprite
+                        ? !this.player.spriteRenderer.sprite.flipX
+                        : true,
+                    position: {
+                        x: this.player.sprite.x,
+                        y: this.player.sprite.y
+                    }
+                });
+            }
+
+            this.createShockwave();
+            return;
         }
 
         // LEGACY: Fallback to old system
@@ -1099,6 +1106,190 @@ class AbilityManager {
             ease: 'Power2',
             onComplete: () => flash.destroy()
         });
+    }
+
+    createShockwave() {
+        console.log('🌊 Creating shockwave effect');
+
+        // Play shockwave sound (reduced volume)
+        if (this.scene.sound) {
+            this.scene.sound.play('aldric_shockwave', { volume: 0.3 });
+        }
+
+        // Create animation if it doesn't exist
+        if (!this.scene.anims.exists('aldric_shockwave_anim')) {
+            this.scene.anims.create({
+                key: 'aldric_shockwave_anim',
+                frames: this.scene.anims.generateFrameNumbers('aldric_shockwave', {
+                    start: 50,  // Row 5, frame 0 (tile 50)
+                    end: 58     // Row 5, frame 8 (tile 58)
+                }),
+                frameRate: 15,
+                repeat: 0
+            });
+        }
+
+        // Get player's facing direction (based on flipX)
+        const facingRight = this.player.spriteRenderer && this.player.spriteRenderer.sprite
+            ? !this.player.spriteRenderer.sprite.flipX
+            : true;
+
+        const direction = facingRight ? 1 : -1;
+        const startX = this.player.sprite.x;
+        const startY = this.player.sprite.y;
+
+        // Create shockwave sprite instead of rectangle
+        const shockwave = this.scene.add.sprite(startX, startY, 'aldric_shockwave', 50);
+        shockwave.setDepth(9000);
+        shockwave.setScale(1.5); // Make it bigger for impact
+        shockwave.setFlipX(!facingRight); // Flip if facing left
+        shockwave.play('aldric_shockwave_anim');
+
+        // Ground impact particles
+        for (let i = 0; i < 12; i++) {
+            const angle = (Math.random() - 0.5) * Math.PI * 0.5 + (direction > 0 ? 0 : Math.PI);
+            const particle = this.scene.add.circle(
+                startX,
+                startY + 20,
+                4 + Math.random() * 4,
+                0x4169E1,
+                0.8
+            );
+            particle.setDepth(8999);
+
+            this.scene.tweens.add({
+                targets: particle,
+                x: startX + Math.cos(angle) * (80 + Math.random() * 60),
+                y: startY + 20 + Math.sin(angle) * 30,
+                alpha: 0,
+                duration: 400 + Math.random() * 200,
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+
+        // Animate shockwave forward
+        const maxDistance = 300;
+        const duration = 600;
+
+        this.scene.tweens.add({
+            targets: shockwave,
+            x: startX + (direction * maxDistance),
+            scaleX: 2.0 * (facingRight ? 1 : -1), // Expand as it travels (maintain flip direction)
+            scaleY: 2.0,
+            duration: duration,
+            ease: 'Power2',
+            onUpdate: () => {
+                // Check collision with all enemy types during travel
+                const enemyCollections = [
+                    this.scene.swordDemons,
+                    this.scene.minotaurs,
+                    this.scene.mushrooms,
+                    this.scene.emberclaws
+                ];
+
+                let totalEnemies = 0;
+                enemyCollections.forEach(collection => {
+                    if (collection) {
+                        totalEnemies += Object.keys(collection).length;
+                    }
+                });
+
+                if (totalEnemies > 0) {
+                    console.log(`🎯 Checking ${totalEnemies} enemies for collision`);
+                }
+
+                enemyCollections.forEach(collection => {
+                    if (!collection) return;
+
+                    Object.values(collection).forEach(enemy => {
+                        if (!enemy || !enemy.isAlive || !enemy.sprite) return;
+
+                        // Check if enemy is in shockwave path
+                        const bounds = shockwave.getBounds();
+                        const enemyBounds = enemy.sprite.getBounds();
+
+                        if (Phaser.Geom.Intersects.RectangleToRectangle(bounds, enemyBounds)) {
+                            console.log('💥 HIT! Enemy in shockwave path!');
+                            // Mark enemy as hit to avoid multiple hits
+                            if (!enemy.hitByShockwave) {
+                                enemy.hitByShockwave = true;
+
+                                // Deal damage and send to server with knockback effect
+                                const damage = 50;
+                                const knockbackDistance = 150;
+
+                                console.log('🔍 Enemy data:', {
+                                    hasNetworkManager: typeof networkManager !== 'undefined',
+                                    hasEnemyData: !!enemy.data,
+                                    hasEnemyId: !!(enemy.data && enemy.data.id),
+                                    enemyId: enemy.data ? enemy.data.id : 'NO DATA'
+                                });
+
+                                // Send to server with knockback data
+                                // Use player position as knockback source so enemies get pushed away
+                                if (typeof networkManager !== 'undefined' && enemy.data && enemy.data.id) {
+                                    const knockbackData = {
+                                        knockback: {
+                                            sourceX: startX,  // Use player's starting position
+                                            sourceY: startY,
+                                            distance: knockbackDistance
+                                        }
+                                    };
+
+                                    console.log('🌊 Sending knockback:', {
+                                        enemyId: enemy.data.id,
+                                        damage: damage,
+                                        knockbackData: knockbackData,
+                                        enemyPos: { x: enemy.sprite.x, y: enemy.sprite.y },
+                                        playerPos: { x: startX, y: startY }
+                                    });
+
+                                    networkManager.hitEnemy(
+                                        enemy.data.id,
+                                        damage,
+                                        this.player.data.id,
+                                        { x: this.player.sprite.x, y: this.player.sprite.y },
+                                        knockbackData
+                                    );
+                                }
+
+                                // Visual damage feedback (client-side only)
+                                enemy.takeDamage(damage, { isCrit: false });
+
+                                // Reset hit flag after shockwave passes
+                                this.scene.time.delayedCall(100, () => {
+                                    if (enemy) {
+                                        enemy.hitByShockwave = false;
+                                    }
+                                });
+                            }
+                        }
+                    });
+                });
+            },
+            onComplete: () => {
+                shockwave.destroy();
+            }
+        });
+
+        // Fade out shockwave
+        this.scene.tweens.add({
+            targets: shockwave,
+            alpha: 0,
+            duration: duration,
+            ease: 'Power2'
+        });
+
+        // Camera shake
+        this.scene.cameras.main.shake(200, 0.005);
+
+        // Play sound effect if available
+        if (this.scene.sound && this.scene.sound.get('hit_punch_1')) {
+            this.scene.sound.play('hit_punch_1', { volume: 0.3 });
+        }
+
+        console.log('✅ Shockwave created');
     }
 
     destroy() {

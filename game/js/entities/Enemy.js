@@ -88,7 +88,7 @@ class Enemy {
         }
     }
 
-    takeDamage(amount) {
+    takeDamage(amount, options = {}) {
         this.health -= amount;
         if (this.health <= 0) {
             this.health = 0;
@@ -103,8 +103,8 @@ class Enemy {
         // Blood splatter effect
         this.showBloodEffect();
 
-        // Show damage number
-        this.showDamageNumber(amount);
+        // Show damage number with enhanced options
+        this.showDamageNumber(amount, options);
 
         // Show health bar when damaged
         this.healthBar.setVisible(true);
@@ -183,31 +183,40 @@ class Enemy {
         }
     }
 
-    showDamageNumber(amount) {
-        // Create floating damage text
-        const damageText = this.scene.add.text(
-            this.sprite.x,
-            this.sprite.y - 20,
-            Math.round(amount).toString(),
-            {
-                font: 'bold 20px monospace',
-                fill: '#ff4444',
-                stroke: '#000000',
-                strokeThickness: 3
-            }
-        );
-        damageText.setOrigin(0.5);
-        damageText.setDepth(10000); // Above everything
+    showDamageNumber(amount, options = {}) {
+        // Use VisualEffectsManager if available for enhanced damage numbers
+        if (this.scene.visualEffectsManager) {
+            this.scene.visualEffectsManager.createDamageNumber(
+                this.sprite.x,
+                this.sprite.y,
+                amount,
+                options
+            );
+        } else {
+            // Fallback to basic damage number
+            const damageText = this.scene.add.text(
+                this.sprite.x,
+                this.sprite.y - 20,
+                Math.round(amount).toString(),
+                {
+                    font: 'bold 20px monospace',
+                    fill: '#ff4444',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                }
+            );
+            damageText.setOrigin(0.5);
+            damageText.setDepth(10000);
 
-        // Animate the damage number
-        this.scene.tweens.add({
-            targets: damageText,
-            y: damageText.y - 40,
-            alpha: 0,
-            duration: 800,
-            ease: 'Cubic.easeOut',
-            onComplete: () => damageText.destroy()
-        });
+            this.scene.tweens.add({
+                targets: damageText,
+                y: damageText.y - 40,
+                alpha: 0,
+                duration: 800,
+                ease: 'Cubic.easeOut',
+                onComplete: () => damageText.destroy()
+            });
+        }
     }
 
     die() {

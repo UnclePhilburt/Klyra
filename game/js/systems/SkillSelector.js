@@ -710,7 +710,7 @@ class SkillSelector {
             }
 
             // Initialize Malachar Ability Handler (for builds with Q/E/R)
-            if (player.class === 'MALACHAR' && typeof MalacharAbilityHandler !== 'undefined') {
+            if (player.class && player.class.toLowerCase() === 'malachar' && typeof MalacharAbilityHandler !== 'undefined') {
                 // Store the full build data
                 player.malacharBuild = skill;
 
@@ -1201,10 +1201,10 @@ class SkillSelector {
 
         // Load skills from MalacharSkillTree (only for Malachar class)
         // Check both the ID and display name variations
-        const isMalachar = playerClass === 'MALACHAR' ||
-                          playerClass === 'Malachar' ||
-                          playerClass === 'Necromancer' ||
-                          (this.scene.localPlayer && this.scene.localPlayer.data && this.scene.localPlayer.data.characterId === 'MALACHAR');
+        const normalizedClass = playerClass ? playerClass.toLowerCase() : '';
+        const isMalachar = normalizedClass === 'malachar' ||
+                          normalizedClass === 'necromancer' ||
+                          (this.scene.localPlayer && this.scene.localPlayer.data && this.scene.localPlayer.data.characterId && this.scene.localPlayer.data.characterId.toLowerCase() === 'malachar');
 
         console.log(`✔️ Is Malachar check: ${isMalachar}`);
 

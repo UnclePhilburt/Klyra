@@ -228,6 +228,12 @@ class NetworkManager {
             this.emit('ability:used', data);
             console.log(`   Emission complete`);
         });
+
+        // Orb collection events
+        this.socket.on('orb:collected', (data) => {
+            console.log(`💎 Socket received orb:collected from server:`, data);
+            this.emit('orb:collected', data);
+        });
     }
 
     // Send player join
@@ -392,6 +398,20 @@ class NetworkManager {
         });
     }
 
+    // Broadcast orb collection to other players
+    collectOrb(orbId, expValue, playerX, playerY) {
+        console.log(`🌐 NetworkManager.collectOrb() - Emitting orb:collect to server`, {
+            orbId, expValue, collectorX: playerX, collectorY: playerY
+        });
+        this.socket.emit('orb:collect', {
+            orbId: orbId,
+            expValue: expValue,
+            collectorX: playerX,
+            collectorY: playerY
+        });
+        console.log(`   ✅ Emitted to server`);
+    }
+
     // Event emitter
     on(event, callback) {
         if (!this.callbacks[event]) {
@@ -421,3 +441,4 @@ class NetworkManager {
 
 // Global network manager instance
 const networkManager = new NetworkManager();
+window.networkManager = networkManager; // Make it globally accessible
