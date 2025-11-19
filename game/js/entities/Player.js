@@ -253,19 +253,30 @@ class Player {
 
         // Attack all enemies in front
         if (enemiesInFront.length > 0) {
-            const damage = config.damage || 10;
+            let damage = config.damage || 10;
 
             // Play attack animation once
             this.spriteRenderer.playAttackAnimation();
 
             enemiesInFront.forEach(enemy => {
+                // Calculate critical hit
+                const critChance = this.stats?.critChance || 0.05;
+                const critDamage = this.stats?.critDamage || 1.5;
+                const isCrit = Math.random() < critChance;
+
+                // Apply crit multiplier
+                let finalDamage = damage;
+                if (isCrit) {
+                    finalDamage = damage * critDamage;
+                }
+
                 // Apply bleed stack (stackable DoT)
                 const bleedDamagePerStack = 2; // Damage per tick per stack
                 const bleedTickRate = 500; // Damage every 500ms
                 const bleedDuration = 5000; // 5 seconds
 
-                // Deal damage with bleed effect
-                networkManager.hitEnemy(enemy.data.id, damage, this.data.id, playerPos, {
+                // Deal damage with bleed effect and visual options
+                networkManager.hitEnemy(enemy.data.id, finalDamage, this.data.id, playerPos, {
                     bleed: {
                         damagePerStack: bleedDamagePerStack,
                         tickRate: bleedTickRate,
@@ -275,7 +286,9 @@ class Player {
                         distance: 50,
                         sourceX: playerPos.x,
                         sourceY: playerPos.y
-                    }
+                    },
+                    isCrit: isCrit,
+                    damageType: 'physical'
                 });
 
                 // Apply client-side bleed stack immediately for responsiveness
@@ -703,6 +716,26 @@ class Player {
         // Fade out after animation
         this.spriteRenderer.fadeOut(1000);
         this.ui.setAlpha(0.5);
+    }
+
+    // Play death animation without reporting to server (for other players)
+    playDeathAnimationOnly() {
+        // Only die once
+        if (!this.isAlive) {
+            return; // Already dead
+        }
+
+        this.isAlive = false;
+
+        // Play death animation
+        if (this.spriteRenderer) {
+            this.spriteRenderer.playDeathAnimation();
+            this.spriteRenderer.fadeOut(1000);
+        }
+
+        if (this.ui) {
+            this.ui.setAlpha(0.5);
+        }
     }
 
     // ==================== UPDATE LOOP ====================

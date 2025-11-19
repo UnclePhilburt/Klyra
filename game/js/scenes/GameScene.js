@@ -561,10 +561,21 @@ class GameScene extends Phaser.Scene {
             this.playerIndicators = {};
 
             // Set character's default auto-attack if available
-            const characterDef = CHARACTERS[myData.class];
+            const characterDef = CHARACTERS[myData.class.toUpperCase()];
             if (characterDef && characterDef.autoAttack) {
                 this.localPlayer.autoAttackConfig = characterDef.autoAttack;
                 console.log(`⚔️ Auto-attack enabled: ${characterDef.autoAttack.name}`);
+            }
+
+            // Load character's default abilities from character definition
+            if (characterDef && characterDef.abilities) {
+                if (!this.localPlayer.abilities) {
+                    this.localPlayer.abilities = {};
+                }
+                Object.keys(characterDef.abilities).forEach(key => {
+                    this.localPlayer.abilities[key] = characterDef.abilities[key];
+                    console.log(`✨ Loaded ability ${characterDef.abilities[key].name} on key ${key.toUpperCase()}`);
+                });
             }
 
             // Initialize Ally Manager (detects nearby players for co-op abilities)
@@ -1972,8 +1983,12 @@ class GameScene extends Phaser.Scene {
         });
 
         this.keyE.on('down', () => {
+            console.log('🔑 E key pressed!');
             if (this.abilityManager) {
+                console.log('🎯 Calling abilityManager.useAbility(e)');
                 this.abilityManager.useAbility('e');
+            } else {
+                console.log('❌ No abilityManager!');
             }
         });
 
@@ -2254,10 +2269,10 @@ class GameScene extends Phaser.Scene {
 
         // Player died
         networkManager.on('player:died', (data) => {
-            // Handle other players dying
+            // Handle other players dying (don't report to server, just animate)
             const player = this.otherPlayers[data.playerId];
             if (player) {
-                player.die();
+                player.playDeathAnimationOnly();
             }
 
             // Handle local player death (server says we died)
@@ -2472,7 +2487,12 @@ class GameScene extends Phaser.Scene {
         networkManager.on('enemy:damaged', (data) => {
             const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId];
             if (enemy) {
-                enemy.takeDamage(data.damage);
+                // Pass visual options for damage numbers (isCrit, damageType, etc.)
+                const visualOptions = {
+                    isCrit: data.isCrit || false,
+                    damageType: data.damageType || 'physical'
+                };
+                enemy.takeDamage(data.damage, visualOptions);
             }
         });
 
@@ -2517,9 +2537,10 @@ class GameScene extends Phaser.Scene {
             }
 
             if (minion && minion.sprite && minion.sprite.active) {
-                // Position is now in PIXELS, use directly
-                const targetX = data.position.x;
-                const targetY = data.position.y;
+                // Position from server is in GRID coordinates, convert to pixels
+                const tileSize = GameConfig.GAME.TILE_SIZE;
+                const targetX = data.position.x * tileSize + tileSize / 2;
+                const targetY = data.position.y * tileSize + tileSize / 2;
 
                 // Apply animation state and sprite flip
                 if (data.animationState && minion.sprite.anims) {
@@ -2722,9 +2743,9 @@ class GameScene extends Phaser.Scene {
             console.log(`   My ID: ${this.localPlayer?.data?.id}, Target ID: ${data.targetPlayerId}`);
             console.log(`   Match: ${data.targetPlayerId === this.localPlayer?.data?.id}`);
 
-            // Handle auto-attack visual effects (Command Bolt, etc.)
-            if (data.abilityKey === 'autoattack' && data.targetMinionId) {
-                console.log(`⚔️ Auto-attack visual effect: ${data.abilityName} on minion ${data.targetMinionId}`);
+            // Handle auto-attack visual effects (Command Bolt, Aldric attacks, Kelise attacks, etc.)
+            if (data.abilityKey === 'autoattack') {
+                console.log(`⚔️ Auto-attack visual effect: ${data.abilityName}`);
                 this.playAutoAttackVisual(data);
                 return;
             }
@@ -2738,6 +2759,18 @@ class GameScene extends Phaser.Scene {
                 }
                 console.log(`💀 Pact of Bones visual effect from ${data.playerName}`);
                 this.playPactOfBonesVisual(data.effects);
+                return;
+            }
+
+            // Handle Shockwave visual effects for other players
+            if (data.effects && data.effects.type === 'shockwave') {
+                // Don't play visuals for the caster (they already see their own effects)
+                if (data.playerId === this.localPlayer?.data?.id) {
+                    console.log(`🌊 Shockwave - I'm the caster, skipping visual replay`);
+                    return;
+                }
+                console.log(`🌊 Shockwave visual effect from ${data.playerName}`);
+                this.playShockwaveVisual(data.effects);
                 return;
             }
 
@@ -2773,6 +2806,57 @@ class GameScene extends Phaser.Scene {
             } else {
                 console.log(`⏭️ Not for me, skipping`);
             }
+        });
+
+        // Orb collection synchronization
+        networkManager.on('orb:collected', (data) => {
+            console.log(`💎 CLIENT RECEIVED orb:collected:`, data);
+            console.log(`   My player ID: ${this.localPlayer?.data?.id}`);
+            console.log(`   Collector ID: ${data.collectorId}`);
+
+            // Don't process if I'm the one who collected it (already handled locally)
+            if (data.collectorId === this.localPlayer?.data?.id) {
+                console.log(`   ⏭️ I'm the collector, skipping (already handled locally)`);
+                return;
+            }
+
+            // Find the orb
+            const orb = this.experienceOrbs[data.orbId];
+            console.log(`   Orb ${data.orbId} exists: ${!!orb}`);
+            if (!orb) {
+                console.log(`   ⚠️ Orb ${data.orbId} not found (may have already collected)`);
+                return;
+            }
+
+            // Check if I'm on screen
+            const camera = this.cameras.main;
+            const myX = this.localPlayer.sprite.x;
+            const myY = this.localPlayer.sprite.y;
+            const onScreen = (myX >= camera.scrollX &&
+                            myX <= camera.scrollX + camera.width &&
+                            myY >= camera.scrollY &&
+                            myY <= camera.scrollY + camera.height);
+
+            console.log(`   My position: (${myX}, ${myY})`);
+            console.log(`   Camera bounds: (${camera.scrollX}, ${camera.scrollY}) to (${camera.scrollX + camera.width}, ${camera.scrollY + camera.height})`);
+            console.log(`   On screen: ${onScreen}`);
+
+            if (onScreen) {
+                console.log(`   ✅ I'm on screen! Playing collection effects and gaining XP`);
+
+                // Play collection visual/sound from the orb's position
+                orb.collect(data.collectorX, data.collectorY);
+
+                // Give me the XP
+                this.localPlayer.addExperience(data.expValue);
+                console.log(`   💰 Added ${data.expValue} XP to my player`);
+            } else {
+                console.log(`   ⏭️ Not on screen, skipping effects but removing orb`);
+            }
+
+            // Remove the orb for everyone
+            delete this.experienceOrbs[data.orbId];
+            console.log(`   🗑️ Removed orb ${data.orbId} from my orb list`);
         });
 
         // Enemy attack (Emberclaw shooting)
@@ -2824,7 +2908,7 @@ class GameScene extends Phaser.Scene {
                         ? this.localPlayer
                         : this.otherPlayers[data.killedBy];
 
-                    if (killer && killer.class === 'MALACHAR') {
+                    if (killer && killer.class && killer.class.toLowerCase() === 'malachar') {
                         // Heal on kill effects
                         let totalHeal = 0;
 
@@ -2887,7 +2971,7 @@ class GameScene extends Phaser.Scene {
                         ? this.localPlayer
                         : this.otherPlayers[data.killerId];
 
-                    if (killer && killer.class === 'MALACHAR') {
+                    if (killer && killer.class && killer.class.toLowerCase() === 'malachar') {
                         // 15% chance to summon minion (dark_harvest passive)
                         if (Math.random() < 0.15) {
                             this.spawnMinion(deathX, deathY, data.killerId);
@@ -3557,6 +3641,27 @@ class GameScene extends Phaser.Scene {
 
         console.log('♻️ Restoring player from death:', playerData);
 
+        // Check if character changed - if so, recreate the player entirely
+        const characterChanged = this.localPlayer.class !== playerData.class && playerData.class;
+
+        if (characterChanged) {
+            console.log(`🔄 Character changed from ${this.localPlayer.class} to ${playerData.class} - recreating player`);
+
+            // Destroy old player completely
+            if (this.localPlayer.spriteRenderer) {
+                this.localPlayer.spriteRenderer.destroy();
+            }
+            if (this.localPlayer.ui) {
+                this.localPlayer.ui.destroy();
+            }
+
+            // Create new player with updated character
+            this.localPlayer = new Player(this, playerData, true);
+
+            console.log('✅ Player recreated with new character');
+            return;
+        }
+
         const player = this.localPlayer;
 
         // Reset player state
@@ -4077,7 +4182,17 @@ class GameScene extends Phaser.Scene {
                 // Add experience to local player
                 this.localPlayer.addExperience(orb.expValue);
 
-                // Add experience to all other players that are visible on screen
+                // Broadcast orb collection to server so other players can collect it too
+                console.log(`📡 Broadcasting orb collection: orbId=${orbId}, expValue=${orb.expValue}, pos=(${playerX}, ${playerY})`);
+                console.log(`   networkManager exists: ${!!window.networkManager}, connected: ${window.networkManager?.connected}`);
+                if (window.networkManager && window.networkManager.connected) {
+                    window.networkManager.collectOrb(orbId, orb.expValue, playerX, playerY);
+                    console.log(`   ✅ Broadcast sent`);
+                } else {
+                    console.warn(`   ❌ Cannot broadcast - networkManager not available or not connected`);
+                }
+
+                // Add experience to all other players that are visible on screen (local only for smooth UX)
                 const camera = this.cameras.main;
                 Object.values(this.otherPlayers).forEach(otherPlayer => {
                     if (otherPlayer.isAlive) {
@@ -4173,7 +4288,40 @@ class GameScene extends Phaser.Scene {
             return;
         }
 
-        // Find the target minion
+        // Handle Aldric attack animations (aldric_attack, aldric_attack2, aldric_attack3)
+        if (data.abilityName && data.abilityName.startsWith('aldric_attack')) {
+            console.log(`⚔️ Playing Aldric attack visual: ${data.abilityName}`);
+
+            if (this.anims.exists(data.abilityName)) {
+                caster.spriteRenderer.sprite.play(data.abilityName);
+
+                // Play corresponding sound
+                const soundMap = {
+                    'aldric_attack': 'aldric_attack1',
+                    'aldric_attack2': 'aldric_attack2',
+                    'aldric_attack3': 'aldric_attack3'
+                };
+                const soundKey = soundMap[data.abilityName];
+                if (soundKey && this.sound) {
+                    this.sound.play(soundKey, { volume: 0.25 });
+                }
+            }
+            return;
+        }
+
+        // Handle Kelise swipe attacks
+        if (data.abilityName && data.abilityName === 'kelise_attack') {
+            console.log(`⚔️ Playing Kelise attack visual`);
+            if (this.anims.exists('kelise_attack')) {
+                caster.spriteRenderer.sprite.play('kelise_attack');
+                if (this.sound) {
+                    this.sound.play('swipe', { volume: 0.2 });
+                }
+            }
+            return;
+        }
+
+        // Find the target minion (only for Command Bolt)
         const targetMinion = this.minions[data.targetMinionId];
         if (!targetMinion || !targetMinion.sprite) {
             console.warn(`⚠️ Cannot play auto-attack visual: target minion not found`);
@@ -4320,6 +4468,97 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    playShockwaveVisual(effects) {
+        console.log(`🌊 Playing Shockwave visual effect`, effects);
+
+        if (!effects.position) {
+            console.warn('⚠️ No position data for Shockwave visual');
+            return;
+        }
+
+        // Create animation if it doesn't exist
+        if (!this.anims.exists('aldric_shockwave_anim')) {
+            this.anims.create({
+                key: 'aldric_shockwave_anim',
+                frames: this.anims.generateFrameNumbers('aldric_shockwave', {
+                    start: 50,
+                    end: 58
+                }),
+                frameRate: 15,
+                repeat: 0
+            });
+        }
+
+        const facingRight = effects.facingRight !== undefined ? effects.facingRight : true;
+        const direction = facingRight ? 1 : -1;
+        const startX = effects.position.x;
+        const startY = effects.position.y;
+
+        // Create shockwave sprite
+        const shockwave = this.add.sprite(startX, startY, 'aldric_shockwave', 50);
+        shockwave.setDepth(9000);
+        shockwave.setScale(1.5);
+        shockwave.setFlipX(!facingRight);
+        shockwave.play('aldric_shockwave_anim');
+
+        // Ground impact particles
+        for (let i = 0; i < 12; i++) {
+            const angle = (Math.random() - 0.5) * Math.PI * 0.5 + (direction > 0 ? 0 : Math.PI);
+            const particle = this.add.circle(
+                startX,
+                startY + 20,
+                4 + Math.random() * 4,
+                0x4169E1,
+                0.8
+            );
+            particle.setDepth(8999);
+
+            this.tweens.add({
+                targets: particle,
+                x: startX + Math.cos(angle) * (80 + Math.random() * 60),
+                y: startY + 20 + Math.sin(angle) * 30,
+                alpha: 0,
+                duration: 400 + Math.random() * 200,
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+
+        // Animate shockwave forward
+        const maxDistance = 300;
+        const duration = 600;
+
+        this.tweens.add({
+            targets: shockwave,
+            x: startX + (direction * maxDistance),
+            scaleX: 2.0 * (facingRight ? 1 : -1),
+            scaleY: 2.0,
+            duration: duration,
+            ease: 'Power2',
+            onComplete: () => {
+                shockwave.destroy();
+            }
+        });
+
+        // Fade out shockwave
+        this.tweens.add({
+            targets: shockwave,
+            alpha: 0,
+            duration: duration,
+            ease: 'Power2'
+        });
+
+        // Camera shake
+        this.cameras.main.shake(200, 0.005);
+
+        // Play sound effect if available
+        if (this.sound && this.sound.get('hit_punch_1')) {
+            this.sound.play('hit_punch_1', { volume: 0.3 });
+        }
+
+        console.log('✅ Shockwave visual effect created');
+    }
+
     spawnFireVisual(x, y) {
         // Random fire sprite selection
         const fireSprites = ['4_2', '4_4', '4_5', '5_1', '5_2', '5_4', '5_5', '6_1', '6_2', '6_4', '6_5', '7_1', '7_2', '7_4', '7_5'];
@@ -4425,7 +4664,7 @@ class GameScene extends Phaser.Scene {
         console.log(`🔍 applyCharacterBuild - characterId: ${characterId}`);
 
         // For Malachar, apply Bone Commander build
-        if (characterId === 'MALACHAR' && typeof window.getBuildById === 'function') {
+        if (characterId && characterId.toLowerCase() === 'malachar' && typeof window.getBuildById === 'function') {
             const boneCommander = window.getBuildById('bone_commander');
 
             if (boneCommander) {
@@ -4510,7 +4749,7 @@ class GameScene extends Phaser.Scene {
         console.log(`🔍 getAvailableChoices exists: ${typeof window.getAvailableChoices === 'function'}`);
 
         // For Malachar, check ability unlocks
-        if (characterId === 'MALACHAR' && typeof window.getAvailableChoices === 'function') {
+        if (characterId && characterId.toLowerCase() === 'malachar' && typeof window.getAvailableChoices === 'function') {
             console.log(`🔍 ✅ Calling getAvailableChoices for level ${level}`);
             const abilities = window.getAvailableChoices(level, []);
 
