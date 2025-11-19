@@ -2255,11 +2255,32 @@ class GameScene extends Phaser.Scene {
 
         // Player attacked
         networkManager.on('player:attacked', (data) => {
-            const player = this.otherPlayers[data.playerId] || this.localPlayer;
-            if (player) {
-                // Play attack animation
-                if (player.spriteRenderer && player.spriteRenderer.playAttackAnimation) {
-                    player.spriteRenderer.playAttackAnimation();
+            // IMPORTANT: Only handle attacks from OTHER players/bots, not local player
+            // Local player attacks are handled directly by AbilityManager
+
+            // Safety check: NEVER process attacks from our own player ID
+            if (!data.playerId || data.playerId === networkManager.currentPlayer?.id) {
+                return; // Skip - this is us or invalid
+            }
+
+            // ONLY look in otherPlayers - NEVER touch localPlayer
+            const player = this.otherPlayers[data.playerId];
+
+            if (player && player.spriteRenderer && player.spriteRenderer.sprite) {
+                // DO NOT call playAttackAnimation() - it broadcasts to network!
+                // Instead, directly play the animation on the sprite
+                const characterClass = player.data?.class || 'kelise';
+                let attackAnimKey = `${characterClass.toLowerCase()}_attack`;
+
+                // For Aldric, use attack variations
+                if (characterClass === 'aldric') {
+                    const variants = ['aldric_attack', 'aldric_attack2', 'aldric_attack3'];
+                    attackAnimKey = variants[Math.floor(Math.random() * variants.length)];
+                }
+
+                // Play animation directly without broadcasting
+                if (this.anims.exists(attackAnimKey)) {
+                    player.spriteRenderer.sprite.play(attackAnimKey);
                 }
 
                 // Show attack effect
@@ -2485,7 +2506,7 @@ class GameScene extends Phaser.Scene {
 
         // Enemy damaged
         networkManager.on('enemy:damaged', (data) => {
-            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId];
+            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId] || this.emberclaws[data.enemyId];
             if (enemy) {
                 // Pass visual options for damage numbers (isCrit, damageType, etc.)
                 const visualOptions = {
@@ -3694,6 +3715,11 @@ class GameScene extends Phaser.Scene {
             player.sprite.y = respawnPos.y;
             player.sprite.body.setVelocity(0, 0);
 
+            // Make main player sprite visible and ensure it's at proper depth
+            player.sprite.setAlpha(1);
+            player.sprite.setVisible(true);
+            player.sprite.setDepth(5); // Ensure player is above ground/enemies
+
             console.log(`✅ Physics body moved to (${player.sprite.x}, ${player.sprite.y})`);
 
             // Restore visual sprites - make all elements visible again
@@ -4321,10 +4347,16 @@ class GameScene extends Phaser.Scene {
             return;
         }
 
+        // ONLY handle Command Bolt from here - ignore everything else
+        if (data.abilityName !== 'Command Bolt') {
+            // Not a Command Bolt, nothing else to do
+            return;
+        }
+
         // Find the target minion (only for Command Bolt)
         const targetMinion = this.minions[data.targetMinionId];
         if (!targetMinion || !targetMinion.sprite) {
-            console.warn(`⚠️ Cannot play auto-attack visual: target minion not found`);
+            console.warn(`⚠️ Cannot play Command Bolt visual: target minion not found`);
             return;
         }
 

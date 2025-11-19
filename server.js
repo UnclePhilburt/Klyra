@@ -288,6 +288,7 @@ class Player {
             class: this.class,
             isAlive: this.isAlive,
             isReady: this.isReady,
+            isBot: this.isBot || false,
             stats: this.stats,
             kills: this.kills,
             itemsCollected: this.itemsCollected,
@@ -349,33 +350,63 @@ class Player {
 
 // AI Bot class - extends Player to act like a real player
 class AIBot extends Player {
-    constructor(lobbyId) {
-        const botNames = ['BotWarrior', 'BotMage', 'BotRogue', 'BotKnight', 'BotHunter'];
-        const botClasses = ['kelise', 'malachar', 'aldric'];
-        const randomName = botNames[Math.floor(Math.random() * botNames.length)];
-        const randomClass = botClasses[Math.floor(Math.random() * botClasses.length)];
+    constructor(lobbyId, botClass = null) {
+        const botNames = {
+            'kelise': 'Bot Kelise',
+            'malachar': 'Bot Malachar',
+            'aldric': 'Bot Aldric'
+        };
 
-        super(`bot_${Date.now()}_${Math.random()}`, randomName);
+        // Use provided class or pick random
+        const selectedClass = botClass || ['kelise', 'malachar', 'aldric'][Math.floor(Math.random() * 3)];
+        const botName = botNames[selectedClass];
+
+        super(`bot_${Date.now()}_${Math.random()}`, botName);
 
         this.isBot = true;
         this.lobbyId = lobbyId;
-        this.class = randomClass;
-        this.stats = this.getClassStats(randomClass);
+        this.class = selectedClass;
+        this.stats = this.getClassStats(selectedClass);
         this.isReady = true;
+
+        // BUFF BOTS - Make them actually useful!
+        this.maxHealth = 200; // 2x health of normal players
+        this.health = 200;
+        this.damageMultiplier = 1.5; // 50% more damage
 
         // AI behavior properties
         this.target = null; // Current enemy target
-        this.lastMoveTime = 0;
+        this.wanderTarget = null; // Exploration destination
+        this.lastMoveTime = Date.now() - 200;
         this.lastAttackTime = 0;
-        this.lastBroadcastPosition = { x: 0, y: 0 }; // Track last broadcasted position
-        this.lastAbilityTime = 0; // Track ability cooldowns
+        this.lastBroadcastPosition = { x: 0, y: 0 };
+        this.lastAbilityTime = 0;
+        this.lastHealTime = 0;
         this.moveInterval = 100; // Update movement every 100ms
-        this.attackCooldown = 1000; // Attack every second
-        this.aggroRange = 5000; // Pixels - how far bot can see enemies (increased from 400)
-        this.followRange = 6000; // Follow enemies this far (increased from 600)
+        this.attackCooldown = 800; // Attack faster - every 0.8 seconds
+        this.aggroRange = 6000; // Can see enemies from far away
+        this.followRange = 7000; // Will chase enemies far
+        this.retreatThreshold = 0.3; // Retreat when below 30% HP
+        this.isRetreating = false;
+
+        // Pack behavior
+        this.focusFireEnabled = true; // Bots coordinate attacks
+        this.preferredAlly = null; // Bot will stick near this player
+
+        // Auto-revive system
+        this.respawnDelay = 10000; // Respawn after 10 seconds
+        this.deathTime = null;
+
+        // Stuck detection
+        this.lastPositionCheck = { x: 0, y: 0 };
+        this.lastPositionCheckTime = Date.now();
+        this.stuckCheckInterval = 2000; // Check every 2 seconds
 
         // Ability cooldowns by class
-        this.abilityCooldowns = this.getAbilityCooldowns(randomClass);
+        this.abilityCooldowns = this.getAbilityCooldowns(selectedClass);
+
+        // Auto-select skills for the bot based on class
+        this.selectedSkills = this.getDefaultSkills(selectedClass);
     }
 
     getAbilityCooldowns(characterClass) {
@@ -392,35 +423,130 @@ class AIBot extends Player {
         }
     }
 
+    getDefaultSkills(characterClass) {
+        // Return default skill selections for each class
+        switch(characterClass) {
+            case 'aldric':
+                return [
+                    'damage_boost',        // Level 2: +10% damage
+                    'attack_speed',        // Level 3: +15% attack speed
+                    'critical_strike',     // Level 4: 10% crit chance
+                    'health_boost',        // Level 5: +20% max health
+                    'area_damage'          // Level 6: Area damage boost
+                ];
+            case 'malachar':
+                return [
+                    'minion_damage',       // Level 2: +20% minion damage
+                    'minion_count',        // Level 3: +1 max minions
+                    'minion_health',       // Level 4: +30% minion health
+                    'dark_harvest',        // Level 5: Enhanced minion spawn on kill
+                    'minion_speed'         // Level 6: +25% minion speed
+                ];
+            case 'kelise':
+                return [
+                    'attack_speed',        // Level 2: +15% attack speed
+                    'damage_boost',        // Level 3: +10% damage
+                    'lifesteal',           // Level 4: 5% lifesteal
+                    'critical_damage',     // Level 5: +50% crit damage
+                    'mobility'             // Level 6: Enhanced movement
+                ];
+            default:
+                return [];
+        }
+    }
+
     // AI decision making - called every tick
     update(lobby) {
         const now = Date.now();
 
-        // Find nearest enemy
-        this.findTarget(lobby);
+        // Collect nearby XP orbs
+        this.collectNearbyOrbs(lobby);
 
-        // Move towards target or wander
+        // Check if stuck (hasn't moved much in 2 seconds)
+        if (now - this.lastPositionCheckTime > this.stuckCheckInterval) {
+            const dx = this.position.x - this.lastPositionCheck.x;
+            const dy = this.position.y - this.lastPositionCheck.y;
+            const distMoved = Math.sqrt(dx * dx + dy * dy);
+
+            if (distMoved < 50) { // Moved less than 50 pixels in 2 seconds = stuck
+                // Pick a new random wander target to get unstuck
+                this.wanderTarget = null;
+                this.target = null; // Also clear enemy target if stuck
+                this.preferredSide = null; // Reset side preference
+            }
+
+            this.lastPositionCheck = { x: this.position.x, y: this.position.y };
+            this.lastPositionCheckTime = now;
+        }
+
+        // Check if we need to retreat (low health)
+        const healthPercent = this.health / this.maxHealth;
+        if (healthPercent < this.retreatThreshold && this.isAlive) {
+            this.isRetreating = true;
+        } else if (healthPercent > 0.6) {
+            this.isRetreating = false; // Stop retreating when healed
+        }
+
+        // Self-heal when retreating
+        if (this.isRetreating && now - this.lastHealTime > 2000) {
+            this.heal(lobby, 10); // Heal 10 HP every 2 seconds
+            this.lastHealTime = now;
+        }
+
+        // Find best target (use focus fire if enabled)
+        if (!this.isRetreating) {
+            this.findTarget(lobby);
+        } else {
+            this.target = null; // Don't engage while retreating
+        }
+
+        // Move towards target, retreat, or follow allies
         if (now - this.lastMoveTime > this.moveInterval) {
             this.makeMovement(lobby);
             this.lastMoveTime = now;
         }
 
-        // Try to use abilities intelligently
-        this.attemptAbility(lobby, now);
+        // Use abilities intelligently
+        if (!this.isRetreating) {
+            this.useAbilities(lobby);
+        }
 
-        // Attack if in range
-        if (this.target && now - this.lastAttackTime > this.attackCooldown) {
+        // Attack if in range and not retreating
+        if (this.target && !this.isRetreating && now - this.lastAttackTime > this.attackCooldown) {
             this.attemptAttack(lobby);
             this.lastAttackTime = now;
         }
+    }
+
+    heal(lobby, amount) {
+        this.health = Math.min(this.maxHealth, this.health + amount);
+
+        // Broadcast heal event
+        lobby.broadcast('player:healed', {
+            playerId: this.id,
+            health: this.health,
+            maxHealth: this.maxHealth,
+            healAmount: amount
+        });
     }
 
     findTarget(lobby) {
         if (!lobby.gameState || !lobby.gameState.enemies) return;
 
         const TILE_SIZE = 32;
-        let nearestEnemy = null;
-        let nearestDist = Infinity;
+        let bestTarget = null;
+        let bestScore = -Infinity;
+
+        // FOCUS FIRE: Check what real players are attacking
+        let playerTargets = new Map(); // enemy -> number of players attacking it
+        if (this.focusFireEnabled) {
+            lobby.players.forEach(player => {
+                if (!player.isBot && player.lastAttackedEnemy) {
+                    const count = playerTargets.get(player.lastAttackedEnemy) || 0;
+                    playerTargets.set(player.lastAttackedEnemy, count + 1);
+                }
+            });
+        }
 
         lobby.gameState.enemies.forEach(enemy => {
             if (!enemy.isAlive) return;
@@ -429,29 +555,102 @@ class AIBot extends Player {
             const dy = (enemy.position.y * TILE_SIZE) - this.position.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist < this.aggroRange && dist < nearestDist) {
-                nearestEnemy = enemy;
-                nearestDist = dist;
+            if (dist < this.aggroRange) {
+                // SMART TARGETING with multiple factors
+                const healthPercent = enemy.health / enemy.maxHealth;
+                const distanceScore = 1 - (dist / this.aggroRange); // Closer = higher score
+                const healthScore = 1 - healthPercent; // Lower health = higher score
+
+                // PRIORITY: Dangerous enemies (bosses, elites)
+                let threatScore = 0;
+                const enemyType = enemy.type?.toLowerCase() || '';
+                if (enemyType.includes('boss') || enemyType.includes('minotaur')) {
+                    threatScore = 0.8; // High priority on bosses
+                } else if (enemyType.includes('wolf') || enemyType.includes('emberclaw')) {
+                    threatScore = 0.4; // Medium priority on dangerous mobs
+                } else {
+                    threatScore = 0.1; // Low priority on weak mobs
+                }
+
+                // FOCUS FIRE BONUS: Massive boost if players are attacking this enemy
+                const focusFireBonus = playerTargets.get(enemy.id) || 0;
+
+                // ADVANCED WEIGHTED SCORING:
+                // 1. Focus fire (40%) - coordinate with players
+                // 2. Threat level (25%) - kill dangerous enemies first
+                // 3. Low health (20%) - finish off weak enemies
+                // 4. Distance (15%) - prefer close enemies
+                let score = (focusFireBonus * 0.4) + (threatScore * 0.25) + (healthScore * 0.2) + (distanceScore * 0.15);
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestTarget = enemy;
+                }
             }
         });
 
-        // Keep current target if still valid and close
+        // SMART TARGET SWITCHING: Only switch if significantly better
         if (this.target && this.target.isAlive) {
             const dx = (this.target.position.x * TILE_SIZE) - this.position.x;
             const dy = (this.target.position.y * TILE_SIZE) - this.position.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
+            // Switch if current target too far or new target is WAY better
             if (dist > this.followRange) {
-                this.target = nearestEnemy; // Too far, switch target
+                this.target = bestTarget;
+            } else if (bestTarget && bestScore > 0.8) {
+                // Only switch if new target scores 80%+ (prevents constant switching)
+                this.target = bestTarget;
             }
         } else {
-            this.target = nearestEnemy;
+            this.target = bestTarget;
         }
     }
 
     makeMovement(lobby) {
         const TILE_SIZE = 32;
         const moveSpeed = 5; // Pixels per update
+
+        // RETREAT BEHAVIOR: Run away from danger when low HP
+        if (this.isRetreating) {
+            const nearbyEnemies = this.getNearbyEnemies(lobby, 400);
+
+            if (nearbyEnemies.length > 0) {
+                // Calculate average enemy position
+                let avgX = 0, avgY = 0;
+                nearbyEnemies.forEach(enemy => {
+                    avgX += enemy.position.x * TILE_SIZE;
+                    avgY += enemy.position.y * TILE_SIZE;
+                });
+                avgX /= nearbyEnemies.length;
+                avgY /= nearbyEnemies.length;
+
+                // Run AWAY from enemies
+                const dx = this.position.x - avgX;
+                const dy = this.position.y - avgY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 0) {
+                    this.position.x += (dx / dist) * moveSpeed * 2; // Run faster when retreating!
+                    this.position.y += (dy / dist) * moveSpeed * 2;
+                }
+            }
+
+            // Broadcast retreat movement
+            const dx = this.position.x - this.lastBroadcastPosition.x;
+            const dy = this.position.y - this.lastBroadcastPosition.y;
+            const distMoved = Math.sqrt(dx * dx + dy * dy);
+
+            if (distMoved > 10) {
+                lobby.broadcast('player:moved', {
+                    playerId: this.id,
+                    position: this.position
+                });
+                this.lastBroadcastPosition = { x: this.position.x, y: this.position.y };
+            }
+
+            return; // Skip normal movement
+        }
 
         if (this.target) {
             // Calculate target position
@@ -481,10 +680,64 @@ class AIBot extends Player {
                 this.position.y += (dy / dist) * moveSpeed;
             }
         } else {
-            // No target - reset preferred side and wander randomly
+            // No enemy target - find and follow nearest real player
+            const nearestPlayer = this.findNearestRealPlayer(lobby);
+
+            if (nearestPlayer) {
+                const dx = nearestPlayer.position.x - this.position.x;
+                const dy = nearestPlayer.position.y - this.position.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // Follow player but maintain some distance (not too close)
+                const followDistance = 200; // Stay about 200 pixels away
+                if (dist > followDistance) {
+                    this.position.x += (dx / dist) * moveSpeed * 2; // Faster to catch up
+                    this.position.y += (dy / dist) * moveSpeed * 2;
+                    this.wanderTarget = null; // Cancel wandering
+                    return; // Skip wandering logic
+                }
+            }
+            // No target - explore the map by picking destinations
             this.preferredSide = null;
-            this.position.x += (Math.random() - 0.5) * moveSpeed * 20;
-            this.position.y += (Math.random() - 0.5) * moveSpeed * 20;
+
+            // Check if we're stuck at world bounds
+            const maxPos = lobby.WORLD_SIZE * TILE_SIZE;
+            const margin = 100; // 100 pixels from edge
+            const isNearEdge = this.position.x < margin || this.position.x > maxPos - margin ||
+                               this.position.y < margin || this.position.y > maxPos - margin;
+
+            // Pick a new wander destination if we don't have one, reached it, or stuck at edge
+            if (!this.wanderTarget || isNearEdge) {
+                const worldCenter = (lobby.WORLD_SIZE * TILE_SIZE) / 2;
+                const wanderRadius = 2500; // Wander up to 2500 pixels from center (stay within bounds)
+
+                // Pick random point around world center
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * wanderRadius;
+
+                this.wanderTarget = {
+                    x: worldCenter + Math.cos(angle) * distance,
+                    y: worldCenter + Math.sin(angle) * distance
+                };
+
+                // Ensure wander target is within bounds
+                this.wanderTarget.x = Math.max(margin, Math.min(maxPos - margin, this.wanderTarget.x));
+                this.wanderTarget.y = Math.max(margin, Math.min(maxPos - margin, this.wanderTarget.y));
+            }
+
+            // Move towards wander target
+            const dx = this.wanderTarget.x - this.position.x;
+            const dy = this.wanderTarget.y - this.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // If reached destination (within 100 pixels), pick new one
+            if (dist < 100) {
+                this.wanderTarget = null;
+            } else {
+                // Move towards destination
+                this.position.x += (dx / dist) * moveSpeed * 3; // Faster exploration movement
+                this.position.y += (dy / dist) * moveSpeed * 3;
+            }
         }
 
         // Keep in bounds
@@ -518,7 +771,23 @@ class AIBot extends Player {
 
         // Attack range (5 tiles)
         if (dist < 160) {
-            const damage = Math.floor(20 + (this.level * 5));
+            // Calculate facing direction based on target position
+            const angle = Math.atan2(dy, dx);
+            const facingDirection = angle > -Math.PI/4 && angle < Math.PI/4 ? 'right' :
+                                  angle >= Math.PI/4 && angle < 3*Math.PI/4 ? 'down' :
+                                  angle >= -3*Math.PI/4 && angle < -Math.PI/4 ? 'up' : 'left';
+
+            // Broadcast the attack animation to all players with facing direction
+            lobby.broadcast('player:attacked', {
+                playerId: this.id,
+                position: this.position,
+                targetPosition: { x: targetX, y: targetY },
+                direction: facingDirection
+            });
+
+            // BUFFED BOT DAMAGE - Bots hit HARD!
+            const baseDamage = 40 + (this.level * 10); // Double base damage
+            const damage = Math.floor(baseDamage * this.damageMultiplier);
 
             // Deal damage to enemy
             this.target.health -= damage;
@@ -528,24 +797,20 @@ class AIBot extends Player {
                 this.target.isAlive = false;
                 this.kills++;
 
-                // Gain XP
-                const xpGain = 10;
-                this.experience += xpGain;
+                // Spawn XP orb at enemy death location
+                const orbId = `orb_${Date.now()}_${Math.random()}`;
+                const orbValue = 10; // Base XP value
+                lobby.gameState.experienceOrbs.set(orbId, {
+                    x: targetX,
+                    y: targetY,
+                    expValue: orbValue
+                });
 
-                // Check level up
-                const xpNeeded = this.level * 100;
-                if (this.experience >= xpNeeded) {
-                    this.level++;
-                    this.experience = 0;
-                    this.maxHealth += 10;
-                    this.health = this.maxHealth;
-                }
-
-                // Broadcast enemy death
-                lobby.broadcast('enemy:death', {
+                // Broadcast enemy death (client will spawn orb visual)
+                lobby.broadcast('enemy:killed', {
                     enemyId: this.target.id,
                     killedBy: this.id,
-                    killerId: this.id,
+                    killerName: this.username,
                     position: this.target.position
                 });
 
@@ -602,6 +867,364 @@ class AIBot extends Player {
 
         console.log(`💀 Bot ${this.username} spawned minion ${minionId} at (${minionPosition.x}, ${minionPosition.y})`);
     }
+
+    useAbilities(lobby) {
+        const now = Date.now();
+
+        // Use abilities based on character class
+        switch(this.class) {
+            case 'aldric':
+                this.useAldricAbilities(lobby, now);
+                break;
+            case 'malachar':
+                this.useMalacharAbilities(lobby, now);
+                break;
+            case 'kelise':
+                this.useKeliseAbilities(lobby, now);
+                break;
+        }
+    }
+
+    useAldricAbilities(lobby, now) {
+        // Aldric's E ability: Shockwave
+        const shockwaveCooldown = this.abilityCooldowns.e || 8000;
+        if (!this.lastAbilityTime || now - this.lastAbilityTime > shockwaveCooldown) {
+            // Count nearby enemies
+            const nearbyEnemies = this.getNearbyEnemies(lobby, 300);
+
+            // SMART USAGE: Use shockwave when:
+            // 1. Surrounded by 4+ enemies (danger!)
+            // 2. OR 3+ enemies AND we're below 50% health (need space)
+            // 3. OR 5+ enemies regardless (clear the horde)
+            const healthPercent = this.health / this.maxHealth;
+            const shouldUseShockwave = nearbyEnemies.length >= 5 ||
+                                      (nearbyEnemies.length >= 4) ||
+                                      (nearbyEnemies.length >= 3 && healthPercent < 0.5);
+
+            if (shouldUseShockwave) {
+                // Deal damage to all nearby enemies
+                const shockwaveDamage = 60 + (this.level * 15); // Strong AOE damage
+                nearbyEnemies.forEach(enemy => {
+                    enemy.health -= shockwaveDamage;
+
+                    if (enemy.health <= 0) {
+                        enemy.health = 0;
+                        enemy.isAlive = false;
+                        this.kills++;
+
+                        // Spawn XP orb
+                        const TILE_SIZE = 32;
+                        const orbId = `orb_${Date.now()}_${Math.random()}`;
+                        lobby.gameState.experienceOrbs.set(orbId, {
+                            x: enemy.position.x * TILE_SIZE,
+                            y: enemy.position.y * TILE_SIZE,
+                            expValue: 10
+                        });
+
+                        // Broadcast enemy death
+                        lobby.broadcast('enemy:killed', {
+                            enemyId: enemy.id,
+                            killedBy: this.id,
+                            killerName: this.username,
+                            position: enemy.position
+                        });
+                    } else {
+                        // Broadcast damage
+                        lobby.broadcast('enemy:damaged', {
+                            enemyId: enemy.id,
+                            damage: shockwaveDamage,
+                            attackerId: this.id
+                        });
+                    }
+                });
+
+                lobby.broadcast('ability:used', {
+                    playerId: this.id,
+                    playerName: this.username,
+                    abilityKey: 'aldric_attack3',
+                    abilityName: 'Shockwave',
+                    position: this.position,
+                    effects: {
+                        type: 'shockwave',
+                        playerId: this.id,
+                        position: this.position,
+                        radius: 300
+                    }
+                });
+
+                // Also trigger player:attacked for the animation
+                lobby.broadcast('player:attacked', {
+                    playerId: this.id,
+                    attackKey: 'aldric_attack3',
+                    targetPosition: this.position,
+                    position: this.position
+                });
+
+                this.lastAbilityTime = now;
+                console.log(`⚡ Bot ${this.username} used Shockwave on ${nearbyEnemies.length} enemies`);
+            }
+        }
+    }
+
+    useMalacharAbilities(lobby, now) {
+        // Malachar's Q ability: Pact of Bones (spawn multiple minions)
+        const pactCooldown = this.abilityCooldowns.q || 10000;
+        if (!this.lastAbilityTime || now - this.lastAbilityTime > pactCooldown) {
+            const nearbyEnemies = this.getNearbyEnemies(lobby, 400);
+
+            // SMART USAGE: Spawn minions when:
+            // 1. Lots of enemies (6+) and we don't have many minions
+            // 2. OR fighting a boss/elite and need backup
+            // 3. OR we're low health and need meat shields
+            const ourMinions = this.countOurMinions(lobby);
+            const healthPercent = this.health / this.maxHealth;
+            const hasBossNearby = nearbyEnemies.some(e =>
+                e.type?.toLowerCase().includes('boss') ||
+                e.type?.toLowerCase().includes('minotaur')
+            );
+
+            const shouldSummon = (nearbyEnemies.length >= 6 && ourMinions < 4) ||
+                                (hasBossNearby && ourMinions < 5) ||
+                                (healthPercent < 0.4 && nearbyEnemies.length >= 3 && ourMinions < 3);
+
+            if (shouldSummon) {
+                const minions = [];
+
+                // Spawn 3 minions
+                for (let i = 0; i < 3; i++) {
+                    const minionPos = {
+                        x: this.position.x / 32 + (Math.random() - 0.5) * 3,
+                        y: this.position.y / 32 + (Math.random() - 0.5) * 3
+                    };
+                    this.spawnMinion(lobby, minionPos);
+                    minions.push(minionPos);
+                }
+
+                lobby.broadcast('ability:used', {
+                    playerId: this.id,
+                    playerName: this.username,
+                    abilityKey: 'malachar_summon',
+                    abilityName: 'Pact of Bones',
+                    position: this.position,
+                    effects: {
+                        type: 'pact_of_bones',
+                        playerId: this.id,
+                        position: this.position,
+                        minions: minions
+                    }
+                });
+
+                // Also trigger player:attacked for the animation
+                lobby.broadcast('player:attacked', {
+                    playerId: this.id,
+                    attackKey: 'malachar_summon',
+                    targetPosition: this.position,
+                    position: this.position
+                });
+
+                this.lastAbilityTime = now;
+                console.log(`💀 Bot ${this.username} used Pact of Bones`);
+            }
+        }
+    }
+
+    useKeliseAbilities(lobby, now) {
+        // Kelise's abilities - Swift Strike (AOE damage)
+        const nearbyEnemies = this.getNearbyEnemies(lobby, 350);
+
+        // SMART USAGE: Use Swift Strike when:
+        // 1. Surrounded by 5+ enemies (clear space)
+        // 2. OR 4+ enemies and we're below 40% health (danger!)
+        // 3. OR fighting elites and need burst damage
+        const healthPercent = this.health / this.maxHealth;
+        const hasEliteNearby = nearbyEnemies.some(e =>
+            e.type?.toLowerCase().includes('wolf') ||
+            e.type?.toLowerCase().includes('emberclaw') ||
+            e.type?.toLowerCase().includes('minotaur')
+        );
+
+        const shouldUseAbility = nearbyEnemies.length >= 5 ||
+                                (nearbyEnemies.length >= 4 && healthPercent < 0.4) ||
+                                (hasEliteNearby && nearbyEnemies.length >= 3);
+
+        if (shouldUseAbility) {
+            const abilityCooldown = 6000;
+            if (!this.lastAbilityTime || now - this.lastAbilityTime > abilityCooldown) {
+                // Deal damage to all nearby enemies
+                const swiftStrikeDamage = 50 + (this.level * 12); // Fast AOE damage
+                nearbyEnemies.forEach(enemy => {
+                    enemy.health -= swiftStrikeDamage;
+
+                    if (enemy.health <= 0) {
+                        enemy.health = 0;
+                        enemy.isAlive = false;
+                        this.kills++;
+
+                        // Spawn XP orb
+                        const TILE_SIZE = 32;
+                        const orbId = `orb_${Date.now()}_${Math.random()}`;
+                        lobby.gameState.experienceOrbs.set(orbId, {
+                            x: enemy.position.x * TILE_SIZE,
+                            y: enemy.position.y * TILE_SIZE,
+                            expValue: 10
+                        });
+
+                        // Broadcast enemy death
+                        lobby.broadcast('enemy:killed', {
+                            enemyId: enemy.id,
+                            killedBy: this.id,
+                            killerName: this.username,
+                            position: enemy.position
+                        });
+                    } else {
+                        // Broadcast damage
+                        lobby.broadcast('enemy:damaged', {
+                            enemyId: enemy.id,
+                            damage: swiftStrikeDamage,
+                            attackerId: this.id
+                        });
+                    }
+                });
+
+                lobby.broadcast('ability:used', {
+                    playerId: this.id,
+                    playerName: this.username,
+                    abilityKey: 'kelise_attack2',
+                    abilityName: 'Swift Strike',
+                    position: this.position,
+                    effects: {
+                        type: 'swift_strike',
+                        playerId: this.id,
+                        position: this.position
+                    }
+                });
+
+                // Also trigger player:attacked for the animation
+                lobby.broadcast('player:attacked', {
+                    playerId: this.id,
+                    attackKey: 'kelise_attack2',
+                    targetPosition: this.position,
+                    position: this.position
+                });
+
+                this.lastAbilityTime = now;
+                console.log(`✨ Bot ${this.username} used Swift Strike on ${nearbyEnemies.length} enemies`);
+            }
+        }
+    }
+
+    getNearbyEnemies(lobby, range) {
+        if (!lobby.gameState || !lobby.gameState.enemies) return [];
+
+        const TILE_SIZE = 32;
+        const nearbyEnemies = [];
+
+        lobby.gameState.enemies.forEach(enemy => {
+            if (!enemy.isAlive) return;
+
+            const dx = (enemy.position.x * TILE_SIZE) - this.position.x;
+            const dy = (enemy.position.y * TILE_SIZE) - this.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < range) {
+                nearbyEnemies.push(enemy);
+            }
+        });
+
+        return nearbyEnemies;
+    }
+
+    countOurMinions(lobby) {
+        if (!lobby.gameState || !lobby.gameState.minions) return 0;
+
+        let count = 0;
+        lobby.gameState.minions.forEach(minion => {
+            if (minion.ownerId === this.id) {
+                count++;
+            }
+        });
+
+        return count;
+    }
+
+    findNearestRealPlayer(lobby) {
+        if (!lobby.players || lobby.players.size === 0) return null;
+
+        let nearestPlayer = null;
+        let nearestDist = Infinity;
+
+        lobby.players.forEach(player => {
+            // Skip ourselves and other bots
+            if (player.id === this.id || player.isBot) return;
+
+            const dx = player.position.x - this.position.x;
+            const dy = player.position.y - this.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearestPlayer = player;
+            }
+        });
+
+        return nearestPlayer;
+    }
+
+    collectNearbyOrbs(lobby) {
+        if (!lobby.gameState || !lobby.gameState.experienceOrbs) return;
+
+        const COLLECTION_RANGE = 150; // Bots collect orbs within 150 pixels
+        const orbsToCollect = [];
+
+        // Find nearby orbs
+        lobby.gameState.experienceOrbs.forEach((orb, orbId) => {
+            const dx = orb.x - this.position.x;
+            const dy = orb.y - this.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < COLLECTION_RANGE) {
+                orbsToCollect.push({ orbId, orb });
+            }
+        });
+
+        // Collect each orb
+        orbsToCollect.forEach(({ orbId, orb }) => {
+            const expValue = orb.expValue || 10;
+
+            // Award XP to bot
+            this.experience += expValue;
+
+            // Check for level up
+            const xpNeeded = this.level * 100;
+            if (this.experience >= xpNeeded) {
+                this.level++;
+                this.experience = 0;
+                this.maxHealth += 10;
+                this.health = Math.min(this.health + 10, this.maxHealth);
+
+                // Broadcast level up
+                lobby.broadcast('player:levelup', {
+                    playerId: this.id,
+                    username: this.username,
+                    level: this.level,
+                    maxHealth: this.maxHealth
+                });
+            }
+
+            // Remove orb from game state
+            lobby.gameState.experienceOrbs.delete(orbId);
+
+            // Broadcast orb collection to all players (including real players nearby for shared XP)
+            lobby.broadcast('orb:collected', {
+                orbId: orbId,
+                expValue: expValue,
+                collectorId: this.id,
+                collectorName: this.username,
+                collectorX: this.position.x,
+                collectorY: this.position.y
+            });
+        });
+    }
 }
 
 // Lobby class with infinite chunk-based world
@@ -617,6 +1240,7 @@ class Lobby {
             enemies: [],
             items: [],
             minions: new Map(), // Track all spawned minions
+            experienceOrbs: new Map(), // Track XP orbs (orbId -> {x, y, expValue})
             startTime: Date.now(),
             endTime: null
         };
@@ -661,36 +1285,228 @@ class Lobby {
     }
 
     spawnBotsToFillSlots() {
-        const totalPlayers = this.players.size + this.bots.size;
-        const emptySlots = this.MAX_BOTS - totalPlayers;
+        // Count real players (non-bots)
+        const realPlayerCount = Array.from(this.players.values()).filter(p => !p.isBot).length;
 
-        for (let i = 0; i < emptySlots; i++) {
-            const bot = new AIBot(this.id);
+        // Dynamic bot scaling based on real player count
+        let desiredBotCount;
+        if (realPlayerCount === 0) {
+            desiredBotCount = 0; // No bots if no players (empty server)
+        } else if (realPlayerCount === 1) {
+            desiredBotCount = 4; // Solo player gets 4 bots for company
+        } else if (realPlayerCount === 2) {
+            desiredBotCount = 3; // 2 players get 3 bots
+        } else if (realPlayerCount <= 4) {
+            desiredBotCount = 2; // 3-4 players get 2 bots
+        } else {
+            desiredBotCount = 1; // 5+ players get 1 bot for slight help
+        }
 
-            // Spawn bot at world center
-            const worldCenter = (this.WORLD_SIZE * 32) / 2;
-            bot.position = {
-                x: worldCenter + (Math.random() - 0.5) * 200,
-                y: worldCenter + (Math.random() - 0.5) * 200
-            };
+        const currentBotCount = this.bots.size;
 
-            this.bots.set(bot.id, bot);
-            this.players.set(bot.id, bot); // Add to players map so clients see them
+        // Add bots if we need more
+        if (currentBotCount < desiredBotCount) {
+            const botsToAdd = desiredBotCount - currentBotCount;
+            const botClasses = ['kelise', 'malachar', 'aldric'];
 
-            console.log(`🤖 Spawned AI bot: ${bot.username} (${bot.class}) in lobby ${this.id}`);
+            for (let i = 0; i < botsToAdd; i++) {
+                const botClass = botClasses[(currentBotCount + i) % botClasses.length];
+                const bot = new AIBot(this.id, botClass);
 
-            // Broadcast bot joined
-            this.broadcast('player:joined', {
-                player: bot.toJSON()
-            });
+                // Spawn bot at world center with some spacing
+                const worldCenter = (this.WORLD_SIZE * 32) / 2;
+                bot.position = {
+                    x: worldCenter + (Math.random() - 0.5) * 400,
+                    y: worldCenter + (Math.random() - 0.5) * 400
+                };
+
+                this.bots.set(bot.id, bot);
+                this.players.set(bot.id, bot); // Add to players map so clients see them
+
+                console.log(`🤖 Spawned AI bot: ${bot.username} (${bot.class}) - ${realPlayerCount} real players, ${desiredBotCount} bots needed`);
+
+                // Broadcast bot joined immediately
+                this.broadcast('player:joined', {
+                    player: bot.toJSON()
+                });
+            }
+        }
+        // Remove excess bots if we have too many
+        else if (currentBotCount > desiredBotCount) {
+            const botsToRemove = currentBotCount - desiredBotCount;
+            const botIds = Array.from(this.bots.keys());
+
+            for (let i = 0; i < botsToRemove && i < botIds.length; i++) {
+                const botId = botIds[i];
+                const bot = this.bots.get(botId);
+
+                this.bots.delete(botId);
+                this.players.delete(botId);
+
+                // Broadcast bot left
+                this.broadcast('player:left', {
+                    playerId: botId,
+                    username: bot.username
+                });
+
+                console.log(`👋 Removed bot ${bot.username} - ${realPlayerCount} real players, only ${desiredBotCount} bots needed`);
+            }
         }
     }
 
     updateBots() {
+        const now = Date.now();
         this.bots.forEach(bot => {
             if (bot.isAlive) {
                 bot.update(this);
+            } else {
+                // AUTO-REVIVE: Bots respawn automatically after death
+                if (!bot.deathTime) {
+                    bot.deathTime = now;
+                    console.log(`💀 Bot ${bot.username} died - will respawn in ${bot.respawnDelay/1000}s`);
+                } else if (now - bot.deathTime > bot.respawnDelay) {
+                    // RESPAWN THE BOT!
+                    bot.isAlive = true;
+                    bot.health = bot.maxHealth;
+                    bot.deathTime = null;
+                    bot.isRetreating = false;
+
+                    // Respawn at world center with offset
+                    const worldCenter = (this.WORLD_SIZE * 32) / 2;
+                    bot.position = {
+                        x: worldCenter + (Math.random() - 0.5) * 500,
+                        y: worldCenter + (Math.random() - 0.5) * 500
+                    };
+
+                    console.log(`✨ Bot ${bot.username} RESPAWNED at (${bot.position.x.toFixed(0)}, ${bot.position.y.toFixed(0)})`);
+
+                    // Broadcast respawn
+                    this.broadcast('player:respawned', {
+                        playerId: bot.id,
+                        username: bot.username,
+                        position: bot.position,
+                        health: bot.health,
+                        maxHealth: bot.maxHealth
+                    });
+                }
             }
+        });
+
+        // UPDATE MINIONS - Make bot minions move and attack
+        this.updateMinions(now);
+    }
+
+    updateMinions(now) {
+        if (!this.gameState || !this.gameState.minions) return;
+
+        const TILE_SIZE = 32;
+        const MINION_MOVE_SPEED = 2.5; // Tiles per update
+        const MINION_ATTACK_RANGE = 1.5; // Tiles
+        const MINION_ATTACK_COOLDOWN = 1000; // 1 second
+        const MINION_SIGHT_RANGE = 15; // Tiles
+        const MINION_DAMAGE = 15;
+        const MINION_LIFETIME = 30000; // 30 seconds
+
+        const minionsToDelete = [];
+
+        this.gameState.minions.forEach((minion, minionId) => {
+            // Clean up old minions
+            if (now - minion.lastUpdate > MINION_LIFETIME) {
+                minionsToDelete.push(minionId);
+                return;
+            }
+
+            // Initialize minion properties if needed
+            if (!minion.target) minion.target = null;
+            if (!minion.lastAttackTime) minion.lastAttackTime = 0;
+
+            // Find nearest enemy
+            let nearestEnemy = null;
+            let nearestDist = Infinity;
+
+            if (this.gameState.enemies) {
+                this.gameState.enemies.forEach(enemy => {
+                    if (!enemy.health || enemy.health <= 0) return;
+
+                    const dx = enemy.position.x - minion.position.x;
+                    const dy = enemy.position.y - minion.position.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < nearestDist && dist < MINION_SIGHT_RANGE) {
+                        nearestDist = dist;
+                        nearestEnemy = enemy;
+                    }
+                });
+            }
+
+            if (nearestEnemy) {
+                minion.target = nearestEnemy;
+
+                // Check if in attack range
+                const dx = nearestEnemy.position.x - minion.position.x;
+                const dy = nearestEnemy.position.y - minion.position.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist <= MINION_ATTACK_RANGE) {
+                    // ATTACK!
+                    if (now - minion.lastAttackTime >= MINION_ATTACK_COOLDOWN) {
+                        nearestEnemy.health -= MINION_DAMAGE;
+
+                        // Broadcast damage
+                        this.broadcast('enemy:damaged', {
+                            enemyId: nearestEnemy.id,
+                            damage: MINION_DAMAGE,
+                            attackerId: minionId,
+                            isMinion: true
+                        });
+
+                        // Check if enemy died
+                        if (nearestEnemy.health <= 0) {
+                            this.broadcast('enemy:killed', {
+                                enemyId: nearestEnemy.id,
+                                killerId: minion.ownerId, // Credit owner
+                                position: nearestEnemy.position
+                            });
+
+                            // Grant XP to owner
+                            const owner = this.players.get(minion.ownerId) || this.bots.get(minion.ownerId);
+                            if (owner) {
+                                const xpGain = nearestEnemy.xpReward || 10;
+                                owner.addXP(xpGain, this);
+                            }
+
+                            this.gameState.enemies.delete(nearestEnemy.id);
+                        }
+
+                        minion.lastAttackTime = now;
+                    }
+                } else {
+                    // MOVE towards enemy
+                    const moveX = (dx / dist) * MINION_MOVE_SPEED;
+                    const moveY = (dy / dist) * MINION_MOVE_SPEED;
+
+                    minion.position.x += moveX;
+                    minion.position.y += moveY;
+
+                    // Broadcast position update (throttled - every 200ms)
+                    if (!minion.lastBroadcast || now - minion.lastBroadcast > 200) {
+                        this.broadcast('minion:update', {
+                            minionId: minionId,
+                            position: minion.position,
+                            ownerId: minion.ownerId
+                        });
+                        minion.lastBroadcast = now;
+                    }
+                }
+            }
+
+            minion.lastUpdate = now;
+        });
+
+        // Clean up old minions
+        minionsToDelete.forEach(minionId => {
+            this.gameState.minions.delete(minionId);
+            this.broadcast('minion:died', { minionId });
         });
     }
 
@@ -2372,6 +3188,9 @@ io.on('connection', (socket) => {
 
             socket.join(lobby.id);
 
+            // Adjust bot count BEFORE sending game state (so bots are included)
+            lobby.spawnBotsToFillSlots();
+
             // Send game start immediately (no lobby waiting!)
             // Filter out disconnected/reconnecting players (ghost players)
             const activePlayers = Array.from(lobby.players.values())
@@ -3425,6 +4244,9 @@ io.on('connection', (socket) => {
                             username: player.username,
                             playerCount: lobby.players.size
                         });
+
+                        // Adjust bot count when player leaves
+                        lobby.spawnBotsToFillSlots();
 
                         // Auto-close room if all players left
                         if (lobby.status === 'finished') {

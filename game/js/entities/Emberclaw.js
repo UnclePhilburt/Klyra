@@ -180,7 +180,7 @@ class Emberclaw {
         }
     }
 
-    takeDamage(amount) {
+    takeDamage(amount, options = {}) {
         this.health -= amount;
         if (this.health <= 0) {
             this.health = 0;
@@ -192,8 +192,11 @@ class Emberclaw {
             this.healthBar.setVisible(true);
         }
 
+        // Blood splatter effect
+        this.showBloodEffect();
+
         // Show damage number
-        this.showDamageNumber(amount);
+        this.showDamageNumber(amount, options);
 
         // Play hurt animation
         if (this.sprite && this.sprite.anims && this.health > 0) {
@@ -209,15 +212,78 @@ class Emberclaw {
                     }
                 });
             } else {
-                // Flash red if no hurt animation
-                this.sprite.setTint(0xff0000);
-                this.scene.time.delayedCall(200, () => {
+                // Flash white for damage flash
+                this.sprite.setTint(0xffffff);
+                this.scene.time.delayedCall(100, () => {
                     if (this.sprite) this.sprite.clearTint();
                 });
             }
         }
 
         this.updateHealthBar();
+    }
+
+    showBloodEffect() {
+        // Spawn blood splash sprites (flying blood particles)
+        const splashCount = 3 + Math.floor(Math.random() * 3); // 3-5 blood splashes
+        for (let i = 0; i < splashCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 20 + Math.random() * 30;
+
+            // Random blood splash sprite (1, 2, or 3)
+            const splashType = Math.floor(Math.random() * 3) + 1;
+            const bloodSplash = this.scene.add.sprite(
+                this.sprite.x,
+                this.sprite.y,
+                `blood_splash_${splashType}`
+            );
+            bloodSplash.setDepth(9999);
+            bloodSplash.setScale(0.5 + Math.random() * 0.5);
+            bloodSplash.play(`blood_splash_${splashType}_anim`);
+
+            // Animate splash outward then fade
+            this.scene.tweens.add({
+                targets: bloodSplash,
+                x: this.sprite.x + Math.cos(angle) * distance,
+                y: this.sprite.y + Math.sin(angle) * distance,
+                alpha: 0,
+                duration: 400 + Math.random() * 200,
+                ease: 'Cubic.easeOut',
+                onComplete: () => bloodSplash.destroy()
+            });
+        }
+
+        // Create permanent blood puddles on the ground
+        const puddleCount = 2 + Math.floor(Math.random() * 3); // 2-4 permanent puddles
+        for (let i = 0; i < puddleCount; i++) {
+            const offsetX = (Math.random() - 0.5) * 40;
+            const offsetY = (Math.random() - 0.5) * 40;
+
+            // Random blood splash type for variety
+            const splashType = Math.floor(Math.random() * 3) + 1;
+            const puddle = this.scene.add.sprite(
+                this.sprite.x + offsetX,
+                this.sprite.y + offsetY,
+                `blood_splash_${splashType}`
+            );
+
+            // Set to last frame (fully splattered look)
+            const frameCount = splashType === 1 ? 16 : (splashType === 2 ? 15 : 12);
+            puddle.setFrame(frameCount - 1);
+
+            puddle.setDepth(1); // Below enemies but above ground
+            puddle.setAlpha(0.8);
+            puddle.setScale(0.6 + Math.random() * 0.4);
+            puddle.setRotation(Math.random() * Math.PI * 2);
+
+            // Mark as permanent
+            puddle.isPermanentBlood = true;
+
+            // Add to scene's permanent blood collection if it exists
+            if (this.scene.permanentBloodPuddles) {
+                this.scene.permanentBloodPuddles.push(puddle);
+            }
+        }
     }
 
     showDamageNumber(amount) {
