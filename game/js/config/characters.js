@@ -39,6 +39,18 @@ const CHARACTERS = {
                 }
             }
         },
+        abilities: {
+            e: {
+                name: "Dash Strike",
+                cooldown: 6000,  // 6 second cooldown
+                effect: {
+                    type: "dash",
+                    damage: 40,
+                    range: 200,  // Dash distance in pixels
+                    speed: 800   // Dash speed
+                }
+            }
+        },
         stats: {
             base: {
                 maxHP: 100,
@@ -90,6 +102,17 @@ const CHARACTERS = {
         },
         equipment: {
             startingWeapon: "necro_staff"
+        },
+        abilities: {
+            q: {
+                name: "Pact of Bones",
+                cooldown: 10000,  // 10 second cooldown
+                effect: {
+                    type: "summon",
+                    minionCount: 5,
+                    duration: 30000  // 30 seconds
+                }
+            }
         },
         stats: {
             base: {
@@ -153,6 +176,20 @@ const CHARACTERS = {
             effects: {
                 onHit: {
                     damageBonus: 0
+                }
+            }
+        },
+        abilities: {
+            e: {
+                name: "Shockwave",
+                cooldown: 8000,  // 8 second cooldown
+                effect: {
+                    type: "shockwave",
+                    damage: 50,
+                    knockback: 150,
+                    range: 300,  // Max travel distance in pixels
+                    speed: 400,  // Speed of the shockwave
+                    width: 100   // Width of the shockwave
                 }
             }
         },
