@@ -30,7 +30,9 @@ class PlayerSprite {
         const x = this.position.x;
         const y = this.position.y;
 
-        this.character = CHARACTERS[this.characterClass] || CHARACTERS.MALACHAR;
+        // Normalize character class to uppercase for CHARACTERS lookup
+        const characterKey = this.characterClass.toUpperCase();
+        this.character = CHARACTERS[characterKey] || CHARACTERS.MALACHAR;
         const textureKey = this.characterClass.toLowerCase();
 
         // Check if texture exists (either directly or with _idle suffix for multi-sheet characters)
@@ -63,12 +65,12 @@ class PlayerSprite {
         const frameWidth = spriteConfig.frameWidth || 32;
 
         // Calculate scale based on sprite size
-        // Kelise (32px) should be ~48px (scale 1.5)
-        // Malachar (140px) should be ~112px (scale 0.8) - 2.3x bigger
-        // Aldric (67px) should be scaled up a bit more
-        let targetSize = frameWidth > 100 ? 112 : 48;
+        // Kelise (32px) should be ~80px (scale 2.5)
+        // Malachar (140px) should be ~140px (scale 1.0)
+        // Aldric (67px) should be ~100px (scale 1.5)
+        let targetSize = frameWidth > 100 ? 140 : 80;
         if (textureKey === 'aldric') {
-            targetSize = 60; // Make Aldric bigger
+            targetSize = 100; // Make Aldric bigger
         }
         const scale = targetSize / frameWidth;
 
@@ -424,6 +426,14 @@ class PlayerSprite {
             if (this.scene.anims.exists(attackAnimKey)) {
                 this.sprite.play(attackAnimKey);
                 console.log(`⚔️ Playing attack animation: ${attackAnimKey}`);
+
+                // Broadcast attack animation to other players (for all characters)
+                if (window.networkManager && window.networkManager.connected) {
+                    console.log(`📡 Broadcasting auto-attack animation: ${attackAnimKey}`);
+                    window.networkManager.broadcastAutoAttack(attackAnimKey, null);
+                } else {
+                    console.warn(`⚠️ Cannot broadcast - networkManager not available or not connected`);
+                }
 
                 // Play swipe sound for Kelise attacks
                 if (textureKey === 'kelise' && this.scene.sound) {
