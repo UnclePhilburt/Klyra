@@ -18,7 +18,7 @@ class Player {
         this.username = data.username || 'Player';
         this.health = data.health;
         this.maxHealth = data.maxHealth;
-        this.shield = 0; // Shield absorbs damage before health
+        this.shield = data.shield || 0; // Shield absorbs damage before health
         this.level = data.level;
         this.experience = data.experience || 0;
         this.class = data.class;
@@ -65,7 +65,7 @@ class Player {
         }
 
         // Update animation state based on movement
-        this.spriteRenderer.updateMovementState(velocityX, velocityY);
+        this.spriteRenderer.updateMovementState(velocityX, velocityY, this);
 
         // Update weapon rotation for fallback
         if (!this.usingSprite && (velocityX !== 0 || velocityY !== 0)) {
@@ -85,19 +85,25 @@ class Player {
             x: position.x,
             y: position.y
         };
+        // Track when we last received a position update
+        this.lastPositionUpdateTime = Date.now();
     }
 
     // Smooth interpolation instead of instant teleport
     updateInterpolation() {
         if (!this.targetPosition) {
-            // No target - play idle animation
-            if (this.spriteRenderer && this.spriteRenderer.updateMovementState) {
-                this.spriteRenderer.updateMovementState(0, 0);
+            // No target - check if we should play idle animation
+            // Only switch to idle if we haven't received a position update in 200ms
+            const timeSinceLastUpdate = this.lastPositionUpdateTime ? Date.now() - this.lastPositionUpdateTime : 999;
+            if (timeSinceLastUpdate > 200) {
+                if (this.spriteRenderer && this.spriteRenderer.updateMovementState) {
+                    this.spriteRenderer.updateMovementState(0, 0, this);
+                }
             }
             return;
         }
 
-        const lerpSpeed = 0.5; // Aggressive interpolation for smooth movement (same as minions)
+        const lerpSpeed = 0.35; // Balanced interpolation for smooth movement
         const dx = this.targetPosition.x - this.sprite.x;
         const dy = this.targetPosition.y - this.sprite.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -109,10 +115,16 @@ class Player {
             this.sprite.body.setVelocity(0, 0);
             this.targetPosition = null;
 
-            // Stop moving - play idle animation
-            if (this.spriteRenderer && this.spriteRenderer.updateMovementState) {
-                this.spriteRenderer.updateMovementState(0, 0);
+            // Don't immediately switch to idle - wait to see if another update arrives
+            // If we keep receiving updates, we're still moving
+            const timeSinceLastUpdate = this.lastPositionUpdateTime ? Date.now() - this.lastPositionUpdateTime : 0;
+            if (timeSinceLastUpdate > 200) {
+                // It's been a while since last update - actually stopped moving
+                if (this.spriteRenderer && this.spriteRenderer.updateMovementState) {
+                    this.spriteRenderer.updateMovementState(0, 0, this);
+                }
             }
+            // Otherwise keep the walking animation playing
         } else {
             // Smooth interpolation
             this.sprite.x += dx * lerpSpeed;
@@ -123,7 +135,7 @@ class Player {
                 // Normalize direction for animation
                 const normalizedVelX = dx / distance;
                 const normalizedVelY = dy / distance;
-                this.spriteRenderer.updateMovementState(normalizedVelX, normalizedVelY);
+                this.spriteRenderer.updateMovementState(normalizedVelX, normalizedVelY, this);
             }
         }
 
@@ -275,8 +287,8 @@ class Player {
                 const bleedTickRate = 500; // Damage every 500ms
                 const bleedDuration = 5000; // 5 seconds
 
-                // Deal damage with bleed effect and visual options
-                networkManager.hitEnemy(enemy.data.id, finalDamage, this.data.id, playerPos, {
+                // Build effects object based on character class
+                const effects = {
                     bleed: {
                         damagePerStack: bleedDamagePerStack,
                         tickRate: bleedTickRate,
@@ -289,7 +301,15 @@ class Player {
                     },
                     isCrit: isCrit,
                     damageType: 'physical'
-                });
+                };
+
+                // ALDRIC: Stronger knockback, less damage
+                if (this.data.characterClass === 'aldric') {
+                    effects.knockback.distance = 96; // 3 tiles (96 pixels)
+                }
+
+                // Deal damage with effects
+                networkManager.hitEnemy(enemy.data.id, finalDamage, this.data.id, playerPos, effects);
 
                 // Apply client-side bleed stack immediately for responsiveness
                 if (!enemy.bleedStacks) {

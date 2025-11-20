@@ -92,8 +92,55 @@ class ModernHUD {
     createInfoHub() {
         const padding = 16;
 
+        // Currency display (top-left, always visible)
+        this.currencyContainer = this.scene.add.container(padding, padding);
+        this.currencyContainer.setScrollFactor(0);
+        this.currencyContainer.setDepth(99600);
+
+        // Currency background
+        const currencyBg = this.scene.add.graphics();
+        currencyBg.fillStyle(0x000000, 0.7);
+        currencyBg.fillRoundedRect(0, 0, 150, 40, 8);
+        currencyBg.lineStyle(2, 0xffaa00, 1);
+        currencyBg.strokeRoundedRect(0, 0, 150, 40, 8);
+
+        // Star icon (simple yellow star)
+        const starIcon = this.scene.add.text(12, 20, '⭐', {
+            fontFamily: 'Arial',
+            fontSize: '20px'
+        }).setOrigin(0, 0.5);
+
+        // Currency text
+        this.currencyText = this.scene.add.text(45, 20, '0', {
+            fontFamily: 'Arial',
+            fontSize: '18px',
+            fontStyle: 'bold',
+            fill: '#ffff00',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0, 0.5);
+
+        this.currencyContainer.add([currencyBg, starIcon, this.currencyText]);
+
+        // Skills display (top-right, always visible when skills owned)
+        const screenRightX = this.scene.cameras.main.width - padding - 180; // Adjusted for text width
+        const screenTopY = padding;
+
+        this.skillsContainer = this.scene.add.container(screenRightX, screenTopY);
+        this.skillsContainer.setScrollFactor(0);
+        this.skillsContainer.setDepth(99600);
+
+        // Skills background (initially hidden, shown when skills are acquired)
+        this.skillsBg = this.scene.add.graphics();
+
+        // Skills text container (will hold individual skill names)
+        this.skillTexts = [];
+
+        this.skillsContainer.add([this.skillsBg]);
+        this.skillsContainer.setVisible(false); // Hidden until player gets a skill
+
         // COMPACT VIEW (always visible)
-        this.compactHub = this.scene.add.container(padding, padding);
+        this.compactHub = this.scene.add.container(padding, padding + 50); // Move down to make room for currency
         this.compactHub.setScrollFactor(0);
         this.compactHub.setDepth(99500);
 
@@ -158,7 +205,7 @@ class ModernHUD {
         }).setOrigin(0);
         this.compactHub.add(this.quickStatsText);
 
-        // Tab hint (static for performance) - moved down
+        // Tab hint (static for performance)
         this.tabHint = this.scene.add.text(200, 94, '[TAB]', {
             fontFamily: 'Arial',
             fontSize: '9px',
@@ -288,9 +335,14 @@ class ModernHUD {
             this.toggleMenu();
         });
 
-        // ESC key to close menu
+        // ESC key to toggle menu OR close inventory
         const escKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
         escKey.on('down', () => {
+            // Close inventory first if it's open
+            if (this.scene.inventoryUI && this.scene.inventoryUI.isOpen) {
+                return; // Let inventory handle it
+            }
+            // Otherwise toggle the stats menu
             if (this.infoHubExpanded) {
                 this.toggleMenu();
             }
@@ -527,6 +579,75 @@ class ModernHUD {
         if (this.usernameText && username) {
             this.usernameText.setText(username);
         }
+    }
+
+    // Update currency display
+    updateCurrency(amount) {
+        if (this.currencyText) {
+            this.currencyText.setText(amount.toString());
+        }
+    }
+
+    // Add currency
+    addCurrency(amount) {
+        if (!this.player.currency) {
+            this.player.currency = 0;
+        }
+        this.player.currency += amount;
+        this.updateCurrency(this.player.currency);
+        console.log(`⭐ Added ${amount} stars. Total: ${this.player.currency}`);
+    }
+
+    // Get current currency
+    getCurrency() {
+        return this.player.currency || 0;
+    }
+
+    // Add skill to display
+    addSkillToDisplay(skillId, skillName) {
+        // Show the skills container if it's hidden
+        this.skillsContainer.setVisible(true);
+
+        const skillIndex = this.skillTexts.length;
+        const yOffset = skillIndex * 30; // Stack skills vertically with 30px spacing
+
+        // Create skill name text
+        const nameText = this.scene.add.text(
+            12,
+            12 + yOffset,
+            skillName,
+            {
+                fontFamily: 'Arial',
+                fontSize: '14px',
+                fontStyle: 'bold',
+                fill: '#aa66ff',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        ).setOrigin(0, 0);
+
+        this.skillTexts.push({ text: nameText, skillId: skillId });
+        this.skillsContainer.add(nameText);
+
+        // Redraw background to fit all skills
+        this.updateSkillsBackground();
+
+        console.log(`🎨 Added skill to HUD display: ${skillName}`);
+    }
+
+    // Update skills background based on number of skills
+    updateSkillsBackground() {
+        this.skillsBg.clear();
+
+        if (this.skillTexts.length === 0) return;
+
+        const bgHeight = this.skillTexts.length * 30 + 16; // 30px per skill + padding
+        const bgWidth = 180;
+
+        this.skillsBg.fillStyle(0x000000, 0.7);
+        this.skillsBg.fillRoundedRect(0, 0, bgWidth, bgHeight, 8);
+        this.skillsBg.lineStyle(2, 0x9933ff, 1);
+        this.skillsBg.strokeRoundedRect(0, 0, bgWidth, bgHeight, 8);
     }
 
     // Methods to track stats (call these from game events)

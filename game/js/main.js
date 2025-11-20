@@ -6,6 +6,11 @@ const config = {
     parent: 'game-container',
     backgroundColor: '#0a0a0a',
     pixelArt: GameConfig.GAME.PIXEL_ART,
+    disableContextMenu: true,
+    audio: {
+        disableWebAudio: false,
+        noAudio: false
+    },
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
@@ -24,6 +29,32 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
+
+// Fix for random loud sounds when refocusing window
+// Stop all sounds when losing focus, prevent queued sounds on resume
+game.events.on('pause', () => {
+    console.log('🔇 Game paused - stopping all sounds');
+    if (game.sound) {
+        game.sound.stopAll();
+    }
+});
+
+game.events.on('resume', () => {
+    console.log('🔊 Game resumed - sounds cleared');
+    // Sounds are already stopped, resume will start fresh
+});
+
+// Also handle browser visibility changes
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        console.log('🔇 Tab hidden - stopping all sounds');
+        if (game.sound) {
+            game.sound.stopAll();
+        }
+    } else {
+        console.log('🔊 Tab visible - ready for new sounds');
+    }
+});
 
 // Add connect method for custom menu system
 game.connect = async function(username) {

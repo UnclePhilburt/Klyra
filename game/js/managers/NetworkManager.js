@@ -144,6 +144,10 @@ class NetworkManager {
             this.emit('enemy:damaged', data);
         });
 
+        this.socket.on('enemy:position', (data) => {
+            this.emit('enemy:position', data);
+        });
+
         this.socket.on('enemy:killed', (data) => {
             this.emit('enemy:killed', data);
         });
@@ -153,6 +157,10 @@ class NetworkManager {
         });
 
         // Item events
+        this.socket.on('item:spawned', (data) => {
+            this.emit('item:spawned', data);
+        });
+
         this.socket.on('item:picked', (data) => {
             this.emit('item:picked', data);
         });
@@ -233,6 +241,12 @@ class NetworkManager {
         this.socket.on('orb:collected', (data) => {
             console.log(`💎 Socket received orb:collected from server:`, data);
             this.emit('orb:collected', data);
+        });
+
+        // Passive skill events
+        this.socket.on('passiveSkill:activated', (data) => {
+            console.log(`🛡️ Socket received passiveSkill:activated from server:`, data);
+            this.emit('passiveSkill:activated', data);
         });
     }
 

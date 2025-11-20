@@ -44,7 +44,10 @@
       "Bash(del C:klyragamejssystemsWeatherManager.js)",
       "Bash(timeout /t 1 /nobreak)",
       "Bash(set PORT=3002)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(timeout /t 10 /nobreak)",
+      "Bash(cmd.exe /c \"set PORT=3002 &amp;&amp; node server.js\")",
+      "Bash(powershell.exe -Command \"$env:PORT=3002; node server.js\")"
     ],
     "deny": [],
     "ask": []

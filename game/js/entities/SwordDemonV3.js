@@ -18,9 +18,9 @@ class SwordDemon {
     }
 
     createSprite() {
-        const tileSize = GameConfig.GAME.TILE_SIZE;
-        const x = this.data.position.x * tileSize + tileSize / 2;
-        const y = this.data.position.y * tileSize + tileSize / 2;
+        // Position is always in pixels from server
+        const x = this.data.position.x;
+        const y = this.data.position.y;
 
         // Get variant data from server
         const glowColor = this.data.glowColor || 0xff0000;
@@ -237,11 +237,11 @@ class SwordDemon {
         }
     }
 
-    die() {
+    die(playEffects = true) {
         this.isAlive = false;
 
-        // Play death sound (40% chance)
-        if (Math.random() < 0.4 && this.scene.sound) {
+        // Play death sound (40% chance) - only if on screen
+        if (playEffects && Math.random() < 0.4 && this.scene.sound) {
             const deathSounds = [
                 'death_bone_snap', 'death_crunch', 'death_crunch_quick',
                 'death_crunch_splat', 'death_crunch_splat_2', 'death_kick',
@@ -309,6 +309,8 @@ class SwordDemon {
 
         this.targetX = x;
         this.targetY = y;
+        // Track when we last received a position update
+        this.lastPositionUpdateTime = Date.now();
     }
 
     update() {
@@ -348,8 +350,8 @@ class SwordDemon {
 
             // Use direct position lerp for ultra-smooth movement
             if (dist > 1) {
-                // Lerp factor: 0.15 for smoother, more gradual movement
-                const lerpFactor = 0.15;
+                // Lerp factor: 0.25 for faster, smoother interpolation between server updates
+                const lerpFactor = 0.25;
                 const newX = Phaser.Math.Linear(this.sprite.x, this.targetX, lerpFactor);
                 const newY = Phaser.Math.Linear(this.sprite.y, this.targetY, lerpFactor);
 
@@ -373,8 +375,9 @@ class SwordDemon {
                 console.log(`⚠️ DIST TOO SMALL FOR LERP: ${dist.toFixed(3)}`);
             }
 
-            // Animation state - only walk if moving significantly
-            const shouldWalk = dist > 3;
+            // Animation state - keep walking as long as we're receiving position updates
+            const timeSinceLastUpdate = this.lastPositionUpdateTime ? Date.now() - this.lastPositionUpdateTime : 999;
+            const shouldWalk = dist > 1 || timeSinceLastUpdate < 200;
 
             // Only change animation if state actually changed (and not attacking!)
             if (!this.isAttacking) {

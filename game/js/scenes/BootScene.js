@@ -147,6 +147,13 @@ class BootScene extends Phaser.Scene {
             spacing: 0
         });
 
+        this.load.spritesheet('aldric_run_attack', 'assets/sprites/Aldric/Run+Attack.png', {
+            frameWidth: 72,
+            frameHeight: 86,
+            margin: 0,
+            spacing: 0
+        });
+
         // Aldric's Shockwave ability sprite sheet (64x64px, row 5 frames 0-8 = tiles 50-58)
         this.load.spritesheet('aldric_shockwave', 'assets/sprites/Aldric/shockwave.png', {
             frameWidth: 64,
@@ -289,6 +296,46 @@ class BootScene extends Phaser.Scene {
         });
         console.log('📦 Loading potions sprite sheet (for XP orbs)');
 
+        // Load NPC sprites (32x32px individual frames)
+        // Merchant NPC (4 frames)
+        this.load.image('merchant_1', 'assets/sprites/merchant/1.png');
+        this.load.image('merchant_2', 'assets/sprites/merchant/2.png');
+        this.load.image('merchant_3', 'assets/sprites/merchant/3.png');
+        this.load.image('merchant_4', 'assets/sprites/merchant/4.png');
+        console.log('📦 Loading merchant NPC sprites (4 frames)');
+
+        // Skill Merchant NPC (4 frames)
+        this.load.image('skillmerchant_1', 'assets/sprites/skillmerchant/1.png');
+        this.load.image('skillmerchant_2', 'assets/sprites/skillmerchant/2.png');
+        this.load.image('skillmerchant_3', 'assets/sprites/skillmerchant/3.png');
+        this.load.image('skillmerchant_4', 'assets/sprites/skillmerchant/4.png');
+        console.log('📦 Loading skill merchant NPC sprites (4 frames)');
+
+        // Load passive skill sprites
+        this.load.image('chads_shield', 'assets/sprites/skills/pic/Chad\'s Shield.png');
+        console.log('📦 Loading Chad\'s Shield sprite (passive skill)');
+
+        // Load Meteor Storm sprite sheet (64x64 frames, row 0 tiles 0-9)
+        this.load.spritesheet('meteorstorm', 'assets/sprites/skills/pic/meteorstormrow1.png', {
+            frameWidth: 64,
+            frameHeight: 64
+        });
+        console.log('📦 Loading Meteor Storm sprite sheet (passive skill)');
+
+        // Load Burning Aura sprite sheet (64x64 frames, row 7 tiles 98-111)
+        this.load.spritesheet('burningaura', 'assets/sprites/skills/pic/Burningaurarow7.png', {
+            frameWidth: 64,
+            frameHeight: 64
+        });
+        console.log('📦 Loading Burning Aura sprite sheet (passive skill)');
+
+        // Load Piercing Flame sprite sheet (64x64 frames, row 2 tiles 24-35)
+        this.load.spritesheet('piercingflame', 'assets/sprites/skills/pic/piercingflamerow2.png', {
+            frameWidth: 64,
+            frameHeight: 64
+        });
+        console.log('📦 Loading Piercing Flame sprite sheet (passive skill)');
+
         console.log('✅ Loaded character sprites: kelise, malachar');
     }
 
@@ -414,7 +461,43 @@ class BootScene extends Phaser.Scene {
             repeat: 0
         });
 
-        console.log('✅ Created Aldric animations: idle (4 frames), running (6 frames), attack1 (5 frames), attack2 (4 frames), attack3 (3 frames), death (5 frames), defend (4 frames), hurt (1 frame)');
+        this.anims.create({
+            key: 'aldric_run_attack',
+            frames: this.anims.generateFrameNumbers('aldric_run_attack', { start: 0, end: 5 }),
+            frameRate: 20,
+            repeat: 0
+        });
+
+        console.log('✅ Created Aldric animations: idle (4 frames), running (6 frames), attack1 (5 frames), attack2 (4 frames), attack3 (3 frames), death (5 frames), defend (4 frames), hurt (1 frame), run_attack (6 frames)');
+
+        // Create Meteor Storm animation (passive skill)
+        this.anims.create({
+            key: 'meteorstorm_fall',
+            frames: this.anims.generateFrameNumbers('meteorstorm', { start: 0, end: 9 }),
+            frameRate: 20,
+            repeat: 0
+        });
+        console.log('✅ Created Meteor Storm animation: fall (10 frames)');
+
+        // Create Burning Aura animation (passive skill)
+        // Row 7 tiles 98-111 = 14 frames total, but using frames 98-111 (0-13 in the sheet)
+        this.anims.create({
+            key: 'burningaura_pulse',
+            frames: this.anims.generateFrameNumbers('burningaura', { start: 98, end: 111 }),
+            frameRate: 12,
+            repeat: -1
+        });
+        console.log('✅ Created Burning Aura animation: pulse (14 frames)');
+
+        // Create Piercing Flame animation (passive skill)
+        // Row 2 tiles 24-35 = 12 frames
+        this.anims.create({
+            key: 'piercingflame_shoot',
+            frames: this.anims.generateFrameNumbers('piercingflame', { start: 24, end: 35 }),
+            frameRate: 18,
+            repeat: -1
+        });
+        console.log('✅ Created Piercing Flame animation: shoot (12 frames)');
 
         // Create minion animations
         // 5 rows x 13 columns, 64x64px

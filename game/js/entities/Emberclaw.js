@@ -24,9 +24,9 @@ class Emberclaw {
     }
 
     createSprite() {
-        const tileSize = GameConfig.GAME.TILE_SIZE;
-        const x = this.data.position.x * tileSize + tileSize / 2;
-        const y = this.data.position.y * tileSize + tileSize / 2;
+        // Position is always in pixels from server
+        const x = this.data.position.x;
+        const y = this.data.position.y;
 
         // Emberclaw is 81x71 pixels - scale down slightly to fit better
         const scale = 0.8;
@@ -324,11 +324,13 @@ class Emberclaw {
         this.healthBar.setPosition(this.sprite.x - 15 + (30 * healthPercent) / 2, this.sprite.y - 40);
     }
 
-    die() {
+    die(playEffects = true) {
         if (!this.isAlive) return;
 
         this.isAlive = false;
-        console.log(`💀 Emberclaw ${this.data.id} died`);
+        if (playEffects) {
+            console.log(`💀 Emberclaw ${this.data.id} died`);
+        }
 
         // Play death animation
         if (this.sprite && this.scene.anims.exists('emberclaw_death')) {
@@ -369,6 +371,10 @@ class Emberclaw {
             const dy = this.targetY - this.sprite.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
+            // Keep flying animation playing as long as we're receiving position updates
+            const timeSinceLastUpdate = this.lastPositionUpdateTime ? Date.now() - this.lastPositionUpdateTime : 999;
+            const isMoving = distance > 1 || timeSinceLastUpdate < 200;
+
             if (distance > 1) {
                 // Move gradually towards target
                 const lerpSpeed = 0.15;
@@ -379,11 +385,11 @@ class Emberclaw {
                 if (Math.abs(dx) > 1) {
                     this.sprite.setFlipX(dx < 0);
                 }
+            }
 
-                // Play flying animation while moving
-                if (!this.isAttacking && this.scene.anims.exists('emberclaw_flying')) {
-                    this.sprite.play('emberclaw_flying', true);
-                }
+            // Play flying animation while moving (or recently moved)
+            if (!this.isAttacking && isMoving && this.scene.anims.exists('emberclaw_flying')) {
+                this.sprite.play('emberclaw_flying', true);
             }
         }
 
@@ -459,6 +465,8 @@ class Emberclaw {
         const tileSize = GameConfig.GAME.TILE_SIZE;
         this.targetX = position.x * tileSize + tileSize / 2;
         this.targetY = position.y * tileSize + tileSize / 2;
+        // Track when we last received a position update
+        this.lastPositionUpdateTime = Date.now();
     }
 
     destroy() {

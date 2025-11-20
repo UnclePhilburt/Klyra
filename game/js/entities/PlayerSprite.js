@@ -337,7 +337,12 @@ class PlayerSprite {
         return this.usingSprite;
     }
 
-    updateMovementState(velocityX, velocityY) {
+    updateMovementState(velocityX, velocityY, playerRef = null) {
+        // Don't override animation if player is dashing
+        if (playerRef && playerRef.isDashing) {
+            return;
+        }
+
         // Check if moving
         const isMoving = velocityX !== 0 || velocityY !== 0;
 

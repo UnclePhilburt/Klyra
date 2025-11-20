@@ -4,28 +4,53 @@ class Item {
         this.scene = scene;
         this.data = data;
         this.pickedUp = false;
+        this.id = data.id || data.itemId;
 
         this.createSprite();
     }
 
     createSprite() {
         const tileSize = GameConfig.GAME.TILE_SIZE;
-        const x = this.data.position.x * tileSize + tileSize / 2;
-        const y = this.data.position.y * tileSize + tileSize / 2;
+        // Support both data.position.x and data.x formats
+        const posX = this.data.position?.x ?? this.data.x;
+        const posY = this.data.position?.y ?? this.data.y;
+        const x = posX * tileSize + tileSize / 2;
+        const y = posY * tileSize + tileSize / 2;
 
-        // Item colors by rarity
-        const rarityColors = {
-            common: 0xaaaaaa,
-            uncommon: 0x00ff00,
-            rare: 0x0088ff,
-            legendary: 0xff8800,
-            special: 0xff00ff
-        };
+        console.log(`✨ Creating item sprite: ${this.data.type} at tile (${posX}, ${posY}) -> pixels (${x}, ${y})`);
 
-        const color = rarityColors[this.data.rarity] || 0xffffff;
+        // Use color from data if provided, otherwise use rarity colors
+        let color = this.data.color;
+        if (!color && this.data.rarity) {
+            const rarityColors = {
+                common: 0xaaaaaa,
+                uncommon: 0x00ff00,
+                rare: 0x0088ff,
+                legendary: 0xff8800,
+                special: 0xff00ff
+            };
+            color = rarityColors[this.data.rarity] || 0xffffff;
+        }
+        if (!color) color = 0xffffff;
 
         // Create item sprite (diamond shape)
         this.sprite = this.scene.add.star(x, y, 4, 4, 8, color);
+        this.sprite.setInteractive({ cursor: 'pointer' });
+
+        // Click/touch to pickup
+        this.sprite.on('pointerdown', () => {
+            if (!this.pickedUp) {
+                this.requestPickup();
+            }
+        });
+
+        // Hover effect
+        this.sprite.on('pointerover', () => {
+            this.sprite.setScale(1.2);
+        });
+        this.sprite.on('pointerout', () => {
+            this.sprite.setScale(1);
+        });
 
         // Glow effect
         this.glow = this.scene.add.circle(x, y, 10, color, 0.3);
@@ -73,8 +98,19 @@ class Item {
         return this.data.type.replace('_', ' ').toUpperCase();
     }
 
+    // Send pickup request to server
+    requestPickup() {
+        if (this.pickupRequested) return;
+        console.log('📦 Requesting pickup of item:', this.id, this.data.type);
+
+        networkManager.pickupItem(this.id);
+
+        // Mark as requested to prevent duplicate requests
+        this.pickupRequested = true;
+    }
+
     checkCollision(playerX, playerY) {
-        if (this.pickedUp) return false;
+        if (this.pickupRequested || this.pickedUp) return false;
 
         const dist = Phaser.Math.Distance.Between(
             playerX,
@@ -84,6 +120,12 @@ class Item {
         );
 
         return dist < 30;
+    }
+
+    // Renamed to collect (called when server confirms pickup)
+    collect() {
+        if (this.pickedUp) return;
+        this.pickup();
     }
 
     pickup() {

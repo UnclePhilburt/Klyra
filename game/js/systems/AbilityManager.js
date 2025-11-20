@@ -654,6 +654,26 @@ class AbilityManager {
             }
         }
 
+        // ALDRIC: Battle Rush (dash ability)
+        if (ability.effect && ability.effect.type === 'dash') {
+            // Broadcast to other players
+            if (typeof networkManager !== 'undefined') {
+                networkManager.useAbility(key, ability.name, null, {
+                    type: 'dash',
+                    facingRight: this.player.spriteRenderer && this.player.spriteRenderer.sprite
+                        ? !this.player.spriteRenderer.sprite.flipX
+                        : true,
+                    position: {
+                        x: this.player.sprite.x,
+                        y: this.player.sprite.y
+                    }
+                });
+            }
+
+            this.createBattleRush(ability.effect);
+            return;
+        }
+
         // ALDRIC: Shockwave ability
         if (ability.effect && ability.effect.type === 'shockwave') {
             // Broadcast to other players
@@ -1105,6 +1125,174 @@ class AbilityManager {
             duration: duration,
             ease: 'Power2',
             onComplete: () => flash.destroy()
+        });
+    }
+
+    createBattleRush(effect) {
+        console.log('⚡ Creating Battle Rush dash');
+
+        // Get player's facing direction
+        const facingRight = this.player.spriteRenderer && this.player.spriteRenderer.sprite
+            ? !this.player.spriteRenderer.sprite.flipX
+            : true;
+
+        const direction = facingRight ? 1 : -1;
+        const dashDistance = effect.distance || 200;
+        const damage = effect.damage || 40;
+        const iframesDuration = effect.iframesDuration || 300;
+
+        // Grant invincibility frames
+        this.player.isInvincible = true;
+        this.player.isDashing = true; // Flag to prevent animation override
+        this.player.sprite.setAlpha(0.5); // Visual feedback
+
+        // Play running attack animation
+        if (this.player.spriteRenderer && this.player.spriteRenderer.sprite) {
+            const runAttackKey = 'aldric_run_attack';
+            if (this.scene.anims.exists(runAttackKey)) {
+                console.log('🎬 Playing aldric_run_attack animation');
+                // Stop any current animation and force play the new one
+                this.player.spriteRenderer.sprite.stop();
+                this.player.spriteRenderer.sprite.play(runAttackKey, true);
+                console.log('🎬 Animation started, total frames:', this.player.spriteRenderer.sprite.anims.getTotalFrames());
+            } else {
+                console.warn('⚠️ Animation aldric_run_attack does not exist!');
+            }
+        }
+
+        // Create dash trail particles
+        const trailInterval = this.scene.time.addEvent({
+            delay: 30,
+            repeat: 8,
+            callback: () => {
+                const trail = this.scene.add.circle(
+                    this.player.sprite.x,
+                    this.player.sprite.y,
+                    8,
+                    0x4169E1,
+                    0.6
+                );
+                trail.setDepth(this.player.sprite.depth - 1);
+
+                this.scene.tweens.add({
+                    targets: trail,
+                    alpha: 0,
+                    scale: 1.5,
+                    duration: 400,
+                    onComplete: () => trail.destroy()
+                });
+            }
+        });
+
+        // Dash forward
+        const startX = this.player.sprite.x;
+        const startY = this.player.sprite.y;
+        const endX = startX + (direction * dashDistance);
+
+        this.scene.tweens.add({
+            targets: this.player.sprite,
+            x: endX,
+            duration: 300,
+            ease: 'Power2',
+            onUpdate: () => {
+                // Check collision with enemies during dash
+                const enemyCollections = [
+                    this.scene.enemies,
+                    this.scene.swordDemons,
+                    this.scene.minotaurs,
+                    this.scene.mushrooms,
+                    this.scene.emberclaws
+                ];
+
+                enemyCollections.forEach(collection => {
+                    if (!collection) return;
+
+                    Object.values(collection).forEach(enemy => {
+                        if (!enemy || !enemy.isAlive || !enemy.sprite) return;
+                        if (enemy.hitByDash) return; // Already hit by this dash
+
+                        const dist = Phaser.Math.Distance.Between(
+                            this.player.sprite.x,
+                            this.player.sprite.y,
+                            enemy.sprite.x,
+                            enemy.sprite.y
+                        );
+
+                        if (dist < 50) {
+                            // Hit enemy!
+                            enemy.hitByDash = true; // Mark so we don't hit twice
+
+                            // Broadcast damage to server
+                            if (typeof networkManager !== 'undefined') {
+                                networkManager.socket.emit('enemy:hit', {
+                                    enemyId: enemy.data.id,
+                                    damage: damage,
+                                    playerId: this.player.data.id
+                                });
+                            }
+
+                            // Create impact effect
+                            const impact = this.scene.add.circle(
+                                enemy.sprite.x,
+                                enemy.sprite.y,
+                                20,
+                                0xFFD700,
+                                0.8
+                            );
+                            impact.setDepth(9000);
+
+                            this.scene.tweens.add({
+                                targets: impact,
+                                scale: 2,
+                                alpha: 0,
+                                duration: 200,
+                                onComplete: () => impact.destroy()
+                            });
+                        }
+                    });
+                });
+            },
+            onComplete: () => {
+                // Remove dash flag immediately
+                this.player.isDashing = false;
+
+                // Remove invincibility after dash
+                this.scene.time.delayedCall(iframesDuration, () => {
+                    this.player.isInvincible = false;
+                    this.player.sprite.setAlpha(1);
+                });
+
+                // Clear hitByDash flags
+                const enemyCollections = [
+                    this.scene.enemies,
+                    this.scene.swordDemons,
+                    this.scene.minotaurs,
+                    this.scene.mushrooms,
+                    this.scene.emberclaws
+                ];
+
+                enemyCollections.forEach(collection => {
+                    if (!collection) return;
+                    Object.values(collection).forEach(enemy => {
+                        if (enemy) delete enemy.hitByDash;
+                    });
+                });
+
+                // Return to appropriate animation based on movement state
+                if (this.player.spriteRenderer && this.player.spriteRenderer.sprite) {
+                    if (this.player.spriteRenderer.isMoving) {
+                        const runKey = 'aldric_running';
+                        if (this.scene.anims.exists(runKey)) {
+                            this.player.spriteRenderer.sprite.play(runKey, true);
+                        }
+                    } else {
+                        const idleKey = 'aldric_idle';
+                        if (this.scene.anims.exists(idleKey)) {
+                            this.player.spriteRenderer.sprite.play(idleKey, true);
+                        }
+                    }
+                }
+            }
         });
     }
 

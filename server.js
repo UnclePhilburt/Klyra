@@ -133,6 +133,7 @@ class Player {
         this.position = { x: 0, y: 0 };
         this.health = 100;
         this.maxHealth = 100;
+        this.shield = 0; // Shield absorbs damage before health (e.g., from Chad's Shield passive)
         this.level = 1;
         this.experience = 0;
         this.class = 'warrior';
@@ -283,6 +284,7 @@ class Player {
             position: this.position,
             health: this.health,
             maxHealth: this.maxHealth,
+            shield: this.shield || 0,
             level: this.level,
             experience: this.experience,
             class: this.class,
@@ -343,7 +345,8 @@ class Player {
             instantRevive: this.instantRevive,
             shockwaveRadius: this.shockwaveRadius,
             deathAura: this.deathAura,
-            deathImmunity: this.deathImmunity
+            deathImmunity: this.deathImmunity,
+            passiveSkills: this.passiveSkills || []
         };
     }
 }
@@ -382,16 +385,19 @@ class AIBot extends Player {
         this.lastBroadcastPosition = { x: 0, y: 0 };
         this.lastAbilityTime = 0;
         this.lastHealTime = 0;
-        this.moveInterval = 100; // Update movement every 100ms
-        this.attackCooldown = 800; // Attack faster - every 0.8 seconds
-        this.aggroRange = 6000; // Can see enemies from far away
-        this.followRange = 7000; // Will chase enemies far
-        this.retreatThreshold = 0.3; // Retreat when below 30% HP
+        this.moveInterval = 60; // Update movement every 60ms (more responsive)
+        this.attackCooldown = 700; // Attack faster - every 0.7 seconds
+        this.aggroRange = 800; // More tactical engagement distance
+        this.followRange = 1000; // Will chase enemies moderately far
+        this.retreatThreshold = 0.4; // Retreat when below 40% HP (smarter survival)
         this.isRetreating = false;
+        this.kiteDistance = 250; // Optimal kiting distance for ranged
 
-        // Pack behavior
+        // Pack behavior - Enhanced intelligence
         this.focusFireEnabled = true; // Bots coordinate attacks
         this.preferredAlly = null; // Bot will stick near this player
+        this.teamworkRadius = 600; // Stay within this distance of allies
+        this.avoidOverlapDistance = 100; // Avoid getting too close to allies
 
         // Auto-revive system
         this.respawnDelay = 10000; // Respawn after 10 seconds
@@ -407,6 +413,12 @@ class AIBot extends Player {
 
         // Auto-select skills for the bot based on class
         this.selectedSkills = this.getDefaultSkills(selectedClass);
+
+        // Orb collection range by class
+        this.orbCollectionRange = this.getOrbCollectionRange(selectedClass);
+
+        // Aldric is invincible - unlimited life for patrol duty
+        this.isInvincible = (selectedClass === 'aldric');
     }
 
     getAbilityCooldowns(characterClass) {
@@ -420,6 +432,20 @@ class AIBot extends Player {
                 return {}; // No special abilities yet
             default:
                 return {};
+        }
+    }
+
+    getOrbCollectionRange(characterClass) {
+        // Return orb collection range in pixels for each class
+        switch(characterClass) {
+            case 'aldric':
+                return 75; // Aldric has short collection range (tank must get close)
+            case 'malachar':
+                return 300; // Malachar has standard range
+            case 'kelise':
+                return 300; // Kelise has standard range
+            default:
+                return 300;
         }
     }
 
@@ -469,10 +495,12 @@ class AIBot extends Player {
             const distMoved = Math.sqrt(dx * dx + dy * dy);
 
             if (distMoved < 50) { // Moved less than 50 pixels in 2 seconds = stuck
+                console.log(`⚠️ Bot ${this.username} is stuck! Resetting patrol...`);
                 // Pick a new random wander target to get unstuck
                 this.wanderTarget = null;
                 this.target = null; // Also clear enemy target if stuck
                 this.preferredSide = null; // Reset side preference
+                this.patrolAngle = Math.random() * Math.PI * 2; // Reset patrol angle
             }
 
             this.lastPositionCheck = { x: this.position.x, y: this.position.y };
@@ -480,8 +508,9 @@ class AIBot extends Player {
         }
 
         // Check if we need to retreat (low health)
+        // Invincible bots (Aldric) never retreat
         const healthPercent = this.health / this.maxHealth;
-        if (healthPercent < this.retreatThreshold && this.isAlive) {
+        if (!this.isInvincible && healthPercent < this.retreatThreshold && this.isAlive) {
             this.isRetreating = true;
         } else if (healthPercent > 0.6) {
             this.isRetreating = false; // Stop retreating when healed
@@ -493,8 +522,8 @@ class AIBot extends Player {
             this.lastHealTime = now;
         }
 
-        // Find best target (use focus fire if enabled)
-        if (!this.isRetreating) {
+        // Find best target (use focus fire if enabled) - invincible bots always target
+        if (!this.isRetreating || this.isInvincible) {
             this.findTarget(lobby);
         } else {
             this.target = null; // Don't engage while retreating
@@ -507,12 +536,12 @@ class AIBot extends Player {
         }
 
         // Use abilities intelligently
-        if (!this.isRetreating) {
+        if (!this.isRetreating || this.isInvincible) {
             this.useAbilities(lobby);
         }
 
-        // Attack if in range and not retreating
-        if (this.target && !this.isRetreating && now - this.lastAttackTime > this.attackCooldown) {
+        // Attack if in range and not retreating (invincible bots always attack)
+        if (this.target && (!this.isRetreating || this.isInvincible) && now - this.lastAttackTime > this.attackCooldown) {
             this.attemptAttack(lobby);
             this.lastAttackTime = now;
         }
@@ -551,8 +580,9 @@ class AIBot extends Player {
         lobby.gameState.enemies.forEach(enemy => {
             if (!enemy.isAlive) return;
 
-            const dx = (enemy.position.x * TILE_SIZE) - this.position.x;
-            const dy = (enemy.position.y * TILE_SIZE) - this.position.y;
+            // Enemy positions are already in pixels
+            const dx = enemy.position.x - this.position.x;
+            const dy = enemy.position.y - this.position.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist < this.aggroRange) {
@@ -576,11 +606,11 @@ class AIBot extends Player {
                 const focusFireBonus = playerTargets.get(enemy.id) || 0;
 
                 // ADVANCED WEIGHTED SCORING:
-                // 1. Focus fire (40%) - coordinate with players
-                // 2. Threat level (25%) - kill dangerous enemies first
-                // 3. Low health (20%) - finish off weak enemies
-                // 4. Distance (15%) - prefer close enemies
-                let score = (focusFireBonus * 0.4) + (threatScore * 0.25) + (healthScore * 0.2) + (distanceScore * 0.15);
+                // 1. Focus fire (50%) - strongly coordinate with players
+                // 2. Low health (25%) - finish off weak enemies quickly
+                // 3. Threat level (15%) - prioritize dangerous enemies
+                // 4. Distance (10%) - prefer closer enemies
+                let score = (focusFireBonus * 0.5) + (healthScore * 0.25) + (threatScore * 0.15) + (distanceScore * 0.1);
 
                 if (score > bestScore) {
                     bestScore = score;
@@ -641,7 +671,7 @@ class AIBot extends Player {
             const dy = this.position.y - this.lastBroadcastPosition.y;
             const distMoved = Math.sqrt(dx * dx + dy * dy);
 
-            if (distMoved > 10) {
+            if (distMoved > 20) {
                 lobby.broadcast('player:moved', {
                     playerId: this.id,
                     position: this.position
@@ -652,10 +682,118 @@ class AIBot extends Player {
             return; // Skip normal movement
         }
 
-        if (this.target) {
+        // ALDRIC SPECIAL BEHAVIOR: Always patrol, even when fighting
+        if (this.isInvincible) {
+            // Check for nearby orbs first
+            let shouldSeekOrb = false;
+            let orbTarget = null;
+
+            if (lobby.gameState && lobby.gameState.experienceOrbs) {
+                let closestOrb = null;
+                let closestDist = 200; // Only seek orbs within 200 pixels
+
+                lobby.gameState.experienceOrbs.forEach((orb, orbId) => {
+                    const dx = orb.x - this.position.x;
+                    const dy = orb.y - this.position.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestOrb = { x: orb.x, y: orb.y, id: orbId, dist };
+                    }
+                });
+
+                if (closestOrb) {
+                    shouldSeekOrb = true;
+                    orbTarget = closestOrb;
+                }
+            }
+
+            if (shouldSeekOrb && orbTarget) {
+                // Temporarily move toward nearby orb
+                const dx = orbTarget.x - this.position.x;
+                const dy = orbTarget.y - this.position.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 10) {
+                    this.position.x += (dx / dist) * moveSpeed * 2; // Move faster toward orbs
+                    this.position.y += (dy / dist) * moveSpeed * 2;
+                }
+            } else {
+                // Random roaming near spawn - stay relatively close to help new players
+                const worldCenter = (lobby.WORLD_SIZE * TILE_SIZE) / 2;
+                const maxRoamDistance = 3000; // Stay within 3000px of spawn (~94 tiles radius)
+
+                // Pick a new random destination if we don't have one or reached it
+                if (!this.wanderTarget) {
+                    // Pick random point within roam area
+                    const randomAngle = Math.random() * Math.PI * 2;
+                    const randomDistance = Math.random() * maxRoamDistance;
+
+                    this.wanderTarget = {
+                        x: worldCenter + Math.cos(randomAngle) * randomDistance,
+                        y: worldCenter + Math.sin(randomAngle) * randomDistance
+                    };
+                }
+
+                // Move toward wander target
+                const dx = this.wanderTarget.x - this.position.x;
+                const dy = this.wanderTarget.y - this.position.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // If reached destination (within 100 pixels), pick new one
+                if (dist < 100) {
+                    this.wanderTarget = null;
+                } else {
+                    // Move steadily toward destination
+                    this.position.x += (dx / dist) * moveSpeed * 1.5;
+                    this.position.y += (dy / dist) * moveSpeed * 1.5;
+                }
+            }
+        } else if (this.target) {
+            // Normal bot behavior - position near target
             // Calculate target position
             const targetX = this.target.position.x * TILE_SIZE;
             const targetY = this.target.position.y * TILE_SIZE;
+
+            // Check leash distance - don't chase enemies too far from patrol route
+            const worldCenter = (lobby.WORLD_SIZE * TILE_SIZE) / 2;
+            const botDistFromCenter = Math.sqrt(
+                Math.pow(this.position.x - worldCenter, 2) +
+                Math.pow(this.position.y - worldCenter, 2)
+            );
+            // Aldric roams near spawn - leash at 3500px (3000 roam + 500 buffer for chasing)
+            const maxLeashDistance = this.isInvincible ? 3500 : 1500;
+
+            if (botDistFromCenter > maxLeashDistance) {
+                // Bot is too far - disengage and actively move back toward center
+                this.target = null;
+                this.wanderTarget = null; // Force picking new patrol waypoint
+                this.preferredSide = null;
+
+                // Only log once when first leashed
+                if (!this.isLeashed) {
+                    console.log(`🔗 Bot ${this.username} leashed - returning to patrol route (${botDistFromCenter.toFixed(0)}px from center)`);
+                    this.isLeashed = true;
+                }
+
+                // Move directly toward world center to get back in range
+                const dx = worldCenter - this.position.x;
+                const dy = worldCenter - this.position.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 10) {
+                    this.position.x += (dx / dist) * moveSpeed;
+                    this.position.y += (dy / dist) * moveSpeed;
+                }
+                return;
+            } else {
+                // Back in range - reset leash flag
+                if (this.isLeashed) {
+                    console.log(`✅ Bot ${this.username} returned to patrol area`);
+                    this.isLeashed = false;
+                }
+            }
 
             // Position to the left or right of enemy (for horizontal auto-attacks)
             // Choose a side offset if we don't have one yet
@@ -680,63 +818,85 @@ class AIBot extends Player {
                 this.position.y += (dy / dist) * moveSpeed;
             }
         } else {
-            // No enemy target - find and follow nearest real player
-            const nearestPlayer = this.findNearestRealPlayer(lobby);
-
-            if (nearestPlayer) {
-                const dx = nearestPlayer.position.x - this.position.x;
-                const dy = nearestPlayer.position.y - this.position.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                // Follow player but maintain some distance (not too close)
-                const followDistance = 200; // Stay about 200 pixels away
-                if (dist > followDistance) {
-                    this.position.x += (dx / dist) * moveSpeed * 2; // Faster to catch up
-                    this.position.y += (dy / dist) * moveSpeed * 2;
-                    this.wanderTarget = null; // Cancel wandering
-                    return; // Skip wandering logic
-                }
-            }
-            // No target - explore the map by picking destinations
+            // No enemy target - check for nearby orbs first, then patrol
             this.preferredSide = null;
 
-            // Check if we're stuck at world bounds
-            const maxPos = lobby.WORLD_SIZE * TILE_SIZE;
-            const margin = 100; // 100 pixels from edge
-            const isNearEdge = this.position.x < margin || this.position.x > maxPos - margin ||
-                               this.position.y < margin || this.position.y > maxPos - margin;
+            // ORB SEEKING: Look for nearby orbs and move toward them
+            if (lobby.gameState && lobby.gameState.experienceOrbs) {
+                let closestOrb = null;
+                let closestDist = 400; // Only seek orbs within 400 pixels
 
-            // Pick a new wander destination if we don't have one, reached it, or stuck at edge
-            if (!this.wanderTarget || isNearEdge) {
-                const worldCenter = (lobby.WORLD_SIZE * TILE_SIZE) / 2;
-                const wanderRadius = 2500; // Wander up to 2500 pixels from center (stay within bounds)
+                lobby.gameState.experienceOrbs.forEach((orb, orbId) => {
+                    const dx = orb.x - this.position.x;
+                    const dy = orb.y - this.position.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
 
-                // Pick random point around world center
-                const angle = Math.random() * Math.PI * 2;
-                const distance = Math.random() * wanderRadius;
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestOrb = { x: orb.x, y: orb.y, id: orbId, dist };
+                    }
+                });
+
+                // If found a nearby orb, move toward it
+                if (closestOrb) {
+                    const dx = closestOrb.x - this.position.x;
+                    const dy = closestOrb.y - this.position.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist > 10) {
+                        this.position.x += (dx / dist) * moveSpeed * 1.5; // Move faster toward orbs
+                        this.position.y += (dy / dist) * moveSpeed * 1.5;
+
+                        // Broadcast movement
+                        lobby.broadcast('player:moved', {
+                            playerId: this.id,
+                            position: this.position
+                        });
+                        this.lastBroadcastPosition = { x: this.position.x, y: this.position.y };
+                    }
+                    return; // Skip patrol movement
+                }
+            }
+
+            // No orbs nearby - patrol around the safe zone perimeter
+            const worldCenter = (lobby.WORLD_SIZE * TILE_SIZE) / 2;
+            const safeZoneRadius = 800; // Safe zone is ~800 pixels from center
+            const patrolRadius = safeZoneRadius + 300; // Patrol 300 pixels outside safe zone (where enemies spawn)
+
+            // Initialize patrol angle if not set
+            if (this.patrolAngle === undefined) {
+                this.patrolAngle = Math.random() * Math.PI * 2; // Start at random position on circle
+            }
+
+            // Pick a new patrol destination if we don't have one or reached it
+            if (!this.wanderTarget) {
+                // Pick next point on patrol circle
+                this.patrolAngle += (Math.PI / 4) + (Math.random() * Math.PI / 4); // Move 45-90 degrees around circle
 
                 this.wanderTarget = {
-                    x: worldCenter + Math.cos(angle) * distance,
-                    y: worldCenter + Math.sin(angle) * distance
+                    x: worldCenter + Math.cos(this.patrolAngle) * patrolRadius,
+                    y: worldCenter + Math.sin(this.patrolAngle) * patrolRadius
                 };
 
-                // Ensure wander target is within bounds
+                // Ensure wander target is within world bounds
+                const maxPos = lobby.WORLD_SIZE * TILE_SIZE;
+                const margin = 200;
                 this.wanderTarget.x = Math.max(margin, Math.min(maxPos - margin, this.wanderTarget.x));
                 this.wanderTarget.y = Math.max(margin, Math.min(maxPos - margin, this.wanderTarget.y));
             }
 
-            // Move towards wander target
+            // Move towards patrol waypoint
             const dx = this.wanderTarget.x - this.position.x;
             const dy = this.wanderTarget.y - this.position.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            // If reached destination (within 100 pixels), pick new one
-            if (dist < 100) {
+            // If reached destination (within 150 pixels), pick new one
+            if (dist < 150) {
                 this.wanderTarget = null;
             } else {
-                // Move towards destination
-                this.position.x += (dx / dist) * moveSpeed * 3; // Faster exploration movement
-                this.position.y += (dy / dist) * moveSpeed * 3;
+                // Move steadily towards patrol waypoint
+                this.position.x += (dx / dist) * moveSpeed * 2;
+                this.position.y += (dy / dist) * moveSpeed * 2;
             }
         }
 
@@ -750,7 +910,7 @@ class AIBot extends Player {
         const dy = this.position.y - this.lastBroadcastPosition.y;
         const distMoved = Math.sqrt(dx * dx + dy * dy);
 
-        if (distMoved > 10) { // Only broadcast if moved more than 10 pixels
+        if (distMoved > 20) { // Only broadcast if moved more than 20 pixels
             lobby.broadcast('player:moved', {
                 playerId: this.id,
                 position: this.position
@@ -769,8 +929,9 @@ class AIBot extends Player {
         const dy = targetY - this.position.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // Attack range (5 tiles)
-        if (dist < 160) {
+        // Attack range (invincible bots have longer reach)
+        const attackRange = this.isInvincible ? 150 : 96; // Aldric: 150px, others: 96px
+        if (dist < attackRange) {
             // Calculate facing direction based on target position
             const angle = Math.atan2(dy, dx);
             const facingDirection = angle > -Math.PI/4 && angle < Math.PI/4 ? 'right' :
@@ -786,11 +947,44 @@ class AIBot extends Player {
             });
 
             // BUFFED BOT DAMAGE - Bots hit HARD!
-            const baseDamage = 40 + (this.level * 10); // Double base damage
+            let baseDamage = 40 + (this.level * 10); // Double base damage
+
+            // ALDRIC: Lower damage but stronger knockback
+            if (this.class === 'aldric') {
+                baseDamage = 20 + (this.level * 5); // Halved damage for crowd control focus
+            }
+
             const damage = Math.floor(baseDamage * this.damageMultiplier);
 
             // Deal damage to enemy
             this.target.health -= damage;
+
+            // ALDRIC KNOCKBACK - Push enemies back when hit
+            if (this.class === 'aldric') {
+                const knockbackDistance = 3.0; // 3 tiles knockback (increased from 1.5)
+                const knockbackAngle = Math.atan2(dy, dx);
+
+                const oldX = this.target.position.x;
+                const oldY = this.target.position.y;
+
+                // Apply knockback to enemy position (in tiles)
+                this.target.position.x += Math.cos(knockbackAngle) * knockbackDistance;
+                this.target.position.y += Math.sin(knockbackAngle) * knockbackDistance;
+
+                console.log(`💥 KNOCKBACK: Enemy ${this.target.id} from (${oldX.toFixed(1)}, ${oldY.toFixed(1)}) to (${this.target.position.x.toFixed(1)}, ${this.target.position.y.toFixed(1)})`);
+
+                // Stun enemy briefly to prevent immediate return movement
+                this.target.stunned = true;
+                this.target.stunnedUntil = Date.now() + 500; // 0.5 second stun
+
+                // Broadcast enemy position update for knockback
+                lobby.broadcast('enemy:position', {
+                    enemyId: this.target.id,
+                    position: this.target.position
+                });
+
+                console.log(`📡 Broadcasting enemy:position for ${this.target.id}`);
+            }
 
             if (this.target.health <= 0) {
                 this.target.health = 0;
@@ -811,7 +1005,9 @@ class AIBot extends Player {
                     enemyId: this.target.id,
                     killedBy: this.id,
                     killerName: this.username,
-                    position: this.target.position
+                    position: this.target.position,
+                    orbId: orbId,
+                    orbValue: orbValue
                 });
 
                 // Malachar's Dark Harvest passive: 15% chance to spawn minion on kill
@@ -893,15 +1089,29 @@ class AIBot extends Player {
             const nearbyEnemies = this.getNearbyEnemies(lobby, 300);
 
             // SMART USAGE: Use shockwave when:
-            // 1. Surrounded by 4+ enemies (danger!)
-            // 2. OR 3+ enemies AND we're below 50% health (need space)
-            // 3. OR 5+ enemies regardless (clear the horde)
+            // 1. Surrounded by 3+ enemies (efficient AOE)
+            // 2. OR 2+ enemies AND we're below 60% health (need space)
+            // 3. OR see enemy with low health that shockwave can finish (smart cleanup)
             const healthPercent = this.health / this.maxHealth;
-            const shouldUseShockwave = nearbyEnemies.length >= 5 ||
-                                      (nearbyEnemies.length >= 4) ||
-                                      (nearbyEnemies.length >= 3 && healthPercent < 0.5);
+            const hasLowHealthEnemy = nearbyEnemies.some(e => e.health < 80);
+            const shouldUseShockwave = nearbyEnemies.length >= 3 ||
+                                      (nearbyEnemies.length >= 2 && healthPercent < 0.6) ||
+                                      (nearbyEnemies.length >= 2 && hasLowHealthEnemy);
 
             if (shouldUseShockwave) {
+                // Calculate facing direction based on nearest enemy
+                let facingRight = true; // Default to right
+                if (nearbyEnemies.length > 0) {
+                    // Face towards the nearest enemy
+                    const nearestEnemy = nearbyEnemies[0];
+                    const TILE_SIZE = 32;
+                    facingRight = (nearestEnemy.position.x * TILE_SIZE) > this.position.x;
+                } else if (this.target) {
+                    // Face towards current target if no nearby enemies
+                    const TILE_SIZE = 32;
+                    facingRight = (this.target.position.x * TILE_SIZE) > this.position.x;
+                }
+
                 // Deal damage to all nearby enemies
                 const shockwaveDamage = 60 + (this.level * 15); // Strong AOE damage
                 nearbyEnemies.forEach(enemy => {
@@ -913,12 +1123,12 @@ class AIBot extends Player {
                         this.kills++;
 
                         // Spawn XP orb
-                        const TILE_SIZE = 32;
                         const orbId = `orb_${Date.now()}_${Math.random()}`;
+                        const orbValue = 10;
                         lobby.gameState.experienceOrbs.set(orbId, {
-                            x: enemy.position.x * TILE_SIZE,
-                            y: enemy.position.y * TILE_SIZE,
-                            expValue: 10
+                            x: enemy.position.x, // Already in pixels, no conversion needed
+                            y: enemy.position.y, // Already in pixels, no conversion needed
+                            expValue: orbValue
                         });
 
                         // Broadcast enemy death
@@ -926,7 +1136,9 @@ class AIBot extends Player {
                             enemyId: enemy.id,
                             killedBy: this.id,
                             killerName: this.username,
-                            position: enemy.position
+                            position: enemy.position,
+                            orbId: orbId,
+                            orbValue: orbValue
                         });
                     } else {
                         // Broadcast damage
@@ -938,7 +1150,8 @@ class AIBot extends Player {
                     }
                 });
 
-                lobby.broadcast('ability:used', {
+                // Use proximity broadcast for ability effects (only nearby players hear it)
+                lobby.broadcastProximity('ability:used', {
                     playerId: this.id,
                     playerName: this.username,
                     abilityKey: 'aldric_attack3',
@@ -948,17 +1161,18 @@ class AIBot extends Player {
                         type: 'shockwave',
                         playerId: this.id,
                         position: this.position,
-                        radius: 300
+                        radius: 300,
+                        facingRight: facingRight
                     }
-                });
+                }, this.position, 2560); // 2 screen widths (1280px * 2)
 
-                // Also trigger player:attacked for the animation
-                lobby.broadcast('player:attacked', {
+                // Also trigger player:attacked for the animation (proximity-based)
+                lobby.broadcastProximity('player:attacked', {
                     playerId: this.id,
                     attackKey: 'aldric_attack3',
                     targetPosition: this.position,
                     position: this.position
-                });
+                }, this.position, 2560);
 
                 this.lastAbilityTime = now;
                 console.log(`⚡ Bot ${this.username} used Shockwave on ${nearbyEnemies.length} enemies`);
@@ -1000,7 +1214,8 @@ class AIBot extends Player {
                     minions.push(minionPos);
                 }
 
-                lobby.broadcast('ability:used', {
+                // Use proximity broadcast for ability effects (only nearby players hear it)
+                lobby.broadcastProximity('ability:used', {
                     playerId: this.id,
                     playerName: this.username,
                     abilityKey: 'malachar_summon',
@@ -1012,15 +1227,15 @@ class AIBot extends Player {
                         position: this.position,
                         minions: minions
                     }
-                });
+                }, this.position, 2560);
 
-                // Also trigger player:attacked for the animation
-                lobby.broadcast('player:attacked', {
+                // Also trigger player:attacked for the animation (proximity-based)
+                lobby.broadcastProximity('player:attacked', {
                     playerId: this.id,
                     attackKey: 'malachar_summon',
                     targetPosition: this.position,
                     position: this.position
-                });
+                }, this.position, 2560);
 
                 this.lastAbilityTime = now;
                 console.log(`💀 Bot ${this.username} used Pact of Bones`);
@@ -1061,12 +1276,12 @@ class AIBot extends Player {
                         this.kills++;
 
                         // Spawn XP orb
-                        const TILE_SIZE = 32;
                         const orbId = `orb_${Date.now()}_${Math.random()}`;
+                        const orbValue = 10;
                         lobby.gameState.experienceOrbs.set(orbId, {
-                            x: enemy.position.x * TILE_SIZE,
-                            y: enemy.position.y * TILE_SIZE,
-                            expValue: 10
+                            x: enemy.position.x, // Already in pixels, no conversion needed
+                            y: enemy.position.y, // Already in pixels, no conversion needed
+                            expValue: orbValue
                         });
 
                         // Broadcast enemy death
@@ -1074,7 +1289,9 @@ class AIBot extends Player {
                             enemyId: enemy.id,
                             killedBy: this.id,
                             killerName: this.username,
-                            position: enemy.position
+                            position: enemy.position,
+                            orbId: orbId,
+                            orbValue: orbValue
                         });
                     } else {
                         // Broadcast damage
@@ -1086,7 +1303,8 @@ class AIBot extends Player {
                     }
                 });
 
-                lobby.broadcast('ability:used', {
+                // Use proximity broadcast for ability effects (only nearby players hear it)
+                lobby.broadcastProximity('ability:used', {
                     playerId: this.id,
                     playerName: this.username,
                     abilityKey: 'kelise_attack2',
@@ -1097,15 +1315,15 @@ class AIBot extends Player {
                         playerId: this.id,
                         position: this.position
                     }
-                });
+                }, this.position, 2560);
 
-                // Also trigger player:attacked for the animation
-                lobby.broadcast('player:attacked', {
+                // Also trigger player:attacked for the animation (proximity-based)
+                lobby.broadcastProximity('player:attacked', {
                     playerId: this.id,
                     attackKey: 'kelise_attack2',
                     targetPosition: this.position,
                     position: this.position
-                });
+                }, this.position, 2560);
 
                 this.lastAbilityTime = now;
                 console.log(`✨ Bot ${this.username} used Swift Strike on ${nearbyEnemies.length} enemies`);
@@ -1122,8 +1340,9 @@ class AIBot extends Player {
         lobby.gameState.enemies.forEach(enemy => {
             if (!enemy.isAlive) return;
 
-            const dx = (enemy.position.x * TILE_SIZE) - this.position.x;
-            const dy = (enemy.position.y * TILE_SIZE) - this.position.y;
+            // Enemy positions are already in pixels
+            const dx = enemy.position.x - this.position.x;
+            const dy = enemy.position.y - this.position.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist < range) {
@@ -1171,10 +1390,30 @@ class AIBot extends Player {
     }
 
     collectNearbyOrbs(lobby) {
-        if (!lobby.gameState || !lobby.gameState.experienceOrbs) return;
+        if (!lobby.gameState || !lobby.gameState.experienceOrbs) {
+            console.log(`⚠️ Bot ${this.username} - no gameState or experienceOrbs`);
+            return;
+        }
 
-        const COLLECTION_RANGE = 150; // Bots collect orbs within 150 pixels
+        const COLLECTION_RANGE = this.orbCollectionRange; // Character-specific collection range
         const orbsToCollect = [];
+
+        // DEBUG: Log orb collection attempt with actual orb positions
+        if (Math.random() < 0.02) { // 2% of the time
+            console.log(`🔍 Bot ${this.username} checking for orbs - Total orbs: ${lobby.gameState.experienceOrbs.size}, Bot position: (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)})`);
+
+            // Log first 3 orb positions for debugging
+            let count = 0;
+            lobby.gameState.experienceOrbs.forEach((orb, orbId) => {
+                if (count < 3) {
+                    const dx = orb.x - this.position.x;
+                    const dy = orb.y - this.position.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    console.log(`   Orb ${orbId}: pos=(${orb.x.toFixed(1)}, ${orb.y.toFixed(1)}), distance=${dist.toFixed(1)}px`);
+                    count++;
+                }
+            });
+        }
 
         // Find nearby orbs
         lobby.gameState.experienceOrbs.forEach((orb, orbId) => {
@@ -1187,9 +1426,15 @@ class AIBot extends Player {
             }
         });
 
+        // DEBUG: Log if we found orbs
+        if (orbsToCollect.length > 0) {
+            console.log(`✨ Bot ${this.username} found ${orbsToCollect.length} orbs nearby!`);
+        }
+
         // Collect each orb
         orbsToCollect.forEach(({ orbId, orb }) => {
             const expValue = orb.expValue || 10;
+            console.log(`🤖 Bot ${this.username} collecting orb ${orbId} (${expValue} XP) at (${orb.x.toFixed(1)}, ${orb.y.toFixed(1)})`);
 
             // Award XP to bot
             this.experience += expValue;
@@ -1214,7 +1459,8 @@ class AIBot extends Player {
             // Remove orb from game state
             lobby.gameState.experienceOrbs.delete(orbId);
 
-            // Broadcast orb collection to all players (including real players nearby for shared XP)
+            // Broadcast orb collection only to nearby players for shared XP
+            const SHARE_DISTANCE = 800; // Share XP within ~800 pixels (about 1 screen)
             lobby.broadcast('orb:collected', {
                 orbId: orbId,
                 expValue: expValue,
@@ -1222,6 +1468,12 @@ class AIBot extends Player {
                 collectorName: this.username,
                 collectorX: this.position.x,
                 collectorY: this.position.y
+            }, (player, data) => {
+                // Only send to players within SHARE_DISTANCE of the bot
+                const dx = player.position.x - this.position.x;
+                const dy = player.position.y - this.position.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                return dist <= SHARE_DISTANCE;
             });
         });
     }
@@ -1238,7 +1490,7 @@ class Lobby {
         this.gameState = {
             floor: 1,
             enemies: [],
-            items: [],
+            items: new Map(), // Track dropped items (itemId -> {type, x, y, color})
             minions: new Map(), // Track all spawned minions
             experienceOrbs: new Map(), // Track XP orbs (orbId -> {x, y, expValue})
             startTime: Date.now(),
@@ -1288,18 +1540,12 @@ class Lobby {
         // Count real players (non-bots)
         const realPlayerCount = Array.from(this.players.values()).filter(p => !p.isBot).length;
 
-        // Dynamic bot scaling based on real player count
+        // Always spawn exactly 1 bot (if there are any players)
         let desiredBotCount;
         if (realPlayerCount === 0) {
             desiredBotCount = 0; // No bots if no players (empty server)
-        } else if (realPlayerCount === 1) {
-            desiredBotCount = 4; // Solo player gets 4 bots for company
-        } else if (realPlayerCount === 2) {
-            desiredBotCount = 3; // 2 players get 3 bots
-        } else if (realPlayerCount <= 4) {
-            desiredBotCount = 2; // 3-4 players get 2 bots
         } else {
-            desiredBotCount = 1; // 5+ players get 1 bot for slight help
+            desiredBotCount = 1; // Always 1 bot when there are players
         }
 
         const currentBotCount = this.bots.size;
@@ -1307,10 +1553,10 @@ class Lobby {
         // Add bots if we need more
         if (currentBotCount < desiredBotCount) {
             const botsToAdd = desiredBotCount - currentBotCount;
-            const botClasses = ['kelise', 'malachar', 'aldric'];
 
             for (let i = 0; i < botsToAdd; i++) {
-                const botClass = botClasses[(currentBotCount + i) % botClasses.length];
+                // Always spawn Aldric bot (has enhanced AI with Shockwave ability)
+                const botClass = 'aldric';
                 const bot = new AIBot(this.id, botClass);
 
                 // Spawn bot at world center with some spacing
@@ -1400,10 +1646,10 @@ class Lobby {
         if (!this.gameState || !this.gameState.minions) return;
 
         const TILE_SIZE = 32;
-        const MINION_MOVE_SPEED = 2.5; // Tiles per update
-        const MINION_ATTACK_RANGE = 1.5; // Tiles
+        const MINION_MOVE_SPEED = 80; // Pixels per update (2.5 tiles)
+        const MINION_ATTACK_RANGE = 48; // Pixels (1.5 tiles)
         const MINION_ATTACK_COOLDOWN = 1000; // 1 second
-        const MINION_SIGHT_RANGE = 15; // Tiles
+        const MINION_SIGHT_RANGE = 480; // Pixels (15 tiles)
         const MINION_DAMAGE = 15;
         const MINION_LIFETIME = 30000; // 30 seconds
 
@@ -1588,7 +1834,7 @@ class Lobby {
                 health: 20,  // Reduced from 30
                 maxHealth: 20,
                 damage: 1,  // Reduced from 2
-                speed: 45,   // Reduced from 70 for tactical gameplay
+                speed: 800,  // Speed = pixels/sec × 10 (80 px/s)
                 sightRange: 12,
                 glowColor: 0xff6666, // Light red
                 glowSize: 6
@@ -1598,7 +1844,7 @@ class Lobby {
                 health: 35,  // Reduced from 50
                 maxHealth: 35,
                 damage: 2,  // Reduced from 3
-                speed: 50,   // Reduced from 80 for tactical gameplay
+                speed: 1000,  // Speed = pixels/sec × 10 (100 px/s)
                 sightRange: 15,
                 glowColor: 0xff0000, // Red
                 glowSize: 8
@@ -1608,7 +1854,7 @@ class Lobby {
                 health: 70,  // Reduced from 100
                 maxHealth: 70,
                 damage: 4,  // Reduced from 6
-                speed: 55,   // Reduced from 90 for tactical gameplay
+                speed: 1200,  // Speed = pixels/sec × 10 (120 px/s)
                 sightRange: 20,
                 glowColor: 0xff0066, // Dark pink/red
                 glowSize: 12
@@ -1647,7 +1893,7 @@ class Lobby {
                 health: 40,  // Reduced from 60
                 maxHealth: 40,
                 damage: 3,  // Reduced from 5
-                speed: 32,   // Reduced from 50 for tactical gameplay
+                speed: 700,  // Speed = pixels/sec × 10 (70 px/s)
                 sightRange: 10
             },
             normal: {
@@ -1655,7 +1901,7 @@ class Lobby {
                 health: 70,  // Reduced from 100
                 maxHealth: 70,
                 damage: 5,  // Reduced from 7
-                speed: 38,   // Reduced from 60 for tactical gameplay
+                speed: 850,  // Speed = pixels/sec × 10 (85 px/s)
                 sightRange: 12
             },
             boss: {
@@ -1663,7 +1909,7 @@ class Lobby {
                 health: 120,  // Reduced from 175
                 maxHealth: 120,
                 damage: 7,  // Reduced from 11
-                speed: 45,   // Reduced from 70 for tactical gameplay
+                speed: 1000,  // Speed = pixels/sec × 10 (100 px/s)
                 sightRange: 15
             }
         };
@@ -1698,7 +1944,7 @@ class Lobby {
                 health: 15,  // Reduced from 20
                 maxHealth: 15,
                 damage: 1,  // Reduced from 2
-                speed: 22,   // Reduced from 35 for tactical gameplay
+                speed: 600,  // Speed = pixels/sec × 10 (60 px/s)
                 sightRange: 8
             },
             normal: {
@@ -1706,7 +1952,7 @@ class Lobby {
                 health: 25,  // Reduced from 35
                 maxHealth: 25,
                 damage: 2,  // Reduced from 4
-                speed: 28,   // Reduced from 45 for tactical gameplay
+                speed: 750,  // Speed = pixels/sec × 10 (75 px/s)
                 sightRange: 10
             },
             boss: {
@@ -1714,7 +1960,7 @@ class Lobby {
                 health: 60,  // Reduced from 90
                 maxHealth: 60,
                 damage: 4,  // Reduced from 7
-                speed: 35,   // Reduced from 55 for tactical gameplay
+                speed: 900,  // Speed = pixels/sec × 10 (90 px/s)
                 sightRange: 14
             }
         };
@@ -1747,7 +1993,7 @@ class Lobby {
             health: 20,      // Low health - glass cannon
             maxHealth: 20,
             damage: 15,      // High damage
-            speed: 32,       // Reduced from 50 for tactical kiting gameplay
+            speed: 700,      // Speed = pixels/sec × 10 (70 px/s)
             sightRange: 12,  // Long sight range
             attackRange: 8,  // Ranged attack distance (tiles)
             attackCooldown: 2000  // 2 seconds between shots
@@ -2035,8 +2281,13 @@ class Lobby {
                     // Position in tight cluster (within 5 tiles of pack center)
                     const offsetX = Math.floor((this.seededRandom(wolfSeed + 10) - 0.5) * 10);
                     const offsetY = Math.floor((this.seededRandom(wolfSeed + 11) - 0.5) * 10);
-                    const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
-                    const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+                    const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
+                    const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+
+                    // Convert to pixel coordinates immediately
+                    const TILE_SIZE = 32;
+                    const x = gridX * TILE_SIZE + TILE_SIZE / 2;
+                    const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
                     // Determine sword demon variant
                     let variant = 'normal';
@@ -2071,8 +2322,13 @@ class Lobby {
                     // Position in cluster
                     const offsetX = Math.floor((this.seededRandom(minotaurSeed + 10) - 0.5) * 10);
                     const offsetY = Math.floor((this.seededRandom(minotaurSeed + 11) - 0.5) * 10);
-                    const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
-                    const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+                    const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
+                    const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+
+                    // Convert to pixel coordinates immediately
+                    const TILE_SIZE = 32;
+                    const x = gridX * TILE_SIZE + TILE_SIZE / 2;
+                    const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
                     // Determine minotaur variant
                     let variant = 'normal';
@@ -2099,8 +2355,13 @@ class Lobby {
                     // Position in cluster
                     const offsetX = Math.floor((this.seededRandom(mushroomSeed + 10) - 0.5) * 10);
                     const offsetY = Math.floor((this.seededRandom(mushroomSeed + 11) - 0.5) * 10);
-                    const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
-                    const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+                    const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
+                    const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+
+                    // Convert to pixel coordinates immediately
+                    const TILE_SIZE = 32;
+                    const x = gridX * TILE_SIZE + TILE_SIZE / 2;
+                    const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
                     // Determine mushroom variant
                     let variant = 'normal';
@@ -2135,8 +2396,13 @@ class Lobby {
                     // Position spread out (they fly and kite)
                     const offsetX = Math.floor((this.seededRandom(emberclawSeed + 10) - 0.5) * 15);
                     const offsetY = Math.floor((this.seededRandom(emberclawSeed + 11) - 0.5) * 15);
-                    const x = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
-                    const y = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+                    const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
+                    const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+
+                    // Convert to pixel coordinates immediately
+                    const TILE_SIZE = 32;
+                    const x = gridX * TILE_SIZE + TILE_SIZE / 2;
+                    const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
                     const emberclawId = `${this.id}_emberclaw_${regionKey}_p${packIndex}_${i}`;
                     const emberclaw = this.createEmberclaw(emberclawId, { x, y }, healthMultiplier);
@@ -2266,7 +2532,7 @@ class Lobby {
         // Update cooldown
         this.playerFlankingCooldowns.set(player.id, now);
 
-        // Broadcast flanking enemies to all players
+        // Broadcast flanking enemies to all players (positions already in pixels)
         newEnemies.forEach(enemy => {
             this.broadcast('enemy:spawned', { enemy });
         });
@@ -2500,6 +2766,24 @@ class Lobby {
         });
     }
 
+    // Broadcast only to players within a certain distance (for proximity-based audio/effects)
+    broadcastProximity(event, data, sourcePosition, maxDistance = 2560) {
+        this.players.forEach(player => {
+            // Skip bots - they don't have sockets
+            if (player.isBot) return;
+
+            // Calculate distance from source
+            const dx = player.position.x - sourcePosition.x;
+            const dy = player.position.y - sourcePosition.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Only send to players within range
+            if (distance <= maxDistance) {
+                io.to(player.id).emit(event, data);
+            }
+        });
+    }
+
     cleanupDistantEnemies() {
         // Remove enemies that are >100 tiles from ALL players
         const CLEANUP_DISTANCE = 100;
@@ -2560,8 +2844,16 @@ class Lobby {
         this.gameState.enemies.forEach(enemy => {
             if (!enemy.isAlive) return;
 
-            // Update every 100ms
-            if (now - enemy.lastMove < 100) return;
+            // Check if enemy is stunned from knockback
+            if (enemy.stunned && now < enemy.stunnedUntil) {
+                return; // Skip movement while stunned
+            } else if (enemy.stunned && now >= enemy.stunnedUntil) {
+                // Clear stun flag when expired
+                enemy.stunned = false;
+            }
+
+            // Update every 50ms to match game loop
+            if (now - enemy.lastMove < 50) return;
             enemy.lastMove = now;
             movedCount++;
 
@@ -2581,8 +2873,8 @@ class Lobby {
 
             // RANGED ENEMY TARGETING: Prioritize players over minions
             const isRangedEnemy = enemy.type === 'emberclaw';
-            const sightRangeSquared = enemy.sightRange * enemy.sightRange; // PERFORMANCE: Squared comparison
             const TILE_SIZE = 32;
+            const sightRangeSquared = (enemy.sightRange * TILE_SIZE) * (enemy.sightRange * TILE_SIZE); // PERFORMANCE: Squared comparison in pixels
 
             // Check players first if ranged enemy, minions first if melee
             const checkPlayersFirst = isRangedEnemy;
@@ -2594,11 +2886,9 @@ class Lobby {
                         return;
                     }
 
-                    const playerGridX = player.position.x / TILE_SIZE;
-                    const playerGridY = player.position.y / TILE_SIZE;
-
-                    const dx = playerGridX - enemy.position.x;
-                    const dy = playerGridY - enemy.position.y;
+                    // Player position is already in pixels
+                    const dx = player.position.x - enemy.position.x;
+                    const dy = player.position.y - enemy.position.y;
                     const distSquared = dx * dx + dy * dy;
 
                     const hasAggro = enemy.aggro && enemy.aggro.has(player.id);
@@ -2620,7 +2910,11 @@ class Lobby {
 
                     if (aggroValue > maxAggro) {
                         maxAggro = aggroValue;
-                        target = { position: { x: playerGridX, y: playerGridY }, id: player.id };
+                        target = { position: { x: player.position.x, y: player.position.y }, id: player.id };
+                        // DEBUG: Log player position vs enemy position
+                        if (Math.random() < 0.02) {
+                            console.log(`🎯 TARGETING: Enemy at (${Math.round(enemy.position.x)}, ${Math.round(enemy.position.y)}) targeting player at (${Math.round(player.position.x)}, ${Math.round(player.position.y)}), dist=${Math.round(dist)}`);
+                        }
                     }
                 });
 
@@ -2632,11 +2926,9 @@ class Lobby {
                             return;
                         }
 
-                        const minionGridX = minion.position.x / TILE_SIZE;
-                        const minionGridY = minion.position.y / TILE_SIZE;
-
-                        const dx = minionGridX - enemy.position.x;
-                        const dy = minionGridY - enemy.position.y;
+                        // Minion position is already in pixels
+                        const dx = minion.position.x - enemy.position.x;
+                        const dy = minion.position.y - enemy.position.y;
                         const distSquared = dx * dx + dy * dy;
 
                         const hasAggro = enemy.aggro && enemy.aggro.has(minionId);
@@ -2658,7 +2950,7 @@ class Lobby {
 
                         if (aggroValue > maxAggro) {
                             maxAggro = aggroValue;
-                            target = { position: { x: minionGridX, y: minionGridY }, id: minionId, isMinion: true };
+                            target = { position: { x: minion.position.x, y: minion.position.y }, id: minionId, isMinion: true };
                         }
                     });
                 }
@@ -2671,11 +2963,9 @@ class Lobby {
                             return;
                         }
 
-                        const minionGridX = minion.position.x / TILE_SIZE;
-                        const minionGridY = minion.position.y / TILE_SIZE;
-
-                        const dx = minionGridX - enemy.position.x;
-                        const dy = minionGridY - enemy.position.y;
+                        // Minion position is already in pixels
+                        const dx = minion.position.x - enemy.position.x;
+                        const dy = minion.position.y - enemy.position.y;
                         const distSquared = dx * dx + dy * dy;
 
                         const hasAggro = enemy.aggro && enemy.aggro.has(minionId);
@@ -2697,7 +2987,7 @@ class Lobby {
 
                         if (aggroValue > maxAggro) {
                             maxAggro = aggroValue;
-                            target = { position: { x: minionGridX, y: minionGridY }, id: minionId, isMinion: true };
+                            target = { position: { x: minion.position.x, y: minion.position.y }, id: minionId, isMinion: true };
                         }
                     });
                 }
@@ -2708,11 +2998,9 @@ class Lobby {
                         return;
                     }
 
-                    const playerGridX = player.position.x / TILE_SIZE;
-                    const playerGridY = player.position.y / TILE_SIZE;
-
-                    const dx = playerGridX - enemy.position.x;
-                    const dy = playerGridY - enemy.position.y;
+                    // Player position is already in pixels
+                    const dx = player.position.x - enemy.position.x;
+                    const dy = player.position.y - enemy.position.y;
                     const distSquared = dx * dx + dy * dy;
 
                     const hasAggro = enemy.aggro && enemy.aggro.has(player.id);
@@ -2734,7 +3022,7 @@ class Lobby {
 
                     if (aggroValue > maxAggro) {
                         maxAggro = aggroValue;
-                        target = { position: { x: playerGridX, y: playerGridY }, id: player.id };
+                        target = { position: { x: player.position.x, y: player.position.y }, id: player.id };
                     }
                 });
             }
@@ -2764,23 +3052,25 @@ class Lobby {
             // EMBERCLAW KITING BEHAVIOR
             if (enemy.type === 'emberclaw') {
                 if (distance === null) distance = Math.sqrt(distanceSquared);
-                const preferredDistance = enemy.preferredDistance || 6;
-                const attackRange = enemy.attackRange || 8;
+                const TILE_SIZE = 32;
+                const preferredDistance = (enemy.preferredDistance || 6) * TILE_SIZE; // Convert tiles to pixels
+                const attackRange = (enemy.attackRange || 8) * TILE_SIZE; // Convert tiles to pixels
 
                 // DEBUG: Always log emberclaw behavior decisions
                 console.log(`🔥 Emberclaw ${enemy.id}: dist=${distance.toFixed(1)}, preferred=${preferredDistance}, attackRange=${attackRange}, lastAttack=${Date.now() - enemy.lastAttack}ms ago`);
 
                 // If too close, kite away
                 if (distance < preferredDistance) {
-                    const moveDistance = enemy.speed / 100;
+                    const moveDistance = enemy.speed / 200;
                     // Move AWAY from target
                     const newX = enemy.position.x - (dx / distance) * moveDistance;
                     const newY = enemy.position.y - (dy / distance) * moveDistance;
 
-                    // SAFE ZONE CHECK
-                    const worldCenterX = this.WORLD_SIZE / 2;
-                    const worldCenterY = this.WORLD_SIZE / 2;
-                    const safeZoneRadius = 25;
+                    // SAFE ZONE CHECK (convert to tiles for comparison)
+                    const TILE_SIZE = 32;
+                    const worldCenterX = (this.WORLD_SIZE / 2) * TILE_SIZE;
+                    const worldCenterY = (this.WORLD_SIZE / 2) * TILE_SIZE;
+                    const safeZoneRadius = 25 * TILE_SIZE;
 
                     const wouldEnterSafeZone = (
                         newX >= (worldCenterX - safeZoneRadius) &&
@@ -2793,9 +3083,11 @@ class Lobby {
                         enemy.position.x = newX;
                         enemy.position.y = newY;
 
+                        // Position is already in pixels, send directly
                         this.broadcast('enemy:moved', {
                             enemyId: enemy.id,
-                            position: enemy.position
+                            position: { x: newX, y: newY },
+                            isPixelCoordinates: true
                         });
                     }
                 }
@@ -2805,19 +3097,15 @@ class Lobby {
                     if (now - enemy.lastAttack >= enemy.attackCooldown) {
                         enemy.lastAttack = now;
 
-                        // Calculate target position in pixels for projectile
-                        const TILE_SIZE = 32;
-                        const targetPixelX = target.position.x * TILE_SIZE + TILE_SIZE / 2;
-                        const targetPixelY = target.position.y * TILE_SIZE + TILE_SIZE / 2;
-
+                        // Target position is already in pixels
                         console.log(`🔥 Emberclaw ${enemy.id} shooting at ${target.isMinion ? 'minion' : 'player'} ${target.id}`);
 
                         // Broadcast to clients to trigger shooting animation
                         // Clients will handle projectile collision and send player:hit when it connects
                         const attackData = {
                             enemyId: enemy.id,
-                            targetX: targetPixelX,
-                            targetY: targetPixelY,
+                            targetX: target.position.x,
+                            targetY: target.position.y,
                             targetId: target.id
                         };
                         console.log(`📡 Broadcasting enemy:attack:`, attackData);
@@ -2830,14 +3118,15 @@ class Lobby {
                 }
                 // If too far, move closer (but maintain distance)
                 else if (distance > attackRange) {
-                    const moveDistance = enemy.speed / 100;
+                    const moveDistance = enemy.speed / 200;
                     const newX = enemy.position.x + (dx / distance) * moveDistance;
                     const newY = enemy.position.y + (dy / distance) * moveDistance;
 
-                    // SAFE ZONE CHECK
-                    const worldCenterX = this.WORLD_SIZE / 2;
-                    const worldCenterY = this.WORLD_SIZE / 2;
-                    const safeZoneRadius = 25;
+                    // SAFE ZONE CHECK (convert to pixels)
+                    const TILE_SIZE = 32;
+                    const worldCenterX = (this.WORLD_SIZE / 2) * TILE_SIZE;
+                    const worldCenterY = (this.WORLD_SIZE / 2) * TILE_SIZE;
+                    const safeZoneRadius = 25 * TILE_SIZE;
 
                     const wouldEnterSafeZone = (
                         newX >= (worldCenterX - safeZoneRadius) &&
@@ -2850,9 +3139,11 @@ class Lobby {
                         enemy.position.x = newX;
                         enemy.position.y = newY;
 
+                        // Position is already in pixels, send directly
                         this.broadcast('enemy:moved', {
                             enemyId: enemy.id,
-                            position: enemy.position
+                            position: { x: newX, y: newY },
+                            isPixelCoordinates: true
                         });
                     }
                 }
@@ -2861,16 +3152,32 @@ class Lobby {
             }
 
             // NORMAL MELEE ENEMY MOVEMENT
-            if (distanceSquared > 1) {  // PERFORMANCE: Check squared distance first
+            const MIN_DISTANCE_TO_PLAYER = 15; // Minimum distance in pixels
+            const MIN_DISTANCE_SQUARED = MIN_DISTANCE_TO_PLAYER * MIN_DISTANCE_TO_PLAYER;
+
+            if (distanceSquared > MIN_DISTANCE_SQUARED) {  // Only move if farther than minimum distance
                 if (distance === null) distance = Math.sqrt(distanceSquared);  // Calculate only if needed
-                const moveDistance = enemy.speed / 100; // Grid tiles per update (100ms)
+                const moveDistance = enemy.speed / 200; // Pixels per update (50ms = 1/20th second)
+
+                // Calculate new position
                 const newX = enemy.position.x + (dx / distance) * moveDistance;
                 const newY = enemy.position.y + (dy / distance) * moveDistance;
 
+                // Check if new position would be too close to player
+                const newDx = target.position.x - newX;
+                const newDy = target.position.y - newY;
+                const newDistanceSquared = newDx * newDx + newDy * newDy;
+
+                // Don't move if it would bring us closer than minimum distance
+                if (newDistanceSquared < MIN_DISTANCE_SQUARED) {
+                    return; // Stay at current position
+                }
+
                 // SAFE ZONE CHECK: Prevent enemies from entering spawn building area
-                const worldCenterX = this.WORLD_SIZE / 2;
-                const worldCenterY = this.WORLD_SIZE / 2;
-                const safeZoneRadius = 25; // 50x50 tiles = 25 tiles from center in each direction
+                const TILE_SIZE = 32;
+                const worldCenterX = (this.WORLD_SIZE / 2) * TILE_SIZE;
+                const worldCenterY = (this.WORLD_SIZE / 2) * TILE_SIZE;
+                const safeZoneRadius = 25 * TILE_SIZE; // 50x50 tiles = 25 tiles from center in each direction
 
                 const wouldEnterSafeZone = (
                     newX >= (worldCenterX - safeZoneRadius) &&
@@ -2890,26 +3197,43 @@ class Lobby {
                     }
                 }
 
-                // Broadcast enemy movement (with interest management)
+                // Broadcast enemy movement - position is already in pixels
                 this.broadcast('enemy:moved', {
                     enemyId: enemy.id,
-                    position: enemy.position
+                    position: {
+                        x: enemy.position.x,
+                        y: enemy.position.y
+                    },
+                    isPixelCoordinates: true  // Flag for client to know these are pixels
                 }, (player, data) => {
                     // PERFORMANCE: Only send to players within 50 tiles (2500 squared)
-                    // FIX: Convert player pixel position to grid position for comparison
-                    const TILE_SIZE = 32;
+                    // Both enemy and player positions are in pixels, convert to tiles for distance check
                     const playerGridX = player.position.x / TILE_SIZE;
                     const playerGridY = player.position.y / TILE_SIZE;
-                    const dx = playerGridX - data.position.x;
-                    const dy = playerGridY - data.position.y;
+                    const enemyGridX = enemy.position.x / TILE_SIZE;
+                    const enemyGridY = enemy.position.y / TILE_SIZE;
+                    const dx = playerGridX - enemyGridX;
+                    const dy = playerGridY - enemyGridY;
                     const distSquared = dx * dx + dy * dy;
                     return distSquared < 2500;  // 50 * 50 = 2500
                 });
             }
 
-            // Attack if close enough (1.5 tiles -> 2.25 squared)
-            // NOTE: distanceSquared is already calculated in GRID coordinates above
-            if (distanceSquared < 2.25) {  // PERFORMANCE: 1.5 * 1.5 = 2.25
+            // Attack if close enough (48 pixels = 1.5 tiles)
+            const attackRangePixels = 1.5 * TILE_SIZE; // 48 pixels
+            const attackRangeSquared = attackRangePixels * attackRangePixels; // 2304
+
+            if (distanceSquared < attackRangeSquared) {
+                // Check attack cooldown (1 second between attacks)
+                const ATTACK_COOLDOWN = 1000; // 1 second
+                if (!enemy.lastAttackTime) enemy.lastAttackTime = 0;
+
+                if (now - enemy.lastAttackTime < ATTACK_COOLDOWN) {
+                    return; // Skip attack, still on cooldown
+                }
+
+                enemy.lastAttackTime = now;
+
                 // Attack target (player or minion)
                 if (target.isMinion) {
                     // Attack minion
@@ -2917,20 +3241,26 @@ class Lobby {
                         minionId: target.id,
                         damage: enemy.damage,
                         attackerId: enemy.id,
-                        enemyPosition: { x: enemy.position.x, y: enemy.position.y }
+                        enemyPosition: { x: enemy.position.x, y: enemy.position.y },
+                        isPixelCoordinates: true
                     });
                 } else {
                     // Attack player
                     const damageTarget = Array.from(this.players.values()).find(p => p.id === target.id);
                     if (damageTarget && damageTarget.isAlive) {
-                        damageTarget.health -= enemy.damage;
+                        // Check if player is invincible (Bot Aldric)
+                        if (!damageTarget.isInvincible) {
+                            damageTarget.health -= enemy.damage;
 
-                        // Track damage taken for stats
-                        if (damageTarget.damageTaken !== undefined) {
-                            damageTarget.damageTaken += enemy.damage;
+                            // Track damage taken for stats
+                            if (damageTarget.damageTaken !== undefined) {
+                                damageTarget.damageTaken += enemy.damage;
+                            }
+                        } else {
+                            console.log(`🛡️ ${damageTarget.username} is invincible - melee damage ignored!`);
                         }
 
-                        if (damageTarget.health <= 0) {
+                        if (!damageTarget.isInvincible && damageTarget.health <= 0) {
                             damageTarget.isAlive = false;
                             damageTarget.health = 0;
                             damageTarget.deaths++;
@@ -3014,7 +3344,8 @@ class Lobby {
                                 damage: enemy.damage,
                                 attackerId: enemy.id,
                                 enemyPosition: { x: enemy.position.x, y: enemy.position.y },
-                                playerPosition: { x: target.position.x, y: target.position.y }
+                                playerPosition: { x: target.position.x, y: target.position.y },
+                                isPixelCoordinates: true
                             });
                         }
                     }
@@ -3217,7 +3548,7 @@ io.on('connection', (socket) => {
                 ? Array.from(lobby.gameState.minions.values())
                 : [];
 
-            // Filter game state to only include alive enemies
+            // Filter game state to only include alive enemies (positions already in pixels)
             const filteredGameState = {
                 ...lobby.gameState,
                 enemies: lobby.gameState.enemies.filter(e => e.isAlive !== false)
@@ -3299,7 +3630,7 @@ io.on('connection', (socket) => {
                         for (let dy = -1; dy <= 1; dy++) {
                             const newEnemies = lobby.spawnEnemiesInRegion(regionX + dx, regionY + dy);
                             if (newEnemies.length > 0) {
-                                // Broadcast new enemies to nearby players
+                                // Broadcast new enemies to nearby players (positions already in pixels)
                                 newEnemies.forEach(enemy => {
                                     lobby.broadcast('enemy:spawned', { enemy });
                                 });
@@ -3343,6 +3674,11 @@ io.on('connection', (socket) => {
             if (!player.hasLoggedPosition) {
                 console.log(`📍 Received initial position for ${player.username}: (${data.position.x}, ${data.position.y})`);
                 player.hasLoggedPosition = true;
+            }
+
+            // DEBUG: Log position updates occasionally to check for coordinate issues
+            if (Math.random() < 0.01) {
+                console.log(`📍 MOVE UPDATE: ${player.username} at (${Math.round(data.position.x)}, ${Math.round(data.position.y)})`);
             }
 
             // DEBUG: Log position updates after respawn
@@ -3535,8 +3871,9 @@ io.on('connection', (socket) => {
 
                         console.log('🌊 Enemy knocked back from', { x: oldX, y: oldY }, 'to', { x: enemy.position.x, y: enemy.position.y });
 
-                        // Mark when knockback happened to prevent immediate position updates
-                        enemy.lastKnockback = Date.now();
+                        // Stun enemy briefly to prevent immediate return movement (same as Bot Aldric)
+                        enemy.stunned = true;
+                        enemy.stunnedUntil = Date.now() + 500; // 0.5 second stun
 
                         // Broadcast the knockback position immediately (in tiles, not pixels)
                         lobby.broadcast('enemy:moved', {
@@ -3584,14 +3921,92 @@ io.on('connection', (socket) => {
                 }
 
                 // XP is now awarded via experience orbs only, not direct kills
+                // Spawn XP orb at enemy death location
+                const orbId = `orb_${Date.now()}_${Math.random()}`;
+                const orbValue = 10; // Base XP value
+                lobby.gameState.experienceOrbs.set(orbId, {
+                    x: enemy.position.x,
+                    y: enemy.position.y,
+                    expValue: orbValue
+                });
 
                 lobby.broadcast('enemy:killed', {
                     enemyId: data.enemyId,
                     killedBy: player.id,
                     killerName: player.username,
                     experience: player.experience,
-                    level: player.level
+                    level: player.level,
+                    position: enemy.position,
+                    orbId: orbId,
+                    orbValue: orbValue
                 });
+
+                // Always drop a star (currency)
+                const starId = uuidv4();
+                const TILE_SIZE = 32;
+                const starTileX = enemy.position.x / TILE_SIZE;
+                const starTileY = enemy.position.y / TILE_SIZE;
+
+                lobby.gameState.items.set(starId, {
+                    id: starId,
+                    type: 'star',
+                    color: 0xffff00, // Gold/yellow star
+                    position: {
+                        x: starTileX,
+                        y: starTileY
+                    },
+                    spawnedAt: Date.now()
+                });
+
+                lobby.broadcast('item:spawned', {
+                    itemId: starId,
+                    type: 'star',
+                    color: 0xffff00,
+                    x: starTileX,
+                    y: starTileY
+                });
+
+                console.log(`⭐ Star dropped at tiles (${starTileX.toFixed(2)}, ${starTileY.toFixed(2)})`);
+
+                // 50% chance to also drop a potion
+                if (Math.random() < 0.5) {
+                    const itemTypes = [
+                        { type: 'health_potion', color: 0xff0000 },
+                        { type: 'mana_potion', color: 0x0099ff },
+                        { type: 'speed_potion', color: 0xffff00 },
+                        { type: 'strength_potion', color: 0xff6600 },
+                        { type: 'defense_potion', color: 0x999999 }
+                    ];
+
+                    const randomItem = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+                    const itemId = uuidv4();
+
+                    // Convert pixel positions to tile positions for client
+                    const TILE_SIZE = 32;
+                    const tileX = enemy.position.x / TILE_SIZE;
+                    const tileY = enemy.position.y / TILE_SIZE;
+
+                    lobby.gameState.items.set(itemId, {
+                        id: itemId,
+                        type: randomItem.type,
+                        color: randomItem.color,
+                        position: {
+                            x: tileX,
+                            y: tileY
+                        },
+                        spawnedAt: Date.now()
+                    });
+
+                    lobby.broadcast('item:spawned', {
+                        itemId: itemId,
+                        type: randomItem.type,
+                        color: randomItem.color,
+                        x: tileX,
+                        y: tileY
+                    });
+
+                    console.log(`📦 Item dropped: ${randomItem.type} at tiles (${tileX.toFixed(2)}, ${tileY.toFixed(2)}) / pixels (${enemy.position.x.toFixed(2)}, ${enemy.position.y.toFixed(2)})`);
+                }
             } else {
                 lobby.broadcast('enemy:damaged', {
                     enemyId: data.enemyId,
@@ -3631,6 +4046,12 @@ io.on('connection', (socket) => {
             }
 
             const damage = data.damage || 10;
+
+            // Check if player is invincible (Bot Aldric has unlimited life)
+            if (hitPlayer.isInvincible) {
+                console.log(`🛡️ ${hitPlayer.username} is invincible - damage ignored!`);
+                return; // No damage, no death, just pure patrol duty
+            }
 
             console.log(`🔥 Player ${hitPlayer.username} hit by ${data.attackerId} for ${damage} damage (${hitPlayer.health} -> ${hitPlayer.health - damage})`);
 
@@ -3698,57 +4119,70 @@ io.on('connection', (socket) => {
             const lobby = lobbies.get(player.lobbyId);
             if (!lobby || lobby.status !== 'active') return;
 
-            const itemIndex = lobby.gameState.items.findIndex(i => i.id === data.itemId);
-            if (itemIndex === -1) return;
-
-            const item = lobby.gameState.items[itemIndex];
-            lobby.gameState.items.splice(itemIndex, 1);
-
-            player.inventory.push(item);
-            player.itemsCollected++;
-            player.totalItems++;
-
-            // Track item rarity
-            if (item.rarity === 'legendary') {
-                player.legendaryItems++;
-            } else if (item.rarity === 'rare') {
-                player.rareItems++;
+            // Check if item exists
+            const item = lobby.gameState.items.get(data.itemId);
+            if (!item) {
+                console.log(`⚠️ Item ${data.itemId} not found`);
+                return;
             }
 
-            // Track gold if item has gold value
-            if (item.gold) {
-                player.totalGold += item.gold;
-            }
+            // Remove item from world
+            lobby.gameState.items.delete(data.itemId);
 
-            // Track potion consumption
-            if (item.type === 'potion' || item.effect?.health) {
-                player.potionsConsumed++;
-            }
+            console.log(`📦 ${player.username} picked up ${item.type}`);
 
-            player.updateActivity();
-
-            // Apply item effects
-            if (item.effect) {
-                if (item.effect.health) {
-                    player.health = Math.min(player.maxHealth, player.health + item.effect.health);
-                }
-                if (item.effect.strength) {
-                    player.stats.strength += item.effect.strength;
-                }
-                if (item.effect.defense) {
-                    player.stats.defense += item.effect.defense;
-                }
-            }
-
+            // Broadcast to all players that item was picked up
             lobby.broadcast('item:picked', {
                 itemId: data.itemId,
                 playerId: player.id,
                 playerName: player.username,
-                item: item,
-                newStats: player.toJSON()
+                itemType: item.type,
+                itemColor: item.color
             });
         } catch (error) {
             console.error('Error in item:pickup:', error);
+        }
+    });
+
+    // Player drops item from inventory
+    socket.on('item:drop', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby || lobby.status !== 'active') return;
+
+            const itemId = uuidv4();
+
+            // Spawn item in world at player position (offset to prevent auto-pickup)
+            // Position is in tiles, offset by 2 tiles
+            const dropX = data.playerX + (Math.random() < 0.5 ? 2 : -2);
+            const dropY = data.playerY + (Math.random() < 0.5 ? 2 : -2);
+
+            lobby.gameState.items.set(itemId, {
+                id: itemId,
+                type: data.itemType,
+                color: data.itemColor,
+                position: {
+                    x: dropX,
+                    y: dropY
+                },
+                spawnedAt: Date.now()
+            });
+
+            console.log(`📦 ${player.username} dropped ${data.itemType} at (${dropX}, ${dropY})`);
+
+            // Broadcast item spawn to all players
+            lobby.broadcast('item:spawned', {
+                itemId: itemId,
+                type: data.itemType,
+                color: data.itemColor,
+                x: dropX,
+                y: dropY
+            });
+        } catch (error) {
+            console.error('Error in item:drop:', error);
         }
     });
 
@@ -4100,6 +4534,58 @@ io.on('connection', (socket) => {
             socket.emit('skills:restored', player.toJSON());
         } catch (error) {
             console.error('Error in skills:requestRestore:', error);
+        }
+    });
+
+    // Handle passive skill purchases (Chad's Shield, etc.)
+    socket.on('passiveSkill:purchased', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby) return;
+
+            const { skillId } = data;
+
+            // Store passive skill in player data
+            if (!player.passiveSkills) {
+                player.passiveSkills = [];
+            }
+            if (!player.passiveSkills.includes(skillId)) {
+                player.passiveSkills.push(skillId);
+            }
+
+            // Apply passive skill effects
+            if (skillId === 'orbital_shield') {
+                // Chad's Shield grants 50 shield points
+                player.shield = (player.shield || 0) + 50;
+                console.log(`🛡️ ${player.username} purchased Chad's Shield - Shield: ${player.shield}`);
+            } else if (skillId === 'fireball_rain') {
+                // Meteor Storm - passive effect (no immediate stat changes, handled client-side)
+                console.log(`🔥 ${player.username} purchased Meteor Storm`);
+            } else if (skillId === 'damage_aura') {
+                // Burning Aura - passive effect (no immediate stat changes, handled client-side)
+                console.log(`🔥 ${player.username} purchased Burning Aura`);
+            } else if (skillId === 'piercing_fireball') {
+                // Piercing Inferno - passive effect (no immediate stat changes, handled client-side)
+                console.log(`🔥 ${player.username} purchased Piercing Inferno`);
+            }
+
+            console.log(`🛡️ ${player.username} purchased passive skill: ${skillId}`);
+            console.log(`   Player passiveSkills array:`, player.passiveSkills);
+            console.log(`   Broadcasting to ${lobby.players.size} players in lobby`);
+
+            // Broadcast to all players in the lobby (includes updated shield value via player.toJSON())
+            lobby.broadcast('passiveSkill:activated', {
+                playerId: player.id,
+                skillId: skillId,
+                playerData: player.toJSON() // Include full player data so other clients can see shield
+            });
+
+            console.log(`   ✅ Broadcast complete for passiveSkill:activated`);
+        } catch (error) {
+            console.error('Error in passiveSkill:purchased:', error);
         }
     });
 
@@ -4811,7 +5297,7 @@ setInterval(() => {
             lobby.updateEnemies();
         }
     });
-}, 350); // PERFORMANCE: Update every 350ms (reduced from 200ms for 0.1 CPU tier)
+}, 50); // Update every 50ms for smooth movement (20 updates/second)
 
 // Cleanup old lobbies
 setInterval(() => {

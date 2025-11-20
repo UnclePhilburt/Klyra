@@ -595,8 +595,10 @@ class GameScene extends Phaser.Scene {
                     // Apply character's starting build (e.g., Bone Commander for Malachar)
                     this.applyCharacterBuild(this.localPlayer);
 
-                    // Then unlock first ability
-                    this.checkAndUnlockAbilities(this.localPlayer, 1);
+                    // Then unlock first ability with a slight delay so UI is ready
+                    this.time.delayedCall(500, () => {
+                        this.checkAndUnlockAbilities(this.localPlayer, 1);
+                    });
                 } catch (error) {
                     console.error('❌ Error in character initialization:', error);
                 }
@@ -645,6 +647,15 @@ class GameScene extends Phaser.Scene {
                     this.castleCollisionLayers.forEach(layer => {
                         this.physics.add.collider(otherPlayer.sprite, layer);
                     });
+                }
+
+                // Initialize passive skills if the player has any
+                if (playerData.passiveSkills && playerData.passiveSkills.length > 0) {
+                    otherPlayer.passiveSkills = new PassiveSkills(this, otherPlayer);
+                    playerData.passiveSkills.forEach(skillId => {
+                        otherPlayer.passiveSkills.addSkill(skillId, false);
+                    });
+                    console.log(`🛡️ Initialized ${playerData.passiveSkills.length} passive skills for existing player ${playerData.id}`);
                 }
 
                 // Minions are now spawned via applyCharacterBuild() system
@@ -742,9 +753,16 @@ class GameScene extends Phaser.Scene {
         console.log(`📊 Total sword demons: ${Object.keys(this.swordDemons).length}, Total minotaurs: ${Object.keys(this.minotaurs).length}, Total mushrooms: ${Object.keys(this.mushrooms).length}, Total emberclaws: ${Object.keys(this.emberclaws).length}`);
 
         // Create items
-        this.gameData.gameState.items.forEach(itemData => {
-            this.items[itemData.id] = new Item(this, itemData);
-        });
+        if (this.gameData.gameState.items) {
+            // Handle items whether they come as an array, object, or Map
+            const itemsArray = Array.isArray(this.gameData.gameState.items)
+                ? this.gameData.gameState.items
+                : Object.values(this.gameData.gameState.items);
+
+            itemsArray.forEach(itemData => {
+                this.items[itemData.id] = new Item(this, itemData);
+            });
+        }
 
         // Create existing minions from other players
         if (this.gameData.minions && this.gameData.minions.length > 0) {
@@ -1943,6 +1961,15 @@ class GameScene extends Phaser.Scene {
             this.modernHUD.updateUsername(this.localPlayer.username);
         }
 
+        // Create inventory system (C key)
+        this.inventoryUI = new InventoryUI(this, this.localPlayer);
+
+        // Add some starting items for testing
+        this.inventoryUI.addItem('health_potion', 1, { color: 0xff0000 });
+        this.inventoryUI.addItem('mana_potion', 1, { color: 0x0099ff });
+        this.inventoryUI.addItem('speed_potion', 1, { color: 0xffff00 });
+        console.log('✅ Added starting test items to inventory');
+
         // Create skill selector system
         this.skillSelector = new SkillSelector(this);
 
@@ -1958,6 +1985,39 @@ class GameScene extends Phaser.Scene {
 
         // Start gameplay music
         this.musicManager.startGameplayMusic();
+
+        // Create passive skills manager (attach to local player, not scene)
+        this.localPlayer.passiveSkills = new PassiveSkills(this, this.localPlayer);
+        // Keep scene-level reference for backward compatibility
+        this.passiveSkills = this.localPlayer.passiveSkills;
+
+        // Create merchant NPC at spawn
+        this.createMerchantNPC();
+
+        // Create skill shop NPC at spawn
+        this.createSkillShopNPC();
+    }
+
+    createMerchantNPC() {
+        // Place merchant near spawn point (spawn is at 16176, 16016 in pixels)
+        const spawnX = 16176;
+        const spawnY = 16016;
+        const merchantX = spawnX + 100; // 100 pixels to the right of spawn
+        const merchantY = spawnY;
+
+        this.merchantNPC = new MerchantNPC(this, merchantX, merchantY, 'Merchant');
+        console.log('🛒 Merchant NPC created at spawn');
+    }
+
+    createSkillShopNPC() {
+        // Place skill shop near spawn (to the left of spawn)
+        const spawnX = 16176;
+        const spawnY = 16016;
+        const skillShopX = spawnX - 100; // 100 pixels to the left of spawn
+        const skillShopY = spawnY;
+
+        this.skillShopNPC = new SkillShopNPC(this, skillShopX, skillShopY, 'Skill Trader');
+        console.log('🛍️ Skill Shop NPC created at spawn');
     }
 
     setupControls() {
@@ -1995,6 +2055,74 @@ class GameScene extends Phaser.Scene {
         this.keyR.on('down', () => {
             if (this.abilityManager) {
                 this.abilityManager.useAbility('r');
+            }
+        });
+
+        // F key for merchant interaction
+        this.keyF = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+        this.keyF.on('down', () => {
+            if (this.merchantNPC && this.localPlayer) {
+                const playerX = this.localPlayer.sprite.x;
+                const playerY = this.localPlayer.sprite.y;
+                const isInRange = this.merchantNPC.checkPlayerDistance(playerX, playerY);
+
+                if (isInRange) {
+                    this.merchantNPC.sellItems(this.inventoryUI);
+                }
+            }
+        });
+
+        // G key for skill shop interaction
+        this.keyG = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.G);
+        this.keyG.on('down', () => {
+            if (this.skillShopNPC && this.localPlayer) {
+                const playerX = this.localPlayer.sprite.x;
+                const playerY = this.localPlayer.sprite.y;
+                const isInRange = this.skillShopNPC.checkPlayerDistance(playerX, playerY);
+
+                if (isInRange) {
+                    this.skillShopNPC.toggleShop();
+                }
+            } else if (this.skillShopNPC && this.skillShopNPC.isShopOpen) {
+                // Close shop if open (even when not in range)
+                this.skillShopNPC.closeShop();
+            }
+        });
+
+        // Number keys for skill shop purchases
+        this.key1 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ONE);
+        this.key1.on('down', () => {
+            if (this.skillShopNPC) {
+                this.skillShopNPC.tryPurchaseSkill('1');
+            }
+        });
+
+        this.key2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TWO);
+        this.key2.on('down', () => {
+            if (this.skillShopNPC) {
+                this.skillShopNPC.tryPurchaseSkill('2');
+            }
+        });
+
+        this.key3 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.THREE);
+        this.key3.on('down', () => {
+            if (this.skillShopNPC) {
+                this.skillShopNPC.tryPurchaseSkill('3');
+            }
+        });
+
+        this.key4 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.FOUR);
+        this.key4.on('down', () => {
+            if (this.skillShopNPC) {
+                this.skillShopNPC.tryPurchaseSkill('4');
+            }
+        });
+
+        // ESC key to close skill shop
+        this.keyESC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+        this.keyESC.on('down', () => {
+            if (this.skillShopNPC && this.skillShopNPC.isShopOpen) {
+                this.skillShopNPC.closeShop();
             }
         });
 
@@ -2172,7 +2300,7 @@ class GameScene extends Phaser.Scene {
             'player:damaged', 'player:levelup', 'player:died',
             'enemy:spawned', 'enemy:despawned', 'enemy:damaged', 'enemy:moved', 'enemy:killed',
             'minion:spawned', 'minion:moved', 'minion:died', 'minion:damaged', 'minion:healed',
-            'item:spawned', 'item:collected', 'chat:message'
+            'item:spawned', 'item:collected', 'chat:message', 'passiveSkill:activated'
         ];
 
         eventsToClear.forEach(event => {
@@ -2207,6 +2335,15 @@ class GameScene extends Phaser.Scene {
                     this.castleCollisionLayers.forEach(layer => {
                         this.physics.add.collider(newPlayer.sprite, layer);
                     });
+                }
+
+                // Initialize passive skills if the player has any
+                if (data.player.passiveSkills && data.player.passiveSkills.length > 0) {
+                    newPlayer.passiveSkills = new PassiveSkills(this, newPlayer);
+                    data.player.passiveSkills.forEach(skillId => {
+                        newPlayer.passiveSkills.addSkill(skillId, false);
+                    });
+                    console.log(`🛡️ Initialized ${data.player.passiveSkills.length} passive skills for player ${data.player.id}`);
                 }
             }
         });
@@ -2281,6 +2418,23 @@ class GameScene extends Phaser.Scene {
                 // Play animation directly without broadcasting
                 if (this.anims.exists(attackAnimKey)) {
                     player.spriteRenderer.sprite.play(attackAnimKey);
+                }
+
+                // Play attack sound for Aldric (only if on screen)
+                if (characterClass === 'aldric' && this.sound) {
+                    // Check if player is visible on camera
+                    const camera = this.cameras.main;
+                    const worldView = camera.worldView;
+
+                    if (data.position.x >= worldView.x &&
+                        data.position.x <= worldView.x + worldView.width &&
+                        data.position.y >= worldView.y &&
+                        data.position.y <= worldView.y + worldView.height) {
+
+                        const attackSounds = ['aldric_attack1', 'aldric_attack2', 'aldric_attack3'];
+                        const randomSound = attackSounds[Math.floor(Math.random() * attackSounds.length)];
+                        this.sound.play(randomSound, { volume: 0.25 });
+                    }
                 }
 
                 // Show attack effect
@@ -2483,6 +2637,7 @@ class GameScene extends Phaser.Scene {
             const swordDemon = this.swordDemons[data.enemyId];
             const minotaur = this.minotaurs[data.enemyId];
             const mushroom = this.mushrooms[data.enemyId];
+            const emberclaw = this.emberclaws[data.enemyId];
             const enemy = this.enemies[data.enemyId];
 
             if (swordDemon) {
@@ -2497,6 +2652,10 @@ class GameScene extends Phaser.Scene {
                 console.log(`🌙 Despawning mushroom ${data.enemyId}`);
                 mushroom.destroy();
                 delete this.mushrooms[data.enemyId];
+            } else if (emberclaw) {
+                console.log(`🌙 Despawning emberclaw ${data.enemyId}`);
+                emberclaw.destroy();
+                delete this.emberclaws[data.enemyId];
             } else if (enemy) {
                 console.log(`🌙 Despawning enemy ${data.enemyId}`);
                 enemy.destroy();
@@ -2514,6 +2673,25 @@ class GameScene extends Phaser.Scene {
                     damageType: data.damageType || 'physical'
                 };
                 enemy.takeDamage(data.damage, visualOptions);
+            }
+        });
+
+        // Enemy position updated (knockback from Aldric's attacks)
+        networkManager.on('enemy:position', (data) => {
+            console.log(`📩 CLIENT: Received enemy:position for ${data.enemyId}`, data.position);
+            const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId] || this.emberclaws[data.enemyId];
+            if (enemy && enemy.setTargetPosition) {
+                // Position from server is in TILES, convert to pixels
+                const tileSize = GameConfig.GAME.TILE_SIZE;
+                const targetX = data.position.x * tileSize + tileSize / 2;
+                const targetY = data.position.y * tileSize + tileSize / 2;
+
+                console.log(`🎯 CLIENT: Setting enemy position from (${enemy.sprite?.x}, ${enemy.sprite?.y}) to (${targetX}, ${targetY})`);
+
+                // Update enemy's target position for smooth movement
+                enemy.setTargetPosition(targetX, targetY);
+            } else {
+                console.log(`❌ CLIENT: Enemy ${data.enemyId} not found or no setTargetPosition method`);
             }
         });
 
@@ -2682,19 +2860,30 @@ class GameScene extends Phaser.Scene {
             }
 
             if (enemy.sprite) {
-                // Update position with interpolation
-                enemy.data.position = data.position;
+                // Server now sends pixel coordinates directly for smooth interpolation
+                if (data.isPixelCoordinates) {
+                    // New format: pixel coordinates, use directly
+                    if (enemy.setTargetPosition) {
+                        enemy.setTargetPosition(data.position.x, data.position.y);
+                    } else if (enemy.moveToPosition) {
+                        // Emberclaw still needs tile coordinates
+                        const tileSize = GameConfig.GAME.TILE_SIZE;
+                        const tileX = (data.position.x - tileSize / 2) / tileSize;
+                        const tileY = (data.position.y - tileSize / 2) / tileSize;
+                        enemy.moveToPosition({ x: tileX, y: tileY });
+                    }
+                } else {
+                    // Old format: tile coordinates, convert to pixels (backward compatibility)
+                    enemy.data.position = data.position;
 
-                // Emberclaw uses moveToPosition with tile coordinates
-                if (enemy.moveToPosition) {
-                    enemy.moveToPosition(data.position);
-                }
-                // Other enemies use setTargetPosition with pixel coordinates
-                else if (enemy.setTargetPosition) {
-                    const tileSize = GameConfig.GAME.TILE_SIZE;
-                    const targetX = data.position.x * tileSize + tileSize / 2;
-                    const targetY = data.position.y * tileSize + tileSize / 2;
-                    enemy.setTargetPosition(targetX, targetY);
+                    if (enemy.moveToPosition) {
+                        enemy.moveToPosition(data.position);
+                    } else if (enemy.setTargetPosition) {
+                        const tileSize = GameConfig.GAME.TILE_SIZE;
+                        const targetX = data.position.x * tileSize + tileSize / 2;
+                        const targetY = data.position.y * tileSize + tileSize / 2;
+                        enemy.setTargetPosition(targetX, targetY);
+                    }
                 }
             }
         });
@@ -2710,22 +2899,29 @@ class GameScene extends Phaser.Scene {
 
                     if (attacker && attacker.sprite) {
                         const TILE_SIZE = GameConfig.GAME.TILE_SIZE;
-                        const MAX_ATTACK_RANGE = 3.0; // 3 tiles max attack range (generous to account for latency)
+                        const MAX_ATTACK_RANGE_PIXELS = 96; // 3 tiles = 96 pixels (generous to account for latency)
 
-                        // Convert enemy grid position to pixel position
-                        const enemyPixelX = data.enemyPosition.x * TILE_SIZE + TILE_SIZE / 2;
-                        const enemyPixelY = data.enemyPosition.y * TILE_SIZE + TILE_SIZE / 2;
+                        // Get enemy position (either pixels or tiles)
+                        let enemyPixelX, enemyPixelY;
+                        if (data.isPixelCoordinates) {
+                            // Already in pixels
+                            enemyPixelX = data.enemyPosition.x;
+                            enemyPixelY = data.enemyPosition.y;
+                        } else {
+                            // Convert from tiles to pixels
+                            enemyPixelX = data.enemyPosition.x * TILE_SIZE + TILE_SIZE / 2;
+                            enemyPixelY = data.enemyPosition.y * TILE_SIZE + TILE_SIZE / 2;
+                        }
 
                         // Calculate distance between enemy and player
                         const dx = this.localPlayer.sprite.x - enemyPixelX;
                         const dy = this.localPlayer.sprite.y - enemyPixelY;
                         const distanceInPixels = Math.sqrt(dx * dx + dy * dy);
-                        const distanceInTiles = distanceInPixels / TILE_SIZE;
 
                         // If enemy is too far away, log warning and skip damage
-                        if (distanceInTiles > MAX_ATTACK_RANGE) {
-                            console.warn(`⚠️ Rejected attack from ${data.attackerId}: enemy at (${data.enemyPosition.x.toFixed(1)}, ${data.enemyPosition.y.toFixed(1)}) is ${distanceInTiles.toFixed(1)} tiles away (max: ${MAX_ATTACK_RANGE})`);
-                            console.warn(`   Player at pixels (${this.localPlayer.sprite.x.toFixed(0)}, ${this.localPlayer.sprite.y.toFixed(0)}), Enemy at pixels (${enemyPixelX.toFixed(0)}, ${enemyPixelY.toFixed(0)})`);
+                        if (distanceInPixels > MAX_ATTACK_RANGE_PIXELS) {
+                            console.warn(`⚠️ Rejected attack from ${data.attackerId}: enemy at (${enemyPixelX.toFixed(1)}, ${enemyPixelY.toFixed(1)}) is ${distanceInPixels.toFixed(1)} pixels away (max: ${MAX_ATTACK_RANGE_PIXELS})`);
+                            console.warn(`   Player at pixels (${this.localPlayer.sprite.x.toFixed(0)}, ${this.localPlayer.sprite.y.toFixed(0)})`);
                             return; // Skip damage
                         }
                     }
@@ -2903,15 +3099,27 @@ class GameScene extends Phaser.Scene {
                 const deathX = enemy.sprite.x;
                 const deathY = enemy.sprite.y;
 
-                // Add blood splatter to screen
-                this.addScreenBloodSplatter();
+                // Only add blood splatter and sounds if death is on or near screen
+                const camera = this.cameras.main;
+                const screenBuffer = 200; // Add buffer zone around screen
+                const onScreen = (
+                    deathX >= camera.scrollX - screenBuffer &&
+                    deathX <= camera.scrollX + camera.width + screenBuffer &&
+                    deathY >= camera.scrollY - screenBuffer &&
+                    deathY <= camera.scrollY + camera.height + screenBuffer
+                );
 
-                // Spawn experience orb at death location
-                // 20% chance for rare orb (100 XP), 80% chance for common orb (10 XP)
-                const orbValue = Math.random() < 0.2 ? 100 : 10;
-                this.spawnExperienceOrb(deathX, deathY, orbValue);
+                if (onScreen) {
+                    this.addScreenBloodSplatter();
+                }
 
-                enemy.die();
+                // Spawn experience orb at death location using server's orb ID
+                const orbId = data.orbId || `exp_${this.expOrbIdCounter++}`;
+                const orbValue = data.orbValue || 10;
+                this.spawnExperienceOrbWithId(orbId, deathX, deathY, orbValue);
+
+                // Pass onScreen flag to die() to control sounds
+                enemy.die(onScreen);
 
                 // Track kill if local player killed this enemy
                 if (data.killedBy === networkManager.currentPlayer.id) {
@@ -3002,21 +3210,98 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        // Item spawned
+        // Item spawned (server sends: itemId, type, color, x, y)
         networkManager.on('item:spawned', (data) => {
-            this.items[data.item.id] = new Item(this, data.item);
+            console.log('📦 Item spawned:', data);
+            this.items[data.itemId] = new Item(this, {
+                id: data.itemId,
+                itemId: data.itemId,
+                type: data.type,
+                color: data.color,
+                x: data.x,
+                y: data.y
+            });
         });
 
-        // Item collected
-        networkManager.on('item:collected', (data) => {
+        // Item picked up by a player (removes from world for everyone)
+        networkManager.on('item:picked', (data) => {
+            console.log('📦 Item picked:', data);
             const item = this.items[data.itemId];
             if (item) {
+                // Play pickup animation
                 item.collect();
                 delete this.items[data.itemId];
+
+                // If local player picked it up
+                if (data.playerId === networkManager.currentPlayer.id) {
+                    // Stars go to currency, other items go to inventory
+                    if (data.itemType === 'star') {
+                        if (this.modernHUD) {
+                            this.modernHUD.addCurrency(1);
+                        }
+                    } else {
+                        if (this.inventoryUI) {
+                            this.inventoryUI.addItem(data.itemType, 1, {
+                                color: data.itemColor
+                            });
+                        }
+                    }
+                }
             }
         });
 
         // Chat
+        // Passive skill activated by another player
+        networkManager.on('passiveSkill:activated', (data) => {
+            const { playerId, skillId, playerData } = data;
+
+            console.log(`📡 Received passiveSkill:activated for player ${playerId}: ${skillId}`);
+            console.log(`   playerData:`, playerData);
+            console.log(`   playerData.passiveSkills:`, playerData?.passiveSkills);
+            console.log(`   Current player ID: ${networkManager.currentPlayer.id}`);
+            console.log(`   Is local player: ${playerId === networkManager.currentPlayer.id}`);
+
+            // Find the player (could be local or remote)
+            let player = null;
+            if (playerId === networkManager.currentPlayer.id) {
+                // It's the local player (already handled locally, but good to confirm)
+                console.log(`   ⏭️ Skipping local player (already handled locally)`);
+                return;
+            } else {
+                // It's a remote player
+                player = this.otherPlayers[playerId];
+                console.log(`   Found remote player:`, player ? 'YES' : 'NO');
+            }
+
+            if (!player) {
+                console.warn(`⚠️ Player ${playerId} not found for passive skill activation`);
+                return;
+            }
+
+            // Update player data (including shield value)
+            if (playerData) {
+                player.shield = playerData.shield || 0;
+                player.health = playerData.health || player.health;
+                player.maxHealth = playerData.maxHealth || player.maxHealth;
+                console.log(`🛡️ Updated player ${playerId} shield to ${player.shield}`);
+
+                // Update UI to show shield
+                if (player.ui && player.ui.updateHealthBar) {
+                    player.ui.updateHealthBar();
+                }
+            }
+
+            // Create PassiveSkills manager for this player if it doesn't exist
+            if (!player.passiveSkills) {
+                player.passiveSkills = new PassiveSkills(this, player);
+            }
+
+            // Add the skill (isLocalPlayer = false, so no HUD display)
+            player.passiveSkills.addSkill(skillId, false);
+
+            console.log(`✅ Activated passive skill ${skillId} for remote player ${playerId}`);
+        });
+
         networkManager.on('chat:message', (data) => {
             this.showChatMessage(data.username, data.message);
         });
@@ -3561,6 +3846,10 @@ class GameScene extends Phaser.Scene {
     // Spawn experience orb at specified location
     spawnExperienceOrb(x, y, expValue = 10) {
         const orbId = `exp_${this.expOrbIdCounter++}`;
+        return this.spawnExperienceOrbWithId(orbId, x, y, expValue);
+    }
+
+    spawnExperienceOrbWithId(orbId, x, y, expValue = 10) {
         const orb = new ExperienceOrb(this, { x, y, expValue });
         this.experienceOrbs[orbId] = orb;
 
@@ -4240,6 +4529,18 @@ class GameScene extends Phaser.Scene {
             }
         });
 
+        // Check for item collection (auto-pickup)
+        // Only pick up items if inventory is not full
+        if (this.inventoryUI && !this.inventoryUI.isFull()) {
+            Object.keys(this.items).forEach(itemId => {
+                const item = this.items[itemId];
+                if (item && item.checkCollision(playerX, playerY)) {
+                    // Request pickup from server
+                    item.requestPickup();
+                }
+            });
+        }
+
         // Remaining update logic
 
         // Infinite health
@@ -4264,6 +4565,41 @@ class GameScene extends Phaser.Scene {
         if (this.devSettings.showNetworkStats) {
             this.networkText.setText(`Ping: ${Math.floor(Math.random() * 50)}ms`);
         }
+
+        // Update merchant NPC (check player distance for prompt)
+        if (this.merchantNPC && this.localPlayer) {
+            this.merchantNPC.checkPlayerDistance(
+                this.localPlayer.sprite.x,
+                this.localPlayer.sprite.y
+            );
+        }
+
+        // Update skill shop NPC (check player distance for prompt)
+        if (this.skillShopNPC && this.localPlayer) {
+            this.skillShopNPC.checkPlayerDistance(
+                this.localPlayer.sprite.x,
+                this.localPlayer.sprite.y
+            );
+        }
+
+        // Update passive skills (orbital shield, etc.)
+        if (this.passiveSkills && this.localPlayer) {
+            this.passiveSkills.update(
+                this.localPlayer.sprite.x,
+                this.localPlayer.sprite.y
+            );
+        }
+
+        // Update passive skills for remote players
+        Object.values(this.otherPlayers).forEach(player => {
+            if (player.passiveSkills && player.sprite) {
+                player.passiveSkills.update(
+                    player.sprite.x,
+                    player.sprite.y,
+                    false // isLocalPlayer = false
+                );
+            }
+        });
 
         // Depth sorting - use Y position for proper layering
         // Higher Y = further down screen = higher depth (in front)
@@ -4331,6 +4667,26 @@ class GameScene extends Phaser.Scene {
                 if (soundKey && this.sound) {
                     this.sound.play(soundKey, { volume: 0.25 });
                 }
+
+                // Return to appropriate animation when attack completes
+                caster.spriteRenderer.sprite.once('animationcomplete', (anim) => {
+                    if (anim.key === data.abilityName || anim.key.startsWith('aldric_attack')) {
+                        // Check current movement state and play correct animation
+                        const idleAnimKey = 'aldric_idle';
+                        const runningAnimKey = 'aldric_running';
+
+                        // Play running animation if currently moving, otherwise idle
+                        if (caster.spriteRenderer.isMoving) {
+                            if (this.anims.exists(runningAnimKey)) {
+                                caster.spriteRenderer.sprite.play(runningAnimKey, true);
+                            }
+                        } else {
+                            if (this.anims.exists(idleAnimKey)) {
+                                caster.spriteRenderer.sprite.play(idleAnimKey, true);
+                            }
+                        }
+                    }
+                });
             }
             return;
         }
@@ -4343,6 +4699,26 @@ class GameScene extends Phaser.Scene {
                 if (this.sound) {
                     this.sound.play('swipe', { volume: 0.2 });
                 }
+
+                // Return to appropriate animation when attack completes
+                caster.spriteRenderer.sprite.once('animationcomplete', (anim) => {
+                    if (anim.key === 'kelise_attack') {
+                        // Check current movement state and play correct animation
+                        const idleAnimKey = 'kelise_idle';
+                        const runningAnimKey = 'kelise_running';
+
+                        // Play running animation if currently moving, otherwise idle
+                        if (caster.spriteRenderer.isMoving) {
+                            if (this.anims.exists(runningAnimKey)) {
+                                caster.spriteRenderer.sprite.play(runningAnimKey, true);
+                            }
+                        } else {
+                            if (this.anims.exists(idleAnimKey)) {
+                                caster.spriteRenderer.sprite.play(idleAnimKey, true);
+                            }
+                        }
+                    }
+                });
             }
             return;
         }
@@ -4583,9 +4959,9 @@ class GameScene extends Phaser.Scene {
         // Camera shake
         this.cameras.main.shake(200, 0.005);
 
-        // Play sound effect if available
-        if (this.sound && this.sound.get('hit_punch_1')) {
-            this.sound.play('hit_punch_1', { volume: 0.3 });
+        // Play shockwave sound effect
+        if (this.sound) {
+            this.sound.play('aldric_shockwave', { volume: 0.3 });
         }
 
         console.log('✅ Shockwave visual effect created');
@@ -4842,7 +5218,85 @@ class GameScene extends Phaser.Scene {
             console.log(`⚠️ Skipping ability unlock - characterId: ${characterId}, getAvailableChoices exists: ${typeof window.getAvailableChoices === 'function'}`);
         }
 
-        // TODO: Add Kelise and Aldric ability unlocks here
+        // ALDRIC: Auto-unlock abilities at specific levels
+        if (characterId && characterId.toLowerCase() === 'aldric') {
+            console.log(`🔥 ALDRIC UNLOCK CHECK - Level: ${level}`);
+
+            if (!player.abilities) {
+                player.abilities = {};
+            }
+
+            // Track which notifications we've shown
+            if (!player.shownAbilityNotifications) {
+                player.shownAbilityNotifications = {};
+            }
+
+            // E - Shockwave (unlocked at level 1)
+            if (level >= 1) {
+                if (!player.abilities.e) {
+                    console.log(`🔥 UNLOCKING SHOCKWAVE for Aldric at level ${level}`);
+                    player.abilities.e = {
+                        name: 'Shockwave',
+                        cooldown: 10000, // 10 second cooldown
+                        effect: {
+                            type: 'shockwave',
+                            radius: 300,
+                            damage: 60
+                        }
+                    };
+                    console.log(`✅ Aldric set E - Shockwave ability`);
+                }
+
+                // Show notification if we haven't shown it yet
+                if (!player.shownAbilityNotifications.e) {
+                    console.log(`🎨 About to call showAbilityUnlockedNotification for Shockwave`);
+                    this.showAbilityUnlockedNotification({
+                        name: 'Shockwave',
+                        description: 'Release a devastating shockwave that damages all nearby enemies.',
+                        abilityKey: 'e'
+                    });
+                    player.shownAbilityNotifications.e = true;
+                    console.log(`🎨 Finished calling showAbilityUnlockedNotification for Shockwave`);
+                }
+            }
+
+            // Q - Battle Rush (unlocked at level 5)
+            if (level >= 5) {
+                if (!player.abilities.q) {
+                    console.log(`🔥 UNLOCKING BATTLE RUSH for Aldric at level ${level}`);
+                    player.abilities.q = {
+                        name: 'Battle Rush',
+                        cooldown: 8000, // 8 second cooldown
+                        effect: {
+                            type: 'dash',
+                            distance: 200,
+                            damage: 40,
+                            iframesDuration: 300 // 0.3 seconds of invincibility
+                        }
+                    };
+                    console.log(`✅ Aldric set Q - Battle Rush ability`);
+                }
+
+                // Show notification if we haven't shown it yet
+                if (!player.shownAbilityNotifications.q) {
+                    console.log(`🎨 About to call showAbilityUnlockedNotification for Battle Rush`);
+                    this.showAbilityUnlockedNotification({
+                        name: 'Battle Rush',
+                        description: 'Dash forward, damaging enemies. Grants brief invincibility.',
+                        abilityKey: 'q'
+                    });
+                    player.shownAbilityNotifications.q = true;
+                    console.log(`🎨 Finished calling showAbilityUnlockedNotification for Battle Rush`);
+                }
+            }
+
+            // Force update ability UI
+            if (this.abilityManager && this.abilityManager.updateCooldownUI) {
+                this.abilityManager.updateCooldownUI();
+            }
+        }
+
+        // TODO: Add Kelise ability unlocks here
     }
 
     // Show a sleek ability unlock notification

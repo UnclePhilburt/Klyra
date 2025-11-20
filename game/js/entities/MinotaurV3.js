@@ -18,9 +18,9 @@ class Minotaur {
     }
 
     createSprite() {
-        const tileSize = GameConfig.GAME.TILE_SIZE;
-        const x = this.data.position.x * tileSize + tileSize / 2;
-        const y = this.data.position.y * tileSize + tileSize / 2;
+        // Position is always in pixels from server
+        const x = this.data.position.x;
+        const y = this.data.position.y;
 
         // Get variant data from server
         const variant = this.data.variant || 'normal';
@@ -234,11 +234,11 @@ class Minotaur {
         }
     }
 
-    die() {
+    die(playEffects = true) {
         this.isAlive = false;
 
-        // Play death sound (40% chance)
-        if (Math.random() < 0.4 && this.scene.sound) {
+        // Play death sound (40% chance) - only if on screen
+        if (playEffects && Math.random() < 0.4 && this.scene.sound) {
             const deathSounds = [
                 'death_bone_snap', 'death_crunch', 'death_crunch_quick',
                 'death_crunch_splat', 'death_crunch_splat_2', 'death_kick',
@@ -306,6 +306,8 @@ class Minotaur {
 
         this.targetX = x;
         this.targetY = y;
+        // Track when we last received a position update
+        this.lastPositionUpdateTime = Date.now();
     }
 
     update() {
@@ -339,8 +341,8 @@ class Minotaur {
 
             // Use direct position lerp for ultra-smooth movement
             if (dist > 1) {
-                // Lerp factor: 0.15 for smoother, more gradual movement
-                const lerpFactor = 0.15;
+                // Lerp factor: 0.1125 for smoother, more gradual movement (reduced by 25% for balance)
+                const lerpFactor = 0.1125;
                 const newX = Phaser.Math.Linear(this.sprite.x, this.targetX, lerpFactor);
                 const newY = Phaser.Math.Linear(this.sprite.y, this.targetY, lerpFactor);
 
@@ -355,8 +357,9 @@ class Minotaur {
                 }
             }
 
-            // Animation state - only run if moving significantly
-            const shouldRun = dist > 3;
+            // Animation state - keep running as long as we're receiving position updates
+            const timeSinceLastUpdate = this.lastPositionUpdateTime ? Date.now() - this.lastPositionUpdateTime : 999;
+            const shouldRun = dist > 1 || timeSinceLastUpdate < 200;
 
             // Only change animation if state actually changed (and not attacking!)
             if (!this.isAttacking) {

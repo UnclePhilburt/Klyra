@@ -18,9 +18,9 @@ class SwordDemon {
     }
 
     createSprite() {
-        const tileSize = GameConfig.GAME.TILE_SIZE;
-        const x = this.data.position.x * tileSize + tileSize / 2;
-        const y = this.data.position.y * tileSize + tileSize / 2;
+        // Position is always in pixels from server
+        const x = this.data.position.x;
+        const y = this.data.position.y;
 
         // Get variant data from server
         const glowColor = this.data.glowColor || 0xff0000;
@@ -306,11 +306,11 @@ class SwordDemon {
         });
     }
 
-    die() {
+    die(playEffects = true) {
         this.isAlive = false;
 
-        // Play death sound (40% chance)
-        if (Math.random() < 0.4 && this.scene.sound) {
+        // Play death sound (40% chance) - only if on screen
+        if (playEffects && Math.random() < 0.4 && this.scene.sound) {
             const deathSounds = [
                 'death_bone_snap', 'death_crunch', 'death_crunch_quick',
                 'death_crunch_splat', 'death_crunch_splat_2', 'death_kick',
