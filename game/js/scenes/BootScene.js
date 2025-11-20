@@ -311,6 +311,13 @@ class BootScene extends Phaser.Scene {
         this.load.image('skillmerchant_4', 'assets/sprites/skillmerchant/4.png');
         console.log('📦 Loading skill merchant NPC sprites (4 frames)');
 
+        // Merchant items sprite sheet (potions, etc)
+        this.load.spritesheet('merchantitems', 'assets/sprites/merchantitems/potions.png', {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        console.log('📦 Loading merchant items sprite sheet');
+
         // Load passive skill sprites
         this.load.image('chads_shield', 'assets/sprites/skills/pic/Chad\'s Shield.png');
         console.log('📦 Loading Chad\'s Shield sprite (passive skill)');

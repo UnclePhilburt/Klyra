@@ -1961,14 +1961,8 @@ class GameScene extends Phaser.Scene {
             this.modernHUD.updateUsername(this.localPlayer.username);
         }
 
-        // Create inventory system (C key)
+        // Create inventory system (C key, hotbar 1-5)
         this.inventoryUI = new InventoryUI(this, this.localPlayer);
-
-        // Add some starting items for testing
-        this.inventoryUI.addItem('health_potion', 1, { color: 0xff0000 });
-        this.inventoryUI.addItem('mana_potion', 1, { color: 0x0099ff });
-        this.inventoryUI.addItem('speed_potion', 1, { color: 0xffff00 });
-        console.log('✅ Added starting test items to inventory');
 
         // Create skill selector system
         this.skillSelector = new SkillSelector(this);
@@ -2005,8 +1999,8 @@ class GameScene extends Phaser.Scene {
         const merchantX = spawnX + 100; // 100 pixels to the right of spawn
         const merchantY = spawnY;
 
-        this.merchantNPC = new MerchantNPC(this, merchantX, merchantY, 'Merchant');
-        console.log('🛒 Merchant NPC created at spawn');
+        this.merchantNPC = new MerchantNPC(this, merchantX, merchantY, 'Item Merchant');
+        console.log('🛒 Item Merchant NPC created at spawn');
     }
 
     createSkillShopNPC() {
@@ -2067,7 +2061,7 @@ class GameScene extends Phaser.Scene {
                 const isInRange = this.merchantNPC.checkPlayerDistance(playerX, playerY);
 
                 if (isInRange) {
-                    this.merchantNPC.sellItems(this.inventoryUI);
+                    this.merchantNPC.toggleShop();
                 }
             }
         });
@@ -4367,17 +4361,22 @@ class GameScene extends Phaser.Scene {
         // Get mobile joystick input
         const mobileInput = typeof mobileControls !== 'undefined' ? mobileControls.getInput() : { x: 0, y: 0, active: false };
 
-        // Keyboard input
-        if (this.cursors.left.isDown || this.wasd.left.isDown) {
-            velocityX = -1;
-        } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
-            velocityX = 1;
-        }
+        // Check if inventory is open - disable WASD movement
+        const inventoryOpen = this.inventoryUI && this.inventoryUI.isOpen;
 
-        if (this.cursors.up.isDown || this.wasd.up.isDown) {
-            velocityY = -1;
-        } else if (this.cursors.down.isDown || this.wasd.down.isDown) {
-            velocityY = 1;
+        // Keyboard input (only if inventory is closed)
+        if (!inventoryOpen) {
+            if (this.cursors.left.isDown || this.wasd.left.isDown) {
+                velocityX = -1;
+            } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
+                velocityX = 1;
+            }
+
+            if (this.cursors.up.isDown || this.wasd.up.isDown) {
+                velocityY = -1;
+            } else if (this.cursors.down.isDown || this.wasd.down.isDown) {
+                velocityY = 1;
+            }
         }
 
         // Mobile joystick input (overrides keyboard if active)

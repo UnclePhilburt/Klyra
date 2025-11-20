@@ -33,8 +33,21 @@ class Item {
         }
         if (!color) color = 0xffffff;
 
-        // Create item sprite (diamond shape)
-        this.sprite = this.scene.add.star(x, y, 4, 4, 8, color);
+        // Check if this is a potion item (use sprite instead of star)
+        const potionTypes = {
+            'health_potion': 14,
+            'regen_potion': 28
+        };
+
+        if (potionTypes[this.data.type] !== undefined) {
+            // Create sprite from sprite sheet
+            this.sprite = this.scene.add.sprite(x, y, 'merchantitems', potionTypes[this.data.type]);
+            this.sprite.setScale(2); // Make it bigger (16x16 -> 32x32)
+        } else {
+            // Create item sprite (diamond shape for other items)
+            this.sprite = this.scene.add.star(x, y, 4, 4, 8, color);
+        }
+
         this.sprite.setInteractive({ cursor: 'pointer' });
 
         // Click/touch to pickup

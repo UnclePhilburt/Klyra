@@ -3967,46 +3967,6 @@ io.on('connection', (socket) => {
                 });
 
                 console.log(`⭐ Star dropped at tiles (${starTileX.toFixed(2)}, ${starTileY.toFixed(2)})`);
-
-                // 50% chance to also drop a potion
-                if (Math.random() < 0.5) {
-                    const itemTypes = [
-                        { type: 'health_potion', color: 0xff0000 },
-                        { type: 'mana_potion', color: 0x0099ff },
-                        { type: 'speed_potion', color: 0xffff00 },
-                        { type: 'strength_potion', color: 0xff6600 },
-                        { type: 'defense_potion', color: 0x999999 }
-                    ];
-
-                    const randomItem = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-                    const itemId = uuidv4();
-
-                    // Convert pixel positions to tile positions for client
-                    const TILE_SIZE = 32;
-                    const tileX = enemy.position.x / TILE_SIZE;
-                    const tileY = enemy.position.y / TILE_SIZE;
-
-                    lobby.gameState.items.set(itemId, {
-                        id: itemId,
-                        type: randomItem.type,
-                        color: randomItem.color,
-                        position: {
-                            x: tileX,
-                            y: tileY
-                        },
-                        spawnedAt: Date.now()
-                    });
-
-                    lobby.broadcast('item:spawned', {
-                        itemId: itemId,
-                        type: randomItem.type,
-                        color: randomItem.color,
-                        x: tileX,
-                        y: tileY
-                    });
-
-                    console.log(`📦 Item dropped: ${randomItem.type} at tiles (${tileX.toFixed(2)}, ${tileY.toFixed(2)}) / pixels (${enemy.position.x.toFixed(2)}, ${enemy.position.y.toFixed(2)})`);
-                }
             } else {
                 lobby.broadcast('enemy:damaged', {
                     enemyId: data.enemyId,
@@ -4144,47 +4104,8 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Player drops item from inventory
-    socket.on('item:drop', (data) => {
-        try {
-            const player = players.get(socket.id);
-            if (!player || !player.lobbyId) return;
-
-            const lobby = lobbies.get(player.lobbyId);
-            if (!lobby || lobby.status !== 'active') return;
-
-            const itemId = uuidv4();
-
-            // Spawn item in world at player position (offset to prevent auto-pickup)
-            // Position is in tiles, offset by 2 tiles
-            const dropX = data.playerX + (Math.random() < 0.5 ? 2 : -2);
-            const dropY = data.playerY + (Math.random() < 0.5 ? 2 : -2);
-
-            lobby.gameState.items.set(itemId, {
-                id: itemId,
-                type: data.itemType,
-                color: data.itemColor,
-                position: {
-                    x: dropX,
-                    y: dropY
-                },
-                spawnedAt: Date.now()
-            });
-
-            console.log(`📦 ${player.username} dropped ${data.itemType} at (${dropX}, ${dropY})`);
-
-            // Broadcast item spawn to all players
-            lobby.broadcast('item:spawned', {
-                itemId: itemId,
-                type: data.itemType,
-                color: data.itemColor,
-                x: dropX,
-                y: dropY
-            });
-        } catch (error) {
-            console.error('Error in item:drop:', error);
-        }
-    });
+    // Player drops item from inventory (disabled - no inventory system)
+    // socket.on('item:drop', (data) => {});
 
     // Handle minion position updates
     socket.on('minion:position', (data) => {

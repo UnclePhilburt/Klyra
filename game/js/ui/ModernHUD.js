@@ -335,12 +335,23 @@ class ModernHUD {
             this.toggleMenu();
         });
 
-        // ESC key to toggle menu OR close inventory
+        // ESC key to toggle menu OR close inventory/shops
         const escKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
         escKey.on('down', () => {
             // Close inventory first if it's open
             if (this.scene.inventoryUI && this.scene.inventoryUI.isOpen) {
-                return; // Let inventory handle it
+                this.scene.inventoryUI.toggleInventory();
+                return;
+            }
+            // Close merchant shop if open
+            if (this.scene.merchantNPC && this.scene.merchantNPC.isShopOpen) {
+                this.scene.merchantNPC.closeShop();
+                return;
+            }
+            // Close skill shop if open
+            if (this.scene.skillShopNPC && this.scene.skillShopNPC.isShopOpen) {
+                this.scene.skillShopNPC.closeShop();
+                return;
             }
             // Otherwise toggle the stats menu
             if (this.infoHubExpanded) {

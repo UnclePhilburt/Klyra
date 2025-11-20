@@ -1,22 +1,113 @@
-// Inventory UI - 8-slot inventory system
+// Hotbar Inventory UI - Keyboard-only, one-handed gameplay
 class InventoryUI {
     constructor(scene, player) {
         this.scene = scene;
         this.player = player;
-        this.isOpen = false;
 
-        // Inventory data
-        this.slots = 8;
-        this.items = new Array(this.slots).fill(null);
+        // Hotbar slots (1-5 keys)
+        this.hotbarSlots = 5;
+        this.hotbar = new Array(this.hotbarSlots).fill(null);
+
+        // Full inventory (opened with C)
+        this.inventorySlots = 12;
+        this.inventory = new Array(this.inventorySlots).fill(null);
+
+        // UI state
+        this.isOpen = false;
+        this.selectedSlot = 0;
+
+        // Active buffs tracking
+        this.activeBuffs = [];
 
         // UI elements
+        this.hotbarElements = [];
         this.inventoryElements = [];
-        this.slotGraphics = [];
-        this.itemSprites = [];
-        this.itemTexts = [];
 
+        this.createHotbarUI();
         this.createInventoryUI();
+        this.createBuffDisplayUI();
         this.setupControls();
+    }
+
+    createHotbarUI() {
+        const width = this.scene.cameras.main.width;
+        const height = this.scene.cameras.main.height;
+
+        // Hotbar at bottom center, above health bar (always visible)
+        const slotSize = 50;
+        const slotPadding = 8;
+        const totalWidth = this.hotbarSlots * slotSize + (this.hotbarSlots - 1) * slotPadding;
+        const startX = (width - totalWidth) / 2;
+        const startY = height - 170; // Moved up to avoid ability bar
+
+        this.hotbarSlotGraphics = [];
+        this.hotbarItemTexts = [];
+        this.hotbarKeyTexts = [];
+        this.hotbarItemSprites = [];
+
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            const x = startX + i * (slotSize + slotPadding);
+
+            // Slot background
+            const slotBg = this.scene.add.rectangle(
+                x, startY,
+                slotSize, slotSize,
+                0x2a2a3e, 0.9
+            ).setOrigin(0);
+            slotBg.setDepth(99500);
+            slotBg.setScrollFactor(0);
+            slotBg.setStrokeStyle(2, 0x6b7280);
+
+            // Key number indicator
+            const keyText = this.scene.add.text(
+                x + 5, startY + 5,
+                (i + 1).toString(),
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '12px',
+                    fontStyle: 'bold',
+                    fill: '#9ca3af',
+                    stroke: '#000000',
+                    strokeThickness: 2
+                }
+            ).setOrigin(0);
+            keyText.setDepth(99502);
+            keyText.setScrollFactor(0);
+
+            // Item sprite (hidden initially)
+            const itemSprite = this.scene.add.sprite(
+                x + slotSize / 2, startY + slotSize / 2,
+                'merchantitems',
+                0
+            );
+            itemSprite.setDepth(99503);
+            itemSprite.setScrollFactor(0);
+            itemSprite.setVisible(false);
+            itemSprite.setScale(1.5);
+
+            // Item name text (fallback for non-sprite items)
+            const itemText = this.scene.add.text(
+                x + slotSize / 2, startY + slotSize / 2,
+                '',
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '10px',
+                    fill: '#ffffff',
+                    stroke: '#000000',
+                    strokeThickness: 2,
+                    wordWrap: { width: slotSize - 10 },
+                    align: 'center'
+                }
+            ).setOrigin(0.5);
+            itemText.setDepth(99503);
+            itemText.setScrollFactor(0);
+
+            this.hotbarSlotGraphics.push(slotBg);
+            this.hotbarItemTexts.push(itemText);
+            this.hotbarKeyTexts.push(keyText);
+            this.hotbarItemSprites.push(itemSprite);
+            this.hotbarElements.push(slotBg, keyText, itemText, itemSprite);
+        }
     }
 
     createInventoryUI() {
@@ -24,445 +115,555 @@ class InventoryUI {
         const height = this.scene.cameras.main.height;
 
         // Inventory panel dimensions
-        const panelWidth = 400;
-        const panelHeight = 200;
+        const panelWidth = 600;
+        const panelHeight = 400;
         const panelX = (width - panelWidth) / 2;
         const panelY = (height - panelHeight) / 2;
 
-        // Background panel
+        // Outer shadow/glow
+        this.inventoryShadow = this.scene.add.rectangle(
+            panelX + 5, panelY + 5,
+            panelWidth, panelHeight,
+            0x000000, 0.5
+        ).setOrigin(0);
+        this.inventoryShadow.setDepth(99999);
+        this.inventoryShadow.setScrollFactor(0);
+        this.inventoryShadow.setVisible(false);
+        this.inventoryElements.push(this.inventoryShadow);
+
+        // Background panel with gradient effect
         this.inventoryBg = this.scene.add.rectangle(
             panelX, panelY,
             panelWidth, panelHeight,
-            0x1f2937, 0.95
+            0x1a1a2e, 0.98
         ).setOrigin(0);
-        this.inventoryBg.setDepth(1000);
+        this.inventoryBg.setDepth(100000);
         this.inventoryBg.setScrollFactor(0);
-        this.inventoryBg.setStrokeStyle(2, 0x4b5563);
+        this.inventoryBg.setStrokeStyle(4, 0x6366f1);
         this.inventoryBg.setVisible(false);
         this.inventoryElements.push(this.inventoryBg);
 
-        // Title
+        // Title bar background
+        const titleBarBg = this.scene.add.rectangle(
+            panelX, panelY,
+            panelWidth, 60,
+            0x312e81, 0.9
+        ).setOrigin(0);
+        titleBarBg.setDepth(100000);
+        titleBarBg.setScrollFactor(0);
+        titleBarBg.setVisible(false);
+        this.inventoryElements.push(titleBarBg);
+
+        // Title with icon
         this.inventoryTitle = this.scene.add.text(
             panelX + panelWidth / 2, panelY + 20,
-            'INVENTORY',
+            '📦 INVENTORY',
             {
                 fontFamily: 'Arial',
-                fontSize: '18px',
+                fontSize: '22px',
                 fontStyle: 'bold',
-                fill: '#f9fafb',
-                stroke: '#000000',
-                strokeThickness: 3
+                fill: '#e0e7ff',
+                stroke: '#1e1b4b',
+                strokeThickness: 4
             }
         ).setOrigin(0.5);
-        this.inventoryTitle.setDepth(1001);
+        this.inventoryTitle.setDepth(100001);
         this.inventoryTitle.setScrollFactor(0);
         this.inventoryTitle.setVisible(false);
         this.inventoryElements.push(this.inventoryTitle);
 
-        // Create 8 inventory slots (2 rows of 4)
-        const slotSize = 60;
-        const slotPadding = 10;
-        const startX = panelX + (panelWidth - (4 * slotSize + 3 * slotPadding)) / 2;
-        const startY = panelY + 60;
-
-        for (let i = 0; i < this.slots; i++) {
-            const row = Math.floor(i / 4);
-            const col = i % 4;
-            const x = startX + col * (slotSize + slotPadding);
-            const y = startY + row * (slotSize + slotPadding);
-
-            // Slot background
-            const slotBg = this.scene.add.rectangle(
-                x, y,
-                slotSize, slotSize,
-                0x374151, 1
-            ).setOrigin(0);
-            slotBg.setDepth(1001);
-            slotBg.setScrollFactor(0);
-            slotBg.setStrokeStyle(2, 0x6b7280);
-            slotBg.setVisible(false);
-            slotBg.setInteractive();
-
-            // Hover effect
-            slotBg.on('pointerover', () => {
-                slotBg.setStrokeStyle(2, 0x9ca3af);
-            });
-            slotBg.on('pointerout', () => {
-                slotBg.setStrokeStyle(2, 0x6b7280);
-            });
-
-            // Click to drop item (when inventory is open)
-            slotBg.on('pointerdown', () => {
-                if (this.isOpen) {
-                    this.dropItem(i);
-                }
-            });
-
-            this.slotGraphics.push(slotBg);
-            this.inventoryElements.push(slotBg);
-
-            // Slot number
-            const slotNum = this.scene.add.text(
-                x + 5, y + 5,
-                `${i + 1}`,
-                {
-                    fontFamily: 'Arial',
-                    fontSize: '12px',
-                    fill: '#9ca3af',
-                    stroke: '#000000',
-                    strokeThickness: 2
-                }
-            ).setOrigin(0);
-            slotNum.setDepth(1002);
-            slotNum.setScrollFactor(0);
-            slotNum.setVisible(false);
-            this.inventoryElements.push(slotNum);
-
-            // Item icon placeholder (will be replaced with actual items)
-            const itemSprite = this.scene.add.rectangle(
-                x + slotSize / 2, y + slotSize / 2,
-                40, 40,
-                0x000000, 0
-            ).setOrigin(0.5);
-            itemSprite.setDepth(1002);
-            itemSprite.setScrollFactor(0);
-            itemSprite.setVisible(false);
-            this.itemSprites.push(itemSprite);
-            this.inventoryElements.push(itemSprite);
-
-            // Item count/name text
-            const itemText = this.scene.add.text(
-                x + slotSize / 2, y + slotSize - 8,
-                '',
-                {
-                    fontFamily: 'Arial',
-                    fontSize: '11px',
-                    fill: '#ffffff',
-                    stroke: '#000000',
-                    strokeThickness: 2
-                }
-            ).setOrigin(0.5);
-            itemText.setDepth(1003);
-            itemText.setScrollFactor(0);
-            itemText.setVisible(false);
-            this.itemTexts.push(itemText);
-            this.inventoryElements.push(itemText);
-        }
-
-        // Close hint
-        this.closeHint = this.scene.add.text(
-            panelX + panelWidth / 2, panelY + panelHeight - 20,
-            'Press C or ESC to close',
+        // Instructions with better formatting
+        this.inventoryInstructions = this.scene.add.text(
+            panelX + panelWidth / 2, panelY + 42,
+            'WASD  Navigate  |  V  Move to Hotbar  |  Delete  Drop  |  C/ESC  Close',
             {
                 fontFamily: 'Arial',
-                fontSize: '12px',
-                fill: '#9ca3af',
+                fontSize: '11px',
+                fill: '#c7d2fe',
                 stroke: '#000000',
                 strokeThickness: 2
             }
         ).setOrigin(0.5);
-        this.closeHint.setDepth(1001);
-        this.closeHint.setScrollFactor(0);
-        this.closeHint.setVisible(false);
-        this.inventoryElements.push(this.closeHint);
+        this.inventoryInstructions.setDepth(100001);
+        this.inventoryInstructions.setScrollFactor(0);
+        this.inventoryInstructions.setVisible(false);
+        this.inventoryElements.push(this.inventoryInstructions);
 
-        console.log('✅ Inventory UI created with', this.slots, 'slots');
+        // Decorative corner accents
+        const cornerSize = 15;
+        const corners = [
+            { x: panelX + 5, y: panelY + 5 }, // top-left
+            { x: panelX + panelWidth - 5, y: panelY + 5 }, // top-right
+            { x: panelX + 5, y: panelY + panelHeight - 5 }, // bottom-left
+            { x: panelX + panelWidth - 5, y: panelY + panelHeight - 5 } // bottom-right
+        ];
+
+        corners.forEach(corner => {
+            const accent = this.scene.add.rectangle(
+                corner.x, corner.y, cornerSize, cornerSize, 0x818cf8, 0.6
+            );
+            accent.setDepth(100001);
+            accent.setScrollFactor(0);
+            accent.setVisible(false);
+            this.inventoryElements.push(accent);
+        });
+
+        // Create inventory grid (4 columns x 3 rows = 12 slots)
+        const slotSize = 85;
+        const slotPadding = 12;
+        const cols = 4;
+        const rows = 3;
+        const gridWidth = cols * slotSize + (cols - 1) * slotPadding;
+        const startX = panelX + (panelWidth - gridWidth) / 2;
+        const startY = panelY + 90;
+
+        this.inventorySlotGraphics = [];
+        this.inventoryItemTexts = [];
+        this.inventoryItemSprites = [];
+        this.inventorySlotBorders = [];
+
+        for (let i = 0; i < this.inventorySlots; i++) {
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            const x = startX + col * (slotSize + slotPadding);
+            const y = startY + row * (slotSize + slotPadding);
+
+            // Inner shadow for depth
+            const shadow = this.scene.add.rectangle(
+                x + 2, y + 2,
+                slotSize, slotSize,
+                0x000000, 0.4
+            ).setOrigin(0);
+            shadow.setDepth(100001);
+            shadow.setScrollFactor(0);
+            shadow.setVisible(false);
+            this.inventoryElements.push(shadow);
+
+            // Slot background with gradient
+            const slotBg = this.scene.add.rectangle(
+                x, y,
+                slotSize, slotSize,
+                0x2d2d44, 1
+            ).setOrigin(0);
+            slotBg.setDepth(100001);
+            slotBg.setScrollFactor(0);
+            slotBg.setStrokeStyle(2, 0x4b4b6b);
+            slotBg.setVisible(false);
+
+            // Slot number indicator (small)
+            const slotNumber = this.scene.add.text(
+                x + 6, y + 6,
+                (i + 1).toString(),
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '10px',
+                    fill: '#6b7280',
+                    stroke: '#000000',
+                    strokeThickness: 2
+                }
+            ).setOrigin(0);
+            slotNumber.setDepth(100002);
+            slotNumber.setScrollFactor(0);
+            slotNumber.setVisible(false);
+
+            // Item sprite (hidden initially)
+            const itemSprite = this.scene.add.sprite(
+                x + slotSize / 2, y + slotSize / 2,
+                'merchantitems',
+                0
+            );
+            itemSprite.setDepth(100003);
+            itemSprite.setScrollFactor(0);
+            itemSprite.setVisible(false);
+            itemSprite.setScale(2.5);
+
+            // Item text (fallback for non-sprite items)
+            const itemText = this.scene.add.text(
+                x + slotSize / 2, y + slotSize / 2,
+                '',
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '12px',
+                    fontStyle: 'bold',
+                    fill: '#ffffff',
+                    stroke: '#000000',
+                    strokeThickness: 3,
+                    wordWrap: { width: slotSize - 10 },
+                    align: 'center'
+                }
+            ).setOrigin(0.5);
+            itemText.setDepth(100003);
+            itemText.setScrollFactor(0);
+            itemText.setVisible(false);
+
+            this.inventorySlotGraphics.push(slotBg);
+            this.inventoryItemTexts.push(itemText);
+            this.inventoryItemSprites.push(itemSprite);
+            this.inventorySlotBorders.push({ bg: slotBg, shadow: shadow });
+            this.inventoryElements.push(slotBg, itemText, itemSprite, slotNumber);
+        }
+    }
+
+    createBuffDisplayUI() {
+        // Active buffs display (top right, below skills)
+        const width = this.scene.cameras.main.width;
+
+        this.buffsContainer = this.scene.add.container(width - 200, 200);
+        this.buffsContainer.setScrollFactor(0);
+        this.buffsContainer.setDepth(99600);
+
+        this.buffTexts = [];
     }
 
     setupControls() {
+        // Hotbar keys (1-5)
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            const key = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes['ONE'] + i);
+            key.on('down', () => {
+                this.useHotbarItem(i);
+            });
+        }
+
         // C key to toggle inventory
         const cKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
         cKey.on('down', () => {
-            this.toggle();
+            this.toggleInventory();
         });
 
-        // ESC key to close inventory
-        const escKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-        escKey.on('down', () => {
+        // WASD keys for navigation (when inventory is open)
+        const wKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+        const aKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+        const sKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+        const dKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+
+        wKey.on('down', () => {
+            if (this.isOpen) this.moveSelection(0, -1);
+        });
+        sKey.on('down', () => {
+            if (this.isOpen) this.moveSelection(0, 1);
+        });
+        aKey.on('down', () => {
+            if (this.isOpen) this.moveSelection(-1, 0);
+        });
+        dKey.on('down', () => {
+            if (this.isOpen) this.moveSelection(1, 0);
+        });
+
+        // V to move item to hotbar
+        const vKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.V);
+        vKey.on('down', () => {
             if (this.isOpen) {
-                this.close();
+                this.moveToHotbar();
             }
         });
 
-        // Number keys 1-8 to use items (when inventory is closed)
-        for (let i = 1; i <= 8; i++) {
-            const key = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[`DIGIT${i}`]);
-            key.on('down', () => {
-                if (!this.isOpen) {
-                    this.useItem(i - 1);
-                }
-            });
-        }
-    }
-
-    toggle() {
-        if (this.isOpen) {
-            this.close();
-        } else {
-            this.open();
-        }
-    }
-
-    open() {
-        this.isOpen = true;
-        this.inventoryElements.forEach(elem => elem.setVisible(true));
-        this.updateDisplay();
-        console.log('📦 Inventory opened');
-    }
-
-    close() {
-        this.isOpen = false;
-        this.inventoryElements.forEach(elem => elem.setVisible(false));
-        console.log('📦 Inventory closed');
-    }
-
-    isFull() {
-        // Check if all slots are occupied
-        for (let i = 0; i < this.slots; i++) {
-            if (!this.items[i]) {
-                return false; // Found an empty slot
+        // Delete to drop item
+        const deleteKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DELETE);
+        deleteKey.on('down', () => {
+            if (this.isOpen) {
+                this.dropSelectedItem();
             }
-        }
-        return true; // All slots full
+        });
     }
 
-    addItem(itemType, quantity = 1, itemData = {}) {
-        // NO STACKING - Each item gets its own slot (for unique names later)
-        let targetSlot = -1;
+    moveSelection(dx, dy) {
+        const cols = 4;
+        const row = Math.floor(this.selectedSlot / cols);
+        const col = this.selectedSlot % cols;
 
-        // Find empty slot
-        for (let i = 0; i < this.slots; i++) {
-            if (!this.items[i]) {
-                this.items[i] = {
-                    type: itemType,
-                    quantity: quantity,
-                    data: itemData
-                };
+        const newCol = Math.max(0, Math.min(cols - 1, col + dx));
+        const newRow = Math.max(0, Math.min(2, row + dy));
+
+        this.selectedSlot = newRow * cols + newCol;
+        this.updateInventoryUI();
+    }
+
+    moveToHotbar() {
+        const item = this.inventory[this.selectedSlot];
+        if (!item) return;
+
+        // Find first empty hotbar slot
+        let targetSlot = -1;
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            if (!this.hotbar[i]) {
                 targetSlot = i;
                 break;
             }
         }
 
-        if (targetSlot !== -1) {
-            this.updateDisplay();
-            console.log(`📦 Added ${quantity}x ${itemType} to slot ${targetSlot + 1}`);
-            return true;
-        } else {
-            console.log('⚠️ Inventory full!');
-            return false;
+        if (targetSlot === -1) {
+            console.log('⚠️ Hotbar is full!');
+            return;
+        }
+
+        // Move item to hotbar
+        this.hotbar[targetSlot] = item;
+        this.inventory[this.selectedSlot] = null;
+
+        this.updateHotbarUI();
+        this.updateInventoryUI();
+
+        console.log(`📦 Moved ${item.name} to hotbar slot ${targetSlot + 1}`);
+    }
+
+    dropSelectedItem() {
+        const item = this.inventory[this.selectedSlot];
+        if (!item) return;
+
+        this.inventory[this.selectedSlot] = null;
+        this.updateInventoryUI();
+
+        console.log(`🗑️ Dropped ${item.name}`);
+    }
+
+    toggleInventory() {
+        this.isOpen = !this.isOpen;
+
+        this.inventoryElements.forEach(elem => {
+            elem.setVisible(this.isOpen);
+        });
+
+        if (this.isOpen) {
+            this.selectedSlot = 0;
+            this.updateInventoryUI();
         }
     }
 
-    removeItem(slot, quantity = 1) {
-        if (this.items[slot]) {
-            this.items[slot].quantity -= quantity;
-            if (this.items[slot].quantity <= 0) {
-                this.items[slot] = null;
-            }
-            this.updateDisplay();
-            return true;
+    useHotbarItem(slotIndex) {
+        const item = this.hotbar[slotIndex];
+        if (!item) return;
+
+        console.log(`✨ Using ${item.name} from hotbar slot ${slotIndex + 1}`);
+
+        // Apply item effect
+        this.applyItemEffect(item);
+
+        // Remove from hotbar (consumed)
+        this.hotbar[slotIndex] = null;
+        this.updateHotbarUI();
+    }
+
+    applyItemEffect(item) {
+        switch (item.type) {
+            case 'health_potion':
+                // Instantly restore to full health
+                this.player.health = this.player.maxHealth;
+                console.log(`✨ Health restored to ${this.player.maxHealth}`);
+                break;
+
+            case 'regen_potion':
+                // Heal 3 HP per second for 10 seconds
+                this.addBuff('Regen', 10, () => {
+                    this.scene.time.addEvent({
+                        delay: 1000,
+                        callback: () => {
+                            if (this.player.health < this.player.maxHealth) {
+                                this.player.health = Math.min(this.player.maxHealth, this.player.health + 3);
+                            }
+                        },
+                        repeat: 9 // 10 total ticks
+                    });
+                });
+                break;
         }
+    }
+
+    addBuff(name, durationSeconds, effectCallback) {
+        // Execute the effect
+        effectCallback();
+
+        // Add to active buffs display
+        const buff = {
+            name: name,
+            endTime: durationSeconds ? Date.now() + (durationSeconds * 1000) : null
+        };
+
+        this.activeBuffs.push(buff);
+        this.updateBuffDisplay();
+
+        // Remove buff when expired
+        if (durationSeconds) {
+            this.scene.time.delayedCall(durationSeconds * 1000, () => {
+                const index = this.activeBuffs.indexOf(buff);
+                if (index > -1) {
+                    this.activeBuffs.splice(index, 1);
+                    this.updateBuffDisplay();
+                }
+            });
+        }
+
+        console.log(`✨ Buff applied: ${name}` + (durationSeconds ? ` (${durationSeconds}s)` : ' (until triggered)'));
+    }
+
+    updateBuffDisplay() {
+        // Clear existing buff texts
+        this.buffTexts.forEach(text => text.destroy());
+        this.buffTexts = [];
+
+        // Recreate buff list
+        this.activeBuffs.forEach((buff, index) => {
+            const timeLeft = buff.endTime ? Math.ceil((buff.endTime - Date.now()) / 1000) : '∞';
+            const text = this.scene.add.text(
+                0, index * 25,
+                `${buff.name}: ${timeLeft}s`,
+                {
+                    fontFamily: 'Arial',
+                    fontSize: '12px',
+                    fill: '#66ff66',
+                    stroke: '#000000',
+                    strokeThickness: 2
+                }
+            ).setOrigin(0);
+
+            this.buffTexts.push(text);
+            this.buffsContainer.add(text);
+        });
+    }
+
+    addItem(itemType, quantity = 1, metadata = {}) {
+        const itemData = this.getItemData(itemType);
+        if (!itemData) {
+            console.warn(`Unknown item type: ${itemType}`);
+            return false;
+        }
+
+        // Find first empty inventory slot
+        for (let i = 0; i < this.inventorySlots; i++) {
+            if (!this.inventory[i]) {
+                this.inventory[i] = {
+                    type: itemType,
+                    name: itemData.name,
+                    ...metadata
+                };
+
+                this.updateInventoryUI();
+                console.log(`📦 Added ${itemData.name} to inventory slot ${i + 1}`);
+                return true;
+            }
+        }
+
+        console.log('⚠️ Inventory is full!');
         return false;
     }
 
-    dropItem(slot) {
-        const item = this.items[slot];
-        if (!item) return;
-
-        console.log(`📦 Dropping item from slot ${slot + 1}:`, item.type);
-
-        // Get player position in tiles
-        const playerX = Math.floor(this.player.sprite.x / 32);
-        const playerY = Math.floor(this.player.sprite.y / 32);
-
-        // Send drop request to server
-        networkManager.emit('item:drop', {
-            itemType: item.type,
-            itemColor: item.data.color || this.getItemColor(item.type),
-            playerX: playerX,
-            playerY: playerY
-        });
-
-        // Remove one from stack
-        this.removeItem(slot, 1);
-    }
-
-    getItemColor(itemType) {
-        // Default colors for item types
-        const colors = {
-            'health_potion': 0xff0000,
-            'mana_potion': 0x0099ff,
-            'speed_potion': 0xffff00,
-            'strength_potion': 0xff6600,
-            'defense_potion': 0x999999,
-            'star': 0xffff00  // Gold/yellow star
+    getItemData(itemType) {
+        const items = {
+            'health_potion': { name: 'Health Potion', color: 0xff0000, spriteFrame: 14 },
+            'regen_potion': { name: 'Regen Potion', color: 0xff6666, spriteFrame: 28 }
         };
-        return colors[itemType] || 0xffffff;
+
+        return items[itemType] || null;
     }
 
-    useItem(slot) {
-        const item = this.items[slot];
-        if (!item) return;
-
-        console.log(`🔔 Using item in slot ${slot + 1}:`, item.type);
-
-        // Item effects
-        switch (item.type) {
-            case 'health_potion':
-                this.useHealthPotion();
-                break;
-            case 'mana_potion':
-                this.useManaPotion();
-                break;
-            case 'speed_potion':
-                this.useSpeedPotion();
-                break;
-            case 'strength_potion':
-                this.useStrengthPotion();
-                break;
-            case 'defense_potion':
-                this.useDefensePotion();
-                break;
-            case 'star':
-                // Stars are currency, can't be "used" - just collected
-                console.log('⭐ Stars are currency! Cannot be used.');
-                return; // Don't remove from inventory
-            default:
-                console.log('⚠️ Unknown item type:', item.type);
-                return;
-        }
-
-        // Remove one from stack
-        this.removeItem(slot, 1);
-    }
-
-    useHealthPotion() {
-        if (this.player.health < this.player.maxHealth) {
-            const healAmount = 50;
-            this.player.health = Math.min(this.player.maxHealth, this.player.health + healAmount);
-            if (this.player.ui) {
-                this.player.ui.updateHealthBar();
-            }
-            console.log(`💚 Healed ${healAmount} HP`);
-
-            // Visual effect
-            this.showItemEffect(0x00ff00, '💚 +50 HP');
-        }
-    }
-
-    useManaPotion() {
-        console.log('💙 Mana potion used (not implemented yet)');
-        this.showItemEffect(0x0099ff, '💙 +50 MP');
-    }
-
-    useSpeedPotion() {
-        console.log('⚡ Speed boost activated!');
-        this.showItemEffect(0xffff00, '⚡ SPEED!');
-
-        // Temporary speed boost (example)
-        if (this.player.stats) {
-            const originalSpeed = this.player.stats.speed || 200;
-            this.player.stats.speed = originalSpeed * 1.5;
-
-            // Revert after 10 seconds
-            this.scene.time.delayedCall(10000, () => {
-                this.player.stats.speed = originalSpeed;
-                console.log('⚡ Speed boost ended');
-            });
-        }
-    }
-
-    useStrengthPotion() {
-        console.log('💪 Strength boost activated!');
-        this.showItemEffect(0xff6600, '💪 POWER!');
-
-        // Temporary strength boost
-        if (this.player.stats) {
-            const originalDamage = this.player.stats.damage || 10;
-            this.player.stats.damage = Math.floor(originalDamage * 1.5);
-
-            // Revert after 10 seconds
-            this.scene.time.delayedCall(10000, () => {
-                this.player.stats.damage = originalDamage;
-                console.log('💪 Strength boost ended');
-            });
-        }
-    }
-
-    useDefensePotion() {
-        console.log('🛡️ Defense boost activated!');
-        this.showItemEffect(0x999999, '🛡️ ARMOR!');
-
-        // Temporary defense boost
-        if (this.player.stats) {
-            const originalDefense = this.player.stats.defense || 0;
-            this.player.stats.defense = originalDefense + 5;
-
-            // Revert after 10 seconds
-            this.scene.time.delayedCall(10000, () => {
-                this.player.stats.defense = originalDefense;
-                console.log('🛡️ Defense boost ended');
-            });
-        }
-    }
-
-    showItemEffect(color, text) {
-        if (!this.player.spriteRenderer || !this.player.spriteRenderer.sprite) return;
-
-        const effectText = this.scene.add.text(
-            this.player.spriteRenderer.sprite.x,
-            this.player.spriteRenderer.sprite.y - 50,
-            text,
-            {
-                fontFamily: 'Arial',
-                fontSize: '16px',
-                fontStyle: 'bold',
-                fill: `#${color.toString(16).padStart(6, '0')}`,
-                stroke: '#000000',
-                strokeThickness: 3
-            }
-        ).setOrigin(0.5);
-        effectText.setDepth(1000);
-
-        this.scene.tweens.add({
-            targets: effectText,
-            y: effectText.y - 30,
-            alpha: 0,
-            duration: 1000,
-            ease: 'Power2',
-            onComplete: () => effectText.destroy()
-        });
-    }
-
-    updateDisplay() {
-        for (let i = 0; i < this.slots; i++) {
-            const item = this.items[i];
+    updateHotbarUI() {
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            const item = this.hotbar[i];
 
             if (item) {
-                // Show item icon (color coded - use stored color or default)
-                let itemColor = item.data?.color || this.getItemColor(item.type);
+                const itemData = this.getItemData(item.type);
 
-                this.itemSprites[i].setFillStyle(itemColor, 1);
-                this.itemSprites[i].setVisible(this.isOpen);
+                // If item has a sprite frame, show sprite instead of text
+                if (itemData && itemData.spriteFrame !== undefined) {
+                    this.hotbarItemSprites[i].setFrame(itemData.spriteFrame);
+                    this.hotbarItemSprites[i].setVisible(true);
+                    this.hotbarItemTexts[i].setText('');
+                } else {
+                    // Fallback to text for items without sprites
+                    this.hotbarItemSprites[i].setVisible(false);
+                    this.hotbarItemTexts[i].setText(item.name);
+                }
 
-                // Show item count
-                this.itemTexts[i].setText(`x${item.quantity}`);
-                this.itemTexts[i].setVisible(this.isOpen);
+                this.hotbarSlotGraphics[i].setStrokeStyle(2, 0x818cf8);
             } else {
-                // Empty slot
-                this.itemSprites[i].setVisible(false);
-                this.itemTexts[i].setVisible(false);
+                this.hotbarItemSprites[i].setVisible(false);
+                this.hotbarItemTexts[i].setText('');
+                this.hotbarSlotGraphics[i].setStrokeStyle(2, 0x6b7280);
             }
+        }
+    }
+
+    updateInventoryUI() {
+        for (let i = 0; i < this.inventorySlots; i++) {
+            const item = this.inventory[i];
+
+            if (item) {
+                const itemData = this.getItemData(item.type);
+
+                // If item has a sprite frame, show sprite instead of text
+                if (itemData && itemData.spriteFrame !== undefined) {
+                    this.inventoryItemSprites[i].setFrame(itemData.spriteFrame);
+                    this.inventoryItemSprites[i].setVisible(true);
+                    this.inventoryItemTexts[i].setText('');
+                } else {
+                    // Fallback to text for items without sprites
+                    this.inventoryItemSprites[i].setVisible(false);
+                    this.inventoryItemTexts[i].setText(item.name);
+                }
+            } else {
+                this.inventoryItemSprites[i].setVisible(false);
+                this.inventoryItemTexts[i].setText('');
+            }
+
+            // Highlight selected slot with glow effect
+            if (i === this.selectedSlot) {
+                this.inventorySlotGraphics[i].setStrokeStyle(4, 0xfbbf24);
+                this.inventorySlotGraphics[i].setFillStyle(0x3d3d5c, 1);
+            } else if (item) {
+                // Slots with items have a subtle highlight
+                this.inventorySlotGraphics[i].setStrokeStyle(2, 0x6366f1);
+                this.inventorySlotGraphics[i].setFillStyle(0x2d2d44, 1);
+            } else {
+                // Empty slots
+                this.inventorySlotGraphics[i].setStrokeStyle(2, 0x4b4b6b);
+                this.inventorySlotGraphics[i].setFillStyle(0x2d2d44, 1);
+            }
+        }
+    }
+
+    isFull() {
+        return this.inventory.every(slot => slot !== null);
+    }
+
+    addItemToHotbar(itemType, metadata = {}) {
+        const itemData = this.getItemData(itemType);
+        if (!itemData) {
+            console.warn(`Unknown item type: ${itemType}`);
+            return false;
+        }
+
+        // Find first empty hotbar slot
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            if (!this.hotbar[i]) {
+                this.hotbar[i] = {
+                    type: itemType,
+                    name: itemData.name,
+                    ...metadata
+                };
+
+                this.updateHotbarUI();
+                console.log(`📦 Added ${itemData.name} to hotbar slot ${i + 1}`);
+                return true;
+            }
+        }
+
+        console.log('⚠️ Hotbar is full!');
+        return false;
+    }
+
+    update() {
+        // Update buff timers
+        if (this.activeBuffs.length > 0) {
+            this.updateBuffDisplay();
         }
     }
 
     destroy() {
+        this.hotbarElements.forEach(elem => {
+            if (elem) elem.destroy();
+        });
         this.inventoryElements.forEach(elem => {
             if (elem) elem.destroy();
         });
-        this.inventoryElements = [];
-        this.slotGraphics = [];
-        this.itemSprites = [];
-        this.itemTexts = [];
+        if (this.buffsContainer) this.buffsContainer.destroy();
     }
 }
