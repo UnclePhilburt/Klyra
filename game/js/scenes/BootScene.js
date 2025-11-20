@@ -273,6 +273,46 @@ class BootScene extends Phaser.Scene {
         this.load.audio('minion_punch', 'assets/soundeffects/punch.wav');
         console.log('📦 Loading minion attack sound');
 
+        // Load skill sound effects
+        this.load.audio('meteor_explosion', 'assets/sprites/skills/sounds/meteorexplosion.mp3');
+        this.load.audio('piercing_inferno', 'assets/sprites/skills/sounds/piercinginferno.mp3');
+        this.load.audio('piercing_inferno_cast', 'assets/sprites/skills/sounds/piercinginfernocast.mp3');
+        console.log('📦 Loading skill sounds (meteor explosion, piercing inferno)');
+
+        // Load butterfly sprites (16x16, 5 frames each)
+        this.load.spritesheet('butterfly_blue', 'assets/sprites/Butterfly/Blue.png', {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        this.load.spritesheet('butterfly_grey', 'assets/sprites/Butterfly/Grey.png', {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        this.load.spritesheet('butterfly_pink', 'assets/sprites/Butterfly/Pink.png', {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        this.load.spritesheet('butterfly_red', 'assets/sprites/Butterfly/Red.png', {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        this.load.spritesheet('butterfly_white', 'assets/sprites/Butterfly/White.png', {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        this.load.spritesheet('butterfly_yellow', 'assets/sprites/Butterfly/Yellow.png', {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        console.log('🦋 Loading butterfly sprites (6 variations)');
+
+        // Load bird sprite (16x16, row 1 frames 0-7)
+        this.load.spritesheet('bird', 'assets/sprites/Bird/Bird/Spritesheet/Bird Spritesheet.png', {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        console.log('🐦 Loading bird sprite');
+
         // Load minion explosion sound (Pact of Bones ability)
         this.load.audio('minionexplosion', 'assets/soundeffects/minionexplosion.mp3');
         console.log('📦 Loading minion explosion sound');

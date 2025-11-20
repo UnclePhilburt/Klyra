@@ -120,6 +120,10 @@ class NetworkManager {
             this.emit('player:levelup', data);
         });
 
+        this.socket.on('skill:sound', (data) => {
+            this.emit('skill:sound', data);
+        });
+
         this.socket.on('player:died', (data) => {
             const player = this.players.get(data.playerId);
             if (player) player.isAlive = false;
@@ -158,7 +162,10 @@ class NetworkManager {
 
         // Item events
         this.socket.on('item:spawned', (data) => {
+            console.log('🔔 NetworkManager SOCKET received item:spawned:', data);
+            console.log(`   - About to emit to ${this.callbacks['item:spawned']?.length || 0} listeners`);
             this.emit('item:spawned', data);
+            console.log('   - Emission complete');
         });
 
         this.socket.on('item:picked', (data) => {
@@ -167,7 +174,10 @@ class NetworkManager {
 
         // Minion events
         this.socket.on('minion:spawned', (data) => {
+            console.log(`🔔 NetworkManager SOCKET received minion:spawned:`, data);
+            console.log(`   - About to emit to ${this.callbacks['minion:spawned']?.length || 0} listeners`);
             this.emit('minion:spawned', data);
+            console.log(`   - Emission complete`);
         });
 
         this.socket.on('minion:moved', (data) => {
@@ -384,6 +394,11 @@ class NetworkManager {
     respawn() {
         this.socket.emit('player:respawn');
         console.log('💚 Requesting respawn');
+    }
+
+    // Send skill sound event to other players
+    playSkillSound(soundKey, position) {
+        this.socket.emit('skill:sound', { soundKey, position });
     }
 
     // Send Malachar ability usage

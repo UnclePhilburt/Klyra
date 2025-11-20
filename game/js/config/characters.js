@@ -53,17 +53,18 @@ const CHARACTERS = {
         },
         stats: {
             base: {
-                maxHP: 100,
-                damage: 24, // HORDE MODE: Increased for balance
-                moveSpeed: 240, // Increased from 200 for more mobility
+                maxHP: 120,
+                damage: 16,
+                defense: 14,
+                moveSpeed: 220, // Quick and agile rogue
                 attackSpeed: 1.2,
                 critChance: 0.10,
                 critDamage: 1.8,
-                armor: 5
+                armor: 14
             },
             growth: {
                 hpPerLevel: 10,
-                damagePerLevel: 5.0 // HORDE MODE: Increased for balance
+                damagePerLevel: 2.0
             }
         },
         passives: [
@@ -103,31 +104,23 @@ const CHARACTERS = {
         equipment: {
             startingWeapon: "necro_staff"
         },
-        abilities: {
-            q: {
-                name: "Pact of Bones",
-                cooldown: 10000,  // 10 second cooldown
-                effect: {
-                    type: "summon",
-                    minionCount: 5,
-                    duration: 30000  // 30 seconds
-                }
-            }
-        },
+        // Abilities are now defined in MalacharSkillTree.js and unlock at specific levels
+        // abilities: {} - removed to prevent conflicts
         stats: {
             base: {
-                maxHP: 70,
-                damage: 16, // HORDE MODE: Increased for balance
-                moveSpeed: 150,
+                maxHP: 100,
+                damage: 6,
+                defense: 6,
+                moveSpeed: 240, // Fast to kite and stay safe with low HP
                 attackSpeed: 0.8,
                 critChance: 0.05,
                 critDamage: 1.5,
-                armor: 2,
+                armor: 6,
                 lifesteal: 0.05
             },
             growth: {
-                hpPerLevel: 7,
-                damagePerLevel: 4 // HORDE MODE: Increased for balance
+                hpPerLevel: 8,
+                damagePerLevel: 1.5
             }
         },
         passives: [
@@ -171,7 +164,7 @@ const CHARACTERS = {
             name: "Crushing Blow",
             damage: 35,
             cooldown: 900,  // Slower attack speed - 0.9s between attacks to enjoy animation
-            range: 3.5,     // 3.5 tiles - increased range to compensate
+            range: 4.0,     // 4.0 tiles - good reach for a fighter
             target: "enemy",
             effects: {
                 onHit: {
@@ -195,17 +188,18 @@ const CHARACTERS = {
         },
         stats: {
             base: {
-                maxHP: 150,
-                damage: 28,
-                moveSpeed: 260,
+                maxHP: 180,
+                damage: 11,
+                defense: 30,
+                moveSpeed: 180, // Slowest - high HP tank doesn't need to run
                 attackSpeed: 0.9,
                 critChance: 0.05,
                 critDamage: 1.6,
-                armor: 12
+                armor: 30
             },
             growth: {
                 hpPerLevel: 15,
-                damagePerLevel: 4.5
+                damagePerLevel: 1.5
             }
         },
         passives: [

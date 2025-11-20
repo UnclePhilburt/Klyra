@@ -693,40 +693,30 @@ class SkillSelector {
             console.log(`  ⚠️ No autoAttack property on skill`);
         }
 
-        // Store Q/E/R abilities
+        // DON'T register Q/E/R abilities here - they are unlocked progressively by checkAndUnlockAbilities()
+        // Just initialize the abilities object for later use
         if (skill.abilities) {
             if (!player.abilities) player.abilities = {};
-            if (skill.abilities.q) {
-                player.abilities.q = skill.abilities.q;
-                console.log(`  Q: ${skill.abilities.q.name}`);
-            }
-            if (skill.abilities.e) {
-                player.abilities.e = skill.abilities.e;
-                console.log(`  E: ${skill.abilities.e.name}`);
-            }
-            if (skill.abilities.r) {
-                player.abilities.r = skill.abilities.r;
-                console.log(`  R: ${skill.abilities.r.name}`);
-            }
+            console.log(`  ℹ️ Build has Q/E/R abilities that will unlock at specific levels`);
+        }
 
-            // Initialize Malachar Ability Handler (for builds with Q/E/R)
-            if (player.class && player.class.toLowerCase() === 'malachar' && typeof MalacharAbilityHandler !== 'undefined') {
-                // Store the full build data
-                player.malacharBuild = skill;
+        // Initialize Malachar Ability Handler (for builds with Q/E/R)
+        if (player.class && player.class.toLowerCase() === 'malachar' && typeof MalacharAbilityHandler !== 'undefined') {
+            // Store the full build data
+            player.malacharBuild = skill;
 
-                // Initialize the ability handler
-                this.scene.malacharAbilityHandler = new MalacharAbilityHandler(
-                    this.scene,
-                    player,
-                    skill
-                );
-                console.log(`  🔮 Initialized MalacharAbilityHandler for ${skill.name}`);
-            }
+            // Initialize the ability handler
+            this.scene.malacharAbilityHandler = new MalacharAbilityHandler(
+                this.scene,
+                player,
+                skill
+            );
+            console.log(`  🔮 Initialized MalacharAbilityHandler for ${skill.name}`);
+        }
 
-            // Update ability UI immediately
-            if (this.scene.abilityManager) {
-                this.scene.abilityManager.updateCooldownUI();
-            }
+        // Update ability UI immediately
+        if (this.scene.abilityManager) {
+            this.scene.abilityManager.updateCooldownUI();
         }
 
         // Handle modifications (tier 2+)

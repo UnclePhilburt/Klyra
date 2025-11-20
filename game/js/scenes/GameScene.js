@@ -328,6 +328,10 @@ class GameScene extends Phaser.Scene {
             fill: '#00ff00'
         }).setOrigin(0.5);
 
+        // Setup network listeners FIRST (before game:start, so minion:spawned is ready)
+        this.setupNetworkListeners();
+        console.log('✅ Network listeners set up');
+
         // Wait for game:start event (instant join - no lobby)
         networkManager.on('game:start', (data) => {
             this.gameData = data;
@@ -354,6 +358,9 @@ class GameScene extends Phaser.Scene {
         if (this.loadingText) {
             this.loadingText.destroy();
         }
+
+        // Add atmospheric visual effects
+        this.createAtmosphericEffects();
 
         // Initialize screen blood splatter system
         this.screenBloodSplatters = [];
@@ -595,9 +602,16 @@ class GameScene extends Phaser.Scene {
                     // Apply character's starting build (e.g., Bone Commander for Malachar)
                     this.applyCharacterBuild(this.localPlayer);
 
-                    // Then unlock first ability with a slight delay so UI is ready
+                    // Unlock starting ability (E at level 1 for Malachar)
                     this.time.delayedCall(500, () => {
+                        console.log('⏰ Delayed ability unlock triggered');
                         this.checkAndUnlockAbilities(this.localPlayer, 1);
+
+                        // Force UI update
+                        if (this.abilityManager) {
+                            console.log('🔄 Forcing ability UI update');
+                            this.abilityManager.updateCooldownUI();
+                        }
                     });
                 } catch (error) {
                     console.error('❌ Error in character initialization:', error);
@@ -788,8 +802,7 @@ class GameScene extends Phaser.Scene {
         // Setup ambient particles
         this.setupAmbientParticles();
 
-        // Setup network listeners
-        this.setupNetworkListeners();
+        // Network listeners already set up at the beginning of create()
     }
 
     renderWorld(world) {
@@ -941,17 +954,24 @@ class GameScene extends Phaser.Scene {
         // Get biome for this tile
         const biome = this.biomeCache[`${x},${y}`] || 'green';
 
-        // Decoration density - balanced for good visuals with GPU acceleration
+        // Decoration density - increased for more visual richness
         let spawnChance;
-        if (biome === 'green') spawnChance = 0.04; // 4% - flowers and grass
-        else if (biome === 'dark_green') spawnChance = 0.05; // 5% - forest decorations
-        else if (biome === 'red') spawnChance = 0.05; // 5% - red biome decorations
+        if (biome === 'green') spawnChance = 0.15; // 15% - flowers and grass (was 4%)
+        else if (biome === 'dark_green') spawnChance = 0.18; // 18% - forest decorations (was 5%)
+        else if (biome === 'red') spawnChance = 0.18; // 18% - red biome decorations (was 5%)
 
         if (decoChance > spawnChance) return null;
 
         const rand = this.seededRandom(decoSeed + 1000);
 
         let decorationType;
+
+        // Check for flower patches (large clusters of flowers)
+        if (biome === 'green' && rand < 0.08) {
+            return 'flower_patch';
+        } else if (biome === 'red' && rand < 0.08) {
+            return 'red_flower_patch';
+        }
         if (biome === 'green') {
             // Basic Green: lots of flowers and grass
             if (rand < 0.5) decorationType = 'flower';
@@ -1472,6 +1492,85 @@ class GameScene extends Phaser.Scene {
             // PERFORMANCE: Add to allSprites for cleanup
             allSprites.push(...treeGroup);
 
+        } else if (type === 'flower_patch') {
+            // FLOWER PATCH - Large cluster of flowers (green biome)
+            const scale = tileSize / 48;
+            const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const patchSeed = seed + x * 5003 + y * 7007;
+
+            // Flower variants for patch
+            const FLOWER_VARIANTS = [
+                { frames: [12], scale: 0.7 },      // Red flower one
+                { frames: [136], scale: 0.7 },     // Red flower two
+                { frames: [137], scale: 0.7 },     // Blue flower one
+                { frames: [138], scale: 0.7 },     // Blue flower two
+                { frames: [139], scale: 0.7 },     // Blue flower three
+                { frames: [140], scale: 0.7 },     // Cyan flower one
+                { frames: [141], scale: 0.7 }      // Cyan flower two
+            ];
+
+            // Generate 6-12 flowers in a cluster around this position
+            const numFlowers = 6 + Math.floor(this.seededRandom(patchSeed) * 7); // 6-12 flowers
+
+            for (let i = 0; i < numFlowers; i++) {
+                // Each flower gets its own position offset
+                const flowerSeed = patchSeed + i * 1009;
+                const offsetX = (this.seededRandom(flowerSeed) - 0.5) * tileSize * 2; // ±1 tile
+                const offsetY = (this.seededRandom(flowerSeed + 1) - 0.5) * tileSize * 2;
+
+                // Select random flower variant
+                const variantIndex = Math.floor(this.seededRandom(flowerSeed + 2) * FLOWER_VARIANTS.length);
+                const variant = FLOWER_VARIANTS[variantIndex];
+
+                const flowerX = px + offsetX;
+                const flowerY = py + offsetY;
+
+                const flower = this.add.sprite(flowerX, flowerY, 'objects_d', variant.frames[0]);
+                flower.setOrigin(0, 0);
+                flower.setScale(scale * variant.scale);
+                flower.setDepth(flowerY + tileSize);
+                this.tileContainer.add(flower);
+                allSprites.push(flower);
+            }
+
+        } else if (type === 'red_flower_patch') {
+            // RED FLOWER PATCH - Large cluster of red flowers (red biome)
+            const scale = tileSize / 48;
+            const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const patchSeed = seed + x * 5003 + y * 7007;
+
+            // Red flower variants for patch
+            const RED_FLOWER_VARIANTS = [
+                { frames: [120], scale: 0.7 },   // Red flowers 1
+                { frames: [136], scale: 0.7 },   // Red flowers 2
+                { frames: [124], scale: 0.7 },   // Red tulip 1
+                { frames: [125], scale: 0.7 }    // Red tulip 2
+            ];
+
+            // Generate 6-12 flowers in a cluster around this position
+            const numFlowers = 6 + Math.floor(this.seededRandom(patchSeed) * 7); // 6-12 flowers
+
+            for (let i = 0; i < numFlowers; i++) {
+                // Each flower gets its own position offset
+                const flowerSeed = patchSeed + i * 1009;
+                const offsetX = (this.seededRandom(flowerSeed) - 0.5) * tileSize * 2; // ±1 tile
+                const offsetY = (this.seededRandom(flowerSeed + 1) - 0.5) * tileSize * 2;
+
+                // Select random flower variant
+                const variantIndex = Math.floor(this.seededRandom(flowerSeed + 2) * RED_FLOWER_VARIANTS.length);
+                const variant = RED_FLOWER_VARIANTS[variantIndex];
+
+                const flowerX = px + offsetX;
+                const flowerY = py + offsetY;
+
+                const flower = this.add.sprite(flowerX, flowerY, 'red_decorations', variant.frames[0]);
+                flower.setOrigin(0, 0);
+                flower.setScale(scale * variant.scale);
+                flower.setDepth(flowerY + tileSize);
+                this.tileContainer.add(flower);
+                allSprites.push(flower);
+            }
+
         } else if (type === 'red_flower' || type === 'red_grass' || type === 'red_bush' ||
                    type === 'red_mushroom' || type === 'red_log' || type === 'red_stone' ||
                    type === 'red_stump' || type === 'red_trunk' || type === 'red_baby_tree') {
@@ -1962,13 +2061,28 @@ class GameScene extends Phaser.Scene {
         }
 
         // Create inventory system (C key, hotbar 1-5)
-        this.inventoryUI = new InventoryUI(this, this.localPlayer);
+        try {
+            this.inventoryUI = new InventoryUI(this, this.localPlayer);
+            console.log('✅ InventoryUI created');
+        } catch (error) {
+            console.error('❌ Error creating InventoryUI:', error);
+        }
 
         // Create skill selector system
-        this.skillSelector = new SkillSelector(this);
+        try {
+            this.skillSelector = new SkillSelector(this);
+            console.log('✅ SkillSelector created');
+        } catch (error) {
+            console.error('❌ Error creating SkillSelector:', error);
+        }
 
         // Create ability manager system (Q/E/R abilities)
-        this.abilityManager = new AbilityManager(this, this.localPlayer);
+        try {
+            this.abilityManager = new AbilityManager(this, this.localPlayer);
+            console.log('✅ AbilityManager created');
+        } catch (error) {
+            console.error('❌ Error creating AbilityManager:', error);
+        }
 
         // Create music system
         this.musicManager = new MusicManager(this);
@@ -2339,6 +2453,9 @@ class GameScene extends Phaser.Scene {
                     });
                     console.log(`🛡️ Initialized ${data.player.passiveSkills.length} passive skills for player ${data.player.id}`);
                 }
+
+                // Show join notification
+                this.showPlayerNotification(`${data.player.username} joined the game`, '#00ff00');
             }
         });
 
@@ -2347,6 +2464,9 @@ class GameScene extends Phaser.Scene {
 
             const player = this.otherPlayers[data.playerId];
             if (player) {
+                // Show leave notification
+                this.showPlayerNotification(`${data.username} left the game`, '#ff6666');
+
                 player.sprite.destroy();
                 delete this.otherPlayers[data.playerId];
 
@@ -2559,6 +2679,46 @@ class GameScene extends Phaser.Scene {
             }
         });
 
+        // Skill sound from other players
+        networkManager.on('skill:sound', (data) => {
+            if (!this.localPlayer || !this.localPlayer.sprite) return;
+
+            const { playerId, soundKey, position } = data;
+
+            // Calculate distance from local player to sound source
+            const distance = Phaser.Math.Distance.Between(
+                this.localPlayer.sprite.x,
+                this.localPlayer.sprite.y,
+                position.x,
+                position.y
+            );
+
+            // Max hearing distance (in pixels)
+            const maxDistance = 800;
+
+            if (distance < maxDistance) {
+                // Calculate volume based on distance (1.0 at source, 0.0 at max distance)
+                const volumeFactor = 1 - (distance / maxDistance);
+                let baseVolume = 0.35; // Default base volume
+
+                // Adjust base volume per sound type
+                if (soundKey === 'meteor_explosion') {
+                    baseVolume = 0.4;
+                } else if (soundKey === 'piercing_inferno') {
+                    baseVolume = 0.3;
+                } else if (soundKey === 'piercing_inferno_cast') {
+                    baseVolume = 0.35;
+                }
+
+                const volume = baseVolume * volumeFactor;
+
+                // Play the sound
+                if (this.sound && volume > 0.05) { // Only play if volume is above threshold
+                    this.sound.play(soundKey, { volume: volume });
+                }
+            }
+        });
+
         // Enemy spawned
         networkManager.on('enemy:spawned', (data) => {
             if (data.enemy.type === 'wolf') {
@@ -2691,7 +2851,9 @@ class GameScene extends Phaser.Scene {
 
         // Minion spawned by another player
         networkManager.on('minion:spawned', (data) => {
-            console.log(`🔮 Received minion spawn from server: ${data.minionId} for owner ${data.ownerId}`);
+            console.log(`🔮 CLIENT RECEIVED minion:spawned from server:`, data);
+            console.log(`   - minionId: ${data.minionId}, ownerId: ${data.ownerId}, myId: ${networkManager.currentPlayer?.id}`);
+            console.log(`   - Is my minion: ${data.ownerId === networkManager.currentPlayer?.id}`);
 
             // Don't create if we already have this minion
             if (this.minions[data.minionId]) {
@@ -2705,9 +2867,15 @@ class GameScene extends Phaser.Scene {
             const y = data.position.y * tileSize + tileSize / 2;
 
             console.log(`🔮 Converting grid position (${data.position.x}, ${data.position.y}) to pixels (${x}, ${y})`);
+            console.log(`🔮 About to call spawnMinion() for remote minion`);
 
             // Spawn the minion
             const minion = this.spawnMinion(x, y, data.ownerId, data.isPermanent, data.minionId);
+
+            console.log(`🔮 spawnMinion() returned:`, minion);
+            console.log(`   - minion exists: ${!!minion}`);
+            console.log(`   - has sprite: ${!!minion?.sprite}`);
+            console.log(`   - sprite visible: ${minion?.sprite?.visible}`);
 
             // Apply initial animation state and flip if provided
             if (minion && minion.sprite) {
@@ -3988,6 +4156,11 @@ class GameScene extends Phaser.Scene {
             this.skillSelector.initializePlayerMultipliers();
         }
 
+        // Clear all passive skills (bought with stars)
+        if (player.passiveSkills) {
+            player.passiveSkills.clearAll();
+        }
+
         // Teleport to respawn position (already in pixels)
         const respawnPos = playerData.respawnPosition || playerData.position;
         if (respawnPos) {
@@ -4637,6 +4810,407 @@ class GameScene extends Phaser.Scene {
         // PERFORMANCE: Removed frame time tracking and slow frame logging
     }
 
+    // Show player join/leave notification
+    showPlayerNotification(message, color) {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        const notificationText = this.add.text(
+            width / 2,
+            height / 2 - 200,
+            message,
+            {
+                font: 'bold 20px monospace',
+                fill: color,
+                stroke: '#000000',
+                strokeThickness: 4,
+                align: 'center'
+            }
+        );
+        notificationText.setOrigin(0.5);
+        notificationText.setDepth(1000);
+        notificationText.setScrollFactor(0);
+
+        this.tweens.add({
+            targets: notificationText,
+            y: notificationText.y - 40,
+            alpha: 0,
+            duration: 2000,
+            ease: 'Power2',
+            onComplete: () => notificationText.destroy()
+        });
+    }
+
+    // Create atmospheric visual effects
+    createAtmosphericEffects() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Create particle texture if it doesn't exist
+        if (!this.textures.exists('particle')) {
+            const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+            graphics.fillStyle(0xffffff, 1);
+            graphics.fillCircle(8, 8, 8);
+            graphics.generateTexture('particle', 16, 16);
+            graphics.destroy();
+        }
+
+        // ==== FLOATING DUST PARTICLES ====
+        // Create large slow-moving dust particles in the air
+        const dustParticles = this.add.particles(0, 0, 'particle', {
+            x: { min: 0, max: width },
+            y: { min: -50, max: height + 50 },
+            scale: { start: 0.4, end: 0.15 },
+            alpha: { start: 0.2, end: 0.08 },
+            tint: [0xffffcc, 0xffeeaa, 0xffddbb],
+            speedY: { min: 5, max: 15 },
+            speedX: { min: -5, max: 5 },
+            lifespan: 8000,
+            frequency: 80,
+            blendMode: 'ADD',
+            angle: { min: 0, max: 360 },
+            rotate: { min: -2, max: 2 },
+            quantity: 3
+        });
+        dustParticles.setScrollFactor(0.3); // Parallax effect
+        dustParticles.setDepth(9990);
+
+        // ==== AMBIENT FIREFLIES / LIGHT ORBS ====
+        // Create glowing particles that float around
+        const fireflies = this.add.particles(0, 0, 'particle', {
+            x: { min: 0, max: width },
+            y: { min: 0, max: height },
+            scale: { start: 0.8, end: 1.2, ease: 'Sine.easeInOut' },
+            alpha: { start: 0.8, end: 0.4, ease: 'Sine.easeInOut', yoyo: true },
+            tint: [0xffff66, 0xffdd44, 0xffaa22],
+            speed: 30,
+            lifespan: 5000,
+            frequency: 200,
+            blendMode: 'ADD',
+            angle: { min: 0, max: 360 },
+            quantity: 3
+        });
+        fireflies.setScrollFactor(0.5); // Parallax
+        fireflies.setDepth(9989);
+
+        // ==== EMBER PARTICLES ====
+        // Rising warm embers
+        const embers = this.add.particles(0, 0, 'particle', {
+            x: { min: 0, max: width },
+            y: height + 20,
+            scale: { start: 0.5, end: 0.2 },
+            alpha: { start: 0.7, end: 0 },
+            tint: [0xff6633, 0xff8844, 0xffaa55],
+            speedY: { min: -40, max: -80 },
+            speedX: { min: -10, max: 10 },
+            lifespan: 6000,
+            frequency: 150,
+            blendMode: 'ADD',
+            angle: { min: 0, max: 360 },
+            quantity: 2
+        });
+        embers.setScrollFactor(0.4);
+        embers.setDepth(9991);
+
+        // ==== SPARKLES ====
+        // Small twinkling particles
+        const sparkles = this.add.particles(0, 0, 'particle', {
+            x: { min: 0, max: width },
+            y: { min: 0, max: height },
+            scale: { start: 0.3, end: 0.6, ease: 'Sine.easeInOut' },
+            alpha: { start: 0.9, end: 0, ease: 'Cubic.easeOut' },
+            tint: [0xffffff, 0xffffee, 0xffffcc],
+            speed: 0,
+            lifespan: 1500,
+            frequency: 100,
+            blendMode: 'ADD',
+            angle: { min: 0, max: 360 },
+            quantity: 2
+        });
+        sparkles.setScrollFactor(0.6);
+        sparkles.setDepth(9992);
+
+        // ==== ANIMATED BUTTERFLIES ====
+        // Create butterfly animations if they don't exist
+        const butterflyTypes = ['blue', 'grey', 'pink', 'red', 'white', 'yellow'];
+        butterflyTypes.forEach(color => {
+            const key = `butterfly_${color}`;
+            if (!this.anims.exists(`${key}_fly`)) {
+                this.anims.create({
+                    key: `${key}_fly`,
+                    frames: this.anims.generateFrameNumbers(key, { start: 0, end: 4 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+            }
+        });
+
+        // Spawn butterflies in groups at random world positions
+        this.butterflies = [];
+        const numGroups = 150; // Number of butterfly groups (increased for more visibility)
+        const butterfliesPerGroup = Phaser.Math.Between(3, 8); // 3-8 butterflies per group
+        const worldSize = this.gameData.world.size * GameConfig.GAME.TILE_SIZE;
+
+        for (let g = 0; g < numGroups; g++) {
+            // Pick a random group center position
+            const groupCenterX = Phaser.Math.Between(300, worldSize - 300);
+            const groupCenterY = Phaser.Math.Between(300, worldSize - 300);
+            const groupSize = Phaser.Math.Between(3, 8); // Vary group size
+
+            for (let i = 0; i < groupSize; i++) {
+                const randomType = Phaser.Math.RND.pick(butterflyTypes);
+
+                // Spawn within 100 pixels of group center
+                const butterfly = this.add.sprite(
+                    groupCenterX + Phaser.Math.Between(-100, 100),
+                    groupCenterY + Phaser.Math.Between(-100, 100),
+                    `butterfly_${randomType}`
+                );
+
+                butterfly.setScale(1.2); // Smaller size
+                butterfly.setDepth(50); // Above ground, below players/enemies
+                butterfly.setAlpha(0.9); // Slightly transparent
+
+                // Play animation
+                try {
+                    butterfly.play(`butterfly_${randomType}_fly`);
+                } catch (e) {
+                    console.warn('Failed to play butterfly animation:', e);
+                }
+
+                // Store initial position for movement bounds
+                const homeX = butterfly.x;
+                const homeY = butterfly.y;
+                const roamRadius = 200; // How far butterflies can wander
+
+                // Continuous random movement pattern
+                const moveButterfly = () => {
+                    this.tweens.add({
+                        targets: butterfly,
+                        x: homeX + Phaser.Math.Between(-roamRadius, roamRadius),
+                        y: homeY + Phaser.Math.Between(-roamRadius, roamRadius),
+                        duration: Phaser.Math.Between(2000, 5000),
+                        ease: 'Sine.easeInOut',
+                        onComplete: moveButterfly
+                    });
+                };
+
+                // Start movement after random delay
+                this.time.delayedCall(Phaser.Math.Between(0, 3000), moveButterfly);
+
+                // Random flip for variety
+                this.tweens.add({
+                    targets: butterfly,
+                    scaleX: { from: 1.2, to: -1.2 },
+                    duration: Phaser.Math.Between(1500, 3000),
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Linear'
+                });
+
+                // Slight vertical bobbing
+                this.tweens.add({
+                    targets: butterfly,
+                    y: butterfly.y + Phaser.Math.Between(-15, 15),
+                    duration: Phaser.Math.Between(800, 1500),
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+
+                this.butterflies.push(butterfly);
+            }
+        }
+
+        console.log(`🦋 Spawned ${this.butterflies.length} butterflies in ${numGroups} groups across the world`);
+
+        // ==== BIRDS ====
+        // Check if bird texture is loaded
+        if (!this.textures.exists('bird')) {
+            console.error('❌ Bird texture not loaded! Skipping bird spawning.');
+        } else {
+            console.log('✅ Bird texture loaded successfully');
+
+            // Create bird animation (flying = frames 8-15)
+            if (!this.anims.exists('bird_fly')) {
+                this.anims.create({
+                    key: 'bird_fly',
+                    frames: this.anims.generateFrameNumbers('bird', { start: 8, end: 15 }),
+                    frameRate: 12,
+                    repeat: -1
+                });
+                console.log('✅ Created bird_fly animation');
+            }
+
+            // Spawn birds that fly across the world
+            this.birds = [];
+            const numBirds = 500; // More birds for constant visibility
+
+            console.log(`Starting to create ${numBirds} birds. World size: ${worldSize}`);
+
+            // Bird color variations
+            const birdColors = [
+                0xffffff, // White
+                0xff6633, // Red/orange
+                0x3366ff, // Blue
+                0x8B4513, // Brown
+                0x808080, // Gray
+                0xffcc00, // Yellow
+                0x000000, // Black
+                0xff99cc  // Pink
+            ];
+
+            for (let i = 0; i < numBirds; i++) {
+                // Spread birds across entire world
+                const startX = (i / numBirds) * worldSize;
+                const startY = Phaser.Math.Between(100, 500);
+
+                const bird = this.add.sprite(startX, startY, 'bird', 8); // Use frame 8 (first flying frame)
+
+                bird.setScale(3); // Good visible size
+                bird.setDepth(10000); // Above players (players are usually < 1000)
+                bird.setAlpha(0.9); // Slightly transparent so not too distracting
+                bird.setScrollFactor(1); // Move with world
+
+                // Apply random color tint
+                const randomColor = Phaser.Math.RND.pick(birdColors);
+                bird.setTint(randomColor);
+
+                // Play animation
+                try {
+                    bird.play('bird_fly');
+                    if (i === 0) {
+                        console.log('Bird animation started successfully');
+                    }
+                } catch (e) {
+                    console.error('Failed to play bird animation:', e);
+                }
+
+                // Birds fly continuously across the world
+                const goingRight = i % 2 === 0; // Alternate directions
+                bird.setFlipX(!goingRight);
+
+                const flyBird = () => {
+                    const direction = goingRight ? 1 : -1;
+                    const speed = 100; // Pixels per second
+                    const distance = worldSize + 200;
+                    const duration = (distance / speed) * 1000;
+
+                    this.tweens.add({
+                        targets: bird,
+                        x: goingRight ? worldSize + 100 : -100,
+                        y: bird.y + Phaser.Math.Between(-50, 50), // Slight vertical variation
+                        duration: duration,
+                        ease: 'Linear',
+                        onComplete: () => {
+                            // Reset to opposite side
+                            bird.x = goingRight ? -100 : worldSize + 100;
+                            bird.y = Phaser.Math.Between(100, 600);
+                            flyBird();
+                        }
+                    });
+                };
+
+                // Start flying immediately
+                flyBird();
+
+                // Slight vertical bobbing while flying
+                this.tweens.add({
+                    targets: bird,
+                    y: bird.y + Phaser.Math.Between(-20, 20),
+                    duration: Phaser.Math.Between(1000, 2000),
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+
+                this.birds.push(bird);
+            }
+
+            console.log(`🐦 Spawned ${numBirds} birds flying across the world`);
+        }
+
+        // ==== GOD RAYS / LIGHT SHAFTS ====
+        // Create animated light rays
+        this.godRays = [];
+        for (let i = 0; i < 3; i++) {
+            const ray = this.add.rectangle(
+                width * (0.2 + i * 0.3),
+                -100,
+                80,
+                height + 200,
+                0xffffdd,
+                0.04
+            );
+            ray.setOrigin(0.5, 0);
+            ray.setScrollFactor(0.2);
+            ray.setDepth(9988);
+            ray.setBlendMode(Phaser.BlendModes.ADD);
+            ray.setAngle(15 + i * 5);
+            this.godRays.push(ray);
+
+            // Animate the ray
+            this.tweens.add({
+                targets: ray,
+                alpha: { from: 0.04, to: 0.08 },
+                duration: 3000 + i * 500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        }
+
+        // ==== DEPTH FOG LAYERS ====
+        // Create multiple fog layers for depth
+        const fogLayers = [
+            { distance: 0.8, color: 0x9999ff, alpha: 0.03 },
+            { distance: 0.6, color: 0xaaaaee, alpha: 0.04 },
+            { distance: 0.4, color: 0xccccff, alpha: 0.05 }
+        ];
+
+        fogLayers.forEach((layer, index) => {
+            const fog = this.add.rectangle(0, 0, width * 2, height * 2, layer.color, layer.alpha);
+            fog.setOrigin(0, 0);
+            fog.setScrollFactor(layer.distance);
+            fog.setDepth(9987 - index);
+            fog.setBlendMode(Phaser.BlendModes.ADD);
+        });
+
+        // ==== COLOR GRADING ====
+        // Warm sunset-like tones
+        const warmGrade = this.add.rectangle(0, 0, width * 2, height * 2, 0xffaa44, 0.08);
+        warmGrade.setOrigin(0, 0);
+        warmGrade.setScrollFactor(0);
+        warmGrade.setDepth(9994);
+        warmGrade.setBlendMode(Phaser.BlendModes.OVERLAY);
+
+        // Contrast enhancement
+        const contrast = this.add.rectangle(0, 0, width * 2, height * 2, 0x000000, 0.12);
+        contrast.setOrigin(0, 0);
+        contrast.setScrollFactor(0);
+        contrast.setDepth(9993);
+        contrast.setBlendMode(Phaser.BlendModes.MULTIPLY);
+
+        // ==== VIGNETTE ====
+        const vignette = this.add.graphics();
+        vignette.setScrollFactor(0);
+        vignette.setDepth(9998);
+
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const maxRadius = Math.max(width, height) * 0.7;
+
+        // Create radial gradient effect
+        for (let i = 0; i < 5; i++) {
+            const radius = maxRadius + (i * maxRadius * 0.15);
+            const alpha = 0.05 + (i * 0.03);
+            vignette.lineStyle(maxRadius * 0.1, 0x000000, alpha);
+            vignette.strokeCircle(centerX, centerY, radius);
+        }
+
+        console.log('✨ Advanced atmospheric effects added (particles, fog, god rays, color grading)');
+    }
+
     // Play auto-attack visual effect for remote players
     playAutoAttackVisual(data) {
         // Find the player who cast it
@@ -5101,6 +5675,13 @@ class GameScene extends Phaser.Scene {
 
                 // Spawn starting minions
                 const networkManager = this.game.registry.get('networkManager');
+                console.log(`🔍 Minion spawn check:`, {
+                    hasNetworkManager: !!networkManager,
+                    startingMinions: boneCommander.stats.startingMinions,
+                    playerId: player.data?.id,
+                    playerDataId: player.data?.id
+                });
+
                 if (networkManager && boneCommander.stats.startingMinions) {
                     const startingCount = boneCommander.stats.startingMinions;
                     console.log(`👥 Spawning ${startingCount} starting minions for player ${player.data.id}`);
@@ -5158,14 +5739,30 @@ class GameScene extends Phaser.Scene {
         // For Malachar, check ability unlocks
         if (characterId && characterId.toLowerCase() === 'malachar' && typeof window.getAvailableChoices === 'function') {
             console.log(`🔍 ✅ Calling getAvailableChoices for level ${level}`);
-            const abilities = window.getAvailableChoices(level, []);
+
+            // Track unlocked abilities to avoid double-unlocking
+            if (!this.unlockedAbilityIds) {
+                this.unlockedAbilityIds = [];
+            }
+
+            const abilities = window.getAvailableChoices(level, this.unlockedAbilityIds);
 
             console.log(`🔍 getAvailableChoices returned:`, abilities);
+            console.log(`🔍 Already unlocked abilities:`, this.unlockedAbilityIds);
 
             if (abilities && abilities.length > 0) {
                 const ability = abilities[0]; // Only one ability per level
 
                 console.log(`🎯 Unlocking ability:`, ability);
+
+                // Check if already unlocked (prevent duplicates)
+                if (this.unlockedAbilityIds.includes(ability.id)) {
+                    console.log(`⚠️ Ability ${ability.id} already unlocked, skipping`);
+                    return;
+                }
+
+                // Track unlocked ability IDs
+                this.unlockedAbilityIds.push(ability.id);
 
                 // Track unlocked abilities internally
                 if (!this.unlockedAbilities) {
@@ -5180,7 +5777,21 @@ class GameScene extends Phaser.Scene {
 
                 // Register ability directly on player object so it shows in ability bar
                 if (ability.abilityKey) {
-                    console.log(`📝 Registering ability ${ability.name} with key ${ability.abilityKey}`);
+                    console.log(`📝 Registering ability ${ability.name} with key ${ability.abilityKey} at level ${level}`);
+
+                    // SAFETY CHECK: Prevent wrong abilities from being registered
+                    if (level === 1 && ability.abilityKey !== 'e') {
+                        console.error(`❌ BLOCKED: Attempted to register ${ability.abilityKey} at level 1 (only E should unlock)`);
+                        return;
+                    }
+                    if (level === 5 && ability.abilityKey !== 'q') {
+                        console.error(`❌ BLOCKED: Attempted to register ${ability.abilityKey} at level 5 (only Q should unlock)`);
+                        return;
+                    }
+                    if (level === 10 && ability.abilityKey !== 'r') {
+                        console.error(`❌ BLOCKED: Attempted to register ${ability.abilityKey} at level 10 (only R should unlock)`);
+                        return;
+                    }
 
                     // Initialize abilities object if needed
                     if (!player.abilities) {

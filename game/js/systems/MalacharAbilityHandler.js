@@ -58,21 +58,8 @@ class MalacharAbilityHandler {
         const ability = this.abilities.q;
         console.log(`✨ Using ${ability.name}`);
 
-        // Execute based on build
-        switch(this.buildData.id) {
-            case 'bone_commander':
-                this.useUnifiedFront(ability);
-                break;
-            case 'death_caller':
-                this.useHarvestBond(ability);
-                break;
-            case 'warlord':
-                this.useDominate(ability);
-                break;
-            case 'reaper':
-                this.useDeathFrenzy(ability);
-                break;
-        }
+        // Only Bone Commander build exists
+        this.useUnifiedFront(ability);
 
         return true;
     }
@@ -82,21 +69,8 @@ class MalacharAbilityHandler {
         const ability = this.abilities.e;
         console.log(`✨ Using ${ability.name}`);
 
-        // Execute based on build
-        switch(this.buildData.id) {
-            case 'bone_commander':
-                this.usePactOfBones(ability);
-                break;
-            case 'death_caller':
-                this.useSacrificialSurge(ability);
-                break;
-            case 'warlord':
-                this.useBloodPact(ability);
-                break;
-            case 'reaper':
-                this.useSoulFeast(ability);
-                break;
-        }
+        // Only Bone Commander build exists
+        this.usePactOfBones(ability);
 
         return true;
     }
@@ -106,21 +80,8 @@ class MalacharAbilityHandler {
         const ability = this.abilities.r;
         console.log(`✨ Using ${ability.name}`);
 
-        // Execute based on build
-        switch(this.buildData.id) {
-            case 'bone_commander':
-                this.useLegionsCall(ability);
-                break;
-            case 'death_caller':
-                this.useDeathsBlessing(ability);
-                break;
-            case 'warlord':
-                this.useDeathDefiance(ability);
-                break;
-            case 'reaper':
-                this.useHarvestGod(ability);
-                break;
-        }
+        // Only Bone Commander build exists
+        this.useLegionsCall(ability);
 
         return true;
     }
@@ -396,211 +357,6 @@ class MalacharAbilityHandler {
         console.log(`✅ Legion's Call: Revived ${revivedCount} minions, spawned ${allies.length * ability.effect.spawnPerAlly} temps, buffed ${myMinions.length} minions`);
     }
 
-    // ===================================================================
-    // DEATH CALLER ABILITIES
-    // ===================================================================
-
-    useHarvestBond(ability) {
-        // Visual: Dark red aura
-        this.createAura(this.player.sprite, 0xdc143c, ability.duration);
-
-        // Apply buff
-        this.applyPlayerBuff('harvest_bond', ability.effect, ability.duration);
-
-        console.log(`✅ Harvest Bond activated for ${ability.duration / 1000}s`);
-    }
-
-    useSacrificialSurge(ability) {
-        const temps = Object.values(this.scene.minions || {}).filter(m =>
-            m.ownerId === this.player.data.id && m.isAlive && !m.isPermanent
-        );
-
-        const allyMgr = this.scene.allyManager;
-
-        temps.forEach(minion => {
-            // Explode visual
-            this.createExplosion(minion.sprite.x, minion.sprite.y, 0xff0000, ability.effect.explosionRadius * 32);
-
-            // Damage enemies
-            const enemies = this.getEnemiesInRadius(minion.sprite.x, minion.sprite.y, ability.effect.explosionRadius * 32);
-            enemies.forEach(enemy => {
-                if (enemy.data && enemy.data.id) {
-                    const explosionPos = {
-                        x: Math.floor(minion.sprite.x / 32),
-                        y: Math.floor(minion.sprite.y / 32)
-                    };
-                    networkManager.hitEnemy(
-                        enemy.data.id,
-                        ability.effect.explosionDamage,
-                        this.player.data.id,
-                        explosionPos
-                    );
-                }
-            });
-
-            // Find allies in explosion
-            const alliesInBlast = allyMgr.getAlliesInRange(minion.sprite.x, minion.sprite.y, ability.effect.explosionRadius);
-            alliesInBlast.forEach(ally => {
-                // TODO: Apply attack speed buff and heal to ally
-                console.log(`💥 Buffed ally: ${ally.data.username}`);
-            });
-
-            // Remove minion
-            minion.despawn();
-        });
-
-        console.log(`✅ Sacrificial Surge: Exploded ${temps.length} minions`);
-    }
-
-    useDeathsBlessing(ability) {
-        // Visual: Massive dark aura
-        this.createAura(this.player.sprite, 0x8b008b, ability.duration, 200);
-
-        // Apply buff
-        this.applyPlayerBuff('deaths_blessing', ability.effect, ability.duration);
-
-        // Spawn elites at each ally
-        const allyMgr = this.scene.allyManager;
-        const allies = allyMgr.getAllAllies();
-
-        allies.forEach(ally => {
-            for (let i = 0; i < ability.effect.spawnElitesPerAlly; i++) {
-                this.scene.spawnTempMinion(
-                    ally.sprite.x + (Math.random() - 0.5) * 100,
-                    ally.sprite.y + (Math.random() - 0.5) * 100,
-                    ability.effect.eliteStats,
-                    ability.effect.eliteDuration
-                );
-            }
-        });
-
-        console.log(`✅ Death's Blessing: Spawned ${allies.length * ability.effect.spawnElitesPerAlly} elites`);
-    }
-
-    // ===================================================================
-    // WARLORD ABILITIES
-    // ===================================================================
-
-    useDominate(ability) {
-        // Visual: Red aura
-        this.createAura(this.player.sprite, 0xff0000, ability.duration);
-
-        // Apply damage buff
-        this.applyPlayerBuff('dominate_damage', ability.effect.playerDamageBonus, ability.duration);
-
-        // Make minions taunt
-        const myMinions = Object.values(this.scene.minions || {}).filter(m =>
-            m.ownerId === this.player.data.id && m.isAlive
-        );
-
-        myMinions.forEach(minion => {
-            const enemies = this.getEnemiesInRadius(minion.sprite.x, minion.sprite.y, ability.effect.tauntRadius * 32);
-            enemies.forEach(enemy => {
-                enemy.target = minion; // Taunt enemy to minion
-            });
-        });
-
-        console.log(`✅ Dominate: +70% damage, minions taunting`);
-    }
-
-    useBloodPact(ability) {
-        // Sacrifice minion HP
-        const myMinions = Object.values(this.scene.minions || {}).filter(m =>
-            m.ownerId === this.player.data.id && m.isAlive
-        );
-
-        myMinions.forEach(minion => {
-            const sacrifice = minion.maxHealth * ability.effect.minionHPSacrifice;
-            minion.health = Math.max(1, minion.health - sacrifice);
-            if (minion.ui) minion.ui.updateHealth(minion.health, minion.maxHealth);
-        });
-
-        // Visual: Blood red aura
-        this.createAura(this.player.sprite, 0x8b0000, ability.duration);
-
-        // Apply buffs
-        this.applyPlayerBuff('blood_pact', ability.effect, ability.duration);
-
-        console.log(`✅ Blood Pact: +50% damage, 40% lifesteal, +20% speed`);
-    }
-
-    useDeathDefiance(ability) {
-        // Visual: Golden shield
-        this.createShieldVisual(this.player.sprite, 0xffd700, ability.duration);
-
-        // Apply invulnerability
-        this.applyPlayerBuff('death_defiance', ability.effect, ability.duration);
-
-        console.log(`✅ Death Defiance: Invulnerable for 5s`);
-    }
-
-    // ===================================================================
-    // REAPER ABILITIES
-    // ===================================================================
-
-    useDeathFrenzy(ability) {
-        // Visual: Dark purple aura
-        this.createAura(this.player.sprite, 0x4b0082, ability.duration);
-
-        // Apply buff
-        this.applyPlayerBuff('death_frenzy', ability.effect, ability.duration);
-
-        console.log(`✅ Death Frenzy: 60% spawn chance, +50% temp damage`);
-    }
-
-    useSoulFeast(ability) {
-        const temps = Object.values(this.scene.minions || {}).filter(m =>
-            m.ownerId === this.player.data.id && m.isAlive && !m.isPermanent
-        );
-
-        const tempCount = temps.length;
-
-        temps.forEach(minion => {
-            // Explode visual
-            this.createExplosion(minion.sprite.x, minion.sprite.y, 0x800080, 60);
-
-            // Damage enemies
-            const enemies = this.getEnemiesInRadius(minion.sprite.x, minion.sprite.y, 60);
-            enemies.forEach(enemy => {
-                if (enemy.data && enemy.data.id) {
-                    const explosionPos = {
-                        x: Math.floor(minion.sprite.x / 32),
-                        y: Math.floor(minion.sprite.y / 32)
-                    };
-                    networkManager.hitEnemy(
-                        enemy.data.id,
-                        ability.effect.explosionDamagePerTemp,
-                        this.player.data.id,
-                        explosionPos
-                    );
-                }
-            });
-
-            // Remove minion
-            minion.despawn();
-        });
-
-        // Heal player
-        const heal = tempCount * ability.effect.healPerTemp;
-        this.player.health = Math.min(this.player.maxHealth, this.player.health + heal);
-        if (this.player.ui) this.player.ui.updateHealth(this.player.health, this.player.maxHealth);
-
-        // Apply stacking damage buff
-        const totalDamageBonus = tempCount * ability.effect.damagePerTemp;
-        this.applyPlayerBuff('soul_feast_stacks', totalDamageBonus, ability.effect.damageStackDuration);
-
-        console.log(`✅ Soul Feast: Consumed ${tempCount} temps, +${(totalDamageBonus * 100).toFixed(0)}% damage, healed ${heal} HP`);
-    }
-
-    useHarvestGod(ability) {
-        // Visual: Massive dark explosion
-        this.createExplosion(this.player.sprite.x, this.player.sprite.y, 0x4b0082, 400);
-
-        // Apply buff
-        this.applyPlayerBuff('harvest_god', ability.effect, ability.duration);
-
-        console.log(`✅ Harvest God: Every kill spawns 3 temps, +100% damage`);
-    }
 
     // ===================================================================
     // VISUAL EFFECTS

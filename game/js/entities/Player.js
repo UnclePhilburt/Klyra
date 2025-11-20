@@ -193,8 +193,8 @@ class Player {
 
             // If enemy is within attack range of click position
             if (distSquared < attackRange * attackRange) {
-                // Calculate damage based on player stats
-                const baseDamage = this.stats?.damage || 10;
+                // Calculate damage based on player stats (strength)
+                const baseDamage = this.stats?.strength || 10;
                 networkManager.hitEnemy(enemy.data.id, baseDamage, this.data.id, playerPos);
             }
         });
@@ -591,12 +591,19 @@ class Player {
     }
 
     takeDamage(amount) {
+        // Apply defense reduction using diminishing returns formula
+        // Formula: damage * (100 / (100 + defense))
+        // This matches the server-side calculation
+        const defense = this.stats?.defense || 0;
+        const damageMultiplier = 100 / (100 + defense);
+        let reducedAmount = Math.max(1, Math.floor(amount * damageMultiplier));
+
         // Shield absorbs damage first
         if (this.shield > 0) {
-            if (this.shield >= amount) {
+            if (this.shield >= reducedAmount) {
                 // Shield absorbs all damage
-                this.shield -= amount;
-                console.log(`🛡️ Shield absorbed ${amount} damage (${this.shield} shield remaining)`);
+                this.shield -= reducedAmount;
+                console.log(`🛡️ Shield absorbed ${reducedAmount} damage (${this.shield} shield remaining)`);
 
                 // Update UI to show shield decrease (PlayerUI for other players)
                 if (this.ui && this.ui.updateHealthBar) {
@@ -620,15 +627,20 @@ class Player {
                 return; // No health damage taken
             } else {
                 // Shield absorbs partial damage, overflow goes to health
-                const overflow = amount - this.shield;
+                const overflow = reducedAmount - this.shield;
                 console.log(`🛡️ Shield absorbed ${this.shield} damage, ${overflow} overflow to health`);
                 this.shield = 0;
-                amount = overflow;
+                reducedAmount = overflow;
             }
         }
 
+        // Log defense reduction (only for significant reductions)
+        if (defense > 0 && amount !== reducedAmount) {
+            console.log(`🛡️ Defense reduced ${amount} damage to ${reducedAmount} (defense: ${defense})`);
+        }
+
         // Apply remaining damage to health
-        this.health -= amount;
+        this.health -= reducedAmount;
         if (this.health <= 0) {
             this.health = 0;
             this.die();

@@ -28,7 +28,7 @@ app.use(express.json());
 // Serve static game files
 app.use(express.static('game'));
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 // Family-safe random name generator for guests
 // Cute random username components (internet-style fun names)
@@ -160,6 +160,7 @@ class Player {
         this.totalFloors = 0;
         this.gamesCompleted = 0;
         this.totalGold = 0;
+        this.gold = 0; // Current session gold (for purchasing)
         this.legendaryItems = 0;
         this.rareItems = 0;
         this.totalItems = 0;
@@ -248,18 +249,12 @@ class Player {
 
     getClassStats(characterClass) {
         const classStats = {
-            warrior: { strength: 15, defense: 12, speed: 8, health: 120 },
-            mage: { strength: 8, defense: 6, speed: 10, health: 80 },
-            rogue: { strength: 10, defense: 8, speed: 15, health: 90 },
-            archer: { strength: 12, defense: 8, speed: 12, health: 100 },
-            paladin: { strength: 13, defense: 15, speed: 7, health: 130 },
-            necromancer: { strength: 9, defense: 7, speed: 9, health: 70 },  // Malachar is the necromancer
-            malachar: { strength: 9, defense: 7, speed: 9, health: 70 },     // Same as necromancer
-            aldric: { strength: 14, defense: 18, speed: 8, health: 150 },
-            kelise: { strength: 12, defense: 10, speed: 12, health: 100 }
+            malachar: { strength: 6, defense: 6, speed: 9, health: 100 },    // Summoner: weak attacks, relies on minions
+            aldric: { strength: 11, defense: 30, speed: 8, health: 180 },    // Tank: moderate damage, high survivability
+            kelise: { strength: 16, defense: 14, speed: 12, health: 120 }    // Rogue: high damage, medium survivability
         };
 
-        const stats = classStats[characterClass] || classStats.warrior;
+        const stats = classStats[characterClass] || classStats.malachar;
         this.maxHealth = stats.health;
         this.health = stats.health;
         return {
@@ -1000,6 +995,30 @@ class AIBot extends Player {
                     expValue: orbValue
                 });
 
+                // Always drop a star (currency)
+                const starId = uuidv4();
+                const starTileX = this.target.position.x;
+                const starTileY = this.target.position.y;
+
+                lobby.gameState.items.set(starId, {
+                    id: starId,
+                    type: 'star',
+                    color: 0xffff00,
+                    position: {
+                        x: starTileX,
+                        y: starTileY
+                    },
+                    spawnedAt: Date.now()
+                });
+
+                lobby.broadcast('item:spawned', {
+                    itemId: starId,
+                    type: 'star',
+                    color: 0xffff00,
+                    x: starTileX,
+                    y: starTileY
+                });
+
                 // Broadcast enemy death (client will spawn orb visual)
                 lobby.broadcast('enemy:killed', {
                     enemyId: this.target.id,
@@ -1714,14 +1733,15 @@ class Lobby {
                                 position: nearestEnemy.position
                             });
 
-                            // Grant XP to owner
+                            // Grant XP to owner (only if real player, not bot)
                             const owner = this.players.get(minion.ownerId) || this.bots.get(minion.ownerId);
-                            if (owner) {
+                            if (owner && owner.addXP) {
                                 const xpGain = nearestEnemy.xpReward || 10;
                                 owner.addXP(xpGain, this);
                             }
 
-                            this.gameState.enemies.delete(nearestEnemy.id);
+                            // Remove enemy from array
+                            this.gameState.enemies = this.gameState.enemies.filter(e => e.id !== nearestEnemy.id);
                         }
 
                         minion.lastAttackTime = now;
@@ -1826,35 +1846,38 @@ class Lobby {
         };
     }
 
-    // Create wolf with variant stats - BALANCED: Quality over quantity
+    // Create Sword Demon (wolf) with variant stats - Fast melee strikers
     createWolfVariant(variant, baseId, position, healthMultiplier = 1.0) {
         const variants = {
             small: {
                 scale: 0.7,
-                health: 20,  // Reduced from 30
-                maxHealth: 20,
-                damage: 1,  // Reduced from 2
-                speed: 800,  // Speed = pixels/sec × 10 (80 px/s)
+                health: 25,
+                maxHealth: 25,
+                strength: 8,      // Damage dealt
+                defense: 2,       // Damage reduction
+                speed: 1200,      // Fast strikers (120 px/s)
                 sightRange: 12,
                 glowColor: 0xff6666, // Light red
                 glowSize: 6
             },
             normal: {
                 scale: 1.0,
-                health: 35,  // Reduced from 50
-                maxHealth: 35,
-                damage: 2,  // Reduced from 3
-                speed: 1000,  // Speed = pixels/sec × 10 (100 px/s)
+                health: 45,
+                maxHealth: 45,
+                strength: 12,
+                defense: 4,
+                speed: 1100,      // Balanced speed (110 px/s)
                 sightRange: 15,
                 glowColor: 0xff0000, // Red
                 glowSize: 8
             },
             boss: {
                 scale: 1.5,
-                health: 70,  // Reduced from 100
-                maxHealth: 70,
-                damage: 4,  // Reduced from 6
-                speed: 1200,  // Speed = pixels/sec × 10 (120 px/s)
+                health: 90,
+                maxHealth: 90,
+                strength: 18,
+                defense: 8,
+                speed: 1000,      // Still fast for boss (100 px/s)
                 sightRange: 20,
                 glowColor: 0xff0066, // Dark pink/red
                 glowSize: 12
@@ -1874,7 +1897,8 @@ class Lobby {
             position: position,
             health: scaledHealth,
             maxHealth: scaledMaxHealth,
-            damage: stats.damage,
+            damage: stats.strength,
+            defense: stats.defense,
             speed: stats.speed,
             scale: stats.scale,
             glowColor: stats.glowColor,
@@ -1885,31 +1909,34 @@ class Lobby {
         };
     }
 
-    // Create minotaur with variant stats - BALANCED: Quality over quantity
+    // Create Minotaur with variant stats - Tanky bruisers
     createMinotaurVariant(variant, baseId, position, healthMultiplier = 1.0) {
         const variants = {
             small: {
                 scale: 0.8,
-                health: 40,  // Reduced from 60
-                maxHealth: 40,
-                damage: 3,  // Reduced from 5
-                speed: 700,  // Speed = pixels/sec × 10 (70 px/s)
+                health: 60,
+                maxHealth: 60,
+                strength: 10,     // Moderate damage
+                defense: 8,       // Tanky
+                speed: 700,       // Slow (70 px/s)
                 sightRange: 10
             },
             normal: {
                 scale: 1.0,
-                health: 70,  // Reduced from 100
-                maxHealth: 70,
-                damage: 5,  // Reduced from 7
-                speed: 850,  // Speed = pixels/sec × 10 (85 px/s)
+                health: 100,
+                maxHealth: 100,
+                strength: 15,
+                defense: 12,
+                speed: 650,       // Slower (65 px/s)
                 sightRange: 12
             },
             boss: {
                 scale: 1.3,
-                health: 120,  // Reduced from 175
-                maxHealth: 120,
-                damage: 7,  // Reduced from 11
-                speed: 1000,  // Speed = pixels/sec × 10 (100 px/s)
+                health: 180,
+                maxHealth: 180,
+                strength: 22,
+                defense: 20,
+                speed: 600,       // Very slow but tanky (60 px/s)
                 sightRange: 15
             }
         };
@@ -1927,7 +1954,8 @@ class Lobby {
             position: position,
             health: scaledHealth,
             maxHealth: scaledMaxHealth,
-            damage: stats.damage,
+            damage: stats.strength,
+            defense: stats.defense,
             speed: stats.speed,
             scale: stats.scale,
             isAlive: true,
@@ -1936,31 +1964,34 @@ class Lobby {
         };
     }
 
-    // Create mushroom with variant stats - BALANCED: Medium threat
+    // Create Mushroom with variant stats - Weak swarmers
     createMushroomVariant(variant, baseId, position, healthMultiplier = 1.0) {
         const variants = {
             small: {
                 scale: 0.8,
-                health: 15,  // Reduced from 20
+                health: 15,
                 maxHealth: 15,
-                damage: 1,  // Reduced from 2
-                speed: 600,  // Speed = pixels/sec × 10 (60 px/s)
+                strength: 4,      // Weak damage
+                defense: 0,       // No armor, fragile
+                speed: 800,       // Medium speed (80 px/s)
                 sightRange: 8
             },
             normal: {
                 scale: 1.0,
-                health: 25,  // Reduced from 35
-                maxHealth: 25,
-                damage: 2,  // Reduced from 4
-                speed: 750,  // Speed = pixels/sec × 10 (75 px/s)
+                health: 30,
+                maxHealth: 30,
+                strength: 7,
+                defense: 2,
+                speed: 750,       // Slightly slower (75 px/s)
                 sightRange: 10
             },
             boss: {
                 scale: 1.4,
-                health: 60,  // Reduced from 90
-                maxHealth: 60,
-                damage: 4,  // Reduced from 7
-                speed: 900,  // Speed = pixels/sec × 10 (90 px/s)
+                health: 70,
+                maxHealth: 70,
+                strength: 12,
+                defense: 5,
+                speed: 900,       // Faster boss (90 px/s)
                 sightRange: 14
             }
         };
@@ -1978,7 +2009,8 @@ class Lobby {
             position: position,
             health: scaledHealth,
             maxHealth: scaledMaxHealth,
-            damage: stats.damage,
+            damage: stats.strength,
+            defense: stats.defense,
             speed: stats.speed,
             scale: stats.scale,
             isAlive: true,
@@ -1990,12 +2022,13 @@ class Lobby {
     // Create Emberclaw - Flying ranged enemy (glass cannon)
     createEmberclaw(baseId, position, healthMultiplier = 1.0) {
         const stats = {
-            health: 20,      // Low health - glass cannon
-            maxHealth: 20,
-            damage: 15,      // High damage
-            speed: 700,      // Speed = pixels/sec × 10 (70 px/s)
-            sightRange: 12,  // Long sight range
-            attackRange: 8,  // Ranged attack distance (tiles)
+            health: 30,
+            maxHealth: 30,
+            strength: 20,     // High damage ranged
+            defense: 0,       // No armor, fragile
+            speed: 850,       // Fast flyer (85 px/s)
+            sightRange: 12,   // Long sight range
+            attackRange: 8,   // Ranged attack distance (tiles)
             attackCooldown: 2000  // 2 seconds between shots
         };
 
@@ -2009,7 +2042,8 @@ class Lobby {
             position: position,
             health: scaledHealth,
             maxHealth: scaledMaxHealth,
-            damage: stats.damage,
+            damage: stats.strength,
+            defense: stats.defense,
             speed: stats.speed,
             isAlive: true,
             sightRange: stats.sightRange,
@@ -2926,6 +2960,13 @@ class Lobby {
                             return;
                         }
 
+                        // Skip minions with spawn invulnerability (first 2 seconds after spawn)
+                        const spawnTime = minion.spawnTime || 0;
+                        const spawnInvulnerabilityDuration = 2000; // 2 seconds
+                        if (Date.now() - spawnTime < spawnInvulnerabilityDuration) {
+                            return; // Minion is invulnerable, skip targeting
+                        }
+
                         // Minion position is already in pixels
                         const dx = minion.position.x - enemy.position.x;
                         const dy = minion.position.y - enemy.position.y;
@@ -2961,6 +3002,13 @@ class Lobby {
                         if (Date.now() - minion.lastUpdate > 5000) {
                             this.gameState.minions.delete(minionId);
                             return;
+                        }
+
+                        // Skip minions with spawn invulnerability (first 2 seconds after spawn)
+                        const spawnTime = minion.spawnTime || 0;
+                        const spawnInvulnerabilityDuration = 2000; // 2 seconds
+                        if (Date.now() - spawnTime < spawnInvulnerabilityDuration) {
+                            return; // Minion is invulnerable, skip targeting
                         }
 
                         // Minion position is already in pixels
@@ -3279,6 +3327,31 @@ class Lobby {
 
                             // Reset all multipliers
                             damageTarget.initializeMultipliers();
+
+                            // Delete all minions owned by this player from the game state
+                            if (this.gameState && this.gameState.minions) {
+                                const minionsToDelete = [];
+                                this.gameState.minions.forEach((minion, minionId) => {
+                                    if (minion.ownerId === damageTarget.id) {
+                                        minionsToDelete.push(minionId);
+                                    }
+                                });
+
+                                minionsToDelete.forEach(minionId => {
+                                    console.log(`💀 Deleting minion ${minionId} (owner died)`);
+                                    this.gameState.minions.delete(minionId);
+
+                                    // Broadcast minion death to all clients
+                                    this.broadcast('minion:died', {
+                                        minionId: minionId,
+                                        isPermanent: true
+                                    });
+                                });
+
+                                if (minionsToDelete.length > 0) {
+                                    console.log(`💀 Deleted ${minionsToDelete.length} minions for ${damageTarget.username}`);
+                                }
+                            }
 
                             // Respawn at spawn point (center of world) in PIXEL coordinates
                             const TILE_SIZE = 32;
@@ -3773,19 +3846,25 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            const damage = data.damage || player.stats.strength;
+            let baseDamage = data.damage || player.stats.strength;
+
+            // Apply enemy defense reduction using diminishing returns formula
+            // Formula: damage * (100 / (100 + defense))
+            const defense = enemy.defense || 0;
+            const damageMultiplier = 100 / (100 + defense);
+            const finalDamage = Math.max(1, Math.floor(baseDamage * damageMultiplier));
 
             // Debug: Log minion attacks to troubleshoot damage issues
             if (data.attackerId && data.attackerId.includes('minion_')) {
-                console.log(`🔮 Minion attack: ${data.attackerId} dealt ${damage} damage to ${data.enemyId} (health: ${enemy.health} -> ${enemy.health - damage})`);
+                console.log(`🔮 Minion attack: ${data.attackerId} dealt ${baseDamage} damage (defense: ${defense}, reduced to: ${finalDamage}) to ${data.enemyId} (health: ${enemy.health} -> ${enemy.health - finalDamage})`);
             }
 
-            enemy.health -= damage;
+            enemy.health -= finalDamage;
             player.updateActivity();
 
             // Track damage dealt for stats
             if (player.damageDealt !== undefined) {
-                player.damageDealt += damage;
+                player.damageDealt += finalDamage;
             }
 
             // Apply effects (bleed, knockback, etc.)
@@ -3806,6 +3885,7 @@ io.on('connection', (socket) => {
                     const bleedInterval = setInterval(() => {
                         if (enemy.isAlive && enemy.bleedStacks > 0) {
                             const bleedDamage = bleedConfig.damagePerStack * enemy.bleedStacks;
+                            // Bleed damage bypasses defense (true damage) - makes it effective vs tanks
                             enemy.health -= bleedDamage;
 
                             // Broadcast bleed damage
@@ -3892,7 +3972,7 @@ io.on('connection', (socket) => {
             const attackerId = data.attackerId || player.id;
             if (!enemy.aggro) enemy.aggro = new Map();
             const currentAggro = enemy.aggro.get(attackerId) || 0;
-            enemy.aggro.set(attackerId, currentAggro + damage * 2); // Damage generates 2x aggro
+            enemy.aggro.set(attackerId, currentAggro + finalDamage * 2); // Damage generates 2x aggro
 
             // If it's a minion attack, track the minion's position
             if (data.attackerId && data.attackerId.includes('minion_') && data.attackerPosition) {
@@ -3943,6 +4023,7 @@ io.on('connection', (socket) => {
 
                 // Always drop a star (currency)
                 const starId = uuidv4();
+                // enemy.position is in PIXELS, convert to tiles
                 const TILE_SIZE = 32;
                 const starTileX = enemy.position.x / TILE_SIZE;
                 const starTileY = enemy.position.y / TILE_SIZE;
@@ -3972,7 +4053,7 @@ io.on('connection', (socket) => {
                     enemyId: data.enemyId,
                     health: enemy.health,
                     maxHealth: enemy.maxHealth,
-                    damage: damage,
+                    damage: finalDamage,
                     effects: data.effects
                 });
             }
@@ -4005,7 +4086,7 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            const damage = data.damage || 10;
+            let baseDamage = data.damage || 10;
 
             // Check if player is invincible (Bot Aldric has unlimited life)
             if (hitPlayer.isInvincible) {
@@ -4013,14 +4094,23 @@ io.on('connection', (socket) => {
                 return; // No damage, no death, just pure patrol duty
             }
 
-            console.log(`🔥 Player ${hitPlayer.username} hit by ${data.attackerId} for ${damage} damage (${hitPlayer.health} -> ${hitPlayer.health - damage})`);
+            // Apply defense reduction using diminishing returns formula
+            // Formula: damage * (100 / (100 + defense))
+            // Examples:
+            //   10 def = 9% reduction, 20 def = 17% reduction
+            //   50 def = 33% reduction, 100 def = 50% reduction
+            const defense = hitPlayer.stats?.defense || 0;
+            const damageMultiplier = 100 / (100 + defense);
+            const finalDamage = Math.max(1, Math.floor(baseDamage * damageMultiplier));
+
+            console.log(`🔥 Player ${hitPlayer.username} hit by ${data.attackerId} for ${baseDamage} damage (defense: ${defense}, reduced to: ${finalDamage}) (${hitPlayer.health} -> ${hitPlayer.health - finalDamage})`);
 
             // Apply damage
-            hitPlayer.health -= damage;
+            hitPlayer.health -= finalDamage;
 
             // Track damage taken
             if (hitPlayer.damageTaken !== undefined) {
-                hitPlayer.damageTaken += damage;
+                hitPlayer.damageTaken += finalDamage;
             }
 
             // Check if player died
@@ -4062,7 +4152,7 @@ io.on('connection', (socket) => {
                     playerId: hitPlayer.id,
                     health: hitPlayer.health,
                     maxHealth: hitPlayer.maxHealth,
-                    damage: damage,
+                    damage: finalDamage,
                     attackerId: data.attackerId
                 });
             }
@@ -4089,7 +4179,15 @@ io.on('connection', (socket) => {
             // Remove item from world
             lobby.gameState.items.delete(data.itemId);
 
-            console.log(`📦 ${player.username} picked up ${item.type}`);
+            // Handle star (currency) pickups
+            if (item.type === 'star') {
+                const goldValue = 1; // Each star is worth 1 gold
+                player.gold += goldValue;
+                player.totalGold += goldValue;
+                console.log(`💰 ${player.username} picked up star (+${goldValue} gold, total: ${player.gold})`);
+            } else {
+                console.log(`📦 ${player.username} picked up ${item.type}`);
+            }
 
             // Broadcast to all players that item was picked up
             lobby.broadcast('item:picked', {
@@ -4097,7 +4195,8 @@ io.on('connection', (socket) => {
                 playerId: player.id,
                 playerName: player.username,
                 itemType: item.type,
-                itemColor: item.color
+                itemColor: item.color,
+                gold: player.gold // Send updated gold amount
             });
         } catch (error) {
             console.error('Error in item:pickup:', error);
@@ -4309,6 +4408,28 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle skill sound events
+    socket.on('skill:sound', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player || !player.lobbyId) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby) return;
+
+            const { soundKey, position } = data;
+
+            // Broadcast to all other players in the lobby
+            socket.to(lobby.id).emit('skill:sound', {
+                playerId: player.id,
+                soundKey: soundKey,
+                position: position
+            });
+        } catch (error) {
+            console.error('Error in skill:sound:', error);
+        }
+    });
+
     // Track permanent minions
     socket.on('minion:permanent', (data) => {
         try {
@@ -4375,8 +4496,10 @@ io.on('connection', (socket) => {
                 const currentPermanentCount = player.permanentMinions.length;
                 const minionCap = player.minionCap || 5; // Default cap is 5
 
+                console.log(`🔮 Minion spawn check: ${player.username} has ${currentPermanentCount}/${minionCap} permanent minions, requesting: ${minionId}, already tracked: ${player.permanentMinions.includes(minionId)}`);
+
                 if (currentPermanentCount >= minionCap && !player.permanentMinions.includes(minionId)) {
-                    console.log(`⛔ ${player.username} hit permanent minion cap (${currentPermanentCount}/${minionCap})`);
+                    console.log(`⛔ ${player.username} hit permanent minion cap (${currentPermanentCount}/${minionCap}) - REJECTING spawn of ${minionId}`);
                     return; // Reject spawn
                 }
             }
@@ -4392,16 +4515,20 @@ io.on('connection', (socket) => {
                 position: position,
                 ownerId: player.id,
                 isPermanent: isPermanent || false,
-                lastUpdate: Date.now()
+                lastUpdate: Date.now(),
+                spawnTime: Date.now() // Track spawn time for invulnerability
             });
 
             // Broadcast spawn to ALL players in lobby (including requester)
-            lobby.broadcast('minion:spawned', {
+            const spawnData = {
                 minionId: minionId,
                 position: position,
                 ownerId: player.id,
                 isPermanent: isPermanent || false
-            });
+            };
+
+            console.log(`📡 SERVER: Broadcasting minion:spawned to ${lobby.players.size} players:`, spawnData);
+            lobby.broadcast('minion:spawned', spawnData);
 
             console.log(`🔮 ${player.username} spawned minion ${minionId} (permanent: ${isPermanent}) [${player.permanentMinions.length}/${player.minionCap || 5}]`);
         } catch (error) {
@@ -4635,41 +4762,37 @@ io.on('connection', (socket) => {
             const lobby = lobbies.get(player.lobbyId);
 
             if (lobby) {
-                // Allow reconnection window
-                player.disconnectedAt = Date.now();
-                player.isReconnecting = true;
-                disconnectedPlayers.set(player.username, player);
-
-                // Remove after timeout
-                setTimeout(() => {
-                    if (disconnectedPlayers.has(player.username)) {
-                        disconnectedPlayers.delete(player.username);
-                        lobby.removePlayer(socket.id);
-
-                        socket.to(lobby.id).emit('player:left', {
-                            playerId: player.id,
-                            username: player.username,
-                            playerCount: lobby.players.size
-                        });
-
-                        // Adjust bot count when player leaves
-                        lobby.spawnBotsToFillSlots();
-
-                        // Auto-close room if all players left
-                        if (lobby.status === 'finished') {
-                            lobbies.delete(lobby.id);
-                            console.log(`🗑️  Deleted empty room ${lobby.id.slice(0, 8)} from lobbies map`);
-                        }
+                // Immediate cleanup - no reconnection window
+                // Clean up player's minions
+                const minionsToRemove = [];
+                lobby.gameState.minions.forEach((minion, minionId) => {
+                    if (minion.ownerId === socket.id) {
+                        minionsToRemove.push(minionId);
                     }
-                }, RECONNECT_TIMEOUT);
+                });
 
-                // Immediate notification of disconnect
-                socket.to(lobby.id).emit('player:disconnected', {
+                minionsToRemove.forEach(minionId => {
+                    lobby.gameState.minions.delete(minionId);
+                    lobby.broadcast('minion:died', { minionId });
+                    console.log(`🧹 Cleaned up minion ${minionId} from disconnected player ${player.username}`);
+                });
+
+                lobby.removePlayer(socket.id);
+
+                socket.to(lobby.id).emit('player:left', {
                     playerId: player.id,
                     username: player.username,
-                    canReconnect: true,
-                    timeout: RECONNECT_TIMEOUT
+                    playerCount: lobby.players.size
                 });
+
+                // Adjust bot count when player leaves
+                lobby.spawnBotsToFillSlots();
+
+                // Auto-close room if all players left
+                if (lobby.status === 'finished') {
+                    lobbies.delete(lobby.id);
+                    console.log(`🗑️  Deleted empty room ${lobby.id.slice(0, 8)} from lobbies map`);
+                }
             }
         }
 

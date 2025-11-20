@@ -211,11 +211,12 @@ class CharacterSelectScene extends Phaser.Scene {
         this.charDescription.setText(char.display.description);
 
         const stats = char.stats.base;
+        const defense = stats.defense || stats.armor || 0; // Fallback to armor or 0 if defense not defined
         this.charStats.setText(
-            `HP:    ${stats.maxHP}\n` +
-            `DMG:   ${stats.damage}\n` +
-            `SPEED: ${Math.round(stats.moveSpeed)}\n` +
-            `CRIT:  ${Math.round(stats.critChance * 100)}%`
+            `HP:      ${stats.maxHP}\n` +
+            `STR:     ${stats.damage}\n` +
+            `DEF:     ${defense}\n` +
+            `SPEED:   ${Math.round(stats.moveSpeed)}`
         );
 
         const passiveText = char.passives.map(p => `• ${p.name}\n  ${p.description}`).join('\n\n');

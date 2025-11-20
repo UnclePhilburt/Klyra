@@ -430,14 +430,19 @@ class CharacterSelectManager {
         // Character stats preview - horizontal bar format
         const stats = document.createElement('div');
         stats.className = 'character-stats';
+        const defense = char.stats.base.defense || char.stats.base.armor || 0;
         stats.innerHTML = `
             <div class="character-stat-line">
                 <span class="stat-label">HP</span>
                 <span class="stat-value">${char.stats.base.maxHP}</span>
             </div>
             <div class="character-stat-line">
-                <span class="stat-label">DMG</span>
+                <span class="stat-label">STR</span>
                 <span class="stat-value">${char.stats.base.damage}</span>
+            </div>
+            <div class="character-stat-line">
+                <span class="stat-label">DEF</span>
+                <span class="stat-value">${defense}</span>
             </div>
             <div class="character-stat-line">
                 <span class="stat-label">SPD</span>

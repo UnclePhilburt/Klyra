@@ -275,6 +275,16 @@ class PassiveSkills {
     }
 
     createPiercingFireballProjectile(startX, startY, initialTarget, effect) {
+        // Play cast sound locally
+        if (this.scene.sound) {
+            this.scene.sound.play('piercing_inferno_cast', { volume: 0.35 });
+        }
+
+        // Broadcast to other players
+        if (window.networkManager && window.networkManager.connected) {
+            window.networkManager.playSkillSound('piercing_inferno_cast', { x: startX, y: startY });
+        }
+
         // Calculate direction to target first
         const targetX = initialTarget.sprite.x;
         const targetY = initialTarget.sprite.y;
@@ -362,6 +372,16 @@ class PassiveSkills {
                         piercedEnemies.push(enemyId);
                         pierceCount++;
                         this.damageEnemy(enemyId, effect.damage);
+
+                        // Play impact sound locally
+                        if (this.scene.sound) {
+                            this.scene.sound.play('piercing_inferno', { volume: 0.3 });
+                        }
+
+                        // Broadcast to other players
+                        if (window.networkManager && window.networkManager.connected) {
+                            window.networkManager.playSkillSound('piercing_inferno', { x: enemy.sprite.x, y: enemy.sprite.y });
+                        }
 
                         // Create hit effect
                         const hitEffect = this.scene.add.circle(enemy.sprite.x, enemy.sprite.y, 15, 0xff4400, 0.8);
@@ -585,6 +605,16 @@ class PassiveSkills {
     }
 
     createFireballImpact(x, y) {
+        // Play explosion sound locally
+        if (this.scene.sound) {
+            this.scene.sound.play('meteor_explosion', { volume: 0.4 });
+        }
+
+        // Broadcast to other players
+        if (window.networkManager && window.networkManager.connected) {
+            window.networkManager.playSkillSound('meteor_explosion', { x: x, y: y });
+        }
+
         // Create larger meteor sprite on impact (crater effect)
         const impactMeteor = this.scene.add.sprite(x, y, 'meteorstorm');
         impactMeteor.setScale(1.5); // Much bigger on impact
@@ -712,6 +742,39 @@ class PassiveSkills {
         if (effect.hitCooldowns.size > 50) {
             effect.hitCooldowns.clear();
         }
+    }
+
+    clearAll() {
+        console.log('🧹 Clearing all passive skills and effects');
+
+        // Clear all owned skills
+        this.ownedSkills.clear();
+
+        // Destroy all active effects
+        for (const effectType in this.activeEffects) {
+            const effect = this.activeEffects[effectType];
+
+            // Destroy sprites/graphics for each effect type
+            if (effect.sprite) {
+                effect.sprite.destroy();
+            }
+            if (effect.graphics) {
+                effect.graphics.destroy();
+            }
+            if (effect.particles) {
+                effect.particles.destroy();
+            }
+        }
+
+        // Clear active effects object
+        this.activeEffects = {};
+
+        // Clear from HUD display
+        if (this.scene.modernHUD) {
+            this.scene.modernHUD.clearAllSkills();
+        }
+
+        console.log('✅ All passive skills cleared');
     }
 
     damageEnemy(enemyId, damage) {

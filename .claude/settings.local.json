@@ -47,7 +47,9 @@
       "Bash(git stash:*)",
       "Bash(timeout /t 10 /nobreak)",
       "Bash(cmd.exe /c \"set PORT=3002 &amp;&amp; node server.js\")",
-      "Bash(powershell.exe -Command \"$env:PORT=3002; node server.js\")"
+      "Bash(powershell.exe -Command \"$env:PORT=3002; node server.js\")",
+      "Bash(cmd.exe /c \"set PORT=3002 && node server.js\")",
+      "Bash(timeout /t 2 /nobreak)"
     ],
     "deny": [],
     "ask": []

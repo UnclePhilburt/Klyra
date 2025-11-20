@@ -646,6 +646,26 @@ class ModernHUD {
         console.log(`🎨 Added skill to HUD display: ${skillName}`);
     }
 
+    clearAllSkills() {
+        // Destroy all skill text elements
+        this.skillTexts.forEach(skill => {
+            if (skill.text) {
+                skill.text.destroy();
+            }
+        });
+
+        // Clear the array
+        this.skillTexts = [];
+
+        // Hide the container
+        this.skillsContainer.setVisible(false);
+
+        // Clear the background
+        this.skillsBg.clear();
+
+        console.log('🧹 Cleared all skills from HUD');
+    }
+
     // Update skills background based on number of skills
     updateSkillsBackground() {
         this.skillsBg.clear();

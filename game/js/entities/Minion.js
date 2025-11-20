@@ -4,6 +4,7 @@ class Minion {
         this.scene = scene;
         this.ownerId = ownerId; // The player who summoned this minion
         this.minionId = minionId; // Unique ID for this minion
+        this.id = minionId; // Alias for compatibility
         this.isPermanent = isPermanent; // Permanent minions don't despawn
         // BALANCED MODE: Quality over quantity - strong but not overpowered
         this.health = 250;  // Tanky enough to survive focused combat
@@ -1495,17 +1496,18 @@ class Minion {
     }
 
     sendPositionUpdate() {
-        // Send minion PIXEL position to server for smooth multiplayer movement
-        const pixelPosition = {
-            x: Math.round(this.sprite.x),
-            y: Math.round(this.sprite.y)
+        // Send minion GRID position to server (convert from pixels)
+        const tileSize = GameConfig.GAME.TILE_SIZE;
+        const gridPosition = {
+            x: Math.floor(this.sprite.x / tileSize),
+            y: Math.floor(this.sprite.y / tileSize)
         };
 
         // Include animation state for remote players
         const animationState = this.sprite.anims?.currentAnim?.key || 'minion_idle';
         const flipX = this.sprite.flipX || false;
 
-        networkManager.updateMinionPosition(this.minionId, pixelPosition, this.isPermanent, animationState, flipX);
+        networkManager.updateMinionPosition(this.minionId, gridPosition, this.isPermanent, animationState, flipX);
     }
 
     destroy() {
