@@ -24,8 +24,56 @@ class AbilityManager {
             r: 'B'
         };
 
+        // Initialize character-specific ability handler
+        this.characterHandler = null;
+        this.initializeCharacterHandler();
+
         // Create minimal testing UI
         this.createCooldownUI();
+    }
+
+    initializeCharacterHandler() {
+        // Try both player.data.characterId and player.class as fallback
+        const characterId = (this.player.data?.characterId || this.player.class)?.toUpperCase();
+        console.log(`🎮 Initializing ability handler for character: ${characterId}`);
+        console.log(`   Player.data.characterId:`, this.player.data?.characterId);
+        console.log(`   Player.class:`, this.player.class);
+        console.log(`   Final characterId:`, characterId);
+        console.log(`   AldricAbilityHandler exists:`, typeof AldricAbilityHandler !== 'undefined');
+        console.log(`   KeliseAbilityHandler exists:`, typeof KeliseAbilityHandler !== 'undefined');
+
+        if (!characterId) {
+            console.error('❌ No characterId found on player.data or player.class');
+            return;
+        }
+
+        switch (characterId) {
+            case 'ALDRIC':
+                if (typeof AldricAbilityHandler !== 'undefined') {
+                    this.characterHandler = new AldricAbilityHandler(this.scene, this.player, this);
+                    console.log('✅ Aldric ability handler initialized');
+                } else {
+                    console.error('❌ AldricAbilityHandler class not found');
+                }
+                break;
+
+            case 'KELISE':
+                if (typeof KeliseAbilityHandler !== 'undefined') {
+                    this.characterHandler = new KeliseAbilityHandler(this.scene, this.player, this);
+                    console.log('✅ Kelise ability handler initialized');
+                } else {
+                    console.error('❌ KeliseAbilityHandler class not found');
+                }
+                break;
+
+            case 'MALACHAR':
+                // Malachar uses the skill tree system, not this handler
+                console.log('ℹ️ Malachar uses MalacharAbilityHandler (skill tree system)');
+                break;
+
+            default:
+                console.warn(`⚠️ No ability handler found for character: ${characterId}`);
+        }
     }
 
     createCooldownUI() {
@@ -619,6 +667,14 @@ class AbilityManager {
             return false;
         }
 
+        const ability = this.player.abilities[key];
+
+        // Check level requirement
+        if (ability.levelRequired && this.player.level < ability.levelRequired) {
+            console.log(`❌ ${ability.name} requires level ${ability.levelRequired} (current: ${this.player.level})`);
+            return false;
+        }
+
         // Check cooldown
         if (this.cooldowns[key] > 0) {
             return false;
@@ -663,10 +719,58 @@ class AbilityManager {
         });
     }
 
+    broadcastAbilityToNetwork(key, ability) {
+        if (typeof networkManager === 'undefined') return;
+
+        const effect = ability.effect || {};
+        const baseData = {
+            position: {
+                x: this.player.sprite.x,
+                y: this.player.sprite.y
+            },
+            facingRight: this.player.spriteRenderer && this.player.spriteRenderer.sprite
+                ? !this.player.spriteRenderer.sprite.flipX
+                : true
+        };
+
+        // Merge ability effect data with base data
+        networkManager.useAbility(key, ability.name, null, {
+            ...baseData,
+            ...effect,
+            type: effect.type
+        });
+    }
+
     executeAbility(key, ability) {
         console.log(`🔥 Executing ${key.toUpperCase()}: ${ability.name}`);
 
-        // MALACHAR: Delegate to ability handler if it exists
+        // Try to initialize handler if it doesn't exist yet (in case it wasn't ready during construction)
+        if (!this.characterHandler && (this.player.data?.characterId || this.player.class)) {
+            console.log(`⚠️ Handler not initialized, attempting late initialization...`);
+            this.initializeCharacterHandler();
+        }
+
+        // Route to character-specific handler if available
+        if (this.characterHandler) {
+            const methodName = `use${key.toUpperCase()}`;
+            if (typeof this.characterHandler[methodName] === 'function') {
+                console.log(`  ✨ Delegating to character handler.${methodName}()`);
+
+                // Broadcast to network before execution
+                this.broadcastAbilityToNetwork(key, ability);
+
+                const success = this.characterHandler[methodName](ability);
+                if (success) {
+                    return; // Handler executed successfully
+                }
+            } else {
+                console.warn(`  ⚠️ Character handler doesn't have method: ${methodName}`);
+            }
+        } else {
+            console.warn(`  ⚠️ No character handler available`);
+        }
+
+        // MALACHAR: Delegate to Malachar's skill tree handler
         if (this.scene.malacharAbilityHandler) {
             const methodName = `use${key.toUpperCase()}`;
             if (typeof this.scene.malacharAbilityHandler[methodName] === 'function') {
@@ -676,46 +780,6 @@ class AbilityManager {
                     return; // Handler executed successfully
                 }
             }
-        }
-
-        // ALDRIC: Battle Rush (dash ability)
-        if (ability.effect && ability.effect.type === 'dash') {
-            // Broadcast to other players
-            if (typeof networkManager !== 'undefined') {
-                networkManager.useAbility(key, ability.name, null, {
-                    type: 'dash',
-                    facingRight: this.player.spriteRenderer && this.player.spriteRenderer.sprite
-                        ? !this.player.spriteRenderer.sprite.flipX
-                        : true,
-                    position: {
-                        x: this.player.sprite.x,
-                        y: this.player.sprite.y
-                    }
-                });
-            }
-
-            this.createBattleRush(ability.effect);
-            return;
-        }
-
-        // ALDRIC: Shockwave ability
-        if (ability.effect && ability.effect.type === 'shockwave') {
-            // Broadcast to other players
-            if (typeof networkManager !== 'undefined') {
-                networkManager.useAbility(key, ability.name, null, {
-                    type: 'shockwave',
-                    facingRight: this.player.spriteRenderer && this.player.spriteRenderer.sprite
-                        ? !this.player.spriteRenderer.sprite.flipX
-                        : true,
-                    position: {
-                        x: this.player.sprite.x,
-                        y: this.player.sprite.y
-                    }
-                });
-            }
-
-            this.createShockwave();
-            return;
         }
 
         // LEGACY: Fallback to old system
@@ -1502,6 +1566,176 @@ class AbilityManager {
         }
 
         console.log('✅ Shockwave created');
+    }
+
+    createTitansFury(effect) {
+        console.log('🔥 Creating Titan\'s Fury effect (War Cry + Ground Slam)');
+
+        const startX = this.player.sprite.x;
+        const startY = this.player.sprite.y;
+        const slamRadius = effect.slamRadius || 250;
+        const slamCount = effect.slamCount || 3;
+        const slamInterval = effect.slamInterval || 800;
+        const tauntRadius = effect.tauntRadius || 400;
+        const warCryDelay = 500; // Half second delay before slams start
+        const totalDuration = warCryDelay + (slamInterval * slamCount); // Total ability duration
+
+        // Check if this is Aldric - only Aldric should use Titan's Fury
+        const characterId = this.player.data?.characterId?.toUpperCase();
+        if (characterId !== 'ALDRIC') {
+            console.log(`❌ Titan's Fury is Aldric-only! Character: ${characterId}`);
+            return;
+        }
+
+        // Lock player movement and play protect animation
+        if (this.player.spriteRenderer && this.player.spriteRenderer.sprite) {
+            this.player.isChanneling = true; // Set channeling flag to prevent movement
+            this.player.spriteRenderer.sprite.play('aldric_protect');
+            console.log('🛡️ Aldric locked in protect stance');
+        }
+
+        // Play war cry sound effect IMMEDIATELY
+        if (this.scene.sound) {
+            try {
+                this.scene.sound.play('aldric_warcry', { volume: 0.6 });
+                console.log('📢 Playing Aldric war cry sound');
+            } catch (error) {
+                console.warn('⚠️ War cry sound not loaded, using fallback:', error);
+                // Fallback to shockwave sound if war cry not loaded
+                if (this.scene.sound.get('aldric_shockwave')) {
+                    this.scene.sound.play('aldric_shockwave', { volume: 0.5, rate: 0.8 });
+                }
+            }
+        }
+
+        // Create war cry visual effect (expanding ring)
+        const warCryRing = this.scene.add.circle(startX, startY, 50, 0xFF4500, 0);
+        warCryRing.setStrokeStyle(4, 0xFF4500, 1);
+        warCryRing.setDepth(9001);
+
+        // War cry expansion animation
+        this.scene.tweens.add({
+            targets: warCryRing,
+            radius: tauntRadius,
+            alpha: 0,
+            duration: 600,
+            ease: 'Power2',
+            onComplete: () => warCryRing.destroy()
+        });
+
+        // Screen flash for dramatic effect
+        const flash = this.scene.add.rectangle(
+            this.scene.cameras.main.scrollX + 640,
+            this.scene.cameras.main.scrollY + 360,
+            1280, 720,
+            0xFF4500, 0.3
+        );
+        flash.setDepth(10000);
+        flash.setScrollFactor(0);
+
+        this.scene.tweens.add({
+            targets: flash,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => flash.destroy()
+        });
+
+        // Camera shake for war cry
+        this.scene.cameras.main.shake(400, 0.008);
+
+        // Execute ground slams AFTER war cry delay (500ms + interval between each)
+        // Each slam uses a different explosion animation
+        const explosionAnims = ['aldric_titansfury_1', 'aldric_titansfury_2', 'aldric_titansfury_3'];
+        const explosionStartFrames = [0, 98, 112]; // Starting frame for each animation
+
+        for (let i = 0; i < slamCount; i++) {
+            this.scene.time.delayedCall(warCryDelay + (slamInterval * i), () => {
+                console.log(`💥 Titan's Fury slam ${i + 1}/${slamCount} - Using ${explosionAnims[i]}`);
+
+                // Create explosion sprite animation centered on player
+                // Use different animation for each slam (1st, 2nd, 3rd)
+                const explosion = this.scene.add.sprite(startX, startY, 'aldric_titansfury', explosionStartFrames[i]);
+                explosion.setDepth(9000);
+                explosion.setScale(4.0); // Scale up for large AoE effect (64px -> 256px radius)
+                explosion.play(explosionAnims[i]);
+
+                // Auto-destroy when animation completes
+                explosion.on('animationcomplete', () => {
+                    explosion.destroy();
+                });
+
+                // Ground impact particles for each slam (fewer particles since we have sprite)
+                for (let j = 0; j < 12; j++) {
+                    const angle = (Math.PI * 2 / 12) * j;
+                    const particle = this.scene.add.circle(
+                        startX,
+                        startY,
+                        4 + Math.random() * 4,
+                        0xFF4500, // Orange/red particles
+                        0.8
+                    );
+                    particle.setDepth(8999);
+
+                    this.scene.tweens.add({
+                        targets: particle,
+                        x: startX + Math.cos(angle) * (slamRadius * 0.9),
+                        y: startY + Math.sin(angle) * (slamRadius * 0.9),
+                        alpha: 0,
+                        scale: 0.3,
+                        duration: 500,
+                        ease: 'Power2',
+                        onComplete: () => particle.destroy()
+                    });
+                }
+
+                // Camera shake for each slam
+                this.scene.cameras.main.shake(250, 0.008);
+
+                // Play explosion sound (Titan's Fury slam)
+                if (this.scene.sound) {
+                    try {
+                        this.scene.sound.play('aldric_titansfury', { volume: 0.5 });
+                        console.log(`🔊 Playing Titan's Fury explosion sound for slam ${i + 1}`);
+                    } catch (error) {
+                        console.warn('⚠️ Titan\'s Fury sound not loaded, using fallback');
+                        // Fallback to punch sound if titansfury not loaded
+                        if (this.scene.sound.get('hit_punch_1')) {
+                            this.scene.sound.play('hit_punch_1', { volume: 0.4, rate: 0.9 });
+                        }
+                    }
+                }
+
+                // Damage is calculated server-side
+                // Server will broadcast enemy:damaged and enemy:killed events
+                // which GameScene will handle for visual feedback
+                console.log(`💥 Slam ${i + 1} visual effect created - waiting for server damage calculation`);
+            });
+        }
+
+        // Unlock movement and return to appropriate animation after ability finishes
+        this.scene.time.delayedCall(totalDuration, () => {
+            if (this.player) {
+                this.player.isChanneling = false; // Remove channeling flag
+                console.log('🛡️ Aldric released from protect stance');
+
+                // Return to appropriate animation based on movement state
+                if (this.player.spriteRenderer && this.player.spriteRenderer.sprite) {
+                    if (this.player.spriteRenderer.isMoving) {
+                        const runKey = 'aldric_running';
+                        if (this.scene.anims.exists(runKey)) {
+                            this.player.spriteRenderer.sprite.play(runKey, true);
+                        }
+                    } else {
+                        const idleKey = 'aldric_idle';
+                        if (this.scene.anims.exists(idleKey)) {
+                            this.player.spriteRenderer.sprite.play(idleKey, true);
+                        }
+                    }
+                }
+            }
+        });
+
+        console.log('✅ Titan\'s Fury created');
     }
 
     setInputMode(mode) {

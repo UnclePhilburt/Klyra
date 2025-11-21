@@ -12,7 +12,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
     cors: {
-        origin: ["https://klyra.lol", "https://klyra-server.onrender.com"],
+        origin: "*", // Allow all origins for Render deployment
         methods: ["GET", "POST"],
         credentials: true
     },
@@ -1194,7 +1194,98 @@ class AIBot extends Player {
                 }, this.position, 2560);
 
                 this.lastAbilityTime = now;
+                this.abilityCooldowns.e = now;
                 console.log(`⚡ Bot ${this.username} used Shockwave on ${nearbyEnemies.length} enemies`);
+            }
+        }
+
+        // Aldric's R ability: Titan's Fury (War Cry + Ground Slam combo)
+        const titansFuryCooldown = 20000; // 20 second cooldown
+        if (!this.lastRAbilityTime || now - this.lastRAbilityTime > titansFuryCooldown) {
+            // Count nearby enemies for R ability (larger radius)
+            const nearbyEnemies = this.getNearbyEnemies(lobby, 400);
+
+            // SMART USAGE: Use Titan's Fury when:
+            // 1. Surrounded by 5+ enemies (super efficient ultimate)
+            // 2. OR 4+ enemies AND we're below 50% health (emergency ultimate)
+            // 3. OR boss/elite enemy nearby with 3+ adds
+            const healthPercent = this.health / this.maxHealth;
+            const shouldUseTitansFury = nearbyEnemies.length >= 5 ||
+                                       (nearbyEnemies.length >= 4 && healthPercent < 0.5);
+
+            if (shouldUseTitansFury) {
+                // Broadcast the ultimate ability
+                lobby.broadcastProximity('ability:used', {
+                    playerId: this.id,
+                    playerName: this.username,
+                    abilityKey: 'r',
+                    abilityName: 'Titan\'s Fury',
+                    position: this.position,
+                    effects: {
+                        type: 'war_cry_slam',
+                        playerId: this.id,
+                        position: this.position,
+                        tauntRadius: 400,
+                        tauntDuration: 2000,
+                        slamCount: 3,
+                        slamInterval: 800,
+                        slamRadius: 250,
+                        damagePerSlam: 80 + (this.level * 20)
+                    }
+                }, this.position, 2560);
+
+                // Schedule the slam damage ticks
+                const slamDamage = 80 + (this.level * 20);
+                const slamCount = 3;
+                const slamInterval = 800;
+
+                for (let i = 0; i < slamCount; i++) {
+                    setTimeout(() => {
+                        // Get enemies in range at time of slam
+                        const slamEnemies = this.getNearbyEnemies(lobby, 250);
+
+                        slamEnemies.forEach(enemy => {
+                            enemy.health -= slamDamage;
+
+                            if (enemy.health <= 0) {
+                                enemy.health = 0;
+                                enemy.isAlive = false;
+                                this.kills++;
+
+                                // Spawn XP orb
+                                const orbId = `orb_${Date.now()}_${Math.random()}`;
+                                const orbValue = 10;
+                                lobby.gameState.experienceOrbs.set(orbId, {
+                                    x: enemy.position.x,
+                                    y: enemy.position.y,
+                                    expValue: orbValue
+                                });
+
+                                // Broadcast enemy death
+                                lobby.broadcast('enemy:killed', {
+                                    enemyId: enemy.id,
+                                    killedBy: this.id,
+                                    killerName: this.username,
+                                    position: enemy.position,
+                                    orbId: orbId,
+                                    orbValue: orbValue
+                                });
+                            } else {
+                                // Broadcast damage
+                                lobby.broadcast('enemy:damaged', {
+                                    enemyId: enemy.id,
+                                    damage: slamDamage,
+                                    attackerId: this.id
+                                });
+                            }
+                        });
+
+                        console.log(`💥 Bot ${this.username} Titan's Fury slam ${i + 1}/${slamCount} hit ${slamEnemies.length} enemies`);
+                    }, i * slamInterval);
+                }
+
+                this.lastRAbilityTime = now;
+                console.log(`🔥 Bot ${this.username} used Titan's Fury on ${nearbyEnemies.length} enemies`);
             }
         }
     }
@@ -3141,14 +3232,14 @@ class Lobby {
                     const worldCenterY = (this.WORLD_SIZE / 2) * TILE_SIZE;
                     const safeZoneRadius = 25 * TILE_SIZE;
 
-                    const wouldEnterSafeZone = (
+                    const wouldEnterSpawnSafeZone = (
                         newX >= (worldCenterX - safeZoneRadius) &&
                         newX <= (worldCenterX + safeZoneRadius) &&
                         newY >= (worldCenterY - safeZoneRadius) &&
                         newY <= (worldCenterY + safeZoneRadius)
                     );
 
-                    if (!wouldEnterSafeZone) {
+                    if (!wouldEnterSpawnSafeZone) {
                         enemy.position.x = newX;
                         enemy.position.y = newY;
 
@@ -3200,14 +3291,14 @@ class Lobby {
                     const worldCenterY = (this.WORLD_SIZE / 2) * TILE_SIZE;
                     const safeZoneRadius = 25 * TILE_SIZE;
 
-                    const wouldEnterSafeZone = (
+                    const wouldEnterSpawnSafeZone = (
                         newX >= (worldCenterX - safeZoneRadius) &&
                         newX <= (worldCenterX + safeZoneRadius) &&
                         newY >= (worldCenterY - safeZoneRadius) &&
                         newY <= (worldCenterY + safeZoneRadius)
                     );
 
-                    if (!wouldEnterSafeZone) {
+                    if (!wouldEnterSpawnSafeZone) {
                         enemy.position.x = newX;
                         enemy.position.y = newY;
 
@@ -3248,13 +3339,13 @@ class Lobby {
                     return; // Stay at current position
                 }
 
-                // SAFE ZONE CHECK: Prevent enemies from entering spawn building area
+                // SAFE ZONE CHECK: Prevent enemies from entering spawn building
                 const TILE_SIZE = 32;
                 const worldCenterX = (this.WORLD_SIZE / 2) * TILE_SIZE;
                 const worldCenterY = (this.WORLD_SIZE / 2) * TILE_SIZE;
                 const safeZoneRadius = 25 * TILE_SIZE; // 50x50 tiles = 25 tiles from center in each direction
 
-                const wouldEnterSafeZone = (
+                const wouldEnterSpawnSafeZone = (
                     newX >= (worldCenterX - safeZoneRadius) &&
                     newX < (worldCenterX + safeZoneRadius) &&
                     newY >= (worldCenterY - safeZoneRadius) &&
@@ -3262,7 +3353,7 @@ class Lobby {
                 );
 
                 // Only move if it doesn't enter the safe zone
-                if (!wouldEnterSafeZone) {
+                if (!wouldEnterSpawnSafeZone) {
                     enemy.position.x = newX;
                     enemy.position.y = newY;
                 } else {
@@ -3300,10 +3391,15 @@ class Lobby {
 
                 // Attack target (player or minion)
                 if (target.isMinion) {
-                    // Attack minion
+                    // Attack minion - apply defense reduction
+                    // Minions have 12 defense (hardcoded, matches client-side Minion.js)
+                    const minionDefense = 12;
+                    const damageMultiplier = 100 / (100 + minionDefense);
+                    const finalDamage = Math.max(1, Math.floor(enemy.damage * damageMultiplier));
+
                     this.broadcast('minion:damaged', {
                         minionId: target.id,
-                        damage: enemy.damage,
+                        damage: finalDamage,
                         attackerId: enemy.id,
                         enemyPosition: { x: enemy.position.x, y: enemy.position.y },
                         isPixelCoordinates: true
@@ -3314,12 +3410,20 @@ class Lobby {
                     if (damageTarget && damageTarget.isAlive) {
                         // Check if player is invincible (Bot Aldric)
                         if (!damageTarget.isInvincible) {
-                            damageTarget.health -= enemy.damage;
+                            // Apply defense reduction using diminishing returns formula
+                            // Formula: damage * (100 / (100 + defense))
+                            const defense = damageTarget.stats?.defense || 0;
+                            const damageMultiplier = 100 / (100 + defense);
+                            const finalDamage = Math.max(1, Math.floor(enemy.damage * damageMultiplier));
+
+                            damageTarget.health -= finalDamage;
 
                             // Track damage taken for stats
                             if (damageTarget.damageTaken !== undefined) {
-                                damageTarget.damageTaken += enemy.damage;
+                                damageTarget.damageTaken += finalDamage;
                             }
+
+                            console.log(`⚔️ Enemy ${enemy.id} melee attack: ${enemy.damage} damage (defense: ${defense}, reduced to: ${finalDamage})`);
                         } else {
                             console.log(`🛡️ ${damageTarget.username} is invincible - melee damage ignored!`);
                         }
@@ -3386,6 +3490,8 @@ class Lobby {
                                 }
                             });
 
+                            console.log(`💀 ${damageTarget.username} (${damageTarget.class}) died to ${enemy.id}`);
+
                             this.broadcast('player:died', {
                                 playerId: damageTarget.id,
                                 playerName: damageTarget.username,
@@ -3426,11 +3532,16 @@ class Lobby {
                                 }, 5000);
                             }, 3000); // 3 second death delay
                         } else {
+                            // Calculate defense-reduced damage for broadcast
+                            const defense = damageTarget.stats?.defense || 0;
+                            const damageMultiplier = 100 / (100 + defense);
+                            const broadcastDamage = Math.max(1, Math.floor(enemy.damage * damageMultiplier));
+
                             this.broadcast('player:damaged', {
                                 playerId: damageTarget.id,
                                 health: damageTarget.health,
                                 maxHealth: damageTarget.maxHealth,
-                                damage: enemy.damage,
+                                damage: broadcastDamage,
                                 attackerId: enemy.id,
                                 enemyPosition: { x: enemy.position.x, y: enemy.position.y },
                                 playerPosition: { x: target.position.x, y: target.position.y },
@@ -3573,6 +3684,7 @@ io.on('connection', (socket) => {
                 if (characterClass && typeof characterClass === 'string') {
                     player.class = characterClass.toLowerCase(); // Normalize to lowercase
                     player.stats = player.getClassStats(player.class); // getClassStats sets maxHealth and health internally
+                    console.log(`🎮 New player ${finalUsername} joined as ${player.class} - HP: ${player.health}/${player.maxHealth}`);
                 }
             }
 
@@ -4575,13 +4687,12 @@ io.on('connection', (socket) => {
                 lobby.gameState.minions.delete(minionId);
             }
 
-            // Remove from permanent minions list
-            if (isPermanent && player.permanentMinions) {
-                const index = player.permanentMinions.indexOf(minionId);
-                if (index > -1) {
-                    player.permanentMinions.splice(index, 1);
-                }
-            }
+            // DO NOT remove permanent minions from the list when they die
+            // This prevents the infinite death/respawn loop
+            // Permanent minions should only be removed when:
+            // 1. Player dies (full reset)
+            // 2. Player manually dismisses them
+            // They should NOT auto-respawn after dying in combat
 
             // Broadcast death to all players
             lobby.broadcast('minion:died', {
@@ -4671,6 +4782,80 @@ io.on('connection', (socket) => {
 
             // Track ability usage
             player.abilitiesUsed++;
+
+            // Debug logging
+            console.log(`📥 Received ability:use data:`, JSON.stringify(data, null, 2));
+
+            // Handle Titan's Fury server-side damage calculation
+            if (data.effects && data.effects.type === 'war_cry_slam') {
+                console.log(`🔥 ${player.username} used Titan's Fury - Server calculating damage`);
+
+                const slamCount = data.effects.slamCount || 3;
+                const slamInterval = data.effects.slamInterval || 800;
+                const slamRadius = data.effects.slamRadius || 250;
+                const warCryDelay = 500;
+                const playerPos = { x: data.effects.position.x, y: data.effects.position.y };
+
+                // Schedule each slam's damage calculation
+                for (let i = 0; i < slamCount; i++) {
+                    setTimeout(() => {
+                        const slamDamage = (data.effects.damagePerSlam || 80) + (player.level * 20);
+                        console.log(`💥 Titan's Fury slam ${i + 1}/${slamCount} - Damage: ${slamDamage}`);
+
+                        // Find and damage all enemies in range
+                        let hitCount = 0;
+                        console.log(`   🔍 Checking ${lobby.gameState.enemies.size} enemies in lobby`);
+                        console.log(`   📍 Player position: (${playerPos.x}, ${playerPos.y}), Radius: ${slamRadius}`);
+
+                        lobby.gameState.enemies.forEach(enemy => {
+                            if (!enemy.isAlive) return;
+
+                            const dx = (enemy.position.x - playerPos.x);
+                            const dy = (enemy.position.y - playerPos.y);
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+
+                            if (distance <= slamRadius) {
+                                enemy.health -= slamDamage;
+                                hitCount++;
+
+                                if (enemy.health <= 0) {
+                                    enemy.health = 0;
+                                    enemy.isAlive = false;
+                                    player.kills++;
+
+                                    // Spawn XP orb
+                                    const orbId = `orb_${Date.now()}_${Math.random()}`;
+                                    const orbValue = 10;
+                                    lobby.gameState.experienceOrbs.set(orbId, {
+                                        x: enemy.position.x,
+                                        y: enemy.position.y,
+                                        expValue: orbValue
+                                    });
+
+                                    // Broadcast enemy death
+                                    lobby.broadcast('enemy:killed', {
+                                        enemyId: enemy.id,
+                                        killedBy: socket.id,
+                                        killerName: player.username,
+                                        position: enemy.position,
+                                        orbId: orbId,
+                                        orbValue: orbValue
+                                    });
+                                } else {
+                                    // Broadcast damage
+                                    lobby.broadcast('enemy:damaged', {
+                                        enemyId: enemy.id,
+                                        damage: slamDamage,
+                                        attackerId: socket.id
+                                    });
+                                }
+                            }
+                        });
+
+                        console.log(`   💥 Slam ${i + 1} hit ${hitCount} enemies`);
+                    }, warCryDelay + (slamInterval * i));
+                }
+            }
 
             if (data.targetMinionId) {
                 console.log(`✨ ${player.username} used ${data.abilityName} on minion ${data.targetMinionId}`);
@@ -5351,8 +5536,11 @@ setInterval(() => {
     players.forEach((player, socketId) => {
         if (player.isAFK() && player.lobbyId) {
             console.log(`⏰ Kicking AFK player: ${player.username}`);
-            io.to(socketId).emit('kicked', { reason: 'AFK' });
-            io.to(socketId).disconnect(true);
+            const socket = io.sockets.sockets.get(socketId);
+            if (socket) {
+                socket.emit('kicked', { reason: 'AFK' });
+                socket.disconnect(true);
+            }
         }
     });
 }, 60000); // Check every minute

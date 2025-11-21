@@ -186,6 +186,24 @@ class GameScene extends Phaser.Scene {
         // Load spawn point building Tiled map
         this.load.tilemapTiledJSON('spawnMap', 'assets/spawnpointbuilding.tmj');
 
+        // Load town Tiled map
+        // DISABLED: Switching to LDtk - will re-add later
+        // this.load.tilemapTiledJSON('townMap', 'assets/town.tmj');
+
+        // Load town tilesets (48x48 tiles)
+        this.load.spritesheet('fantasy_roofs', 'assets/Fantasy Exterior - Other Engines/Fantasy_Roofs.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+        this.load.spritesheet('fantasy_outside_b', 'assets/Fantasy Exterior - Other Engines/Fantasy_Outside_B.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+        this.load.spritesheet('roof_center', 'assets/Fantasy Exterior - Other Engines/Objects/!$Roof_center.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+
         // Red biome trees - 48x48 tiles, 12 columns x 24 rows
         this.load.spritesheet('red_trees', 'assets/tilesets/redbiome/Big_Trees_red.png', {
             frameWidth: 48,
@@ -1945,6 +1963,82 @@ class GameScene extends Phaser.Scene {
             }
         });
 
+        // === LOAD TOWN MAP (next to spawn building) ===
+        // DISABLED: Switching to LDtk - will re-add later
+        /*
+        const townMap = this.make.tilemap({ key: 'townMap' });
+
+        // Town is same size as spawn: 50x50 tiles
+        const townWidthPx = 50 * tileSize;
+
+        // Position town directly to the right of spawn building (no gap)
+        const townOffsetX = mapOffsetX + mapWidthPx; // Start where spawn building ends
+        const townOffsetY = mapOffsetY; // Same Y position as spawn building
+
+        console.log(`🏘️ Loading town map at offset (${townOffsetX}, ${townOffsetY})`);
+
+        // Add tilesets in EXACT ORDER from town.tmj (order matters for tile ID mapping!)
+        const townTilesets = [
+            townMap.addTilesetImage('A2 - Terrain And Misc', 'terrain_misc'),           // firstgid 1
+            townMap.addTilesetImage('A4 - Walls', 'walls'),                             // firstgid 2081
+            townMap.addTilesetImage('Fantasy_Outside_A5', 'fantasy_outside_a5'),        // firstgid 2794
+            townMap.addTilesetImage('A3 - Walls And Floors', 'walls_floors'),           // firstgid 2922
+            townMap.addTilesetImage('Fantasy_Roofs', 'fantasy_roofs'),                  // firstgid 3434 ← ROOF TILES!
+            townMap.addTilesetImage('Fantasy_Outside_B', 'fantasy_outside_b'),          // firstgid 3690
+            townMap.addTilesetImage('!$Roof_center', 'roof_center'),                    // firstgid 3946
+            townMap.addTilesetImage('A3 - Walls And Floors', 'walls_floors'),           // firstgid 4054 (duplicate)
+            townMap.addTilesetImage('Fantasy_Roofs', 'fantasy_roofs'),                  // firstgid 4566 (duplicate)
+            townMap.addTilesetImage('Fantasy_Roofs', 'fantasy_roofs'),                  // firstgid 4822 (duplicate)
+            townMap.addTilesetImage('Fantasy_Outside_C', 'fantasy_outside_c')           // firstgid 5078
+        ];
+
+        console.log(`✅ Loaded ${townTilesets.filter(t => t).length} tilesets for town`);
+
+        // Create all layers from town map
+        const townLayerNames = ['Ground', 'Paths', 'Walls', 'Roof1', 'Windows'];
+
+        townLayerNames.forEach((layerName, index) => {
+            const layer = townMap.createLayer(layerName, townTilesets, townOffsetX, townOffsetY);
+            if (layer) {
+                layer.setScale(scale);
+                layer.setDepth(index); // Simple depth ordering
+                console.log(`  ✅ Created town layer: ${layerName} (depth: ${index}, alpha: ${layer.alpha})`);
+
+                // Check for collision property
+                const collisionProp = layer.layer.properties?.find(p =>
+                    (p.name === 'collision' || p.name === 'collides') && p.value === true
+                );
+
+                if (collisionProp) {
+                    layer.setCollisionByExclusion([-1]);
+                    console.log(`  🔒 Enabled collision for town layer: ${layerName}`);
+
+                    if (!this.castleCollisionLayers) {
+                        this.castleCollisionLayers = [];
+                    }
+                    this.castleCollisionLayers.push(layer);
+                }
+
+                // Check for roof property
+                const roofProp = layer.layer.properties?.find(p =>
+                    p.name === 'roof' && p.value === true
+                );
+
+                if (roofProp) {
+                    layer.setDepth(5); // Roofs above walls and windows
+                    if (!this.roofLayers) {
+                        this.roofLayers = [];
+                    }
+                    this.roofLayers.push(layer);
+                    console.log(`  🏠 Marked as roof layer: ${layerName} (depth changed to 5)`);
+                }
+            } else {
+                console.warn(`  ⚠️ Town layer not found: ${layerName}`);
+            }
+        });
+        */
+        // END DISABLED TOWN MAP
+
         // Spawn point is now at the CENTER of the map (tile 25, 25)
         const spawnX = worldCenterX; // Center of map
         const spawnY = worldCenterY; // Center of map
@@ -3173,6 +3267,18 @@ class GameScene extends Phaser.Scene {
                 return;
             }
 
+            // Handle Battle Rush (dash) visual effects for other players
+            if (data.effects && data.effects.type === 'dash') {
+                // Don't play visuals for the caster (they already see their own effects)
+                if (data.playerId === this.localPlayer?.data?.id) {
+                    console.log(`🏃 Battle Rush - I'm the caster, skipping visual replay`);
+                    return;
+                }
+                console.log(`🏃 Battle Rush visual effect from ${data.playerName}`);
+                this.playBattleRushVisual(data.effects, data.playerId);
+                return;
+            }
+
             // Handle Shockwave visual effects for other players
             if (data.effects && data.effects.type === 'shockwave') {
                 // Don't play visuals for the caster (they already see their own effects)
@@ -3182,6 +3288,18 @@ class GameScene extends Phaser.Scene {
                 }
                 console.log(`🌊 Shockwave visual effect from ${data.playerName}`);
                 this.playShockwaveVisual(data.effects);
+                return;
+            }
+
+            // Handle Titan's Fury visual effects for other players
+            if (data.effects && data.effects.type === 'war_cry_slam') {
+                // Don't play visuals for the caster (they already see their own effects)
+                if (data.playerId === this.localPlayer?.data?.id) {
+                    console.log(`🔥 Titan's Fury - I'm the caster, skipping visual replay`);
+                    return;
+                }
+                console.log(`🔥 Titan's Fury visual effect from ${data.playerName}`);
+                this.playTitansFuryVisual(data.effects, data.playerId);
                 return;
             }
 
@@ -4563,6 +4681,48 @@ class GameScene extends Phaser.Scene {
             this.abilityManager.update(time, delta);
         }
 
+        // Update roof transparency based on player position
+        if (this.roofLayers && this.roofLayers.length > 0) {
+            this.roofLayers.forEach(roofLayer => {
+                if (!roofLayer || !roofLayer.active) return;
+
+                // Get player position in world coordinates
+                const playerX = this.localPlayer.sprite.x;
+                const playerY = this.localPlayer.sprite.y;
+
+                // Use Phaser's built-in method to convert world position to tile coordinates
+                const tilePos = roofLayer.worldToTileXY(playerX, playerY, true);
+
+                if (!tilePos) {
+                    // Player is outside this layer's bounds
+                    roofLayer.setAlpha(1.0);
+                    return;
+                }
+
+                const tileX = tilePos.x;
+                const tileY = tilePos.y;
+
+                // Check if there's a roof tile at the player's position or nearby
+                let isUnderRoof = false;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const tile = roofLayer.getTileAt(tileX + dx, tileY + dy);
+                        if (tile && tile.index !== -1) {
+                            isUnderRoof = true;
+                            break;
+                        }
+                    }
+                    if (isUnderRoof) break;
+                }
+
+                if (isUnderRoof) {
+                    roofLayer.setAlpha(0.3); // Semi-transparent when under roof tiles
+                } else {
+                    roofLayer.setAlpha(1.0); // Fully visible when not under roof
+                }
+            });
+        }
+
         // Update controller manager (handles all controller input internally)
         if (this.controllerManager) {
             this.controllerManager.update();
@@ -4583,18 +4743,21 @@ class GameScene extends Phaser.Scene {
         // Check if inventory is open - disable WASD movement
         const inventoryOpen = this.inventoryUI && this.inventoryUI.isOpen;
 
-        // Controller input (highest priority)
-        if (controllerInput.active) {
+        // Check if player is channeling an ability (e.g., Aldric's Titan's Fury)
+        const isChanneling = this.localPlayer && this.localPlayer.isChanneling;
+
+        // Controller input (highest priority) - but not if channeling
+        if (controllerInput.active && !isChanneling) {
             velocityX = controllerInput.x;
             velocityY = controllerInput.y;
         }
-        // Mobile joystick input (second priority)
-        else if (mobileInput.active) {
+        // Mobile joystick input (second priority) - but not if channeling
+        else if (mobileInput.active && !isChanneling) {
             velocityX = mobileInput.x;
             velocityY = mobileInput.y;
         }
-        // Keyboard input (only if inventory is closed and no other input)
-        else if (!inventoryOpen) {
+        // Keyboard input (only if inventory is closed, no other input, and not channeling)
+        else if (!inventoryOpen && !isChanneling) {
             if (this.cursors.left.isDown || this.wasd.left.isDown) {
                 velocityX = -1;
             } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
@@ -5468,6 +5631,55 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    playBattleRushVisual(effects, playerId) {
+        console.log(`🏃 Playing Battle Rush visual effect`, effects);
+
+        if (!effects.position) {
+            console.warn('⚠️ No position data for Battle Rush visual');
+            return;
+        }
+
+        // Find the player who used the ability
+        const player = this.otherPlayers[playerId];
+        if (!player || !player.sprite) {
+            console.warn(`⚠️ Player ${playerId} not found for Battle Rush visual`);
+            return;
+        }
+
+        // Get dash direction
+        const facingRight = effects.facingRight !== false;
+        const direction = facingRight ? 1 : -1;
+        const dashDistance = effects.distance || 200;
+
+        // Play running attack animation if available
+        if (player.spriteRenderer && player.spriteRenderer.sprite) {
+            const runAttackKey = 'aldric_run_attack';
+            if (this.anims.exists(runAttackKey)) {
+                player.spriteRenderer.sprite.stop();
+                player.spriteRenderer.sprite.play(runAttackKey, true);
+            }
+        }
+
+        // Visual feedback
+        player.sprite.setAlpha(0.5);
+
+        // Dash forward
+        const startX = player.sprite.x;
+        const endX = startX + (direction * dashDistance);
+
+        this.tweens.add({
+            targets: player.sprite,
+            x: endX,
+            duration: 300,
+            ease: 'Power2',
+            onComplete: () => {
+                player.sprite.setAlpha(1);
+            }
+        });
+
+        console.log(`✅ Battle Rush visual played for ${playerId}`);
+    }
+
     playShockwaveVisual(effects) {
         console.log(`🌊 Playing Shockwave visual effect`, effects);
 
@@ -5557,6 +5769,147 @@ class GameScene extends Phaser.Scene {
         }
 
         console.log('✅ Shockwave visual effect created');
+    }
+
+    playTitansFuryVisual(effects, playerId) {
+        console.log(`🔥 Playing Titan's Fury visual effect`, effects);
+
+        if (!effects.position) {
+            console.warn('⚠️ No position data for Titan\'s Fury visual');
+            return;
+        }
+
+        const startX = effects.position.x;
+        const startY = effects.position.y;
+        const slamRadius = effects.slamRadius || 250;
+        const slamCount = effects.slamCount || 3;
+        const slamInterval = effects.slamInterval || 800;
+        const tauntRadius = effects.tauntRadius || 400;
+        const warCryDelay = 500;
+
+        // Find the player who cast it to play protect animation
+        const caster = playerId === this.localPlayer?.data?.id
+            ? this.localPlayer
+            : this.otherPlayers[playerId];
+
+        if (caster && caster.spriteRenderer && caster.spriteRenderer.sprite) {
+            // Play protect animation on the caster
+            if (this.anims.exists('aldric_protect')) {
+                caster.spriteRenderer.sprite.play('aldric_protect');
+            }
+
+            // Lock their movement
+            if (caster !== this.localPlayer) {
+                // Mark other player as channeling (so we don't move them)
+                caster.isChanneling = true;
+            }
+
+            // Unlock after ability finishes
+            const totalDuration = warCryDelay + (slamInterval * slamCount);
+            this.time.delayedCall(totalDuration, () => {
+                if (caster && caster.spriteRenderer && caster.spriteRenderer.sprite) {
+                    caster.isChanneling = false;
+                    // Return to appropriate animation
+                    const idleKey = 'aldric_idle';
+                    if (this.anims.exists(idleKey)) {
+                        caster.spriteRenderer.sprite.play(idleKey, true);
+                    }
+                }
+            });
+        }
+
+        // Play war cry sound
+        if (this.sound) {
+            this.sound.play('aldric_warcry', { volume: 0.6 });
+        }
+
+        // Create war cry visual effect (expanding ring)
+        const warCryRing = this.add.circle(startX, startY, 50, 0xFF4500, 0);
+        warCryRing.setStrokeStyle(4, 0xFF4500, 1);
+        warCryRing.setDepth(9001);
+
+        this.tweens.add({
+            targets: warCryRing,
+            radius: tauntRadius,
+            alpha: 0,
+            duration: 600,
+            ease: 'Power2',
+            onComplete: () => warCryRing.destroy()
+        });
+
+        // Screen flash
+        const flash = this.add.rectangle(
+            this.cameras.main.scrollX + 640,
+            this.cameras.main.scrollY + 360,
+            1280, 720,
+            0xFF4500, 0.3
+        );
+        flash.setDepth(10000);
+        flash.setScrollFactor(0);
+
+        this.tweens.add({
+            targets: flash,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => flash.destroy()
+        });
+
+        // Camera shake for war cry
+        this.cameras.main.shake(400, 0.008);
+
+        // Execute ground slams
+        const explosionAnims = ['aldric_titansfury_1', 'aldric_titansfury_2', 'aldric_titansfury_3'];
+        const explosionStartFrames = [0, 98, 112];
+
+        for (let i = 0; i < slamCount; i++) {
+            this.time.delayedCall(warCryDelay + (slamInterval * i), () => {
+                console.log(`💥 Titan's Fury slam ${i + 1}/${slamCount} visual`);
+
+                // Create explosion sprite animation
+                const explosion = this.add.sprite(startX, startY, 'aldric_titansfury', explosionStartFrames[i]);
+                explosion.setDepth(9000);
+                explosion.setScale(4.0);
+                explosion.play(explosionAnims[i]);
+
+                explosion.on('animationcomplete', () => {
+                    explosion.destroy();
+                });
+
+                // Ground impact particles
+                for (let j = 0; j < 12; j++) {
+                    const angle = (Math.PI * 2 / 12) * j;
+                    const particle = this.add.circle(
+                        startX,
+                        startY,
+                        4 + Math.random() * 4,
+                        0xFF4500,
+                        0.8
+                    );
+                    particle.setDepth(8999);
+
+                    this.tweens.add({
+                        targets: particle,
+                        x: startX + Math.cos(angle) * (slamRadius * 0.9),
+                        y: startY + Math.sin(angle) * (slamRadius * 0.9),
+                        alpha: 0,
+                        scale: 0.3,
+                        duration: 500,
+                        ease: 'Power2',
+                        onComplete: () => particle.destroy()
+                    });
+                }
+
+                // Camera shake
+                this.cameras.main.shake(250, 0.008);
+
+                // Play explosion sound
+                if (this.sound) {
+                    this.sound.play('aldric_titansfury', { volume: 0.5 });
+                }
+            });
+        }
+
+        console.log('✅ Titan\'s Fury visual effect created');
     }
 
     spawnFireVisual(x, y) {
@@ -5916,6 +6269,40 @@ class GameScene extends Phaser.Scene {
                     });
                     player.shownAbilityNotifications.q = true;
                     console.log(`🎨 Finished calling showAbilityUnlockedNotification for Battle Rush`);
+                }
+            }
+
+            // R - Titan's Fury (unlocked at level 10)
+            if (level >= 10) {
+                if (!player.abilities.r) {
+                    console.log(`🔥 UNLOCKING TITAN'S FURY for Aldric at level ${level}`);
+                    player.abilities.r = {
+                        name: "Titan's Fury",
+                        cooldown: 20000,
+                        levelRequired: 10,
+                        effect: {
+                            type: "war_cry_slam",
+                            tauntDuration: 2000,
+                            tauntRadius: 400,
+                            slamCount: 3,
+                            slamInterval: 800,
+                            slamRadius: 250,
+                            damagePerSlam: 80,
+                            knockback: 100,
+                            slowDuration: 1500
+                        }
+                    };
+                    console.log(`✅ Aldric set R - Titan's Fury ability`);
+                }
+
+                if (!player.shownAbilityNotifications.r) {
+                    this.showAbilityUnlockedNotification({
+                        name: "Titan's Fury",
+                        description: 'Unleash a devastating war cry followed by three ground slams.',
+                        abilityKey: 'r'
+                    });
+                    player.shownAbilityNotifications.r = true;
+                    console.log(`🎨 Finished calling showAbilityUnlockedNotification for Titan's Fury`);
                 }
             }
 

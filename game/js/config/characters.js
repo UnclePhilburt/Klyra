@@ -185,6 +185,7 @@ const CHARACTERS = {
                     width: 100   // Width of the shockwave
                 }
             }
+            // R ability (Titan's Fury) is unlocked at level 10 via GameScene.checkAndUnlockAbilities
         },
         stats: {
             base: {

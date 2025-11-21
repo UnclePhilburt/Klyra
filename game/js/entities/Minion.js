@@ -7,9 +7,11 @@ class Minion {
         this.id = minionId; // Alias for compatibility
         this.isPermanent = isPermanent; // Permanent minions don't despawn
         // BALANCED MODE: Quality over quantity - strong but not overpowered
-        this.health = 250;  // Tanky enough to survive focused combat
-        this.maxHealth = 250;
-        this.damage = 15;  // 15 per hit x 2 swings = 30 damage per attack
+        this.health = 150;  // Tanky frontliner, but below Aldric (180 HP)
+        this.maxHealth = 150;
+        this.strength = 15;  // 15 per hit x 2 swings = 30 damage per attack
+        this.damage = 15;  // Alias for compatibility
+        this.defense = 12;  // ~10.7% damage reduction (effective HP: ~168)
         this.isAlive = true;
         this.moveSpeed = 240; // Increased from 150 for faster response
         this.attackRange = 100;
@@ -1264,7 +1266,7 @@ class Minion {
         });
 
         // Calculate total damage with buffs
-        let totalDamage = this.damage;
+        let totalDamage = this.strength;
 
         // Apply damage buffs (from Command Bolt, etc.)
         if (this.damageBuffs && this.damageBuffs.length > 0) {
@@ -1278,10 +1280,10 @@ class Minion {
                 totalBonus += buff.bonus;
             });
 
-            totalDamage = Math.floor(this.damage * (1 + totalBonus));
+            totalDamage = Math.floor(this.strength * (1 + totalBonus));
 
             if (totalBonus > 0) {
-                console.log(`💥 Minion ${this.minionId.slice(0, 8)}: ${this.damage} → ${totalDamage} (+${(totalBonus * 100).toFixed(0)}% buff)`);
+                console.log(`💥 Minion ${this.minionId.slice(0, 8)}: ${this.strength} → ${totalDamage} (+${(totalBonus * 100).toFixed(0)}% buff)`);
             }
         }
 

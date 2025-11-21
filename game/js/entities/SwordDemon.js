@@ -375,7 +375,7 @@ class SwordDemon {
     }
 
     update() {
-        if (!this.sprite || !this.sprite.active) return;
+        if (!this.isAlive || !this.sprite || !this.sprite.active) return;
 
         // Check if stunned - don't move if stunned
         if (this.isStunned && Date.now() < this.stunnedUntil) {
