@@ -1,0 +1,132 @@
+================================================================================
+  ROOF TRANSPARENCY SETUP GUIDE
+  How to make roofs fade when the player walks under them
+================================================================================
+
+OVERVIEW:
+---------
+The game automatically detects roof layers and makes them transparent when
+the player walks underneath. This creates a nice "see-through building" effect.
+
+
+STEP 1: CREATE YOUR MAP IN TILED
+---------------------------------
+1. Open Tiled map editor
+2. Create your map layers in this order (bottom to top):
+   - Ground layer (floor tiles)
+   - Walls layer (building walls)
+   - Roof layer (building roofs)
+   - Any decoration/detail layers
+
+3. Draw your roof tiles on the Roof layer
+
+
+STEP 2: MARK THE ROOF LAYER
+----------------------------
+1. In Tiled, select the roof layer
+2. In the Properties panel (right side), add a CUSTOM PROPERTY:
+   - Click the + button
+   - Name: roof
+   - Type: bool
+   - Value: ✓ (checked/true)
+
+3. Save the map
+
+
+STEP 3: EMBED TILESETS (CRITICAL!)
+-----------------------------------
+Phaser does NOT support external tilesets. You MUST embed them:
+
+1. In Tiled, go to the Tilesets panel (right side)
+2. For EACH tileset in your map:
+   - Right-click the tileset
+   - Select "Embed in Map"
+
+3. Repeat for ALL tilesets
+4. Save the map (File > Save or Ctrl+S)
+
+
+STEP 4: OPTIONAL - ENABLE COLLISION
+------------------------------------
+If your walls should have collision:
+
+1. Select the Walls layer
+2. Add a custom property:
+   - Name: collision
+   - Type: bool
+   - Value: ✓ (checked/true)
+
+
+HOW IT WORKS:
+-------------
+The game automatically:
+1. Detects any layer with "roof": true property
+2. Sets that layer to depth 5 (above walls and decorations)
+3. Checks if the player is under roof tiles every frame
+4. Fades the layer to 30% opacity when player is underneath
+5. Restores to 100% opacity when player moves away
+
+
+LAYER DEPTHS (for reference):
+------------------------------
+- Background tiles: -1
+- Ground/floors: 0
+- Decorations: 1
+- Walls: 2-3
+- Player: 4
+- Roofs: 5 (auto-set by game)
+- UI/Text: 10000+
+
+
+COMMON ISSUES:
+--------------
+❌ "External tilesets unsupported" error
+   → You didn't embed tilesets. See STEP 3.
+
+❌ Roof doesn't appear at all
+   → Check tileset order matches your TMJ file
+   → Make sure roof tiles are on the correct layer
+   → Check browser console for errors
+
+❌ Roof is always invisible / always visible
+   → Make sure "roof": true property is set correctly
+   → Check that roof tiles actually exist in that layer
+   → Verify player is actually walking under the tiles
+
+❌ Roof appears behind walls
+   → Game automatically sets roof depth to 5
+   → If this doesn't work, check your layer creation code
+
+
+TESTING:
+--------
+1. Start the game
+2. Walk to where roof tiles are
+3. Roof should fade to 30% opacity
+4. Walk away - roof should return to 100% opacity
+5. Check browser console (F12) for any errors
+
+
+FILE LOCATIONS:
+---------------
+- Map files: game/assets/*.tmj
+- Roof logic: game/js/scenes/GameScene.js (lines ~2000 for setup, ~4690 for update)
+- Safe zones: Both GameScene.js and server.js
+
+
+QUICK CHECKLIST:
+----------------
+☐ Roof layer created in Tiled
+☐ Custom property "roof": true added to layer
+☐ All tilesets embedded in map
+☐ Map saved and exported
+☐ Server restarted (if needed)
+☐ Browser cache cleared / hard refresh (Ctrl+F5)
+
+
+NEED HELP?
+----------
+- Check browser console (F12) for errors
+- Make sure all tilesets are embedded
+- Verify the "roof" property is spelled correctly (lowercase)
+- Check that roof tiles are actually in the layer (not all zeros)
