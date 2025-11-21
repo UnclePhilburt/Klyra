@@ -92,6 +92,14 @@ class Enemy {
         this.health -= amount;
         if (this.health <= 0) {
             this.health = 0;
+            // Mark as dead immediately to stop movement
+            this.isAlive = false;
+            // Clear target position to stop interpolation
+            this.targetPosition = null;
+            // Stop sprite movement immediately
+            if (this.sprite && this.sprite.body) {
+                this.sprite.body.setVelocity(0, 0);
+            }
         }
 
         // Damage flash
@@ -222,6 +230,12 @@ class Enemy {
     die(playEffects = true) {
         this.isAlive = false;
 
+        // Stop all movement immediately
+        this.targetPosition = null;
+        if (this.sprite && this.sprite.body) {
+            this.sprite.body.setVelocity(0, 0);
+        }
+
         // Play death sound (40% chance) - only if on screen
         if (playEffects && Math.random() < 0.4 && this.scene.sound) {
             const deathSounds = [
@@ -286,6 +300,9 @@ class Enemy {
 
     updateInterpolation() {
         if (!this.targetPosition) return;
+
+        // Don't move if dead
+        if (!this.isAlive) return;
 
         // Check if stunned - don't move if stunned
         if (this.isStunned && Date.now() < this.stunnedUntil) {

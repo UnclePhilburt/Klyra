@@ -2153,7 +2153,7 @@ class Lobby {
         // Calculate distance from world center (spawn point)
         const worldCenterX = this.WORLD_SIZE / 2;
         const worldCenterY = this.WORLD_SIZE / 2;
-        const safeZoneRadius = 30; // Safe zone around spawn
+        const safeZoneRadius = 20; // Safe zone around spawn (reduced from 30)
         const regionCenterX = regionX * REGION_SIZE + REGION_SIZE / 2;
         const regionCenterY = regionY * REGION_SIZE + REGION_SIZE / 2;
         const distanceFromSpawn = Math.sqrt(
@@ -2168,28 +2168,28 @@ class Lobby {
         let bossChance = 0;
         let emberclawSupportChance = 0; // Chance for emberclaw support packs
 
-        if (distanceFromSpawn < 80) {
+        if (distanceFromSpawn < 50) {
             // Near spawn: EASY START - 2-4 packs, 2-4 enemies each (~4-16 total)
             packsToSpawn = 2 + Math.floor(Math.random() * 3); // 2-4 packs
             minPackSize = 2;
             maxPackSize = 4;
             bossChance = 0;
             emberclawSupportChance = 0; // No emberclaws yet
-        } else if (distanceFromSpawn < 150) {
+        } else if (distanceFromSpawn < 100) {
             // Close to spawn: EASY - 3-5 packs, 3-6 enemies (~9-30 total)
             packsToSpawn = 3 + Math.floor(Math.random() * 3); // 3-5 packs
             minPackSize = 3;
             maxPackSize = 6;
             bossChance = 0;
             emberclawSupportChance = 0.2; // 20% chance for emberclaw support
-        } else if (distanceFromSpawn < 250) {
+        } else if (distanceFromSpawn < 200) {
             // Medium distance: MODERATE - 4-7 packs, 5-8 enemies (~20-56 total)
             packsToSpawn = 4 + Math.floor(Math.random() * 4); // 4-7 packs
             minPackSize = 5;
             maxPackSize = 8;
             bossChance = 0.02;
             emberclawSupportChance = 0.35; // 35% chance for emberclaw support
-        } else if (distanceFromSpawn < 450) {
+        } else if (distanceFromSpawn < 350) {
             // Far: HARD - 6-9 packs, 8-12 enemies (~48-108 total)
             packsToSpawn = 6 + Math.floor(Math.random() * 4); // 6-9 packs
             minPackSize = 8;

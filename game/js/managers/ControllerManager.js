@@ -74,6 +74,9 @@ class ControllerManager {
     update() {
         if (!this.enabled || !this.pad) return;
 
+        // Update button states ONCE at the start of frame
+        this.updateButtonStates();
+
         // Detect if controller is being used
         this.detectControllerInput();
 
@@ -100,6 +103,28 @@ class ControllerManager {
 
         // Handle menus
         this.handleMenus();
+
+        // Update button states for next frame
+        this.finishFrame();
+    }
+
+    updateButtonStates() {
+        // Capture button states once per frame
+        this.currentButtonState = {
+            A: this.pad.A,
+            B: this.pad.B,
+            X: this.pad.X,
+            Y: this.pad.Y,
+            LB: this.pad.L1,
+            RB: this.pad.R1,
+            Start: this.pad.buttons[9] ? this.pad.buttons[9].pressed : false,
+            Select: this.pad.buttons[8] ? this.pad.buttons[8].pressed : false,
+            R3: this.pad.buttons[11] ? this.pad.buttons[11].pressed : false,
+            DPadUp: this.pad.up,
+            DPadDown: this.pad.down,
+            DPadLeft: this.pad.left,
+            DPadRight: this.pad.right
+        };
     }
 
     detectControllerInput() {
@@ -260,8 +285,11 @@ class ControllerManager {
         if (!this.scene.abilityManager) return;
 
         // A Button = E ability (only if not used for interaction)
+        if (this.isButtonPressed('A')) {
+            console.log('🎮 A pressed in handleAbilities, interactHandled:', interactHandled);
+        }
         if (!interactHandled && this.isButtonPressed('A')) {
-            console.log('🎮 Controller: A pressed (E ability)');
+            console.log('🎮 Controller: A pressed (E ability) - calling useAbility');
             this.scene.abilityManager.useAbility('e');
         }
 
@@ -337,8 +365,15 @@ class ControllerManager {
 
         // Check if A button is pressed
         if (this.isButtonPressed('A')) {
+            console.log('🎮 A button pressed in handleInteract');
+            console.log('  merchantNPC exists:', !!this.scene.merchantNPC);
+            console.log('  merchantNPC.isShopOpen:', this.scene.merchantNPC ? this.scene.merchantNPC.isShopOpen : 'N/A');
+            console.log('  skillShopNPC exists:', !!this.scene.skillShopNPC);
+            console.log('  skillShopNPC.isShopOpen:', this.scene.skillShopNPC ? this.scene.skillShopNPC.isShopOpen : 'N/A');
+
             // If merchant shop is open, purchase selected item
             if (this.scene.merchantNPC && this.scene.merchantNPC.isShopOpen) {
+                console.log('  → Handling merchant purchase');
                 this.scene.merchantNPC.purchaseSelectedItem();
                 return true;
             }
@@ -422,58 +457,27 @@ class ControllerManager {
     }
 
     isButtonPressed(buttonName) {
-        if (!this.pad) return false;
+        if (!this.pad || !this.currentButtonState) return false;
 
-        let currentState = false;
-
-        // Map button names to gamepad buttons
-        switch(buttonName) {
-            case 'A':
-                currentState = this.pad.A; // Bottom button (Xbox A, PS Cross)
-                break;
-            case 'B':
-                currentState = this.pad.B; // Right button (Xbox B, PS Circle)
-                break;
-            case 'X':
-                currentState = this.pad.X; // Left button (Xbox X, PS Square)
-                break;
-            case 'Y':
-                currentState = this.pad.Y; // Top button (Xbox Y, PS Triangle)
-                break;
-            case 'LB':
-                currentState = this.pad.L1; // Left bumper
-                break;
-            case 'RB':
-                currentState = this.pad.R1; // Right bumper
-                break;
-            case 'Start':
-                currentState = this.pad.buttons[9] ? this.pad.buttons[9].pressed : false; // Start
-                break;
-            case 'Select':
-                currentState = this.pad.buttons[8] ? this.pad.buttons[8].pressed : false; // Select/Back/Menu
-                break;
-            case 'R3':
-                currentState = this.pad.buttons[11] ? this.pad.buttons[11].pressed : false; // Right stick click
-                break;
-            case 'DPadUp':
-                currentState = this.pad.up; // D-pad up
-                break;
-            case 'DPadDown':
-                currentState = this.pad.down; // D-pad down
-                break;
-            case 'DPadLeft':
-                currentState = this.pad.left; // D-pad left
-                break;
-            case 'DPadRight':
-                currentState = this.pad.right; // D-pad right
-                break;
-        }
+        // Use the cached current state from updateButtonStates()
+        const currentState = this.currentButtonState[buttonName];
+        const wasPressed = this.lastButtonState[buttonName];
 
         // Edge detection: only return true on button down (not held)
-        const wasPressed = this.lastButtonState[buttonName];
-        this.lastButtonState[buttonName] = currentState;
+        const pressed = currentState && !wasPressed;
 
-        return currentState && !wasPressed;
+        if (buttonName === 'A' && pressed) {
+            console.log('🎮 A button NEWLY PRESSED (edge detected)');
+        }
+
+        return pressed;
+    }
+
+    finishFrame() {
+        // Update lastButtonState at the END of the frame
+        if (this.currentButtonState) {
+            this.lastButtonState = { ...this.currentButtonState };
+        }
     }
 
     showControllerNotification(text) {

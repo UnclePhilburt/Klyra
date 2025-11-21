@@ -2189,6 +2189,10 @@ class GameScene extends Phaser.Scene {
                         this.merchantNPC.toggleShop();
                         return; // Prioritize merchant if both are in range
                     }
+                    // Close merchant shop if open (even when not in range)
+                    if (this.merchantNPC.isShopOpen) {
+                        this.merchantNPC.closeShop();
+                    }
                 }
 
                 // Check skill shop NPC
@@ -2235,9 +2239,12 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        // ESC key to close skill shop
+        // ESC key to close shops
         this.keyESC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
         this.keyESC.on('down', () => {
+            if (this.merchantNPC && this.merchantNPC.isShopOpen) {
+                this.merchantNPC.closeShop();
+            }
             if (this.skillShopNPC && this.skillShopNPC.isShopOpen) {
                 this.skillShopNPC.closeShop();
             }
@@ -2844,6 +2851,12 @@ class GameScene extends Phaser.Scene {
             console.log(`📩 CLIENT: Received enemy:position for ${data.enemyId}`, data.position);
             const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId] || this.emberclaws[data.enemyId];
             if (enemy && enemy.setTargetPosition) {
+                // Ignore position updates for dead enemies
+                if (!enemy.isAlive) {
+                    console.log(`⚰️ CLIENT: Ignoring position update for dead enemy ${data.enemyId}`);
+                    return;
+                }
+
                 // Position from server is in TILES, convert to pixels
                 const tileSize = GameConfig.GAME.TILE_SIZE;
                 const targetX = data.position.x * tileSize + tileSize / 2;
@@ -3036,6 +3049,11 @@ class GameScene extends Phaser.Scene {
             }
 
             if (enemy.sprite) {
+                // Ignore position updates for dead enemies
+                if (!enemy.isAlive) {
+                    return;
+                }
+
                 // Server now sends pixel coordinates directly for smooth interpolation
                 if (data.isPixelCoordinates) {
                     // New format: pixel coordinates, use directly
@@ -3276,7 +3294,7 @@ class GameScene extends Phaser.Scene {
                 const enemy = this.enemies[enemyData.enemyId] || this.swordDemons[enemyData.enemyId] || this.minotaurs[enemyData.enemyId] || this.mushrooms[enemyData.enemyId] || this.emberclaws[enemyData.enemyId];
 
                 // Silently ignore movement for non-existent or dead enemies
-                if (!enemy || enemy.isDead || enemy.isDying || !enemy.sprite || !enemy.sprite.active) {
+                if (!enemy || enemy.isDead || enemy.isDying || !enemy.sprite || !enemy.sprite.active || !enemy.isAlive) {
                     return;
                 }
 
