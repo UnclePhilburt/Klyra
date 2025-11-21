@@ -203,7 +203,7 @@ class Player {
         // No need to trigger manually here
     }
 
-    executeAutoAttack() {
+    executeAutoAttack(forceAnimation = false, customDirection = null) {
         // Safety check: ensure player sprite exists before attempting auto-attack
         if (!this.spriteRenderer || !this.spriteRenderer.sprite) {
             return; // Silently skip until player is ready
@@ -228,47 +228,87 @@ class Player {
             this.commandBolt();
         } else if (config.target === 'enemy') {
             // Attack nearest enemy
-            this.autoAttackEnemy(config);
+            this.autoAttackEnemy(config, forceAnimation, customDirection);
         }
     }
 
-    autoAttackEnemy(config) {
+    autoAttackEnemy(config, forceAnimation = false, customDirection = null) {
         // Find all enemies in front of Kelise within range
         const range = (config.range || 3) * GameConfig.GAME.TILE_SIZE;
         const playerPos = { x: this.spriteRenderer.sprite.x, y: this.spriteRenderer.sprite.y };
-
-        // Determine facing direction based on sprite flip
-        const facingLeft = this.spriteRenderer.sprite && this.spriteRenderer.sprite.flipX;
 
         // Get all enemies dynamically (automatically includes all enemy types)
         const allEnemies = this.scene.getAllEnemies();
 
         const enemiesInFront = [];
 
-        allEnemies.forEach(enemy => {
-            if (!enemy.isAlive || !enemy.sprite) return;
+        // Use custom direction if provided (from controller), otherwise use facing direction
+        if (customDirection) {
+            // Controller mode: Attack in the direction of the right stick
+            const attackAngle = Math.atan2(customDirection.y, customDirection.x);
 
-            const dx = enemy.sprite.x - playerPos.x;
-            const dy = enemy.sprite.y - playerPos.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            allEnemies.forEach(enemy => {
+                if (!enemy.isAlive || !enemy.sprite) return;
 
-            // Check if enemy is within range
-            if (distance > range) return;
+                const dx = enemy.sprite.x - playerPos.x;
+                const dy = enemy.sprite.y - playerPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
 
-            // Check if enemy is in front based on facing direction
-            // Front cone: 120 degrees in the facing direction
-            if (facingLeft && dx >= 0) return; // Facing left but enemy is on right
-            if (!facingLeft && dx <= 0) return; // Facing right but enemy is on left
+                // Check if enemy is within range
+                if (distance > range) return;
 
-            enemiesInFront.push(enemy);
-        });
+                // Check if enemy is in the direction of the stick (120-degree cone)
+                const enemyAngle = Math.atan2(dy, dx);
+                const angleDiff = Math.abs(attackAngle - enemyAngle);
+                const normalizedDiff = Math.min(angleDiff, 2 * Math.PI - angleDiff);
 
-        // Attack all enemies in front
+                // 120 degrees = ~2.09 radians, so half cone is ~1.05 radians
+                if (normalizedDiff < 1.05) {
+                    enemiesInFront.push(enemy);
+                }
+            });
+        } else {
+            // Normal mode: Attack based on sprite facing direction
+            const facingLeft = this.spriteRenderer.sprite && this.spriteRenderer.sprite.flipX;
+
+            allEnemies.forEach(enemy => {
+                if (!enemy.isAlive || !enemy.sprite) return;
+
+                const dx = enemy.sprite.x - playerPos.x;
+                const dy = enemy.sprite.y - playerPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Check if enemy is within range
+                if (distance > range) return;
+
+                // Check if enemy is in front based on facing direction
+                // Front cone: 120 degrees in the facing direction
+                if (facingLeft && dx >= 0) return; // Facing left but enemy is on right
+                if (!facingLeft && dx <= 0) return; // Facing right but enemy is on left
+
+                enemiesInFront.push(enemy);
+            });
+        }
+
+        // If forceAnimation is true (manual controller mode), always play animation
+        // Otherwise, only play if enemies are found
+        if (forceAnimation || enemiesInFront.length > 0) {
+            // If custom direction is provided, orient the sprite in that direction
+            if (customDirection) {
+                // Flip sprite based on horizontal direction of stick
+                if (customDirection.x < 0) {
+                    this.spriteRenderer.sprite.setFlipX(true); // Face left
+                } else if (customDirection.x > 0) {
+                    this.spriteRenderer.sprite.setFlipX(false); // Face right
+                }
+            }
+
+            this.spriteRenderer.playAttackAnimation();
+        }
+
+        // Attack all enemies in front (damage only if enemies found)
         if (enemiesInFront.length > 0) {
             let damage = config.damage || 10;
-
-            // Play attack animation once
-            this.spriteRenderer.playAttackAnimation();
 
             enemiesInFront.forEach(enemy => {
                 // Calculate critical hit
@@ -793,8 +833,8 @@ class Player {
         // Update UI (handles its own position caching)
         this.ui.update(spriteDepth);
 
-        // AUTO-ATTACK: Execute automatically on cooldown
-        if (this.autoAttackConfig) {
+        // AUTO-ATTACK: Execute automatically on cooldown (unless disabled by controller)
+        if (this.autoAttackConfig && !this.disableAutoAttack) {
             const now = Date.now();
             const cooldown = this.autoAttackConfig.cooldown || 1000;
 

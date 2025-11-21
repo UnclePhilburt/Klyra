@@ -92,15 +92,15 @@ class MerchantNPC {
         const bg = this.scene.add.rectangle(0, 0, 200, 30, 0x000000, 0.8);
         bg.setStrokeStyle(2, 0x66ff66);
 
-        // Text
-        const text = this.scene.add.text(0, 0, 'Press F to Buy Items', {
+        // Text (store reference for updating)
+        this.promptText = this.scene.add.text(0, 0, 'Press F to Buy Items', {
             font: 'bold 12px monospace',
             fill: '#66ff66',
             stroke: '#000000',
             strokeThickness: 2
         }).setOrigin(0.5);
 
-        this.prompt.add([bg, text]);
+        this.prompt.add([bg, this.promptText]);
         this.prompt.setVisible(false);
     }
 
@@ -134,15 +134,15 @@ class MerchantNPC {
             strokeThickness: 2
         }).setOrigin(0.5);
 
-        // Close hint
-        const closeHint = this.scene.add.text(0, 235, 'Press F or ESC to close', {
+        // Close hint (store reference for updating)
+        this.closeHintText = this.scene.add.text(0, 235, 'Press F or ESC to close', {
             font: '12px monospace',
             fill: '#666666',
             stroke: '#000000',
             strokeThickness: 2
         }).setOrigin(0.5);
 
-        this.shopContainer.add([bg, title, instructions, closeHint]);
+        this.shopContainer.add([bg, title, instructions, this.closeHintText]);
 
         // Create item cards
         this.createItemCards();
@@ -176,10 +176,13 @@ class MerchantNPC {
                 strokeThickness: 2
             }).setOrigin(0, 0.5);
 
-            // Cost
-            const costText = this.scene.add.text(180, y, `${item.cost} ⭐`, {
+            // Cost (with soul sprite icon)
+            const soulIcon = this.scene.add.sprite(170, y, 'souls', 0);
+            soulIcon.setScale(0.6); // Scale down the 32x32 sprite
+
+            const costText = this.scene.add.text(190, y, `${item.cost}`, {
                 font: 'bold 18px monospace',
-                fill: '#ffff00',
+                fill: '#9d00ff', // Purple color for souls
                 stroke: '#000000',
                 strokeThickness: 3
             }).setOrigin(0, 0.5);
@@ -195,7 +198,7 @@ class MerchantNPC {
                 strokeThickness: 4
             }).setOrigin(0.5);
 
-            this.shopContainer.add([cardBg, nameText, descText, costText, keyBg, keyText]);
+            this.shopContainer.add([cardBg, nameText, descText, soulIcon, costText, keyBg, keyText]);
         });
     }
 
@@ -253,8 +256,8 @@ class MerchantNPC {
         // Check if player has enough currency
         const currentCurrency = this.scene.modernHUD ? this.scene.modernHUD.getCurrency() : 0;
         if (currentCurrency < item.cost) {
-            console.log('⚠️ Not enough stars!');
-            this.showFeedback('Not Enough Stars!', '#ff6666');
+            console.log('⚠️ Not enough souls!');
+            this.showFeedback('Not Enough Souls!', '#ff6666');
             return;
         }
 
@@ -306,6 +309,19 @@ class MerchantNPC {
             ease: 'Power2',
             onComplete: () => feedbackText.destroy()
         });
+    }
+
+    setInputMode(mode) {
+        // Update prompt texts based on input mode
+        const interactButton = mode === 'controller' ? 'A' : 'F';
+        const closeButton = mode === 'controller' ? 'Start' : 'ESC';
+
+        if (this.promptText) {
+            this.promptText.setText(`Press ${interactButton} to Buy Items`);
+        }
+        if (this.closeHintText) {
+            this.closeHintText.setText(`Press ${interactButton} or ${closeButton} to close`);
+        }
     }
 
     destroy() {

@@ -34,7 +34,7 @@ class GameScene extends Phaser.Scene {
         const eventsToClear = [
             'player:joined', 'player:left', 'player:moved', 'player:changedMap', 'player:attacked',
             'player:damaged', 'player:levelup', 'player:died',
-            'enemy:spawned', 'enemy:despawned', 'enemy:damaged', 'enemy:moved', 'enemy:killed',
+            'enemy:spawned', 'enemy:despawned', 'enemy:damaged', 'enemy:moved', 'enemies:moved:batch', 'enemy:killed',
             'minion:spawned', 'minion:moved', 'minion:died', 'minion:damaged', 'minion:healed',
             'item:spawned', 'item:collected', 'chat:message'
         ];
@@ -2129,6 +2129,14 @@ class GameScene extends Phaser.Scene {
     }
 
     setupControls() {
+        // Detect any keyboard input for UI switching (ignore mouse buttons)
+        this.input.keyboard.on('keydown', (event) => {
+            // Only switch to keyboard if it's an actual keyboard key (not a repeated event)
+            if (this.controllerManager && !event.repeat) {
+                this.controllerManager.detectKeyboardInput();
+            }
+        });
+
         // Keyboard
         this.cursors = this.input.keyboard.createCursorKeys();
         this.wasd = this.input.keyboard.addKeys({
@@ -2167,33 +2175,34 @@ class GameScene extends Phaser.Scene {
         });
 
         // F key for merchant interaction
+        // F key for both merchant and skill shop interaction
         this.keyF = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
         this.keyF.on('down', () => {
-            if (this.merchantNPC && this.localPlayer) {
+            if (this.localPlayer) {
                 const playerX = this.localPlayer.sprite.x;
                 const playerY = this.localPlayer.sprite.y;
-                const isInRange = this.merchantNPC.checkPlayerDistance(playerX, playerY);
 
-                if (isInRange) {
-                    this.merchantNPC.toggleShop();
+                // Check merchant NPC
+                if (this.merchantNPC) {
+                    const merchantInRange = this.merchantNPC.checkPlayerDistance(playerX, playerY);
+                    if (merchantInRange) {
+                        this.merchantNPC.toggleShop();
+                        return; // Prioritize merchant if both are in range
+                    }
                 }
-            }
-        });
 
-        // G key for skill shop interaction
-        this.keyG = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.G);
-        this.keyG.on('down', () => {
-            if (this.skillShopNPC && this.localPlayer) {
-                const playerX = this.localPlayer.sprite.x;
-                const playerY = this.localPlayer.sprite.y;
-                const isInRange = this.skillShopNPC.checkPlayerDistance(playerX, playerY);
-
-                if (isInRange) {
-                    this.skillShopNPC.toggleShop();
+                // Check skill shop NPC
+                if (this.skillShopNPC) {
+                    const skillShopInRange = this.skillShopNPC.checkPlayerDistance(playerX, playerY);
+                    if (skillShopInRange) {
+                        this.skillShopNPC.toggleShop();
+                        return;
+                    }
+                    // Close skill shop if open (even when not in range)
+                    if (this.skillShopNPC.isShopOpen) {
+                        this.skillShopNPC.closeShop();
+                    }
                 }
-            } else if (this.skillShopNPC && this.skillShopNPC.isShopOpen) {
-                // Close shop if open (even when not in range)
-                this.skillShopNPC.closeShop();
             }
         });
 
@@ -2289,9 +2298,9 @@ class GameScene extends Phaser.Scene {
         this.ambientParticles = [];
         this.ambientParticleTimer = 0;
 
-        // Particle spawn settings - DENSE atmosphere
-        this.particleSpawnRate = 100; // Spawn particle every 100ms (2x faster)
-        this.maxAmbientParticles = 300; // Max particles on screen (2x more)
+        // Particle spawn settings - PERFORMANCE OPTIMIZED
+        this.particleSpawnRate = 200; // Spawn particle every 200ms
+        this.maxAmbientParticles = 120; // Max particles on screen (reduced for better FPS)
 
         console.log('✨ Ambient particle system initialized');
     }
@@ -2406,7 +2415,7 @@ class GameScene extends Phaser.Scene {
         const eventsToClear = [
             'player:joined', 'player:left', 'player:moved', 'player:changedMap', 'player:attacked',
             'player:damaged', 'player:levelup', 'player:died',
-            'enemy:spawned', 'enemy:despawned', 'enemy:damaged', 'enemy:moved', 'enemy:killed',
+            'enemy:spawned', 'enemy:despawned', 'enemy:damaged', 'enemy:moved', 'enemies:moved:batch', 'enemy:killed',
             'minion:spawned', 'minion:moved', 'minion:died', 'minion:damaged', 'minion:healed',
             'item:spawned', 'item:collected', 'chat:message', 'passiveSkill:activated'
         ];
@@ -3016,8 +3025,13 @@ class GameScene extends Phaser.Scene {
         networkManager.on('enemy:moved', (data) => {
             const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId] || this.emberclaws[data.enemyId];
 
-            // Silently ignore movement for non-existent enemies (likely killed but server still sending updates)
+            // Silently ignore movement for non-existent or dead enemies
             if (!enemy) {
+                return;
+            }
+
+            // Ignore movement if enemy is dead/dying
+            if (enemy.isDead || enemy.isDying || !enemy.sprite || !enemy.sprite.active) {
                 return;
             }
 
@@ -3253,6 +3267,33 @@ class GameScene extends Phaser.Scene {
             }
         });
 
+        // PERFORMANCE: Batched enemy movements (handles multiple enemies at once)
+        networkManager.on('enemies:moved:batch', (data) => {
+            if (!data.enemies || !Array.isArray(data.enemies)) return;
+
+            // Process all enemy movements in the batch
+            data.enemies.forEach(enemyData => {
+                const enemy = this.enemies[enemyData.enemyId] || this.swordDemons[enemyData.enemyId] || this.minotaurs[enemyData.enemyId] || this.mushrooms[enemyData.enemyId] || this.emberclaws[enemyData.enemyId];
+
+                // Silently ignore movement for non-existent or dead enemies
+                if (!enemy || enemy.isDead || enemy.isDying || !enemy.sprite || !enemy.sprite.active) {
+                    return;
+                }
+
+                // Server sends pixel coordinates
+                if (enemyData.isPixelCoordinates) {
+                    if (enemy.setTargetPosition) {
+                        enemy.setTargetPosition(enemyData.position.x, enemyData.position.y);
+                    } else if (enemy.moveToPosition) {
+                        const tileSize = GameConfig.GAME.TILE_SIZE;
+                        const tileX = (enemyData.position.x - tileSize / 2) / tileSize;
+                        const tileY = (enemyData.position.y - tileSize / 2) / tileSize;
+                        enemy.moveToPosition({ x: tileX, y: tileY });
+                    }
+                }
+            });
+        });
+
         // Enemy killed
         networkManager.on('enemy:killed', (data) => {
             // Use dynamic enemy finder
@@ -3396,8 +3437,8 @@ class GameScene extends Phaser.Scene {
 
                 // If local player picked it up
                 if (data.playerId === networkManager.currentPlayer.id) {
-                    // Stars go to currency, other items go to inventory
-                    if (data.itemType === 'star') {
+                    // Souls go to currency, other items go to inventory
+                    if (data.itemType === 'soul') {
                         if (this.modernHUD) {
                             this.modernHUD.addCurrency(1);
                         }
@@ -4504,22 +4545,9 @@ class GameScene extends Phaser.Scene {
             this.abilityManager.update(time, delta);
         }
 
-        // Update controller manager
+        // Update controller manager (handles all controller input internally)
         if (this.controllerManager) {
             this.controllerManager.update();
-        }
-
-        // Controller ability buttons
-        if (this.controllerManager && this.abilityManager) {
-            if (this.controllerManager.isAbilityJustPressed('Q')) {
-                this.abilityManager.useAbility('q');
-            }
-            if (this.controllerManager.isAbilityJustPressed('E')) {
-                this.abilityManager.useAbility('e');
-            }
-            if (this.controllerManager.isAbilityJustPressed('R')) {
-                this.abilityManager.useAbility('r');
-            }
         }
 
         // PERFORMANCE: Removed performance timing system (saves 21+ performance.now() calls per frame)
@@ -4528,17 +4556,27 @@ class GameScene extends Phaser.Scene {
         let velocityX = 0;
         let velocityY = 0;
 
-        // Get controller input
-        const controllerVector = this.controllerManager ? this.controllerManager.getMovementVector() : { x: 0, y: 0 };
-
         // Get mobile joystick input
         const mobileInput = typeof mobileControls !== 'undefined' ? mobileControls.getInput() : { x: 0, y: 0, active: false };
+
+        // Get controller input
+        const controllerInput = this.controllerManager ? this.controllerManager.getMovementInput() : { x: 0, y: 0, active: false };
 
         // Check if inventory is open - disable WASD movement
         const inventoryOpen = this.inventoryUI && this.inventoryUI.isOpen;
 
-        // Keyboard input (only if inventory is closed)
-        if (!inventoryOpen) {
+        // Controller input (highest priority)
+        if (controllerInput.active) {
+            velocityX = controllerInput.x;
+            velocityY = controllerInput.y;
+        }
+        // Mobile joystick input (second priority)
+        else if (mobileInput.active) {
+            velocityX = mobileInput.x;
+            velocityY = mobileInput.y;
+        }
+        // Keyboard input (only if inventory is closed and no other input)
+        else if (!inventoryOpen) {
             if (this.cursors.left.isDown || this.wasd.left.isDown) {
                 velocityX = -1;
             } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
@@ -4550,18 +4588,7 @@ class GameScene extends Phaser.Scene {
             } else if (this.cursors.down.isDown || this.wasd.down.isDown) {
                 velocityY = 1;
             }
-        }
 
-        // Mobile joystick input (overrides keyboard if active)
-        if (mobileInput.active) {
-            velocityX = mobileInput.x;
-            velocityY = mobileInput.y;
-        }
-        // Controller input (overrides keyboard and mobile if active)
-        else if (Math.abs(controllerVector.x) > 0 || Math.abs(controllerVector.y) > 0) {
-            velocityX = controllerVector.x;
-            velocityY = controllerVector.y;
-        } else {
             // Normalize diagonal movement for keyboard
             if (velocityX !== 0 && velocityY !== 0) {
                 velocityX *= 0.707;
@@ -4621,40 +4648,14 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        // Update enemies
-        Object.values(this.enemies).forEach(enemy => {
+        // Update all enemies (optimized: single iteration instead of 5 separate loops)
+        const allEnemies = this.getAllEnemies();
+        for (let i = 0; i < allEnemies.length; i++) {
+            const enemy = allEnemies[i];
             if (enemy.isAlive) {
                 enemy.update();
             }
-        });
-
-        // Update sword demons
-        Object.values(this.swordDemons).forEach(swordDemon => {
-            if (swordDemon.isAlive) {
-                swordDemon.update();
-            }
-        });
-
-        // Update minotaurs
-        Object.values(this.minotaurs).forEach(minotaur => {
-            if (minotaur.isAlive) {
-                minotaur.update();
-            }
-        });
-
-        // Update mushrooms
-        Object.values(this.mushrooms).forEach(mushroom => {
-            if (mushroom.isAlive) {
-                mushroom.update();
-            }
-        });
-
-        // Update emberclaws
-        Object.values(this.emberclaws).forEach(emberclaw => {
-            if (emberclaw.isAlive) {
-                emberclaw.update();
-            }
-        });
+        }
 
         // Check for experience orb collection
         const playerX = this.localPlayer.sprite.x;

@@ -14,6 +14,16 @@ class AbilityManager {
         // Cooldown UI elements
         this.cooldownUI = null;
 
+        // Input mode tracking
+        this.inputMode = 'keyboard'; // 'keyboard' or 'controller'
+
+        // Button mappings
+        this.controllerButtons = {
+            q: 'X',
+            e: 'A',
+            r: 'B'
+        };
+
         // Create minimal testing UI
         this.createCooldownUI();
     }
@@ -59,7 +69,7 @@ class AbilityManager {
     createMinimalDisplay(x, y, key, colorTheme) {
         const container = this.scene.add.container(x, y);
         container.setScrollFactor(0);
-        container.setDepth(10000);
+        container.setDepth(100000); // High depth to appear above all game objects
 
         // STUNNING GRADIENT DESIGN
         const boxWidth = 170;
@@ -214,7 +224,7 @@ class AbilityManager {
     createAbilityButton(x, y, key) {
         const container = this.scene.add.container(x, y);
         container.setScrollFactor(0);
-        container.setDepth(10000);
+        container.setDepth(100000); // High depth to appear above all game objects
 
         // Background circle
         const bg = this.scene.add.circle(0, 0, 35, 0x1a1a2e, 0.9);
@@ -388,7 +398,9 @@ class AbilityManager {
                     Phaser.Display.Color.IntegerToRGB(colors.primary).g,
                     Phaser.Display.Color.IntegerToRGB(colors.primary).b
                 ));
-                ui.keyText.setText(key.toUpperCase()); // Show key letter during cooldown
+                // Show key or controller button based on input mode
+                const displayText = this.inputMode === 'controller' ? this.controllerButtons[key] : key.toUpperCase();
+                ui.keyText.setText(displayText);
                 ui.keyText.setColor('#9ca3af');
                 ui.label.setColor('#d1d5db');
 
@@ -440,7 +452,9 @@ class AbilityManager {
                 const colorStr = '#' + colors.primary.toString(16).padStart(6, '0');
                 ui.cooldownText.setText('⚡ READY');
                 ui.cooldownText.setColor(colorStr);
-                ui.keyText.setText(key.toUpperCase()); // Show key letter when ready
+                // Show key or controller button based on input mode
+                const displayText = this.inputMode === 'controller' ? this.controllerButtons[key] : key.toUpperCase();
+                ui.keyText.setText(displayText);
                 ui.keyText.setColor(colorStr);
                 ui.label.setColor('#ffffff');
 
@@ -586,7 +600,9 @@ class AbilityManager {
                     ui.keyText.setColor('#71717a'); // Lighter gray for lock icon
                     ui.label.setColor('#a1a1aa'); // Lighter text for locked abilities
                 } else {
-                    ui.keyText.setText(key.toUpperCase());
+                    // Show key or controller button based on input mode
+                    const displayText = this.inputMode === 'controller' ? this.controllerButtons[key] : key.toUpperCase();
+                    ui.keyText.setText(displayText);
                     ui.keyText.setColor('#52525b');
                     ui.label.setColor('#52525b');
                 }
@@ -1486,6 +1502,20 @@ class AbilityManager {
         }
 
         console.log('✅ Shockwave created');
+    }
+
+    setInputMode(mode) {
+        this.inputMode = mode;
+        console.log(`🎮 AbilityManager: Switched to ${mode} mode`);
+
+        // Update all ability key displays immediately
+        ['q', 'e', 'r'].forEach(key => {
+            const ui = this.cooldownUI[key];
+            if (ui && ui.keyText) {
+                const displayText = mode === 'controller' ? this.controllerButtons[key] : key.toUpperCase();
+                ui.keyText.setText(displayText);
+            }
+        });
     }
 
     destroy() {

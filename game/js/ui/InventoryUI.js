@@ -33,12 +33,12 @@ class InventoryUI {
         const width = this.scene.cameras.main.width;
         const height = this.scene.cameras.main.height;
 
-        // Hotbar at bottom center, above health bar (always visible)
-        const slotSize = 50;
-        const slotPadding = 8;
+        // MINIMAL HOTBAR - No backgrounds, just icons with glows
+        const slotSize = 35; // Smaller
+        const slotPadding = 10; // More spacing between icons
         const totalWidth = this.hotbarSlots * slotSize + (this.hotbarSlots - 1) * slotPadding;
         const startX = (width - totalWidth) / 2;
-        const startY = height - 170; // Moved up to avoid ability bar
+        const startY = height - 50; // Bottom center
 
         this.hotbarSlotGraphics = [];
         this.hotbarItemTexts = [];
@@ -48,29 +48,29 @@ class InventoryUI {
         for (let i = 0; i < this.hotbarSlots; i++) {
             const x = startX + i * (slotSize + slotPadding);
 
-            // Slot background
-            const slotBg = this.scene.add.rectangle(
-                x, startY,
-                slotSize, slotSize,
-                0x2a2a3e, 0.9
-            ).setOrigin(0);
-            slotBg.setDepth(99500);
+            // NO slot background - minimalist!
+            // Just a subtle glow circle that only appears when slot has item
+            const slotBg = this.scene.add.circle(
+                x + slotSize / 2, startY + slotSize / 2,
+                slotSize / 2,
+                0x000000, 0
+            ); // Invisible by default
+            slotBg.setDepth(99499);
             slotBg.setScrollFactor(0);
-            slotBg.setStrokeStyle(2, 0x6b7280);
 
-            // Key number indicator
+            // Key number indicator (very small, bottom-right corner)
             const keyText = this.scene.add.text(
-                x + 5, startY + 5,
+                x + slotSize - 2, startY + slotSize - 2,
                 (i + 1).toString(),
                 {
                     fontFamily: 'Arial',
-                    fontSize: '12px',
+                    fontSize: '9px',
                     fontStyle: 'bold',
-                    fill: '#9ca3af',
+                    fill: '#4b5563',
                     stroke: '#000000',
                     strokeThickness: 2
                 }
-            ).setOrigin(0);
+            ).setOrigin(1, 1);
             keyText.setDepth(99502);
             keyText.setScrollFactor(0);
 
@@ -83,7 +83,7 @@ class InventoryUI {
             itemSprite.setDepth(99503);
             itemSprite.setScrollFactor(0);
             itemSprite.setVisible(false);
-            itemSprite.setScale(1.5);
+            itemSprite.setScale(1.3); // Slightly larger since no background
 
             // Item name text (fallback for non-sprite items)
             const itemText = this.scene.add.text(
@@ -655,6 +655,33 @@ class InventoryUI {
         if (this.activeBuffs.length > 0) {
             this.updateBuffDisplay();
         }
+    }
+
+    // Controller support: Highlight selected hotbar slot
+    setControllerSelection(slotIndex) {
+        // Clear all highlights first
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            const slotBg = this.hotbarSlotGraphics[i];
+            if (slotBg) {
+                slotBg.setFillStyle(0x000000, 0); // Make invisible
+                slotBg.setStrokeStyle(0, 0x000000, 0); // No stroke
+            }
+        }
+
+        // Highlight the selected slot
+        if (slotIndex >= 0 && slotIndex < this.hotbarSlots) {
+            const slotBg = this.hotbarSlotGraphics[slotIndex];
+            if (slotBg) {
+                slotBg.setFillStyle(0x6B4FFF, 0.3); // Purple glow
+                slotBg.setStrokeStyle(3, 0x6B4FFF, 1); // Purple border
+            }
+        }
+    }
+
+    setInputMode(mode) {
+        // For now, inventory doesn't have button prompts to update
+        // This is a placeholder for future hotbar key display updates
+        console.log(`🎮 InventoryUI: Switched to ${mode} mode`);
     }
 
     destroy() {

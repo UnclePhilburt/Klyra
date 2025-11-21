@@ -108,15 +108,15 @@ class SkillShopNPC {
         const bg = this.scene.add.rectangle(0, 0, 180, 30, 0x000000, 0.8);
         bg.setStrokeStyle(2, 0x9933ff);
 
-        // Text
-        const text = this.scene.add.text(0, 0, 'Press G to Buy Skills', {
+        // Text (store reference for updating)
+        this.promptText = this.scene.add.text(0, 0, 'Press F to Buy Skills', {
             font: 'bold 12px monospace',
             fill: '#aa66ff',
             stroke: '#000000',
             strokeThickness: 2
         }).setOrigin(0.5);
 
-        this.prompt.add([bg, text]);
+        this.prompt.add([bg, this.promptText]);
         this.prompt.setVisible(false);
     }
 
@@ -158,15 +158,15 @@ class SkillShopNPC {
             strokeThickness: 2
         }).setOrigin(0.5);
 
-        // Close hint
-        const closeHint = this.scene.add.text(0, 205, 'Press G or ESC to close', {
+        // Close hint (store reference for updating)
+        this.closeHintText = this.scene.add.text(0, 205, 'Press F or ESC to close', {
             font: '12px monospace',
             fill: '#666666',
             stroke: '#000000',
             strokeThickness: 2
         }).setOrigin(0.5);
 
-        this.shopContainer.add([bg, title, instructions, this.timerText, closeHint]);
+        this.shopContainer.add([bg, title, instructions, this.timerText, this.closeHintText]);
 
         // Container for skill cards (will be refreshed)
         this.cardsContainer = this.scene.add.container(0, 0);
@@ -205,10 +205,14 @@ class SkillShopNPC {
                 wordWrap: { width: 380, useAdvancedWrap: true }
             }).setOrigin(0, 0.5);
 
-            // Cost
-            const costText = this.scene.add.text(-240, y + 26, `Cost: ${skill.cost} ⭐`, {
+            // Cost (with soul sprite icon)
+            const soulIcon = this.scene.add.sprite(-240, y + 26, 'souls', 0);
+            soulIcon.setScale(0.5); // Scale down the 32x32 sprite
+            soulIcon.setOrigin(0, 0.5);
+
+            const costText = this.scene.add.text(-220, y + 26, `Cost: ${skill.cost}`, {
                 font: 'bold 14px monospace',
-                fill: '#ffff00',
+                fill: '#9d00ff', // Purple color for souls
                 stroke: '#000000',
                 strokeThickness: 3
             }).setOrigin(0, 0.5);
@@ -224,7 +228,7 @@ class SkillShopNPC {
                 strokeThickness: 4
             }).setOrigin(0.5);
 
-            this.cardsContainer.add([cardBg, nameText, descText, costText, keyBg, keyText]);
+            this.cardsContainer.add([cardBg, nameText, descText, soulIcon, costText, keyBg, keyText]);
         });
     }
 
@@ -320,8 +324,8 @@ class SkillShopNPC {
         // Check if player has enough currency
         const currentCurrency = this.scene.modernHUD ? this.scene.modernHUD.getCurrency() : 0;
         if (currentCurrency < skill.cost) {
-            console.log('⚠️ Not enough stars!');
-            this.showFeedback('Not Enough Stars!', '#ff6666');
+            console.log('⚠️ Not enough souls!');
+            this.showFeedback('Not Enough Souls!', '#ff6666');
             return;
         }
 
@@ -371,6 +375,19 @@ class SkillShopNPC {
             ease: 'Power2',
             onComplete: () => feedbackText.destroy()
         });
+    }
+
+    setInputMode(mode) {
+        // Update prompt texts based on input mode
+        const interactButton = mode === 'controller' ? 'A' : 'F';
+        const closeButton = mode === 'controller' ? 'Start' : 'ESC';
+
+        if (this.promptText) {
+            this.promptText.setText(`Press ${interactButton} to Buy Skills`);
+        }
+        if (this.closeHintText) {
+            this.closeHintText.setText(`Press ${interactButton} or ${closeButton} to close`);
+        }
     }
 
     destroy() {
