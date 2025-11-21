@@ -51,6 +51,39 @@ class ScreenManager {
 
         this.startScreen.addEventListener('click', startHandler);
         document.addEventListener('keydown', startHandler);
+
+        // Controller support for start screen - any button press
+        this.setupControllerStartScreen();
+    }
+
+    setupControllerStartScreen() {
+        // Check for controller button presses
+        const checkController = () => {
+            if (this.currentScreen !== 'START' || this.transitioning) return;
+
+            const gamepads = navigator.getGamepads();
+            if (!gamepads) return;
+
+            for (let gamepad of gamepads) {
+                if (!gamepad) continue;
+
+                // Check if any button is pressed
+                for (let button of gamepad.buttons) {
+                    if (button && button.pressed) {
+                        console.log('🎮 Controller button pressed on start screen');
+                        this.transitionToLobby();
+                        return;
+                    }
+                }
+            }
+        };
+
+        // Check controller input every frame when on start screen
+        const controllerLoop = () => {
+            checkController();
+            requestAnimationFrame(controllerLoop);
+        };
+        controllerLoop();
     }
 
     // Transition from START → LOBBY

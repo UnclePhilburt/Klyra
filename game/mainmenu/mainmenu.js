@@ -11,7 +11,20 @@ class MainMenu {
         this.musicStarted = false;
         
         this.portalCenter = { x: 0, y: 0 };
-        
+
+        // Controller navigation state
+        this.controllerMenuOptions = [];
+        this.selectedMenuIndex = 0;
+        this.lastButtonState = {
+            A: false,
+            B: false,
+            DPadUp: false,
+            DPadDown: false,
+            DPadLeft: false,
+            DPadRight: false,
+            Start: false
+        };
+
         this.init();
     }
     
@@ -27,6 +40,7 @@ class MainMenu {
         this.setupEventListeners();
         this.loadMenuMusic();
         this.loadSavedPlayerName();
+        this.setupLobbyControllerNavigation();
 
         // Auto-start music immediately (user already clicked start screen)
         // Small delay to ensure audio context is ready
@@ -416,7 +430,203 @@ class MainMenu {
             });
         }
     }
-    
+
+    setupLobbyControllerNavigation() {
+        // Setup menu options for controller navigation
+        this.controllerMenuOptions = [
+            {
+                element: document.querySelector('.enter-prompt'),
+                name: 'Enter Realm',
+                action: () => {
+                    // Trigger the enter button click
+                    if (this.controllerMenuOptions[0].element) {
+                        this.controllerMenuOptions[0].element.click();
+                    }
+                }
+            },
+            {
+                element: document.getElementById('charactersBtn'),
+                name: 'Characters',
+                action: () => {
+                    if (this.controllerMenuOptions[1].element) {
+                        this.controllerMenuOptions[1].element.click();
+                    }
+                }
+            },
+            {
+                element: document.getElementById('settingsBtn'),
+                name: 'Settings',
+                action: () => {
+                    if (this.controllerMenuOptions[2].element) {
+                        this.controllerMenuOptions[2].element.click();
+                    }
+                }
+            }
+        ];
+
+        // Start with Enter Realm selected
+        this.selectedMenuIndex = 0;
+        this.updateLobbyMenuHighlight();
+
+        // Start controller polling loop
+        const controllerLoop = () => {
+            this.handleLobbyControllerInput();
+            requestAnimationFrame(controllerLoop);
+        };
+        controllerLoop();
+
+        console.log('🎮 Lobby controller navigation initialized');
+    }
+
+    handleLobbyControllerInput() {
+        // Only handle input when on lobby screen
+        if (window.screenManager && window.screenManager.getCurrentScreen() !== 'LOBBY') {
+            return;
+        }
+
+        const gamepads = navigator.getGamepads();
+        if (!gamepads || !gamepads[0]) return;
+
+        const pad = gamepads[0];
+
+        // Check if settings or character select panels are open
+        const settingsPanel = document.getElementById('settingsPanel');
+        const characterSelectPanel = document.getElementById('characterSelect');
+        const settingsPanelOpen = settingsPanel && settingsPanel.classList.contains('active');
+        const characterSelectOpen = characterSelectPanel && characterSelectPanel.classList.contains('active');
+
+        // Handle settings panel controller input
+        if (settingsPanelOpen) {
+            this.handleSettingsPanelController(pad);
+            return;
+        }
+
+        // Handle character select panel controller input
+        if (characterSelectOpen) {
+            // B button to close character select
+            if (this.isControllerButtonPressed(pad, 'B')) {
+                const closeBtn = document.getElementById('closeCharacterSelect');
+                if (closeBtn) closeBtn.click();
+                console.log('🎮 Closed character select with B button');
+            }
+            return;
+        }
+
+        // D-pad up - navigate up
+        if (this.isControllerButtonPressed(pad, 'DPadUp')) {
+            this.selectedMenuIndex = (this.selectedMenuIndex - 1 + this.controllerMenuOptions.length) % this.controllerMenuOptions.length;
+            this.updateLobbyMenuHighlight();
+            console.log(`🎮 Lobby: Selected ${this.controllerMenuOptions[this.selectedMenuIndex].name}`);
+        }
+
+        // D-pad down - navigate down
+        if (this.isControllerButtonPressed(pad, 'DPadDown')) {
+            this.selectedMenuIndex = (this.selectedMenuIndex + 1) % this.controllerMenuOptions.length;
+            this.updateLobbyMenuHighlight();
+            console.log(`🎮 Lobby: Selected ${this.controllerMenuOptions[this.selectedMenuIndex].name}`);
+        }
+
+        // A button - activate selected option
+        if (this.isControllerButtonPressed(pad, 'A')) {
+            const selected = this.controllerMenuOptions[this.selectedMenuIndex];
+            if (selected && selected.action) {
+                console.log(`🎮 Lobby: Activated ${selected.name}`);
+                selected.action();
+            }
+        }
+    }
+
+    handleSettingsPanelController(pad) {
+        const settingsPanel = document.getElementById('settingsPanel');
+        const musicVolume = document.getElementById('musicVolume');
+        const closeSettings = document.getElementById('closeSettings');
+
+        // B button or Start button to close settings
+        if (this.isControllerButtonPressed(pad, 'B') || this.isControllerButtonPressed(pad, 'Start')) {
+            if (closeSettings) closeSettings.click();
+            console.log('🎮 Closed settings with controller');
+            return;
+        }
+
+        // D-pad left/right to adjust volume
+        if (musicVolume) {
+            let volumeChanged = false;
+            let newVolume = parseInt(musicVolume.value);
+
+            if (this.isControllerButtonPressed(pad, 'DPadLeft')) {
+                newVolume = Math.max(0, newVolume - 5);
+                volumeChanged = true;
+            }
+            if (this.isControllerButtonPressed(pad, 'DPadRight')) {
+                newVolume = Math.min(100, newVolume + 5);
+                volumeChanged = true;
+            }
+
+            if (volumeChanged) {
+                musicVolume.value = newVolume;
+                // Trigger input event to update display and save
+                const event = new Event('input', { bubbles: true });
+                musicVolume.dispatchEvent(event);
+                console.log(`🎮 Settings: Volume set to ${newVolume}%`);
+            }
+        }
+    }
+
+    updateLobbyMenuHighlight() {
+        // Remove highlight from all menu options
+        this.controllerMenuOptions.forEach((option, index) => {
+            if (option.element) {
+                if (index === this.selectedMenuIndex) {
+                    // Add highlight
+                    option.element.style.boxShadow = '0 0 20px 5px rgba(255, 255, 0, 0.8)';
+                    option.element.style.transform = 'scale(1.1)';
+                    option.element.style.transition = 'all 0.2s ease';
+                } else {
+                    // Remove highlight
+                    option.element.style.boxShadow = '';
+                    option.element.style.transform = '';
+                }
+            }
+        });
+    }
+
+    isControllerButtonPressed(pad, buttonName) {
+        if (!pad) return false;
+
+        let currentState = false;
+
+        // Map button names to gamepad buttons
+        switch(buttonName) {
+            case 'A':
+                currentState = pad.buttons[0] ? pad.buttons[0].pressed : false;
+                break;
+            case 'B':
+                currentState = pad.buttons[1] ? pad.buttons[1].pressed : false;
+                break;
+            case 'Start':
+                currentState = pad.buttons[9] ? pad.buttons[9].pressed : false;
+                break;
+            case 'DPadUp':
+                currentState = pad.buttons[12] ? pad.buttons[12].pressed : false;
+                break;
+            case 'DPadDown':
+                currentState = pad.buttons[13] ? pad.buttons[13].pressed : false;
+                break;
+            case 'DPadLeft':
+                currentState = pad.buttons[14] ? pad.buttons[14].pressed : false;
+                break;
+            case 'DPadRight':
+                currentState = pad.buttons[15] ? pad.buttons[15].pressed : false;
+                break;
+        }
+
+        // Edge detection: only return true on button down (not held)
+        const wasPressed = this.lastButtonState[buttonName];
+        this.lastButtonState[buttonName] = currentState;
+
+        return currentState && !wasPressed;
+    }
+
     loadMenuMusic() {
         const musicPath = 'assets/music/poltergeist-and-a-piano.mp3';
         this.menuMusic = new Audio(musicPath);
@@ -448,6 +658,14 @@ class MainMenu {
         }
         // Stop particle animation to save performance in-game
         this.animationStopped = true;
+
+        // Clear controller highlights when leaving lobby
+        this.controllerMenuOptions.forEach(option => {
+            if (option.element) {
+                option.element.style.boxShadow = '';
+                option.element.style.transform = '';
+            }
+        });
     }
     
     loadSavedPlayerName() {
