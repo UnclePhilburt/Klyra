@@ -8,6 +8,10 @@ class MerchantNPC {
         this.interactionRange = 80;
         this.isShopOpen = false;
 
+        // Controller selection
+        this.selectedItemIndex = 0;
+        this.itemHighlights = []; // Store highlight rectangles
+
         // Available items for sale
         this.items = [
             {
@@ -153,12 +157,21 @@ class MerchantNPC {
         const cardHeight = 60;
         const cardSpacing = 8;
 
+        // Clear existing highlights
+        this.itemHighlights = [];
+
         this.items.forEach((item, index) => {
             const y = startY + (index * (cardHeight + cardSpacing));
 
             // Card background
             const cardBg = this.scene.add.rectangle(0, y, 600, cardHeight, 0x2a2a3e, 1);
             cardBg.setStrokeStyle(2, 0x66ff66);
+
+            // Controller selection highlight (hidden by default)
+            const highlight = this.scene.add.rectangle(0, y, 610, cardHeight + 4, 0x000000, 0);
+            highlight.setStrokeStyle(4, 0xffff00);
+            highlight.setVisible(false);
+            this.itemHighlights.push(highlight);
 
             // Item name
             const nameText = this.scene.add.text(-280, y - 15, item.name, {
@@ -198,7 +211,7 @@ class MerchantNPC {
                 strokeThickness: 4
             }).setOrigin(0.5);
 
-            this.shopContainer.add([cardBg, nameText, descText, soulIcon, costText, keyBg, keyText]);
+            this.shopContainer.add([highlight, cardBg, nameText, descText, soulIcon, costText, keyBg, keyText]);
         });
     }
 
@@ -230,12 +243,21 @@ class MerchantNPC {
         this.isShopOpen = true;
         this.shopContainer.setVisible(true);
         this.prompt.setVisible(false);
+
+        // Reset controller selection to first item
+        this.selectedItemIndex = 0;
+        this.updateHighlight();
+
         console.log('🛒 Item merchant opened');
     }
 
     closeShop() {
         this.isShopOpen = false;
         this.shopContainer.setVisible(false);
+
+        // Hide all highlights
+        this.itemHighlights.forEach(h => h.setVisible(false));
+
         console.log('🛒 Item merchant closed');
     }
 
@@ -309,6 +331,66 @@ class MerchantNPC {
             ease: 'Power2',
             onComplete: () => feedbackText.destroy()
         });
+    }
+
+    // Controller navigation methods
+    moveSelectionUp() {
+        if (!this.isShopOpen) return;
+        this.selectedItemIndex = (this.selectedItemIndex - 1 + this.items.length) % this.items.length;
+        this.updateHighlight();
+        console.log(`🎮 Merchant: Selected item ${this.selectedItemIndex + 1}`);
+    }
+
+    moveSelectionDown() {
+        if (!this.isShopOpen) return;
+        this.selectedItemIndex = (this.selectedItemIndex + 1) % this.items.length;
+        this.updateHighlight();
+        console.log(`🎮 Merchant: Selected item ${this.selectedItemIndex + 1}`);
+    }
+
+    updateHighlight() {
+        // Hide all highlights
+        this.itemHighlights.forEach((h, i) => {
+            h.setVisible(i === this.selectedItemIndex);
+        });
+    }
+
+    purchaseSelectedItem() {
+        if (!this.isShopOpen) return;
+        const item = this.items[this.selectedItemIndex];
+        if (!item) return;
+
+        // Check if player has enough currency
+        const currentCurrency = this.scene.modernHUD ? this.scene.modernHUD.getCurrency() : 0;
+        if (currentCurrency < item.cost) {
+            console.log('⚠️ Not enough souls!');
+            this.showFeedback('Not Enough Souls!', '#ff6666');
+            return;
+        }
+
+        // Check if inventory is full
+        if (this.scene.inventoryUI && this.scene.inventoryUI.isFull()) {
+            console.log('⚠️ Inventory is full!');
+            this.showFeedback('Inventory Full!', '#ff6666');
+            return;
+        }
+
+        // Purchase successful!
+        if (this.scene.modernHUD) {
+            this.scene.modernHUD.addCurrency(-item.cost);
+        }
+
+        // Try to add directly to hotbar first, otherwise add to inventory
+        if (this.scene.inventoryUI) {
+            const added = this.scene.inventoryUI.addItemToHotbar(item.id);
+            if (!added) {
+                // Hotbar full, add to inventory instead
+                this.scene.inventoryUI.addItem(item.id);
+            }
+        }
+
+        console.log(`✅ Purchased item: ${item.name}`);
+        this.showFeedback('Item Purchased!', '#00ff00');
     }
 
     setInputMode(mode) {

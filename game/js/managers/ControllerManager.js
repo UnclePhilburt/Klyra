@@ -21,7 +21,11 @@ class ControllerManager {
             RB: false,
             Start: false,
             Select: false, // Menu/Back button
-            R3: false // Right stick click
+            R3: false, // Right stick click
+            DPadUp: false,
+            DPadDown: false,
+            DPadLeft: false,
+            DPadRight: false
         };
 
         // Deadzone for analog sticks
@@ -82,8 +86,11 @@ class ControllerManager {
         // Handle right stick attacks
         this.handleRightStickAttack();
 
-        // Handle abilities (face buttons)
-        this.handleAbilities();
+        // Handle interact FIRST (A button when near NPCs) - returns true if handled
+        const interactHandled = this.handleInteract();
+
+        // Handle abilities (face buttons) - only if interact didn't handle A button
+        this.handleAbilities(interactHandled);
 
         // Handle hotbar navigation (bumpers)
         this.handleHotbarNavigation();
@@ -93,9 +100,6 @@ class ControllerManager {
 
         // Handle menus
         this.handleMenus();
-
-        // Handle interact (A button when near NPCs)
-        this.handleInteract();
     }
 
     detectControllerInput() {
@@ -252,11 +256,11 @@ class ControllerManager {
         return { x: normalizedX, y: normalizedY, active: true };
     }
 
-    handleAbilities() {
+    handleAbilities(interactHandled = false) {
         if (!this.scene.abilityManager) return;
 
-        // A Button = E ability
-        if (this.isButtonPressed('A')) {
+        // A Button = E ability (only if not used for interaction)
+        if (!interactHandled && this.isButtonPressed('A')) {
             console.log('🎮 Controller: A pressed (E ability)');
             this.scene.abilityManager.useAbility('e');
         }
@@ -328,29 +332,86 @@ class ControllerManager {
     }
 
     handleInteract() {
-        // A button also works as interact (F key) when near NPCs
-        if (this.isButtonPressed('A') && this.scene.localPlayer) {
-            const playerX = this.scene.localPlayer.sprite.x;
-            const playerY = this.scene.localPlayer.sprite.y;
+        // A button works as interact/purchase, B button closes shops
+        // Returns true if interaction was handled, false otherwise
 
-            // Check merchant NPC
-            if (this.scene.merchantNPC) {
-                const merchantInRange = this.scene.merchantNPC.checkPlayerDistance(playerX, playerY);
-                if (merchantInRange) {
-                    this.scene.merchantNPC.toggleShop();
-                    return;
-                }
+        // Check if A button is pressed
+        if (this.isButtonPressed('A')) {
+            // If merchant shop is open, purchase selected item
+            if (this.scene.merchantNPC && this.scene.merchantNPC.isShopOpen) {
+                this.scene.merchantNPC.purchaseSelectedItem();
+                return true;
             }
 
-            // Check skill shop NPC
-            if (this.scene.skillShopNPC) {
-                const skillShopInRange = this.scene.skillShopNPC.checkPlayerDistance(playerX, playerY);
-                if (skillShopInRange) {
-                    this.scene.skillShopNPC.toggleShop();
-                    return;
+            // If skill shop is open, purchase selected skill
+            if (this.scene.skillShopNPC && this.scene.skillShopNPC.isShopOpen) {
+                this.scene.skillShopNPC.tryPurchaseSkill(
+                    this.scene.skillShopNPC.currentSkills[this.scene.skillShopNPC.selectedSkillIndex]?.keyBind
+                );
+                return true;
+            }
+
+            // Otherwise check for NPC interaction
+            if (this.scene.localPlayer) {
+                const playerX = this.scene.localPlayer.sprite.x;
+                const playerY = this.scene.localPlayer.sprite.y;
+
+                // Check merchant NPC
+                if (this.scene.merchantNPC) {
+                    const merchantInRange = this.scene.merchantNPC.checkPlayerDistance(playerX, playerY);
+                    if (merchantInRange) {
+                        this.scene.merchantNPC.toggleShop();
+                        return true; // Interaction handled
+                    }
+                }
+
+                // Check skill shop NPC
+                if (this.scene.skillShopNPC) {
+                    const skillShopInRange = this.scene.skillShopNPC.checkPlayerDistance(playerX, playerY);
+                    if (skillShopInRange) {
+                        this.scene.skillShopNPC.toggleShop();
+                        return true; // Interaction handled
+                    }
                 }
             }
         }
+
+        // B button closes shops
+        if (this.isButtonPressed('B')) {
+            if (this.scene.merchantNPC && this.scene.merchantNPC.isShopOpen) {
+                this.scene.merchantNPC.closeShop();
+                return true;
+            }
+            if (this.scene.skillShopNPC && this.scene.skillShopNPC.isShopOpen) {
+                this.scene.skillShopNPC.closeShop();
+                return true;
+            }
+        }
+
+        // D-pad navigation in merchant menus
+        if (this.isButtonPressed('DPadUp')) {
+            if (this.scene.merchantNPC && this.scene.merchantNPC.isShopOpen) {
+                this.scene.merchantNPC.moveSelectionUp();
+                return true;
+            }
+            if (this.scene.skillShopNPC && this.scene.skillShopNPC.isShopOpen) {
+                this.scene.skillShopNPC.moveSelectionUp();
+                return true;
+            }
+        }
+
+        if (this.isButtonPressed('DPadDown')) {
+            if (this.scene.merchantNPC && this.scene.merchantNPC.isShopOpen) {
+                this.scene.merchantNPC.moveSelectionDown();
+                return true;
+            }
+            if (this.scene.skillShopNPC && this.scene.skillShopNPC.isShopOpen) {
+                this.scene.skillShopNPC.moveSelectionDown();
+                return true;
+            }
+        }
+
+        return false; // No interaction handled
     }
 
     updateHotbarHighlight() {
@@ -393,6 +454,18 @@ class ControllerManager {
                 break;
             case 'R3':
                 currentState = this.pad.buttons[11] ? this.pad.buttons[11].pressed : false; // Right stick click
+                break;
+            case 'DPadUp':
+                currentState = this.pad.up; // D-pad up
+                break;
+            case 'DPadDown':
+                currentState = this.pad.down; // D-pad down
+                break;
+            case 'DPadLeft':
+                currentState = this.pad.left; // D-pad left
+                break;
+            case 'DPadRight':
+                currentState = this.pad.right; // D-pad right
                 break;
         }
 

@@ -8,6 +8,10 @@ class SkillShopNPC {
         this.interactionRange = 80; // pixels
         this.isShopOpen = false;
 
+        // Controller selection
+        this.selectedSkillIndex = 0;
+        this.skillHighlights = []; // Store highlight rectangles
+
         // All available skills for purchase
         this.allSkills = [
             {
@@ -177,6 +181,9 @@ class SkillShopNPC {
         // Clear existing cards
         this.cardsContainer.removeAll(true);
 
+        // Clear existing highlights
+        this.skillHighlights = [];
+
         const startY = -80;
         const cardHeight = 90;
         const cardSpacing = 12;
@@ -187,6 +194,12 @@ class SkillShopNPC {
             // Card background with gradient effect
             const cardBg = this.scene.add.rectangle(0, y, 520, cardHeight, 0x2a2a3e, 1);
             cardBg.setStrokeStyle(2, 0x9933ff);
+
+            // Controller selection highlight (hidden by default)
+            const highlight = this.scene.add.rectangle(0, y, 530, cardHeight + 4, 0x000000, 0);
+            highlight.setStrokeStyle(4, 0xffff00);
+            highlight.setVisible(false);
+            this.skillHighlights.push(highlight);
 
             // Skill name
             const nameText = this.scene.add.text(-240, y - 28, skill.name, {
@@ -228,7 +241,7 @@ class SkillShopNPC {
                 strokeThickness: 4
             }).setOrigin(0.5);
 
-            this.cardsContainer.add([cardBg, nameText, descText, soulIcon, costText, keyBg, keyText]);
+            this.cardsContainer.add([highlight, cardBg, nameText, descText, soulIcon, costText, keyBg, keyText]);
         });
     }
 
@@ -248,12 +261,21 @@ class SkillShopNPC {
         this.isShopOpen = true;
         this.shopContainer.setVisible(true);
         this.prompt.setVisible(false);
+
+        // Reset controller selection to first item
+        this.selectedSkillIndex = 0;
+        this.updateHighlight();
+
         console.log('🛍️ Skill shop opened');
     }
 
     closeShop() {
         this.isShopOpen = false;
         this.shopContainer.setVisible(false);
+
+        // Hide all highlights
+        this.skillHighlights.forEach(h => h.setVisible(false));
+
         console.log('🛍️ Skill shop closed');
     }
 
@@ -374,6 +396,28 @@ class SkillShopNPC {
             duration: 1500,
             ease: 'Power2',
             onComplete: () => feedbackText.destroy()
+        });
+    }
+
+    // Controller navigation methods
+    moveSelectionUp() {
+        if (!this.isShopOpen) return;
+        this.selectedSkillIndex = (this.selectedSkillIndex - 1 + this.currentSkills.length) % this.currentSkills.length;
+        this.updateHighlight();
+        console.log(`🎮 Skill Shop: Selected skill ${this.selectedSkillIndex + 1}`);
+    }
+
+    moveSelectionDown() {
+        if (!this.isShopOpen) return;
+        this.selectedSkillIndex = (this.selectedSkillIndex + 1) % this.currentSkills.length;
+        this.updateHighlight();
+        console.log(`🎮 Skill Shop: Selected skill ${this.selectedSkillIndex + 1}`);
+    }
+
+    updateHighlight() {
+        // Hide all highlights
+        this.skillHighlights.forEach((h, i) => {
+            h.setVisible(i === this.selectedSkillIndex);
         });
     }
 
