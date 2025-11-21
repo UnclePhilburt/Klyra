@@ -279,6 +279,10 @@ class BootScene extends Phaser.Scene {
         this.load.audio('piercing_inferno_cast', 'assets/sprites/skills/sounds/piercinginfernocast.mp3');
         console.log('📦 Loading skill sounds (meteor explosion, piercing inferno)');
 
+        // Load soul collection sound effect
+        this.load.audio('soulcollect', 'assets/soundeffects/soulcollect.mp3');
+        console.log('👻 Loading soul collection sound');
+
         // Load butterfly sprites (16x16, 5 frames each)
         this.load.spritesheet('butterfly_blue', 'assets/sprites/Butterfly/Blue.png', {
             frameWidth: 16,
@@ -357,6 +361,13 @@ class BootScene extends Phaser.Scene {
             frameHeight: 16
         });
         console.log('📦 Loading merchant items sprite sheet');
+
+        // Souls sprite sheet (currency)
+        this.load.spritesheet('souls', 'assets/sprites/ExtraCharacters/Items/Items/Magic/4.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        console.log('👻 Loading souls sprite sheet');
 
         // Load passive skill sprites
         this.load.image('chads_shield', 'assets/sprites/skills/pic/Chad\'s Shield.png');

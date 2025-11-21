@@ -49,7 +49,8 @@
       "Bash(cmd.exe /c \"set PORT=3002 &amp;&amp; node server.js\")",
       "Bash(powershell.exe -Command \"$env:PORT=3002; node server.js\")",
       "Bash(cmd.exe /c \"set PORT=3002 && node server.js\")",
-      "Bash(timeout /t 2 /nobreak)"
+      "Bash(timeout /t 2 /nobreak)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": [],
     "ask": []

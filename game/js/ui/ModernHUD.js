@@ -33,20 +33,21 @@ class ModernHUD {
         const width = this.scene.cameras.main.width;
         const height = this.scene.cameras.main.height;
 
-        // Health bar (bottom center - modern design)
-        const healthBarWidth = 400;
-        const healthBarHeight = 32;
-        const healthBarX = width / 2 - healthBarWidth / 2;
-        const healthBarY = height - 45; // Almost touching bottom
+        // OPTION 2: MINIMAL CORNER HUD - Bottom-left vertical stack
+        const padding = 20;
+        const barWidth = 250; // Compact width
+        const healthBarHeight = 12; // Very thin
+        const xpBarHeight = 8; // Thin
+        const barSpacing = 6; // Space between bars
 
-        // Health bar background (darker with rounded look)
+        const barX = padding;
+        const healthBarY = height - padding - healthBarHeight - xpBarHeight - barSpacing - 10; // Above abilities
+        const xpBarY = healthBarY + healthBarHeight + barSpacing;
+
+        // No background container - minimalist design
         this.healthBarBg = this.scene.add.graphics();
         this.healthBarBg.setScrollFactor(0);
         this.healthBarBg.setDepth(99000);
-        this.healthBarBg.fillStyle(0x000000, 0.8);
-        this.healthBarBg.fillRoundedRect(healthBarX - 4, healthBarY - 4, healthBarWidth + 8, healthBarHeight + 8, 8);
-        this.healthBarBg.lineStyle(3, 0x1f2937, 1);
-        this.healthBarBg.strokeRoundedRect(healthBarX - 4, healthBarY - 4, healthBarWidth + 8, healthBarHeight + 8, 8);
 
         // Health bar fill (will be drawn dynamically)
         this.healthBarFill = this.scene.add.graphics();
@@ -58,28 +59,47 @@ class ModernHUD {
         this.shieldBarFill.setScrollFactor(0);
         this.shieldBarFill.setDepth(99002);
 
-        // Store health bar dimensions for dynamic drawing
-        this.healthBarX = healthBarX;
-        this.healthBarY = healthBarY;
-        this.healthBarWidth = healthBarWidth;
-        this.healthBarHeight = healthBarHeight;
+        // XP bar fill
+        this.xpBarFill = this.scene.add.graphics();
+        this.xpBarFill.setScrollFactor(0);
+        this.xpBarFill.setDepth(99001);
 
-        // Health text (centered, larger)
-        this.healthText = this.scene.add.text(width / 2, healthBarY + healthBarHeight / 2, '100/100', {
+        // Store bar dimensions for dynamic drawing
+        this.healthBarX = barX;
+        this.healthBarY = healthBarY;
+        this.healthBarWidth = barWidth;
+        this.healthBarHeight = healthBarHeight;
+        this.xpBarHeight = xpBarHeight;
+        this.xpBarY = xpBarY;
+
+        // Health text (compact, inside bar)
+        this.healthText = this.scene.add.text(barX + 6, healthBarY + healthBarHeight / 2, '100/100', {
             fontFamily: 'Arial',
-            fontSize: '18px',
+            fontSize: '11px',
             fontStyle: 'bold',
             fill: '#ffffff',
             stroke: '#000000',
-            strokeThickness: 4,
-            shadow: {
-                offsetX: 0,
-                offsetY: 2,
-                color: '#000000',
-                blur: 4,
-                fill: true
-            }
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(99003);
+            strokeThickness: 3
+        }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(99003);
+
+        // Level indicator (compact, on XP bar)
+        this.levelText = this.scene.add.text(barX + 6, xpBarY + xpBarHeight / 2, 'Lv 1', {
+            fontFamily: 'Arial',
+            fontSize: '10px',
+            fontStyle: 'bold',
+            fill: '#a5b4fc',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(99003);
+
+        // XP text (compact, right side of XP bar)
+        this.xpText = this.scene.add.text(barX + barWidth - 6, xpBarY + xpBarHeight / 2, '0/100', {
+            fontFamily: 'Arial',
+            fontSize: '9px',
+            fill: '#a5b4fc',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(99003);
 
         // MINIMALIST INFO HUB (Top-Left)
         this.infoHubExpanded = false;
@@ -91,36 +111,36 @@ class ModernHUD {
 
     createInfoHub() {
         const padding = 16;
+        const width = this.scene.cameras.main.width;
 
-        // Currency display (top-left, always visible)
-        this.currencyContainer = this.scene.add.container(padding, padding);
+        // Currency display (top-right, compact design)
+        this.currencyContainer = this.scene.add.container(width - padding - 100, padding);
         this.currencyContainer.setScrollFactor(0);
         this.currencyContainer.setDepth(99600);
 
-        // Currency background
+        // Currency background (compact)
         const currencyBg = this.scene.add.graphics();
-        currencyBg.fillStyle(0x000000, 0.7);
-        currencyBg.fillRoundedRect(0, 0, 150, 40, 8);
-        currencyBg.lineStyle(2, 0xffaa00, 1);
-        currencyBg.strokeRoundedRect(0, 0, 150, 40, 8);
+        currencyBg.fillStyle(0x000000, 0.5);
+        currencyBg.fillRoundedRect(0, 0, 100, 32, 6);
+        currencyBg.lineStyle(1, 0x9d00ff, 0.6); // Purple border for souls
+        currencyBg.strokeRoundedRect(0, 0, 100, 32, 6);
 
-        // Star icon (simple yellow star)
-        const starIcon = this.scene.add.text(12, 20, '⭐', {
-            fontFamily: 'Arial',
-            fontSize: '20px'
-        }).setOrigin(0, 0.5);
+        // Soul icon (sprite from souls sheet, smaller)
+        const soulIcon = this.scene.add.sprite(18, 16, 'souls', 0);
+        soulIcon.setScale(0.6); // Smaller icon
+        soulIcon.setOrigin(0.5, 0.5);
 
-        // Currency text
-        this.currencyText = this.scene.add.text(45, 20, '0', {
+        // Currency text (compact)
+        this.currencyText = this.scene.add.text(35, 16, '0', {
             fontFamily: 'Arial',
-            fontSize: '18px',
+            fontSize: '14px',
             fontStyle: 'bold',
-            fill: '#ffff00',
+            fill: '#9d00ff', // Purple color for souls
             stroke: '#000000',
-            strokeThickness: 3
+            strokeThickness: 2
         }).setOrigin(0, 0.5);
 
-        this.currencyContainer.add([currencyBg, starIcon, this.currencyText]);
+        this.currencyContainer.add([currencyBg, soulIcon, this.currencyText]);
 
         // Skills display (top-right, always visible when skills owned)
         const screenRightX = this.scene.cameras.main.width - padding - 180; // Adjusted for text width
@@ -140,7 +160,7 @@ class ModernHUD {
         this.skillsContainer.setVisible(false); // Hidden until player gets a skill
 
         // COMPACT VIEW (always visible)
-        this.compactHub = this.scene.add.container(padding, padding + 50); // Move down to make room for currency
+        this.compactHub = this.scene.add.container(padding, padding); // Closer to top edge
         this.compactHub.setScrollFactor(0);
         this.compactHub.setDepth(99500);
 
@@ -444,6 +464,7 @@ class ModernHUD {
         const healthPercent = health / maxHealth;
 
         // Clear previous graphics
+        this.healthBarBg.clear();
         this.healthBarFill.clear();
         this.shieldBarFill.clear();
 
@@ -462,34 +483,34 @@ class ModernHUD {
             healthColor = 0xef4444; // Red
         }
 
+        // Draw subtle background (dark, semi-transparent)
+        this.healthBarBg.fillStyle(0x000000, 0.4);
+        this.healthBarBg.fillRoundedRect(
+            this.healthBarX,
+            this.healthBarY,
+            this.healthBarWidth,
+            this.healthBarHeight,
+            3
+        );
+
         // Draw outer glow for depth
         this.healthBarFill.fillStyle(healthColor, 0.3);
         this.healthBarFill.fillRoundedRect(
-            this.healthBarX - 2,
-            this.healthBarY - 2,
-            currentHealthWidth + 4,
-            this.healthBarHeight + 4,
-            6
+            this.healthBarX - 1,
+            this.healthBarY - 1,
+            currentHealthWidth + 2,
+            this.healthBarHeight + 2,
+            3
         );
 
         // Draw main health bar
-        this.healthBarFill.fillStyle(healthColor, 1);
+        this.healthBarFill.fillStyle(healthColor, 0.85);
         this.healthBarFill.fillRoundedRect(
             this.healthBarX,
             this.healthBarY,
             currentHealthWidth,
             this.healthBarHeight,
-            6
-        );
-
-        // Draw inner highlight for 3D effect
-        this.healthBarFill.fillStyle(0xffffff, 0.2);
-        this.healthBarFill.fillRoundedRect(
-            this.healthBarX,
-            this.healthBarY,
-            currentHealthWidth,
-            this.healthBarHeight / 3,
-            6
+            3
         );
 
         // Low health pulse effect
@@ -514,33 +535,23 @@ class ModernHUD {
             const shieldX = this.healthBarX + currentHealthWidth;
 
             // Shield glow
-            this.shieldBarFill.fillStyle(0x3b82f6, 0.4);
+            this.shieldBarFill.fillStyle(0x60a5fa, 0.4);
             this.shieldBarFill.fillRoundedRect(
-                shieldX - 2,
-                this.healthBarY - 2,
-                shieldWidth + 4,
-                this.healthBarHeight + 4,
-                6
+                shieldX - 1,
+                this.healthBarY - 1,
+                shieldWidth + 2,
+                this.healthBarHeight + 2,
+                3
             );
 
             // Shield main bar
-            this.shieldBarFill.fillStyle(0x60a5fa, 1);
+            this.shieldBarFill.fillStyle(0x60a5fa, 0.8);
             this.shieldBarFill.fillRoundedRect(
                 shieldX,
                 this.healthBarY,
                 shieldWidth,
                 this.healthBarHeight,
-                6
-            );
-
-            // Shield highlight
-            this.shieldBarFill.fillStyle(0xffffff, 0.3);
-            this.shieldBarFill.fillRoundedRect(
-                shieldX,
-                this.healthBarY,
-                shieldWidth,
-                this.healthBarHeight / 3,
-                6
+                3
             );
         }
 
@@ -554,7 +565,7 @@ class ModernHUD {
 
     updateLevel() {
         const level = this.player.level || 1;
-        this.levelText.setText(level.toString());
+        this.levelText.setText(`Lv ${level}`);
     }
 
     updateXPBar() {
@@ -563,26 +574,44 @@ class ModernHUD {
         const xpToNext = GameConfig.getXPRequired(level);
         const xpPercent = Math.min(xp / xpToNext, 1);
 
-        // OPTIMIZED: Simple rectangles instead of rounded
-        this.xpBarBg.clear();
+        // Clear previous XP bar
         this.xpBarFill.clear();
 
-        const barWidth = 140;
-        const barHeight = 6;
-        const barX = 60;
-        const barY = 63;
+        // Calculate fill width
+        const fillWidth = this.healthBarWidth * xpPercent;
 
-        // Simple background
-        this.xpBarBg.fillStyle(0x000000, 0.6);
-        this.xpBarBg.fillRect(barX, barY, barWidth, barHeight);
+        // Draw subtle background
+        this.xpBarFill.fillStyle(0x000000, 0.4);
+        this.xpBarFill.fillRoundedRect(
+            this.healthBarX,
+            this.xpBarY,
+            this.healthBarWidth,
+            this.xpBarHeight,
+            2
+        );
 
-        // Simple fill (no gradient layers for performance)
-        const fillWidth = barWidth * xpPercent;
-        this.xpBarFill.fillStyle(0x6366f1, 1);
-        this.xpBarFill.fillRect(barX, barY, fillWidth, barHeight);
+        // XP bar glow
+        this.xpBarFill.fillStyle(0x6366f1, 0.4);
+        this.xpBarFill.fillRoundedRect(
+            this.healthBarX - 1,
+            this.xpBarY - 1,
+            fillWidth + 2,
+            this.xpBarHeight + 2,
+            2
+        );
+
+        // XP bar fill
+        this.xpBarFill.fillStyle(0x818cf8, 0.8);
+        this.xpBarFill.fillRoundedRect(
+            this.healthBarX,
+            this.xpBarY,
+            fillWidth,
+            this.xpBarHeight,
+            2
+        );
 
         // Update text
-        this.xpText.setText(`${xp} / ${xpToNext}`);
+        this.xpText.setText(`${xp}/${xpToNext}`);
     }
 
     // Update username display

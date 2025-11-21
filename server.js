@@ -995,28 +995,28 @@ class AIBot extends Player {
                     expValue: orbValue
                 });
 
-                // Always drop a star (currency)
-                const starId = uuidv4();
-                const starTileX = this.target.position.x;
-                const starTileY = this.target.position.y;
+                // Always drop a soul (currency)
+                const soulId = uuidv4();
+                const soulTileX = this.target.position.x;
+                const soulTileY = this.target.position.y;
 
-                lobby.gameState.items.set(starId, {
-                    id: starId,
-                    type: 'star',
-                    color: 0xffff00,
+                lobby.gameState.items.set(soulId, {
+                    id: soulId,
+                    type: 'soul',
+                    color: 0x9d00ff, // Purple color for souls
                     position: {
-                        x: starTileX,
-                        y: starTileY
+                        x: soulTileX,
+                        y: soulTileY
                     },
                     spawnedAt: Date.now()
                 });
 
                 lobby.broadcast('item:spawned', {
-                    itemId: starId,
-                    type: 'star',
-                    color: 0xffff00,
-                    x: starTileX,
-                    y: starTileY
+                    itemId: soulId,
+                    type: 'soul',
+                    color: 0x9d00ff, // Purple color for souls
+                    x: soulTileX,
+                    y: soulTileY
                 });
 
                 // Broadcast enemy death (client will spawn orb visual)
@@ -2099,6 +2099,13 @@ class Lobby {
         // Skip if already spawned
         if (this.spawnedRegions.has(regionKey)) return [];
 
+        // PERFORMANCE: Global enemy cap per lobby (prevents runaway spawning)
+        const MAX_ENEMIES_TOTAL = 500;
+        if (this.gameState.enemies.length >= MAX_ENEMIES_TOTAL) {
+            console.log(`⚠️ Enemy cap reached (${this.gameState.enemies.length}/${MAX_ENEMIES_TOTAL}), skipping spawn in region ${regionKey}`);
+            return [];
+        }
+
         // CHECK: Don't spawn enemies if the region has living enemies or was recently cleared
         // This prevents respawning on top of players who just cleared the area
         const regionEnemies = this.regionEnemies.get(regionKey);
@@ -2154,46 +2161,52 @@ class Lobby {
             Math.pow(regionCenterY - worldCenterY, 2)
         );
 
-        // Distance-based pack sizing - BALANCED: Quality over quantity for performance
+        // Distance-based pack sizing - Easy near spawn, progressively harder further out
         let packsToSpawn = 1;
         let minPackSize = 1;
         let maxPackSize = 2;
         let bossChance = 0;
+        let emberclawSupportChance = 0; // Chance for emberclaw support packs
 
         if (distanceFromSpawn < 80) {
-            // Near spawn: MEGA HORDE - 12-15 packs, 8-12 enemies each (~96-180 total)
-            packsToSpawn = 12 + Math.floor(Math.random() * 4); // 12-15 packs
+            // Near spawn: EASY START - 2-4 packs, 2-4 enemies each (~4-16 total)
+            packsToSpawn = 2 + Math.floor(Math.random() * 3); // 2-4 packs
+            minPackSize = 2;
+            maxPackSize = 4;
+            bossChance = 0;
+            emberclawSupportChance = 0; // No emberclaws yet
+        } else if (distanceFromSpawn < 150) {
+            // Close to spawn: EASY - 3-5 packs, 3-6 enemies (~9-30 total)
+            packsToSpawn = 3 + Math.floor(Math.random() * 3); // 3-5 packs
+            minPackSize = 3;
+            maxPackSize = 6;
+            bossChance = 0;
+            emberclawSupportChance = 0.2; // 20% chance for emberclaw support
+        } else if (distanceFromSpawn < 250) {
+            // Medium distance: MODERATE - 4-7 packs, 5-8 enemies (~20-56 total)
+            packsToSpawn = 4 + Math.floor(Math.random() * 4); // 4-7 packs
+            minPackSize = 5;
+            maxPackSize = 8;
+            bossChance = 0.02;
+            emberclawSupportChance = 0.35; // 35% chance for emberclaw support
+        } else if (distanceFromSpawn < 450) {
+            // Far: HARD - 6-9 packs, 8-12 enemies (~48-108 total)
+            packsToSpawn = 6 + Math.floor(Math.random() * 4); // 6-9 packs
             minPackSize = 8;
             maxPackSize = 12;
-            bossChance = 0;
-        } else if (distanceFromSpawn < 150) {
-            // Close to spawn: MEGA HORDE - 10-14 packs, 12-16 enemies (~120-224 total)
-            packsToSpawn = 10 + Math.floor(Math.random() * 5); // 10-14 packs
-            minPackSize = 12;
-            maxPackSize = 16;
-            bossChance = 0.02;
-        } else if (distanceFromSpawn < 250) {
-            // Medium distance: MEGA HORDE - 9-12 packs, 14-18 enemies (~126-216 total)
-            packsToSpawn = 9 + Math.floor(Math.random() * 4); // 9-12 packs
-            minPackSize = 14;
-            maxPackSize = 18;
             bossChance = 0.05;
-        } else if (distanceFromSpawn < 450) {
-            // Far: MASSIVE HORDE - 8-11 packs, 18-24 enemies (~144-264 total)
-            packsToSpawn = 8 + Math.floor(Math.random() * 4); // 8-11 packs
-            minPackSize = 18;
-            maxPackSize = 24;
-            bossChance = 0.10;
+            emberclawSupportChance = 0.5; // 50% chance for emberclaw support
         } else {
-            // Very far: INSANE HORDE - 8-12 packs, 22-30 enemies (~176-360 total)
+            // Very far: BRUTAL - 8-12 packs, 12-18 enemies (~96-216 total)
             packsToSpawn = 8 + Math.floor(Math.random() * 5); // 8-12 packs
-            minPackSize = 22;
-            maxPackSize = 30;
-            bossChance = 0.15;
+            minPackSize = 12;
+            maxPackSize = 18;
+            bossChance = 0.10;
+            emberclawSupportChance = 0.7; // 70% chance for emberclaw support
         }
 
         // CO-OP SCALING: Diablo-style diminishing returns
-        // More players = more enemies with more health (aggressive but capped)
+        // More players = more enemies with more health (PERFORMANCE OPTIMIZED - reduced from 4x to 2.5x max)
         let spawnMultiplier = 1.0;
         let healthMultiplier = 1.0;
 
@@ -2201,19 +2214,19 @@ class Lobby {
             spawnMultiplier = 1.0;
             healthMultiplier = 1.0;
         } else if (playerCount === 2) {
-            spawnMultiplier = 1.8;
-            healthMultiplier = 1.3;
+            spawnMultiplier = 1.3;
+            healthMultiplier = 1.2;
         } else if (playerCount === 3) {
-            spawnMultiplier = 2.4;
-            healthMultiplier = 1.5;
+            spawnMultiplier = 1.7;
+            healthMultiplier = 1.4;
         } else if (playerCount === 4) {
-            spawnMultiplier = 3.0;
-            healthMultiplier = 1.7;
+            spawnMultiplier = 2.0;
+            healthMultiplier = 1.6;
         } else if (playerCount === 5) {
-            spawnMultiplier = 3.5;
-            healthMultiplier = 1.9;
+            spawnMultiplier = 2.2;
+            healthMultiplier = 1.8;
         } else { // 6+ players
-            spawnMultiplier = 4.0; // Capped at 4x
+            spawnMultiplier = 2.5; // PERFORMANCE: Capped at 2.5x (was 4x)
             healthMultiplier = 2.0; // Capped at 2x
         }
 
@@ -2236,9 +2249,8 @@ class Lobby {
         const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const regionSeed = seed + regionX * 7919 + regionY * 6563;
 
-        // Determine biome for this region
-        const biome = this.getRegionBiome(regionX, regionY);
-        console.log(`🌍 Spawning enemies in region ${regionKey} | Biome: ${biome}`);
+        // Log region spawn
+        console.log(`🌍 Spawning enemies in region ${regionKey} [Role-based distribution]`);
 
         // Spawn packs
         for (let packIndex = 0; packIndex < packsToSpawn; packIndex++) {
@@ -2267,43 +2279,18 @@ class Lobby {
             const hasBoss = this.seededRandom(packSeed + 3) < bossChance;
             let bossSpawned = false;
 
-            // Determine enemy type based on biome
+            // Determine enemy type based on ROLE, not biome
+            // Role distribution: 35% Swarmers (Mushrooms), 30% Fast DPS (Sword Demons), 35% Tanks (Minotaurs)
+            // Emberclaws spawn separately as support units
             let enemyType;
-            const spawnRoll = this.seededRandom(packSeed + 50);
+            const roleRoll = this.seededRandom(packSeed + 50);
 
-            if (biome === 'red') {
-                // RED biome: 50% sword demons, 20% minotaurs, 15% mushrooms, 15% emberclaws
-                if (spawnRoll < 0.5) {
-                    enemyType = 'swordDemon';
-                } else if (spawnRoll < 0.7) {
-                    enemyType = 'minotaur';
-                } else if (spawnRoll < 0.85) {
-                    enemyType = 'mushroom';
-                } else {
-                    enemyType = 'emberclaw';
-                }
-            } else if (biome === 'dark_green') {
-                // DARK_GREEN biome: 25% sword demons, 35% minotaurs, 25% mushrooms, 15% emberclaws
-                if (spawnRoll < 0.25) {
-                    enemyType = 'swordDemon';
-                } else if (spawnRoll < 0.6) {
-                    enemyType = 'minotaur';
-                } else if (spawnRoll < 0.85) {
-                    enemyType = 'mushroom';
-                } else {
-                    enemyType = 'emberclaw';
-                }
+            if (roleRoll < 0.35) {
+                enemyType = 'mushroom'; // SWARMERS - high count, low HP
+            } else if (roleRoll < 0.65) {
+                enemyType = 'swordDemon'; // FAST DPS - quick attacks, medium HP
             } else {
-                // GREEN biome: 10% sword demons, 45% minotaurs, 35% mushrooms, 10% emberclaws
-                if (spawnRoll < 0.1) {
-                    enemyType = 'swordDemon';
-                } else if (spawnRoll < 0.55) {
-                    enemyType = 'minotaur';
-                } else if (spawnRoll < 0.9) {
-                    enemyType = 'mushroom';
-                } else {
-                    enemyType = 'emberclaw';
-                }
+                enemyType = 'minotaur'; // TANKS - slow, high HP, heavy damage
             }
 
             // Spawn appropriate enemy type in pack
@@ -2382,8 +2369,9 @@ class Lobby {
                     newEnemies.push(minotaur);
                 }
             } else if (enemyType === 'mushroom') {
-                // Spawn mushrooms in pack
-                for (let i = 0; i < packSize; i++) {
+                // Spawn mushrooms in pack (SWARMERS - larger packs)
+                const mushroomPackSize = Math.floor(packSize * 1.5); // 50% more mushrooms (swarmers)
+                for (let i = 0; i < mushroomPackSize; i++) {
                     const mushroomSeed = packSeed + i * 100;
 
                     // Position in cluster
@@ -2421,24 +2409,51 @@ class Lobby {
                     this.gameState.enemies.push(mushroom);
                     newEnemies.push(mushroom);
                 }
-            } else if (enemyType === 'emberclaw') {
-                // Spawn emberclaws (smaller packs - they're ranged and dangerous)
-                const emberclawPackSize = Math.max(1, Math.floor(packSize / 2));
-                for (let i = 0; i < emberclawPackSize; i++) {
-                    const emberclawSeed = packSeed + i * 100;
+            }
+        }
 
-                    // Position spread out (they fly and kite)
-                    const offsetX = Math.floor((this.seededRandom(emberclawSeed + 10) - 0.5) * 15);
-                    const offsetY = Math.floor((this.seededRandom(emberclawSeed + 11) - 0.5) * 15);
-                    const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
-                    const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+        // EMBERCLAW SUPPORT SPAWNING - Separate from main packs
+        // Emberclaws spawn as support units to provide ranged cover for other enemies
+        const emberclawSupportRoll = this.seededRandom(regionSeed + 99999);
+        if (emberclawSupportRoll < emberclawSupportChance && newEnemies.length > 0) {
+            // Spawn 1-3 emberclaw support packs
+            const supportPackCount = 1 + Math.floor(this.seededRandom(regionSeed + 88888) * 3);
 
-                    // Convert to pixel coordinates immediately
+            for (let supportPackIndex = 0; supportPackIndex < supportPackCount; supportPackIndex++) {
+                const supportPackSeed = regionSeed + 77777 + supportPackIndex * 5555;
+
+                // Emberclaws spawn in small groups (2-4)
+                const emberclawCount = 2 + Math.floor(this.seededRandom(supportPackSeed) * 3);
+
+                // Choose a random location in the region
+                const supportPackX = regionX * REGION_SIZE + Math.floor(this.seededRandom(supportPackSeed + 1) * REGION_SIZE);
+                const supportPackY = regionY * REGION_SIZE + Math.floor(this.seededRandom(supportPackSeed + 2) * REGION_SIZE);
+
+                // Check if location is in safe zone
+                const isInSafeZone = (
+                    supportPackX >= (worldCenterX - safeZoneRadius) &&
+                    supportPackX < (worldCenterX + safeZoneRadius) &&
+                    supportPackY >= (worldCenterY - safeZoneRadius) &&
+                    supportPackY < (worldCenterY + safeZoneRadius)
+                );
+
+                if (isInSafeZone) continue;
+
+                for (let i = 0; i < emberclawCount; i++) {
+                    const emberclawSeed = supportPackSeed + i * 333;
+
+                    // Emberclaws spread out more (they fly and provide ranged support)
+                    const offsetX = Math.floor((this.seededRandom(emberclawSeed + 10) - 0.5) * 20);
+                    const offsetY = Math.floor((this.seededRandom(emberclawSeed + 11) - 0.5) * 20);
+                    const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, supportPackX + offsetX));
+                    const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, supportPackY + offsetY));
+
+                    // Convert to pixel coordinates
                     const TILE_SIZE = 32;
                     const x = gridX * TILE_SIZE + TILE_SIZE / 2;
                     const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
-                    const emberclawId = `${this.id}_emberclaw_${regionKey}_p${packIndex}_${i}`;
+                    const emberclawId = `${this.id}_emberclaw_support_${regionKey}_sp${supportPackIndex}_${i}`;
                     const emberclaw = this.createEmberclaw(emberclawId, { x, y }, healthMultiplier);
 
                     // Track region
@@ -2451,7 +2466,7 @@ class Lobby {
             }
         }
 
-        console.log(`✨ Spawned ${newEnemies.length} enemies in ${packsToSpawn} pack(s) at region (${regionX}, ${regionY}) | Biome: ${biome} [Distance: ${Math.floor(distanceFromSpawn)}]`);
+        console.log(`✨ Spawned ${newEnemies.length} enemies in ${packsToSpawn} pack(s) at region (${regionX}, ${regionY}) [Distance: ${Math.floor(distanceFromSpawn)}] ${emberclawSupportRoll < emberclawSupportChance ? '+ EMBERCLAW SUPPORT' : ''}`);
 
         return newEnemies;
     }
@@ -2856,6 +2871,9 @@ class Lobby {
         const now = Date.now();
         let movedCount = 0;
 
+        // PERFORMANCE: Batch enemy movements to reduce network broadcasts
+        const enemyMovements = [];
+
         // Cleanup distant enemies occasionally
         if (!this.lastCleanup) this.lastCleanup = 0;
         if (now - this.lastCleanup > 10000) { // Every 10 seconds
@@ -2886,8 +2904,8 @@ class Lobby {
                 enemy.stunned = false;
             }
 
-            // Update every 50ms to match game loop
-            if (now - enemy.lastMove < 50) return;
+            // PERFORMANCE: Update every 100ms to match game loop (was 50ms)
+            if (now - enemy.lastMove < 100) return;
             enemy.lastMove = now;
             movedCount++;
 
@@ -3109,6 +3127,9 @@ class Lobby {
 
                 // If too close, kite away
                 if (distance < preferredDistance) {
+                    // Double-check enemy is alive before moving
+                    if (!enemy.isAlive) return;
+
                     const moveDistance = enemy.speed / 200;
                     // Move AWAY from target
                     const newX = enemy.position.x - (dx / distance) * moveDistance;
@@ -3131,8 +3152,8 @@ class Lobby {
                         enemy.position.x = newX;
                         enemy.position.y = newY;
 
-                        // Position is already in pixels, send directly
-                        this.broadcast('enemy:moved', {
+                        // PERFORMANCE: Add to batch instead of broadcasting immediately
+                        enemyMovements.push({
                             enemyId: enemy.id,
                             position: { x: newX, y: newY },
                             isPixelCoordinates: true
@@ -3166,6 +3187,9 @@ class Lobby {
                 }
                 // If too far, move closer (but maintain distance)
                 else if (distance > attackRange) {
+                    // Double-check enemy is alive before moving
+                    if (!enemy.isAlive) return;
+
                     const moveDistance = enemy.speed / 200;
                     const newX = enemy.position.x + (dx / distance) * moveDistance;
                     const newY = enemy.position.y + (dy / distance) * moveDistance;
@@ -3187,8 +3211,8 @@ class Lobby {
                         enemy.position.x = newX;
                         enemy.position.y = newY;
 
-                        // Position is already in pixels, send directly
-                        this.broadcast('enemy:moved', {
+                        // PERFORMANCE: Add to batch instead of broadcasting immediately
+                        enemyMovements.push({
                             enemyId: enemy.id,
                             position: { x: newX, y: newY },
                             isPixelCoordinates: true
@@ -3204,6 +3228,9 @@ class Lobby {
             const MIN_DISTANCE_SQUARED = MIN_DISTANCE_TO_PLAYER * MIN_DISTANCE_TO_PLAYER;
 
             if (distanceSquared > MIN_DISTANCE_SQUARED) {  // Only move if farther than minimum distance
+                // Double-check enemy is alive before moving
+                if (!enemy.isAlive) return;
+
                 if (distance === null) distance = Math.sqrt(distanceSquared);  // Calculate only if needed
                 const moveDistance = enemy.speed / 200; // Pixels per update (50ms = 1/20th second)
 
@@ -3245,25 +3272,14 @@ class Lobby {
                     }
                 }
 
-                // Broadcast enemy movement - position is already in pixels
-                this.broadcast('enemy:moved', {
+                // PERFORMANCE: Add to batch instead of broadcasting immediately (proximity filter will be applied when batch is sent)
+                enemyMovements.push({
                     enemyId: enemy.id,
                     position: {
                         x: enemy.position.x,
                         y: enemy.position.y
                     },
-                    isPixelCoordinates: true  // Flag for client to know these are pixels
-                }, (player, data) => {
-                    // PERFORMANCE: Only send to players within 50 tiles (2500 squared)
-                    // Both enemy and player positions are in pixels, convert to tiles for distance check
-                    const playerGridX = player.position.x / TILE_SIZE;
-                    const playerGridY = player.position.y / TILE_SIZE;
-                    const enemyGridX = enemy.position.x / TILE_SIZE;
-                    const enemyGridY = enemy.position.y / TILE_SIZE;
-                    const dx = playerGridX - enemyGridX;
-                    const dy = playerGridY - enemyGridY;
-                    const distSquared = dx * dx + dy * dy;
-                    return distSquared < 2500;  // 50 * 50 = 2500
+                    isPixelCoordinates: true
                 });
             }
 
@@ -3425,6 +3441,13 @@ class Lobby {
                 }
             }
         });
+
+        // PERFORMANCE: Send all enemy movements in a single batched broadcast
+        if (enemyMovements.length > 0) {
+            this.broadcast('enemies:moved:batch', {
+                enemies: enemyMovements
+            });
+        }
     }
 
     toJSON() {
@@ -4021,33 +4044,33 @@ io.on('connection', (socket) => {
                     orbValue: orbValue
                 });
 
-                // Always drop a star (currency)
-                const starId = uuidv4();
+                // Always drop a soul (currency)
+                const soulId = uuidv4();
                 // enemy.position is in PIXELS, convert to tiles
                 const TILE_SIZE = 32;
-                const starTileX = enemy.position.x / TILE_SIZE;
-                const starTileY = enemy.position.y / TILE_SIZE;
+                const soulTileX = enemy.position.x / TILE_SIZE;
+                const soulTileY = enemy.position.y / TILE_SIZE;
 
-                lobby.gameState.items.set(starId, {
-                    id: starId,
-                    type: 'star',
-                    color: 0xffff00, // Gold/yellow star
+                lobby.gameState.items.set(soulId, {
+                    id: soulId,
+                    type: 'soul',
+                    color: 0x9d00ff, // Purple color for souls
                     position: {
-                        x: starTileX,
-                        y: starTileY
+                        x: soulTileX,
+                        y: soulTileY
                     },
                     spawnedAt: Date.now()
                 });
 
                 lobby.broadcast('item:spawned', {
-                    itemId: starId,
-                    type: 'star',
-                    color: 0xffff00,
-                    x: starTileX,
-                    y: starTileY
+                    itemId: soulId,
+                    type: 'soul',
+                    color: 0x9d00ff, // Purple color for souls
+                    x: soulTileX,
+                    y: soulTileY
                 });
 
-                console.log(`⭐ Star dropped at tiles (${starTileX.toFixed(2)}, ${starTileY.toFixed(2)})`);
+                console.log(`👻 Soul dropped at tiles (${soulTileX.toFixed(2)}, ${soulTileY.toFixed(2)})`);
             } else {
                 lobby.broadcast('enemy:damaged', {
                     enemyId: data.enemyId,
@@ -4179,12 +4202,12 @@ io.on('connection', (socket) => {
             // Remove item from world
             lobby.gameState.items.delete(data.itemId);
 
-            // Handle star (currency) pickups
-            if (item.type === 'star') {
-                const goldValue = 1; // Each star is worth 1 gold
+            // Handle soul (currency) pickups
+            if (item.type === 'soul') {
+                const goldValue = 1; // Each soul is worth 1 gold
                 player.gold += goldValue;
                 player.totalGold += goldValue;
-                console.log(`💰 ${player.username} picked up star (+${goldValue} gold, total: ${player.gold})`);
+                console.log(`👻 ${player.username} picked up soul (+${goldValue} gold, total: ${player.gold})`);
             } else {
                 console.log(`📦 ${player.username} picked up ${item.type}`);
             }
@@ -5341,7 +5364,7 @@ setInterval(() => {
             lobby.updateEnemies();
         }
     });
-}, 50); // Update every 50ms for smooth movement (20 updates/second)
+}, 100); // Update every 100ms for smooth movement (10 updates/second) - PERFORMANCE OPTIMIZED
 
 // Cleanup old lobbies
 setInterval(() => {

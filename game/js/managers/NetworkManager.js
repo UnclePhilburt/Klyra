@@ -135,6 +135,11 @@ class NetworkManager {
             this.emit('enemy:moved', data);
         });
 
+        // PERFORMANCE: Batched enemy movements
+        this.socket.on('enemies:moved:batch', (data) => {
+            this.emit('enemies:moved:batch', data);
+        });
+
         this.socket.on('enemy:spawned', (data) => {
             this.emit('enemy:spawned', data);
         });

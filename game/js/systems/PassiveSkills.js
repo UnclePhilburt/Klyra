@@ -159,14 +159,12 @@ class PassiveSkills {
     }
 
     update(playerX, playerY, isLocalPlayer = true) {
+        // PERFORMANCE: Cache enemy collection once per frame instead of gathering 5+ times
+        const cachedEnemies = isLocalPlayer ? this.getAllEnemies() : null;
+
         // Update orbital shield position and check for enemy collisions
         if (this.activeEffects.orbital_shield) {
             const effect = this.activeEffects.orbital_shield;
-
-            // Debug log occasionally
-            if (Math.random() < 0.001) {
-                console.log(`🛡️ Shield update - Player: (${playerX}, ${playerY}), Shield angle: ${effect.angle.toFixed(2)}`);
-            }
 
             // Update angle
             effect.angle += effect.speed;
@@ -185,7 +183,7 @@ class PassiveSkills {
 
             // Check collision with enemies (only for local player to avoid duplicate damage)
             if (isLocalPlayer) {
-                this.checkShieldCollisions(effect, x, y);
+                this.checkShieldCollisions(effect, x, y, cachedEnemies);
             }
         }
 
@@ -197,7 +195,7 @@ class PassiveSkills {
             // Check if it's time to attack
             if (currentTime - effect.lastAttackTime >= effect.interval) {
                 effect.lastAttackTime = currentTime;
-                this.spawnFireballRain(playerX, playerY, effect, isLocalPlayer);
+                this.spawnFireballRain(playerX, playerY, effect, isLocalPlayer, cachedEnemies);
             }
         }
 
@@ -213,7 +211,7 @@ class PassiveSkills {
                 const currentTime = Date.now();
                 if (currentTime - effect.lastTickTime >= effect.tickRate) {
                     effect.lastTickTime = currentTime;
-                    this.checkAuraDamage(effect, playerX, playerY);
+                    this.checkAuraDamage(effect, playerX, playerY, cachedEnemies);
                 }
             }
         }
@@ -226,49 +224,42 @@ class PassiveSkills {
             // Check if it's time to shoot (only for local player to avoid duplicate damage)
             if (isLocalPlayer && currentTime - effect.lastAttackTime >= effect.interval) {
                 effect.lastAttackTime = currentTime;
-                this.shootPiercingFireball(playerX, playerY, effect);
+                this.shootPiercingFireball(playerX, playerY, effect, cachedEnemies);
             }
         }
     }
 
-    shootPiercingFireball(playerX, playerY, effect) {
-        // Get all enemies within range
+    getAllEnemies() {
         const allEnemies = [];
+        if (this.scene.swordDemons) allEnemies.push(...Object.values(this.scene.swordDemons));
+        if (this.scene.minotaurs) allEnemies.push(...Object.values(this.scene.minotaurs));
+        if (this.scene.mushrooms) allEnemies.push(...Object.values(this.scene.mushrooms));
+        if (this.scene.emberclaws) allEnemies.push(...Object.values(this.scene.emberclaws));
+        return allEnemies;
+    }
 
-        if (this.scene.swordDemons) {
-            allEnemies.push(...Object.values(this.scene.swordDemons));
-        }
-        if (this.scene.minotaurs) {
-            allEnemies.push(...Object.values(this.scene.minotaurs));
-        }
-        if (this.scene.mushrooms) {
-            allEnemies.push(...Object.values(this.scene.mushrooms));
-        }
-        if (this.scene.emberclaws) {
-            allEnemies.push(...Object.values(this.scene.emberclaws));
-        }
+    shootPiercingFireball(playerX, playerY, effect, cachedEnemies = null) {
+        // Use cached enemies if provided, otherwise gather them
+        const allEnemies = cachedEnemies || this.getAllEnemies();
 
-        // Filter enemies within range and alive
+        // Filter enemies within range and alive (using squared distance for performance)
+        const rangeSquared = effect.range * effect.range;
         const enemiesInRange = allEnemies.filter(enemy => {
             if (!enemy || !enemy.sprite || !enemy.isAlive) return false;
 
-            const dist = Phaser.Math.Distance.Between(
-                playerX, playerY,
-                enemy.sprite.x, enemy.sprite.y
-            );
+            const dx = enemy.sprite.x - playerX;
+            const dy = enemy.sprite.y - playerY;
+            const distSquared = dx * dx + dy * dy;
 
-            return dist <= effect.range;
+            return distSquared <= rangeSquared;
         });
 
         if (enemiesInRange.length === 0) {
-            console.log('🔥 No enemies in range for Piercing Inferno');
             return;
         }
 
         // Pick random enemy as target
         const target = enemiesInRange[Math.floor(Math.random() * enemiesInRange.length)];
-
-        console.log(`🔥 Piercing Inferno launching at enemy`);
 
         // Create piercing fireball projectile
         this.createPiercingFireballProjectile(playerX, playerY, target, effect);
@@ -394,8 +385,6 @@ class PassiveSkills {
                             duration: 300,
                             onComplete: () => hitEffect.destroy()
                         });
-
-                        console.log(`💥 Piercing fireball hit enemy ${enemyId} (pierce ${pierceCount}/${effect.maxPierces})`);
                     }
                 });
             },
@@ -407,37 +396,24 @@ class PassiveSkills {
         });
     }
 
-    checkAuraDamage(effect, playerX, playerY) {
-        // Get all enemies within aura range
-        const allEnemies = [];
-
-        if (this.scene.swordDemons) {
-            allEnemies.push(...Object.values(this.scene.swordDemons));
-        }
-        if (this.scene.minotaurs) {
-            allEnemies.push(...Object.values(this.scene.minotaurs));
-        }
-        if (this.scene.mushrooms) {
-            allEnemies.push(...Object.values(this.scene.mushrooms));
-        }
-        if (this.scene.emberclaws) {
-            allEnemies.push(...Object.values(this.scene.emberclaws));
-        }
+    checkAuraDamage(effect, playerX, playerY, cachedEnemies = null) {
+        // Use cached enemies if provided, otherwise gather them
+        const allEnemies = cachedEnemies || this.getAllEnemies();
 
         let enemiesHit = 0;
 
-        // Check each enemy
+        // Check each enemy (using squared distance for performance)
+        const radiusSquared = effect.radius * effect.radius;
         allEnemies.forEach(enemy => {
             if (!enemy || !enemy.sprite || !enemy.isAlive) return;
 
-            // Calculate distance between player and enemy
-            const dist = Phaser.Math.Distance.Between(
-                playerX, playerY,
-                enemy.sprite.x, enemy.sprite.y
-            );
+            // Calculate squared distance between player and enemy
+            const dx = enemy.sprite.x - playerX;
+            const dy = enemy.sprite.y - playerY;
+            const distSquared = dx * dx + dy * dy;
 
             // If enemy is within aura radius
-            if (dist < effect.radius) {
+            if (distSquared < radiusSquared) {
                 const enemyId = enemy.data?.id || enemy.id;
 
                 // Damage the enemy
@@ -468,46 +444,25 @@ class PassiveSkills {
             }
         });
 
-        // Debug log occasionally
-        if (enemiesHit > 0 && Math.random() < 0.1) {
-            console.log(`🔥 Burning Aura damaged ${enemiesHit} enemies`);
-        }
     }
 
-    spawnFireballRain(playerX, playerY, effect, isLocalPlayer = true) {
-        // Get all enemies within range
-        const allEnemies = [];
+    spawnFireballRain(playerX, playerY, effect, isLocalPlayer = true, cachedEnemies = null) {
+        // Use cached enemies if provided, otherwise gather them
+        const allEnemies = cachedEnemies || this.getAllEnemies();
 
-        if (this.scene.swordDemons) {
-            allEnemies.push(...Object.values(this.scene.swordDemons));
-        }
-        if (this.scene.minotaurs) {
-            allEnemies.push(...Object.values(this.scene.minotaurs));
-        }
-        if (this.scene.mushrooms) {
-            allEnemies.push(...Object.values(this.scene.mushrooms));
-        }
-        if (this.scene.emberclaws) {
-            allEnemies.push(...Object.values(this.scene.emberclaws));
-        }
-
-        // Filter enemies within range
+        // Filter enemies within range (using squared distance for performance)
+        const rangeSquared = effect.range * effect.range;
         const enemiesInRange = allEnemies.filter(enemy => {
             if (!enemy || !enemy.sprite || !enemy.isAlive) return false;
 
-            const dist = Phaser.Math.Distance.Between(
-                playerX, playerY,
-                enemy.sprite.x, enemy.sprite.y
-            );
+            const dx = enemy.sprite.x - playerX;
+            const dy = enemy.sprite.y - playerY;
+            const distSquared = dx * dx + dy * dy;
 
-            return dist <= effect.range;
+            return distSquared <= rangeSquared;
         });
 
         if (enemiesInRange.length === 0) {
-            // Only log for local player to avoid spam
-            if (isLocalPlayer) {
-                console.log('🔥 No enemies in range for Meteor Storm');
-            }
             return;
         }
 
@@ -515,10 +470,6 @@ class PassiveSkills {
         const numFireballs = Math.min(effect.fireballsPerAttack, enemiesInRange.length);
         const shuffled = [...enemiesInRange].sort(() => Math.random() - 0.5);
         const targets = shuffled.slice(0, numFireballs);
-
-        if (isLocalPlayer) {
-            console.log(`🔥 Meteor Storm targeting ${targets.length} enemies`);
-        }
 
         // Spawn fireball for each target
         targets.forEach((enemy, index) => {
@@ -598,7 +549,6 @@ class PassiveSkills {
                 if (isLocalPlayer) {
                     const enemyId = targetEnemy.data?.id || targetEnemy.id;
                     this.damageEnemy(enemyId, damage);
-                    console.log(`💥 Meteor hit enemy ${enemyId} for ${damage} damage`);
                 }
             }
         });
@@ -607,7 +557,7 @@ class PassiveSkills {
     createFireballImpact(x, y) {
         // Play explosion sound locally
         if (this.scene.sound) {
-            this.scene.sound.play('meteor_explosion', { volume: 0.4 });
+            this.scene.sound.play('meteor_explosion', { volume: 0.15 });
         }
 
         // Broadcast to other players
@@ -678,62 +628,35 @@ class PassiveSkills {
         });
     }
 
-    checkShieldCollisions(effect, shieldX, shieldY) {
+    checkShieldCollisions(effect, shieldX, shieldY, cachedEnemies = null) {
         const currentTime = Date.now();
         const hitCooldown = 500; // 500ms cooldown between hits on same enemy
         const collisionRadius = 32; // Shield collision radius (increased for better hit detection)
 
-        // Collect all enemy types from the scene
-        const allEnemies = [];
+        // Use cached enemies if provided, otherwise gather them
+        const allEnemies = cachedEnemies || this.getAllEnemies();
 
-        if (this.scene.swordDemons) {
-            allEnemies.push(...Object.values(this.scene.swordDemons));
-        }
-        if (this.scene.minotaurs) {
-            allEnemies.push(...Object.values(this.scene.minotaurs));
-        }
-        if (this.scene.mushrooms) {
-            allEnemies.push(...Object.values(this.scene.mushrooms));
-        }
-        if (this.scene.emberclaws) {
-            allEnemies.push(...Object.values(this.scene.emberclaws));
-        }
-
-        // Debug log occasionally
-        if (Math.random() < 0.01) {
-            console.log(`🛡️ Checking shield collisions. Total enemies: ${allEnemies.length}`);
-            console.log(`   Shield position: (${shieldX.toFixed(1)}, ${shieldY.toFixed(1)})`);
-            if (allEnemies.length > 0) {
-                const firstEnemy = allEnemies[0];
-                console.log(`   First enemy: ${firstEnemy.id} at (${firstEnemy.sprite?.x?.toFixed(1)}, ${firstEnemy.sprite?.y?.toFixed(1)})`);
-            }
-        }
-
-        // Check collisions with all enemies
+        // Check collisions with all enemies (using squared distance for performance)
+        const collisionRadiusSquared = (collisionRadius + 16) * (collisionRadius + 16); // 16 = approximate enemy radius
         allEnemies.forEach(enemy => {
             if (!enemy || !enemy.sprite || !enemy.isAlive) return;
 
-            // Calculate distance between shield and enemy
-            const dist = Phaser.Math.Distance.Between(
-                shieldX, shieldY,
-                enemy.sprite.x, enemy.sprite.y
-            );
+            // Calculate squared distance between shield and enemy
+            const dx = enemy.sprite.x - shieldX;
+            const dy = enemy.sprite.y - shieldY;
+            const distSquared = dx * dx + dy * dy;
 
             // Check if collision occurred
-            if (dist < collisionRadius + 16) { // 16 = approximate enemy radius
+            if (distSquared < collisionRadiusSquared) {
                 // Get enemy ID from data object
                 const enemyId = enemy.data?.id || enemy.id;
-                console.log(`💥 Shield collision detected! Enemy: ${enemyId}, Distance: ${dist.toFixed(2)}`);
                 const lastHit = effect.hitCooldowns.get(enemyId) || 0;
 
                 // Only damage if cooldown has passed
                 if (currentTime - lastHit > hitCooldown) {
-                    console.log(`⚔️ Attempting to damage enemy ${enemyId}`);
                     // Damage the enemy
                     this.damageEnemy(enemyId, effect.damage);
                     effect.hitCooldowns.set(enemyId, currentTime);
-                } else {
-                    console.log(`⏱️ Enemy ${enemyId} on cooldown. Last hit: ${currentTime - lastHit}ms ago`);
                 }
             }
         });
@@ -745,7 +668,6 @@ class PassiveSkills {
     }
 
     clearAll() {
-        console.log('🧹 Clearing all passive skills and effects');
 
         // Clear all owned skills
         this.ownedSkills.clear();
@@ -773,15 +695,9 @@ class PassiveSkills {
         if (this.scene.modernHUD) {
             this.scene.modernHUD.clearAllSkills();
         }
-
-        console.log('✅ All passive skills cleared');
     }
 
     damageEnemy(enemyId, damage) {
-        console.log(`🎯 damageEnemy called for enemy ${enemyId}`);
-        console.log(`   NetworkManager exists: ${!!window.networkManager}`);
-        console.log(`   NetworkManager connected: ${window.networkManager?.connected}`);
-        console.log(`   Scene localPlayer: ${!!this.scene.localPlayer}`);
 
         // Request damage through network manager (multiplayer safe)
         if (window.networkManager && window.networkManager.connected) {
@@ -794,22 +710,12 @@ class PassiveSkills {
                 y: this.scene.localPlayer.sprite.y
             } : null;
 
-            console.log(`   Calling hitEnemy with:`, {
-                enemyId: enemyId,
-                damage: damage,
-                playerId: playerId,
-                playerPos: playerPos
-            });
-
             window.networkManager.hitEnemy(
                 enemyId,
                 damage,
                 playerId,
                 playerPos
             );
-            console.log(`✅ Chad's Shield hit enemy ${enemyId} for ${damage} damage`);
-        } else {
-            console.log(`❌ Cannot damage enemy - NetworkManager not ready`);
         }
     }
 

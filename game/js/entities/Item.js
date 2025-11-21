@@ -33,16 +33,18 @@ class Item {
         }
         if (!color) color = 0xffffff;
 
-        // Check if this is a potion item (use sprite instead of star)
-        const potionTypes = {
-            'health_potion': 14,
-            'regen_potion': 28
+        // Check if this is a special item type (use sprite instead of star)
+        const itemTypes = {
+            'health_potion': { sheet: 'merchantitems', frame: 14, scale: 2 },
+            'regen_potion': { sheet: 'merchantitems', frame: 28, scale: 2 },
+            'soul': { sheet: 'souls', frame: 0, scale: 1.5 } // Currency item
         };
 
-        if (potionTypes[this.data.type] !== undefined) {
+        if (itemTypes[this.data.type] !== undefined) {
             // Create sprite from sprite sheet
-            this.sprite = this.scene.add.sprite(x, y, 'merchantitems', potionTypes[this.data.type]);
-            this.sprite.setScale(2); // Make it bigger (16x16 -> 32x32)
+            const itemConfig = itemTypes[this.data.type];
+            this.sprite = this.scene.add.sprite(x, y, itemConfig.sheet, itemConfig.frame);
+            this.sprite.setScale(itemConfig.scale);
         } else {
             // Create item sprite (diamond shape for other items)
             this.sprite = this.scene.add.star(x, y, 4, 4, 8, color);
@@ -65,12 +67,17 @@ class Item {
             this.sprite.setScale(1);
         });
 
-        // Glow effect
-        this.glow = this.scene.add.circle(x, y, 10, color, 0.3);
+        // Glow effects (enhanced like orbs)
+        this.glow = this.scene.add.circle(x, y, 16, color, 0.4);
+        this.glow.setDepth(99); // Below sprite but above ground
 
-        // Floating animation
+        // Second outer glow for depth
+        this.outerGlow = this.scene.add.circle(x, y, 20, color, 0.2);
+        this.outerGlow.setDepth(98);
+
+        // Floating animation (same as orbs)
         this.scene.tweens.add({
-            targets: [this.sprite, this.glow],
+            targets: [this.sprite, this.glow, this.outerGlow],
             y: y - 5,
             duration: 1000,
             yoyo: true,
@@ -87,15 +94,26 @@ class Item {
             ease: 'Linear'
         });
 
-        // Pulse glow
+        // Pulse glow (enhanced like orbs)
         this.scene.tweens.add({
             targets: this.glow,
-            scale: 1.3,
-            alpha: 0.5,
-            duration: 1000,
+            scale: 1.8,
+            alpha: 0.6,
+            duration: 600,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
+        });
+
+        // Outer glow pulse (like orbs)
+        this.scene.tweens.add({
+            targets: this.outerGlow,
+            scale: 2,
+            alpha: 0,
+            duration: 600,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeOut'
         });
 
         // Label
@@ -132,7 +150,7 @@ class Item {
             this.sprite.y
         );
 
-        return dist < 30;
+        return dist < 80; // Same pickup radius as orbs
     }
 
     // Renamed to collect (called when server confirms pickup)
@@ -145,12 +163,20 @@ class Item {
         if (this.pickedUp) return;
         this.pickedUp = true;
 
+        // Play pickup sound based on item type
+        if (this.data.type === 'soul') {
+            // Play soul collection sound
+            if (this.scene.sound) {
+                this.scene.sound.play('soulcollect', { volume: 0.3 });
+            }
+        }
+
         // Pickup animation - fly to player
         const targetX = this.scene.cameras.main.centerX;
         const targetY = this.scene.cameras.main.centerY;
 
         this.scene.tweens.add({
-            targets: [this.sprite, this.glow, this.label],
+            targets: [this.sprite, this.glow, this.outerGlow, this.label],
             x: targetX,
             y: targetY,
             scale: 0,
@@ -160,6 +186,7 @@ class Item {
             onComplete: () => {
                 this.sprite.destroy();
                 this.glow.destroy();
+                if (this.outerGlow) this.outerGlow.destroy();
                 this.label.destroy();
             }
         });
@@ -196,6 +223,7 @@ class Item {
     destroy() {
         if (this.sprite) this.sprite.destroy();
         if (this.glow) this.glow.destroy();
+        if (this.outerGlow) this.outerGlow.destroy();
         if (this.label) this.label.destroy();
     }
 }
