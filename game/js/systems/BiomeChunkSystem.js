@@ -21,7 +21,7 @@ class BiomeChunkSystem {
         this.loadedChunks = new Map();    // Currently visible chunks: "x,y" -> chunk data
         this.loadingChunks = new Set();   // Track chunks currently loading
         this.chunkCache = new Map();      // Cached chunk data: "x,y" -> chunk data (for quick reload)
-        this.MAX_CACHE_SIZE = 20;         // Keep up to 20 chunks in cache
+        this.MAX_CACHE_SIZE = 100;        // Keep up to 100 chunks in cache (~130MB)
 
         // Biome configuration
         this.biomes = {
@@ -316,8 +316,6 @@ class BiomeChunkSystem {
                 this.chunkCache.set(key, chunkData);
                 this.loadedChunks.delete(key);
 
-                console.log(`💾 Cached chunk (${x},${y})`);
-
                 // Enforce cache size limit
                 if (this.chunkCache.size > this.MAX_CACHE_SIZE) {
                     // Remove oldest cached chunk
@@ -327,8 +325,6 @@ class BiomeChunkSystem {
                     // Now actually destroy it
                     oldChunk.containers.forEach(c => c.destroy(true));
                     this.chunkCache.delete(oldestKey);
-
-                    console.log(`🗑️ Destroyed cached chunk ${oldestKey} (cache full)`);
                 }
             }
         }
