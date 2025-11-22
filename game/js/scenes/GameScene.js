@@ -944,7 +944,7 @@ class GameScene extends Phaser.Scene {
         this.roofDarkOverlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0);
         this.roofDarkOverlay.setOrigin(0.5, 0.5);
         this.roofDarkOverlay.setScrollFactor(0); // Fixed to camera
-        this.roofDarkOverlay.setDepth(10000); // Above everything except UI
+        this.roofDarkOverlay.setDepth(98000); // Below UI (99000) but above game world
         console.log('🌑 Dark overlay created for roof interior effect');
         console.log(`   Position: (${this.roofDarkOverlay.x}, ${this.roofDarkOverlay.y})`);
         console.log(`   Size: ${this.roofDarkOverlay.width}x${this.roofDarkOverlay.height}`);
