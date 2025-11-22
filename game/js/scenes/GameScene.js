@@ -5173,8 +5173,17 @@ class GameScene extends Phaser.Scene {
 
                     // Smoothly transition alpha
                     const targetAlpha = isUnderRoof ? 0.3 : 1.0;
-                    const currentAlpha = roofContainer.alpha;
-                    roofContainer.alpha = Phaser.Math.Linear(currentAlpha, targetAlpha, 0.1);
+
+                    // Set alpha on both container AND blitter
+                    if (roofContainer.blitter) {
+                        const currentAlpha = roofContainer.blitter.alpha;
+                        const newAlpha = Phaser.Math.Linear(currentAlpha, targetAlpha, 0.1);
+                        roofContainer.blitter.alpha = newAlpha;
+                        roofContainer.alpha = newAlpha;
+                    } else {
+                        const currentAlpha = roofContainer.alpha;
+                        roofContainer.alpha = Phaser.Math.Linear(currentAlpha, targetAlpha, 0.1);
+                    }
                 }
             });
         }
