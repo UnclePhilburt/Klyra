@@ -2246,7 +2246,7 @@ class Lobby {
         // Calculate distance from world center (spawn point)
         const worldCenterX = this.WORLD_SIZE / 2;
         const worldCenterY = this.WORLD_SIZE / 2;
-        const safeZoneRadius = 3; // Very small safe zone - enemies spawn very close (was 8)
+        const safeZoneRadius = 30; // Safe zone covers spawn building (50x50 tiles, need 25+ radius)
         const regionCenterX = regionX * REGION_SIZE + REGION_SIZE / 2;
         const regionCenterY = regionY * REGION_SIZE + REGION_SIZE / 2;
         const distanceFromSpawn = Math.sqrt(
@@ -2408,6 +2408,15 @@ class Lobby {
                     const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
                     const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
 
+                    // Check if individual enemy position is in safe zone
+                    const isEnemyInSafeZone = (
+                        gridX >= (worldCenterX - safeZoneRadius) &&
+                        gridX < (worldCenterX + safeZoneRadius) &&
+                        gridY >= (worldCenterY - safeZoneRadius) &&
+                        gridY < (worldCenterY + safeZoneRadius)
+                    );
+                    if (isEnemyInSafeZone) continue; // Skip this enemy
+
                     // Convert to pixel coordinates immediately
                     
                     const x = gridX * TILE_SIZE + TILE_SIZE / 2;
@@ -2453,6 +2462,15 @@ class Lobby {
                     const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
                     const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
 
+                    // Check if individual enemy position is in safe zone
+                    const isEnemyInSafeZone = (
+                        gridX >= (worldCenterX - safeZoneRadius) &&
+                        gridX < (worldCenterX + safeZoneRadius) &&
+                        gridY >= (worldCenterY - safeZoneRadius) &&
+                        gridY < (worldCenterY + safeZoneRadius)
+                    );
+                    if (isEnemyInSafeZone) continue; // Skip this enemy
+
                     // Convert to pixel coordinates immediately
                     
                     const x = gridX * TILE_SIZE + TILE_SIZE / 2;
@@ -2486,6 +2504,15 @@ class Lobby {
                     const offsetY = Math.floor((this.seededRandom(mushroomSeed + 11) - 0.5) * 10);
                     const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, packX + offsetX));
                     const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
+
+                    // Check if individual enemy position is in safe zone
+                    const isEnemyInSafeZone = (
+                        gridX >= (worldCenterX - safeZoneRadius) &&
+                        gridX < (worldCenterX + safeZoneRadius) &&
+                        gridY >= (worldCenterY - safeZoneRadius) &&
+                        gridY < (worldCenterY + safeZoneRadius)
+                    );
+                    if (isEnemyInSafeZone) continue; // Skip this enemy
 
                     // Convert to pixel coordinates immediately
                     
@@ -2554,6 +2581,15 @@ class Lobby {
                     const offsetY = Math.floor((this.seededRandom(emberclawSeed + 11) - 0.5) * 20);
                     const gridX = Math.max(0, Math.min(this.WORLD_SIZE - 1, supportPackX + offsetX));
                     const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, supportPackY + offsetY));
+
+                    // Check if individual emberclaw position is in safe zone
+                    const isEnemyInSafeZone = (
+                        gridX >= (worldCenterX - safeZoneRadius) &&
+                        gridX < (worldCenterX + safeZoneRadius) &&
+                        gridY >= (worldCenterY - safeZoneRadius) &&
+                        gridY < (worldCenterY + safeZoneRadius)
+                    );
+                    if (isEnemyInSafeZone) continue; // Skip this emberclaw
 
                     // Convert to pixel coordinates
                     
