@@ -851,8 +851,6 @@ class GameScene extends Phaser.Scene {
                         this.physics.add.collider(swordDemon.sprite, layer);
                     });
                 }
-
-                console.log(`⚔️ Created sword demon ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
             } else if (enemyData.type === 'minotaur') {
                 // Skip dead minotaurs from initial game state
                 if (enemyData.isAlive === false) {
@@ -869,8 +867,6 @@ class GameScene extends Phaser.Scene {
                         this.physics.add.collider(minotaur.sprite, layer);
                     });
                 }
-
-                console.log(`🐂 Created minotaur ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
             } else if (enemyData.type === 'mushroom') {
                 // Skip dead mushrooms from initial game state
                 if (enemyData.isAlive === false) {
@@ -887,8 +883,6 @@ class GameScene extends Phaser.Scene {
                         this.physics.add.collider(mushroom.sprite, layer);
                     });
                 }
-
-                console.log(`🍄 Created mushroom ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
             } else if (enemyData.type === 'emberclaw') {
                 // Skip dead emberclaws from initial game state
                 if (enemyData.isAlive === false) {
