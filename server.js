@@ -2193,7 +2193,7 @@ class Lobby {
         }
 
         // PERFORMANCE: Global enemy cap per lobby (prevents runaway spawning)
-        const MAX_ENEMIES_TOTAL = 1000; // Increased from 500 for more intense battles
+        const MAX_ENEMIES_TOTAL = 2000; // Doubled to support much higher enemy density
         if (this.gameState.enemies.length >= MAX_ENEMIES_TOTAL) {
             console.log(`⚠️ Enemy cap reached (${this.gameState.enemies.length}/${MAX_ENEMIES_TOTAL}), skipping spawn in region ${regionKey}`);
             return [];
@@ -2263,46 +2263,46 @@ class Lobby {
 
         if (distanceFromSpawn < 25) {
             // Very close to spawn: STARTER ENEMIES - Right outside safe zone
-            packsToSpawn = 3 + Math.floor(Math.random() * 3); // 3-5 packs
-            minPackSize = 2;
-            maxPackSize = 4; // 2-4 enemies per pack
-            bossChance = 0;
+            packsToSpawn = 6 + Math.floor(Math.random() * 4); // 6-9 packs (doubled from 3-5)
+            minPackSize = 3;
+            maxPackSize = 6; // 3-6 enemies per pack (up from 2-4)
+            bossChance = 0.05;
             emberclawSupportChance = 0; // No emberclaws this close
         } else if (distanceFromSpawn < 50) {
             // Near spawn: EASY START - More enemies for more action
-            packsToSpawn = 4 + Math.floor(Math.random() * 4); // 4-7 packs
-            minPackSize = 3;
-            maxPackSize = 6; // 3-6 enemies per pack
-            bossChance = 0;
-            emberclawSupportChance = 0.1; // 10% emberclaw support
+            packsToSpawn = 8 + Math.floor(Math.random() * 5); // 8-12 packs (doubled from 4-7)
+            minPackSize = 5;
+            maxPackSize = 9; // 5-9 enemies per pack (up from 3-6)
+            bossChance = 0.08;
+            emberclawSupportChance = 0.2; // 20% emberclaw support (up from 10%)
         } else if (distanceFromSpawn < 100) {
             // Close to spawn: EASY - Increased density
-            packsToSpawn = 5 + Math.floor(Math.random() * 4); // 5-8 packs (was 3-5)
-            minPackSize = 4;
-            maxPackSize = 8; // 4-8 enemies per pack (was 3-6)
-            bossChance = 0.05;
-            emberclawSupportChance = 0.3; // 30% chance for emberclaw support
+            packsToSpawn = 10 + Math.floor(Math.random() * 6); // 10-15 packs (doubled from 5-8)
+            minPackSize = 6;
+            maxPackSize = 12; // 6-12 enemies per pack (up from 4-8)
+            bossChance = 0.1;
+            emberclawSupportChance = 0.4; // 40% chance for emberclaw support (up from 30%)
         } else if (distanceFromSpawn < 200) {
             // Medium distance: MODERATE - More intense battles
-            packsToSpawn = 6 + Math.floor(Math.random() * 5); // 6-10 packs (was 4-7)
-            minPackSize = 6;
-            maxPackSize = 10; // 6-10 enemies per pack (was 5-8)
-            bossChance = 0.08;
-            emberclawSupportChance = 0.45; // 45% chance for emberclaw support
+            packsToSpawn = 12 + Math.floor(Math.random() * 7); // 12-18 packs (doubled from 6-10)
+            minPackSize = 8;
+            maxPackSize = 15; // 8-15 enemies per pack (up from 6-10)
+            bossChance = 0.12;
+            emberclawSupportChance = 0.55; // 55% chance for emberclaw support (up from 45%)
         } else if (distanceFromSpawn < 350) {
             // Far: HARD - Big battles
-            packsToSpawn = 8 + Math.floor(Math.random() * 5); // 8-12 packs (was 6-9)
-            minPackSize = 10;
-            maxPackSize = 15; // 10-15 enemies per pack (was 8-12)
-            bossChance = 0.12;
-            emberclawSupportChance = 0.6; // 60% chance for emberclaw support
+            packsToSpawn = 16 + Math.floor(Math.random() * 8); // 16-23 packs (doubled from 8-12)
+            minPackSize = 12;
+            maxPackSize = 20; // 12-20 enemies per pack (up from 10-15)
+            bossChance = 0.15;
+            emberclawSupportChance = 0.7; // 70% chance for emberclaw support (up from 60%)
         } else {
             // Very far: BRUTAL - Massive hordes
-            packsToSpawn = 10 + Math.floor(Math.random() * 6); // 10-15 packs (was 8-12)
-            minPackSize = 15;
-            maxPackSize = 22; // 15-22 enemies per pack (was 12-18)
-            bossChance = 0.15;
-            emberclawSupportChance = 0.8; // 80% chance for emberclaw support
+            packsToSpawn = 20 + Math.floor(Math.random() * 10); // 20-29 packs (doubled from 10-15)
+            minPackSize = 18;
+            maxPackSize = 30; // 18-30 enemies per pack (up from 15-22)
+            bossChance = 0.2;
+            emberclawSupportChance = 0.9; // 90% chance for emberclaw support (up from 80%)
         }
 
         // CO-OP SCALING: Diablo-style diminishing returns
