@@ -2358,6 +2358,10 @@ class GameScene extends Phaser.Scene {
             // Set up collision with player (will be added later in setupPlayer)
             this.spawnCollisionBodies = spawnMapData.collisionBodies || [];
 
+            // Store roof layers for transparency effect
+            this.spawnRoofLayers = spawnMapData.roofLayers || [];
+            console.log(`   Roof layers: ${this.spawnRoofLayers.length}`);
+
             // Process entities (doors, NPCs, etc.)
             spawnMapData.entities.forEach(entity => {
                 console.log(`   📍 Entity: ${entity.identifier} at (${entity.x}, ${entity.y})`);
@@ -5126,6 +5130,27 @@ class GameScene extends Phaser.Scene {
         // Update biome chunks based on player position
         if (this.biomeChunks && this.localPlayer.sprite) {
             this.biomeChunks.update(this.localPlayer.sprite.x, this.localPlayer.sprite.y);
+        }
+
+        // Update roof transparency based on player position
+        if (this.spawnRoofLayers && this.localPlayer && this.localPlayer.sprite) {
+            const playerY = this.localPlayer.sprite.y;
+            const playerX = this.localPlayer.sprite.x;
+
+            this.spawnRoofLayers.forEach(roofContainer => {
+                // Check if player is in the vertical range of this roof (under it)
+                // Roofs are above players, so we check if player Y is greater than roof Y
+                const roofY = roofContainer.y;
+                const roofHeight = this.spawnMapData.size.height;
+
+                // Player is "under" the roof if they're in the building area
+                const isUnderRoof = playerY > roofY && playerY < (roofY + roofHeight);
+
+                // Smoothly transition alpha
+                const targetAlpha = isUnderRoof ? 0.3 : 1.0;
+                const currentAlpha = roofContainer.alpha;
+                roofContainer.alpha = Phaser.Math.Linear(currentAlpha, targetAlpha, 0.1);
+            });
         }
 
         // Update music UI progress bar

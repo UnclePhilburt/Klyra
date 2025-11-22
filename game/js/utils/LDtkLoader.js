@@ -43,6 +43,7 @@ class LDtkLoader {
         const layers = [];
         const entities = [];
         const collisionBodies = [];
+        const roofLayers = []; // Track roof layers for transparency
 
         // Process each layer (LDtk layers are in reverse order)
         if (level.layerInstances) {
@@ -55,8 +56,12 @@ class LDtkLoader {
                 // Check if this layer needs collision (doc field is in layer definition, not instance)
                 const layerDef = ldtkData.defs.layers.find(l => l.uid === layer.layerDefUid);
                 const hasCollision = layerDef && layerDef.doc && layerDef.doc.toLowerCase().includes('collision');
+                const isRoof = layerDef && layerDef.doc && layerDef.doc.toLowerCase().includes('roof');
                 if (hasCollision) {
                     console.log(`   🛡️ Layer has collision enabled`);
+                }
+                if (isRoof) {
+                    console.log(`   🏠 Layer is a roof (will become transparent when player walks under)`);
                 }
 
                 if (layer.__type === 'Tiles' || layer.__type === 'IntGrid') {
@@ -155,6 +160,11 @@ class LDtkLoader {
                         depth: container.depth
                     });
 
+                    // Track roof layers for transparency
+                    if (isRoof) {
+                        roofLayers.push(container);
+                    }
+
                 } else if (layer.__type === 'Entities') {
                     // Process entities
                     layer.entityInstances?.forEach(entity => {
@@ -171,12 +181,13 @@ class LDtkLoader {
             });
         }
 
-        console.log(`✅ LDtk map loaded: ${layers.length} layers, ${entities.length} entities, ${collisionBodies.length} collision tiles`);
+        console.log(`✅ LDtk map loaded: ${layers.length} layers, ${entities.length} entities, ${collisionBodies.length} collision tiles, ${roofLayers.length} roof layers`);
 
         return {
             layers: layers,
             entities: entities,
             collisionBodies: collisionBodies,
+            roofLayers: roofLayers,
             size: { width: mapWidth, height: mapHeight },
             offset: { x: offsetX, y: offsetY }
         };
