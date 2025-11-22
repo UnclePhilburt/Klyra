@@ -42,6 +42,7 @@ class LDtkLoader {
 
         const layers = [];
         const entities = [];
+        const collisionBodies = [];
 
         // Process each layer (LDtk layers are in reverse order)
         if (level.layerInstances) {
@@ -50,6 +51,12 @@ class LDtkLoader {
 
             layerInstances.forEach((layer, layerIndex) => {
                 console.log(`   Processing layer: ${layer.__identifier} (type: ${layer.__type})`);
+
+                // Check if this layer needs collision
+                const hasCollision = layer.doc && layer.doc.toLowerCase().includes('collision');
+                if (hasCollision) {
+                    console.log(`   🛡️ Layer has collision enabled`);
+                }
 
                 if (layer.__type === 'Tiles' || layer.__type === 'IntGrid') {
                     // Render tile layer
@@ -115,6 +122,26 @@ class LDtkLoader {
                             bob.flipX = true;
                             bob.flipY = true;
                         }
+
+                        // Create collision body for this tile if needed
+                        if (hasCollision) {
+                            const worldTileX = offsetX + tileX;
+                            const worldTileY = offsetY + tileY;
+                            const tileSize = tileset.tileGridSize;
+
+                            // Create a static rectangle body for collision
+                            const rect = scene.add.rectangle(
+                                worldTileX + tileSize / 2,
+                                worldTileY + tileSize / 2,
+                                tileSize,
+                                tileSize
+                            );
+                            rect.setOrigin(0.5, 0.5);
+                            scene.physics.add.existing(rect, true); // true = static body
+                            rect.setVisible(false); // Hide the rectangle (only used for collision)
+
+                            collisionBodies.push(rect.body);
+                        }
                     }
 
                     // Add blitter to container
@@ -143,11 +170,12 @@ class LDtkLoader {
             });
         }
 
-        console.log(`✅ LDtk map loaded: ${layers.length} layers, ${entities.length} entities`);
+        console.log(`✅ LDtk map loaded: ${layers.length} layers, ${entities.length} entities, ${collisionBodies.length} collision tiles`);
 
         return {
             layers: layers,
             entities: entities,
+            collisionBodies: collisionBodies,
             size: { width: mapWidth, height: mapHeight },
             offset: { x: offsetX, y: offsetY }
         };

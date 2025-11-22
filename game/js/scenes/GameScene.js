@@ -786,6 +786,13 @@ class GameScene extends Phaser.Scene {
                     });
                 }
 
+                // Add spawn building collision to other player
+                if (this.spawnCollisionBodies) {
+                    this.spawnCollisionBodies.forEach(body => {
+                        this.physics.add.collider(otherPlayer.sprite, body);
+                    });
+                }
+
                 // Initialize passive skills if the player has any
                 if (playerData.passiveSkills && playerData.passiveSkills.length > 0) {
                     otherPlayer.passiveSkills = new PassiveSkills(this, otherPlayer);
@@ -812,6 +819,14 @@ class GameScene extends Phaser.Scene {
                 this.physics.add.collider(this.localPlayer.sprite, layer);
             });
             console.log(`🏰 Added ${this.castleCollisionLayers.length} castle collision layers to local player`);
+        }
+
+        // Add spawn building collision to player
+        if (this.localPlayer && this.spawnCollisionBodies) {
+            this.spawnCollisionBodies.forEach(body => {
+                this.physics.add.collider(this.localPlayer.sprite, body);
+            });
+            console.log(`🏛️ Added ${this.spawnCollisionBodies.length} spawn building collision tiles to local player`);
         }
 
         // Create enemies
@@ -2333,11 +2348,15 @@ class GameScene extends Phaser.Scene {
             console.log(`✅ LDtk spawn map loaded!`);
             console.log(`   Layers: ${spawnMapData.layers.length}`);
             console.log(`   Entities: ${spawnMapData.entities.length}`);
+            console.log(`   Collision tiles: ${spawnMapData.collisionBodies?.length || 0}`);
             console.log(`   Size: ${spawnMapData.size.width}x${spawnMapData.size.height}px`);
             console.log(`   Offset: (${spawnMapData.offset.x}, ${spawnMapData.offset.y})`);
 
             // Store map data for later use
             this.spawnMapData = spawnMapData;
+
+            // Set up collision with player (will be added later in setupPlayer)
+            this.spawnCollisionBodies = spawnMapData.collisionBodies || [];
 
             // Process entities (doors, NPCs, etc.)
             spawnMapData.entities.forEach(entity => {
@@ -2974,6 +2993,13 @@ class GameScene extends Phaser.Scene {
                 if (this.castleCollisionLayers) {
                     this.castleCollisionLayers.forEach(layer => {
                         this.physics.add.collider(newPlayer.sprite, layer);
+                    });
+                }
+
+                // Add spawn building collision to new player
+                if (this.spawnCollisionBodies) {
+                    this.spawnCollisionBodies.forEach(body => {
+                        this.physics.add.collider(newPlayer.sprite, body);
                     });
                 }
 
