@@ -198,6 +198,10 @@ class GameScene extends Phaser.Scene {
             frameWidth: 48,
             frameHeight: 48
         });
+        this.load.spritesheet('fantasy_roofs', 'assets/tilesets/Fantasy_Roofs.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
 
         // Load spawn point building - LDtk map (small file, load in preload)
         this.load.json('spawnMapLDtk', 'assets/spawnpointbuilding.ldtk');

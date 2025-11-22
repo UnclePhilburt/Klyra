@@ -244,6 +244,7 @@ class LDtkLoader {
             'Fantasy_Outside_B': 'fantasy_outside_b',
             'Fantasy_Outside_C': 'fantasy_outside_c',
             'Fantasy_Outside_D': 'objects_d',
+            'Fantasy_Roofs': 'fantasy_roofs',
             'A2_extended_forest_terrain': 'forest_extended',
             'Big_Trees_red': 'red_trees',
             'Fantasy_Outside_D_red': 'red_decorations',
