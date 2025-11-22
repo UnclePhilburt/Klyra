@@ -12,7 +12,9 @@
       "Bash(npm start)",
       "Bash(node:*)",
       "Bash(cmd //c \"taskkill //PID 153072 //F\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
