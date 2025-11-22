@@ -938,6 +938,13 @@ class GameScene extends Phaser.Scene {
         // Setup UI
         this.createUI();
 
+        // Create dark overlay for when player is under roof (blackout rest of world)
+        this.roofDarkOverlay = this.add.rectangle(0, 0, 10000, 10000, 0x000000, 0);
+        this.roofDarkOverlay.setOrigin(0, 0);
+        this.roofDarkOverlay.setScrollFactor(0); // Fixed to camera
+        this.roofDarkOverlay.setDepth(900); // Above world, below UI
+        console.log('🌑 Dark overlay created for roof interior effect');
+
         // Setup controls
         this.setupControls();
 
@@ -5141,6 +5148,8 @@ class GameScene extends Phaser.Scene {
             const playerY = this.localPlayer.sprite.y;
             const playerX = this.localPlayer.sprite.x;
 
+            let playerUnderAnyRoof = false; // Track if player is under any roof
+
             this.spawnRoofLayers.forEach(roofContainer => {
                 // Use the actual roof tile bounds if available
                 if (roofContainer.roofBounds) {
@@ -5152,6 +5161,8 @@ class GameScene extends Phaser.Scene {
                         playerX <= (bounds.x + bounds.width) &&
                         playerY >= bounds.y &&
                         playerY <= (bounds.y + bounds.height);
+
+                    if (isUnderRoof) playerUnderAnyRoof = true;
 
                     // Set roof depth to render above player when they're underneath
                     // Player depth is set to player.y, so roof needs to be higher
@@ -5186,6 +5197,13 @@ class GameScene extends Phaser.Scene {
                     }
                 }
             });
+
+            // Update dark overlay - blackout rest of world when under roof
+            if (this.roofDarkOverlay) {
+                const targetOverlayAlpha = playerUnderAnyRoof ? 0.5 : 0; // 50% dark when under roof
+                const currentOverlayAlpha = this.roofDarkOverlay.alpha;
+                this.roofDarkOverlay.alpha = Phaser.Math.Linear(currentOverlayAlpha, targetOverlayAlpha, 0.1);
+            }
         }
 
         // Update music UI progress bar
