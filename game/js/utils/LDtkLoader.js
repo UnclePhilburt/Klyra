@@ -52,8 +52,9 @@ class LDtkLoader {
             layerInstances.forEach((layer, layerIndex) => {
                 console.log(`   Processing layer: ${layer.__identifier} (type: ${layer.__type})`);
 
-                // Check if this layer needs collision
-                const hasCollision = layer.doc && layer.doc.toLowerCase().includes('collision');
+                // Check if this layer needs collision (doc field is in layer definition, not instance)
+                const layerDef = ldtkData.defs.layers.find(l => l.uid === layer.layerDefUid);
+                const hasCollision = layerDef && layerDef.doc && layerDef.doc.toLowerCase().includes('collision');
                 if (hasCollision) {
                     console.log(`   🛡️ Layer has collision enabled`);
                 }
