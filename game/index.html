@@ -95,6 +95,20 @@
         </div>
     </div>
 
+    <!-- Controller Activation Modal -->
+    <div id="controllerActivationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+        <div style="background: #1a1a2e; border: 4px solid #FFD700; border-radius: 15px; padding: 40px; max-width: 500px; text-align: center; box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);">
+            <div style="font-size: 48px; margin-bottom: 20px;">🎮</div>
+            <h2 style="font-family: 'Press Start 2P', monospace; color: #FFD700; font-size: 18px; margin-bottom: 20px;">CONTROLLER DETECTED</h2>
+            <p style="font-family: 'Press Start 2P', monospace; color: #FFFFFF; font-size: 12px; line-height: 1.8; margin-bottom: 30px;">
+                Press any button on your controller to activate gamepad support
+            </p>
+            <button id="skipControllerActivation" style="font-family: 'Press Start 2P', monospace; background: #6B4FFF; border: 3px solid #2C1B47; color: #FFFFFF; padding: 15px 30px; font-size: 11px; cursor: pointer; border-radius: 5px; box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.3);">
+                SKIP (Use Keyboard)
+            </button>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settingsModal">
         <div class="settings-content">

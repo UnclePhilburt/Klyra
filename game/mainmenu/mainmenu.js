@@ -41,6 +41,7 @@ class MainMenu {
         this.loadMenuMusic();
         this.loadSavedPlayerName();
         this.setupLobbyControllerNavigation();
+        this.setupControllerActivation();
 
         // Auto-start music immediately (user already clicked start screen)
         // Small delay to ensure audio context is ready
@@ -625,6 +626,96 @@ class MainMenu {
         this.lastButtonState[buttonName] = currentState;
 
         return currentState && !wasPressed;
+    }
+
+    setupControllerActivation() {
+        const modal = document.getElementById('controllerActivationModal');
+        const skipBtn = document.getElementById('skipControllerActivation');
+
+        if (!modal || !skipBtn) {
+            console.warn('⚠️ Controller activation modal elements not found');
+            return;
+        }
+
+        let modalShown = false;
+        let controllerActivated = false;
+
+        // Check if controller was previously activated
+        const wasActivated = localStorage.getItem('klyra_controller_activated');
+        if (wasActivated === 'true') {
+            controllerActivated = true;
+            console.log('🎮 Controller previously activated');
+        }
+
+        // Check for gamepad and handle activation
+        const checkAndActivateGamepad = () => {
+            const gamepads = navigator.getGamepads();
+            if (!gamepads || !gamepads[0]) {
+                modalShown = false;
+                return;
+            }
+
+            const pad = gamepads[0];
+
+            // If controller is already activated, no need to show modal
+            if (controllerActivated) {
+                return;
+            }
+
+            // Show modal if gamepad detected and not yet shown
+            if (!modalShown) {
+                modal.style.display = 'flex';
+                modalShown = true;
+                console.log('🎮 Controller detected - showing activation modal');
+            }
+
+            // Check for any button press to activate
+            let anyButtonPressed = false;
+            for (let i = 0; i < pad.buttons.length; i++) {
+                if (pad.buttons[i].pressed) {
+                    anyButtonPressed = true;
+                    break;
+                }
+            }
+
+            if (anyButtonPressed) {
+                controllerActivated = true;
+                localStorage.setItem('klyra_controller_activated', 'true');
+                modal.style.display = 'none';
+                console.log('🎮 Controller activated via button press');
+            }
+        };
+
+        // Skip button handler
+        skipBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+            modalShown = false;
+            console.log('🎮 Controller activation skipped - using keyboard');
+        });
+
+        // Listen for gamepad connection events
+        window.addEventListener('gamepadconnected', (e) => {
+            console.log('🎮 Gamepad connected:', e.gamepad.id);
+            if (!controllerActivated && !modalShown) {
+                modal.style.display = 'flex';
+                modalShown = true;
+            }
+        });
+
+        window.addEventListener('gamepaddisconnected', (e) => {
+            console.log('🎮 Gamepad disconnected:', e.gamepad.id);
+            modal.style.display = 'none';
+            modalShown = false;
+        });
+
+        // Continuously check for gamepad and activation
+        const activationLoop = () => {
+            checkAndActivateGamepad();
+            requestAnimationFrame(activationLoop);
+        };
+        activationLoop();
+
+        console.log('🎮 Controller activation system initialized');
     }
 
     loadMenuMusic() {
