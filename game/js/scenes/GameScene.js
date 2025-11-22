@@ -1442,16 +1442,6 @@ class GameScene extends Phaser.Scene {
         this.lastPlayerTileY = playerTileY;
 
         // PERFORMANCE: Debug logging disabled (enable only when needed)
-        // PERFORMANCE DEBUG
-        if (!this.debugLogTimer) this.debugLogTimer = 0;
-        this.debugLogTimer++;
-        if (this.debugLogTimer >= 180) { // Every 3 seconds
-  Decorations: ${this.renderedDecorations.size}
-  Total Phaser Objects: ${this.children.length}
-  FPS: ${Math.round(this.game.loop.actualFps)}
-  Player Tile: (${playerTileX}, ${playerTileY})`);
-            this.debugLogTimer = 0;
-        }
 
         // Calculate visible tile range (asymmetric for aspect ratio)
         const minX = Math.max(0, playerTileX - this.RENDER_DISTANCE_X);
