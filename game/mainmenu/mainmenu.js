@@ -481,14 +481,25 @@ class MainMenu {
 
     handleLobbyControllerInput() {
         // Only handle input when on lobby screen
-        if (window.screenManager && window.screenManager.getCurrentScreen() !== 'LOBBY') {
+        const currentScreen = window.screenManager ? window.screenManager.getCurrentScreen() : 'UNKNOWN';
+        if (window.screenManager && currentScreen !== 'LOBBY') {
             return;
         }
 
         const gamepads = navigator.getGamepads();
-        if (!gamepads || !gamepads[0]) return;
+        if (!gamepads || !gamepads[0]) {
+            // No gamepad detected
+            return;
+        }
 
         const pad = gamepads[0];
+
+        // Check if controller activation modal is still showing
+        const activationModal = document.getElementById('controllerActivationModal');
+        if (activationModal && activationModal.style.display !== 'none') {
+            // Don't handle lobby input while activation modal is showing
+            return;
+        }
 
         // Check if settings or character select panels are open
         const settingsPanel = document.getElementById('settingsPanel');
@@ -527,8 +538,8 @@ class MainMenu {
             console.log(`🎮 Lobby: Selected ${this.controllerMenuOptions[this.selectedMenuIndex].name}`);
         }
 
-        // A button - activate selected option
-        if (this.isControllerButtonPressed(pad, 'A')) {
+        // A button or Start button - activate selected option
+        if (this.isControllerButtonPressed(pad, 'A') || this.isControllerButtonPressed(pad, 'Start')) {
             const selected = this.controllerMenuOptions[this.selectedMenuIndex];
             if (selected && selected.action) {
                 console.log(`🎮 Lobby: Activated ${selected.name}`);
