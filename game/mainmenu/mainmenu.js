@@ -504,8 +504,10 @@ class MainMenu {
 
         // Check if settings or character select panels are open
         const settingsPanel = document.getElementById('settingsPanel');
-        const characterSelectPanel = document.getElementById('characterSelect');
-        const settingsPanelOpen = settingsPanel && settingsPanel.classList.contains('active');
+        const settingsModal = document.getElementById('settingsModal');
+        const characterSelectPanel = document.getElementById('characterSelectModal');
+        const settingsPanelOpen = (settingsPanel && settingsPanel.classList.contains('active')) ||
+                                  (settingsModal && settingsModal.classList.contains('active'));
         const characterSelectOpen = characterSelectPanel && characterSelectPanel.classList.contains('active');
 
         // Handle settings panel controller input
