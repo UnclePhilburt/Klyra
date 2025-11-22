@@ -194,12 +194,14 @@ class GameScene extends Phaser.Scene {
         this.load.json('spawnMapLDtk', 'assets/spawnpointbuilding.ldtk');
 
         // Load Ember Wilds biome chunks (3 variations for variety)
-        this.load.json('emberChunk1', 'assets/ldtk/biomes/Ember Wilds/chunk1.ldtk');
-        this.load.json('emberChunk2', 'assets/ldtk/biomes/Ember Wilds/chunk2.ldtk');
-        this.load.json('emberChunk3', 'assets/ldtk/biomes/Ember Wilds/chunk3.ldtk');
+        // TEMPORARILY DISABLED - biome chunk files need to be recreated
+        // this.load.json('emberChunk1', 'assets/ldtk/biomes/Ember Wilds/chunk1.ldtk');
+        // this.load.json('emberChunk2', 'assets/ldtk/biomes/Ember Wilds/chunk2.ldtk');
+        // this.load.json('emberChunk3', 'assets/ldtk/biomes/Ember Wilds/chunk3.ldtk');
 
         // Load Dark Forest biome chunks
-        this.load.json('darkForestChunk1', 'assets/ldtk/biomes/Dark Forest/chunk1.ldtk');
+        // TEMPORARILY DISABLED - biome chunk files need to be recreated
+        // this.load.json('darkForestChunk1', 'assets/ldtk/biomes/Dark Forest/chunk1.ldtk');
 
         // OLD Tiled version (disabled)
         // this.load.tilemapTiledJSON('spawnMap', 'assets/spawnpointbuilding.tmj');
