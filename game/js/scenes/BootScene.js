@@ -613,7 +613,6 @@ class BootScene extends Phaser.Scene {
         console.log('✅ Created minion animations: idle (frames 39-42), walk (frames 26-37), attack (frames 0-12)');
         console.log('✅ Created Malachar heal attack animation: (row 2, frames 30-44)');
         console.log('✅ Created Bone Commander aura animation: (row 1, frames 10-18)');
-        console.log('✅ Created Legion\'s Call animation: (row 3, frames 30-38)');
 
         // Create blood damage animation
         // Sprite sheet: 124x124px frames, ~12 frames per row
@@ -627,8 +626,6 @@ class BootScene extends Phaser.Scene {
             frameRate: 18,
             repeat: 0
         });
-
-        console.log('✅ Created blood damage animation (row 6, 14 frames)');
 
         // Create blood splash animations (48x48px sprites)
         // Splash 1: 4x4 grid = 16 frames (0-15) - general spray
