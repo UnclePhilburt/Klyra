@@ -5155,11 +5155,12 @@ class GameScene extends Phaser.Scene {
 
                     // Set roof depth to render above player when they're underneath
                     // Player depth is set to player.y, so roof needs to be higher
-                    if (isUnderRoof) {
-                        roofContainer.setDepth(playerY + 100); // Render above player
-                    } else {
-                        // When not under roof, use the roof's bottom Y position for normal Y-sorting
-                        roofContainer.setDepth(bounds.y + bounds.height);
+                    const targetDepth = isUnderRoof ? (playerY + 100) : (bounds.y + bounds.height);
+
+                    // Set depth on both container AND blitter (containers don't always propagate depth correctly)
+                    roofContainer.setDepth(targetDepth);
+                    if (roofContainer.blitter) {
+                        roofContainer.blitter.setDepth(targetDepth);
                     }
 
                     // Debug logging (only log occasionally to avoid spam)

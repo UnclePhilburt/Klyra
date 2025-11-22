@@ -159,12 +159,14 @@ class LDtkLoader {
                         name: layer.__identifier,
                         type: layer.__type,
                         container: container,
+                        blitter: blitter,  // Store blitter reference
                         depth: container.depth
                     });
 
                     // Track roof layers for transparency
                     if (isRoof) {
                         container.alpha = 1.0; // Start fully visible
+                        blitter.alpha = 1.0; // Also set blitter alpha
                         console.log(`   🏠 Setting up roof layer with ${allTiles.length} tiles`);
 
                         // Calculate the bounding box of roof tiles
@@ -189,6 +191,9 @@ class LDtkLoader {
                             width: maxX - minX,
                             height: maxY - minY
                         };
+
+                        // Store blitter reference on container for depth updates
+                        container.blitter = blitter;
 
                         console.log(`   📏 Roof bounds: x=${container.roofBounds.x}, y=${container.roofBounds.y}, w=${container.roofBounds.width}, h=${container.roofBounds.height}`);
                         console.log(`   🎨 Roof alpha: ${container.alpha}, depth: ${container.depth}`);
