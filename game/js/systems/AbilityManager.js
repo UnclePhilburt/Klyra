@@ -350,16 +350,11 @@ class AbilityManager {
             return;
         }
 
-        console.log('🔄 updateCooldownUI called');
-        console.log('   player.abilities:', this.player.abilities);
-
         Object.keys(this.cooldownUI).forEach(key => {
             const ui = this.cooldownUI[key];
             const cooldown = this.cooldowns[key];
             const ability = this.player.abilities ? this.player.abilities[key] : null;
             const colors = ui.colorTheme;
-
-            console.log(`   ${key}: ability =`, ability);
 
             // Debug logging removed to reduce console spam
 
