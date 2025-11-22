@@ -35,10 +35,6 @@ class LDtkLoader {
             offsetY = worldY - (mapHeight / 2);
         }
 
-        console.log(`📦 Loading LDtk level: ${level.identifier}`);
-        console.log(`   Size: ${mapWidth}x${mapHeight}px`);
-        console.log(`   Offset: (${offsetX}, ${offsetY})`);
-        console.log(`   Layers: ${level.layerInstances?.length || 0}`);
 
         const layers = [];
         const entities = [];
@@ -51,8 +47,6 @@ class LDtkLoader {
             const layerInstances = [...level.layerInstances].reverse();
 
             layerInstances.forEach((layer, layerIndex) => {
-                console.log(`   Processing layer: ${layer.__identifier} (type: ${layer.__type})`);
-
                 // Check if this layer needs collision (doc field is in layer definition, not instance)
                 const layerDef = ldtkData.defs.layers.find(l => l.uid === layer.layerDefUid);
                 const hasCollision = layerDef && layerDef.doc && (
@@ -61,15 +55,6 @@ class LDtkLoader {
                 );
                 const isRoof = layerDef && layerDef.doc && layerDef.doc.toLowerCase().includes('roof');
                 const isWater = layerDef && layerDef.doc && layerDef.doc.toLowerCase().includes('water');
-                if (hasCollision) {
-                    console.log(`   🛡️ Layer has collision enabled`);
-                }
-                if (isWater) {
-                    console.log(`   💧 Layer is water (players cannot walk on it)`);
-                }
-                if (isRoof) {
-                    console.log(`   🏠 Layer is a roof (will become transparent when player walks under)`);
-                }
 
                 if (layer.__type === 'Tiles' || layer.__type === 'IntGrid') {
                     // Render tile layer
@@ -91,8 +76,6 @@ class LDtkLoader {
                     const tilesetPath = tileset.relPath;
                     let textureKey = LDtkLoader.getTextureKey(tilesetPath);
 
-                    console.log(`   Tileset: ${tilesetPath} -> ${textureKey}`);
-
                     // Check if texture exists
                     if (!scene.textures.exists(textureKey)) {
                         console.warn(`   ⚠️ Texture "${textureKey}" not found, skipping layer`);
@@ -103,8 +86,6 @@ class LDtkLoader {
                     const gridTiles = layer.gridTiles || [];
                     const autoTiles = layer.autoLayerTiles || [];
                     const allTiles = [...gridTiles, ...autoTiles];
-
-                    console.log(`   Rendering ${allTiles.length} tiles with Blitter...`);
 
                     // Only render tiles if there are any
                     if (allTiles.length === 0) {
@@ -202,9 +183,6 @@ class LDtkLoader {
                         // Store blitter reference on container for depth updates
                         container.blitter = blitter;
 
-                        console.log(`   📏 Roof bounds: x=${container.roofBounds.x}, y=${container.roofBounds.y}, w=${container.roofBounds.width}, h=${container.roofBounds.height}`);
-                        console.log(`   🎨 Roof alpha: ${container.alpha}, depth: ${container.depth}`);
-
                         roofLayers.push(container);
                     }
 
@@ -223,8 +201,6 @@ class LDtkLoader {
                 }
             });
         }
-
-        console.log(`✅ LDtk map loaded: ${layers.length} layers, ${entities.length} entities, ${collisionBodies.length} collision tiles, ${roofLayers.length} roof layers`);
 
         return {
             layers: layers,
