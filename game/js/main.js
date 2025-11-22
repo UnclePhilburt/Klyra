@@ -1,12 +1,25 @@
 // Main game initialization
 const config = {
-    type: Phaser.AUTO,
+    type: Phaser.WEBGL, // Force WebGL for better performance
     width: GameConfig.GAME.WIDTH,
     height: GameConfig.GAME.HEIGHT,
     parent: 'game-container',
     backgroundColor: '#0a0a0a',
     pixelArt: GameConfig.GAME.PIXEL_ART,
     disableContextMenu: true,
+    // Performance optimizations
+    fps: {
+        target: 144, // Allow up to 144 FPS (no artificial limit)
+        forceSetTimeOut: false,
+        smoothStep: true
+    },
+    render: {
+        antialias: false, // Disable for pixel art and performance
+        pixelArt: true,
+        roundPixels: true,
+        batchSize: 4096, // Increase batch size for better performance
+        powerPreference: 'high-performance' // Use dedicated GPU
+    },
     audio: {
         disableWebAudio: false,
         noAudio: false
@@ -20,15 +33,27 @@ const config = {
         arcade: {
             gravity: { y: 0 },
             debug: false
+            // Removed fps: 60 - let physics run at render FPS
         }
     },
     input: {
         gamepad: true
     },
-    scene: [BootScene, MenuScene, CharacterSelectScene, LobbyScene, GameScene]
+    scene: [BootScene, MenuScene, CharacterSelectScene, LobbyScene, LoadingScene, GameScene]
 };
 
+// Verify all scenes are defined
+console.log('Scene classes check:');
+console.log('  BootScene:', typeof BootScene);
+console.log('  MenuScene:', typeof MenuScene);
+console.log('  CharacterSelectScene:', typeof CharacterSelectScene);
+console.log('  LobbyScene:', typeof LobbyScene);
+console.log('  LoadingScene:', typeof LoadingScene);
+console.log('  GameScene:', typeof GameScene);
+
 const game = new Phaser.Game(config);
+
+console.log('Game created, scenes:', game.scene.keys);
 
 // Fix for random loud sounds when refocusing window
 // Stop all sounds when losing focus, prevent queued sounds on resume
@@ -77,8 +102,10 @@ game.connect = async function(username) {
         }
 
         // Connect to server
+        console.log('📡 Connecting to server...');
         await networkManager.connect();
         console.log('✅ Connected to server');
+        console.log('🎮 Waiting for game:start event...');
 
         // Get selected character from CharacterSelectManager
         const selectedCharacter = window.characterSelectManager
@@ -98,14 +125,22 @@ game.connect = async function(username) {
         return new Promise((resolve, reject) => {
             networkManager.on('game:start', (data) => {
                 console.log('🎮 Game started!');
+                console.log('🚀 Starting GameScene with built-in loading screen...');
 
-                // Start GameScene directly
+                // Stop all other scenes first
+                game.scene.stop('BootScene');
+                game.scene.stop('MenuScene');
+                game.scene.stop('CharacterSelectScene');
+                game.scene.stop('LobbyScene');
+
+                // Start GameScene directly (has built-in loading screen now)
                 game.scene.start('GameScene', {
                     username: username,
                     selectedCharacter: selectedCharacter,
                     gameData: data
                 });
 
+                console.log('✅ GameScene.start() called');
                 resolve();
             });
 

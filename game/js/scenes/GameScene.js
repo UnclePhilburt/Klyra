@@ -183,24 +183,26 @@ class GameScene extends Phaser.Scene {
             frameHeight: 48
         });
 
-        // Red biome tilesets (2448x672 = 51 tiles wide × 14 tiles tall)
+        // Biome tilesets for LDtk chunks (2448x672 = 51 tiles wide × 14 tiles tall)
         this.load.spritesheet('a2_terrain_red', 'assets/tilesets/a2_terrain_red.png', {
             frameWidth: 48,
             frameHeight: 48,
             endFrame: 713  // 51 × 14 - 1 = 713 (0-indexed)
         });
+        this.load.spritesheet('a2_terrain_green', 'assets/tilesets/a2_terrain_green.png', {
+            frameWidth: 48,
+            frameHeight: 48,
+            endFrame: 713  // 51 × 14 - 1 = 713 (0-indexed)
+        });
 
-        // Load spawn point building - LDtk map
+        // Load spawn point building - LDtk map (small file, load in preload)
         this.load.json('spawnMapLDtk', 'assets/spawnpointbuilding.ldtk');
 
-        // Load Ember Wilds biome chunks (3 variations for variety)
-        // TEMPORARILY DISABLED - biome chunk files need to be recreated
+        // Don't load biome chunks in preload - they're huge and slow down initial load
+        // They'll be loaded on-demand when first needed
         // this.load.json('emberChunk1', 'assets/ldtk/biomes/Ember Wilds/chunk1.ldtk');
-        // this.load.json('emberChunk2', 'assets/ldtk/biomes/Ember Wilds/chunk2.ldtk');
-        // this.load.json('emberChunk3', 'assets/ldtk/biomes/Ember Wilds/chunk3.ldtk');
-
-        // Load Dark Forest biome chunks
-        // TEMPORARILY DISABLED - biome chunk files need to be recreated
+        // this.load.json('emberChunk2', 'assets/ldtk/biomes/Ember Wilds/chunk1.ldtk');
+        // this.load.json('emberChunk3', 'assets/ldtk/biomes/Ember Wilds/chunk1.ldtk');
         // this.load.json('darkForestChunk1', 'assets/ldtk/biomes/Dark Forest/chunk1.ldtk');
 
         // OLD Tiled version (disabled)
@@ -585,8 +587,69 @@ class GameScene extends Phaser.Scene {
         this.treeCollisions = [];
         this.treeSprites = [];
 
-        // Create world from world data
-        this.renderWorld(this.gameData.world);
+        // Create world setup first (sets up camera bounds)
+        const world = this.gameData.world;
+        const tileSize = GameConfig.GAME.TILE_SIZE;
+        this.worldSeed = world.seed;
+        this.worldSize = world.size;
+        this.cachedNumericSeed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
+        // Set world bounds
+        const worldPixelWidth = world.size * tileSize;
+        const worldPixelHeight = world.size * tileSize;
+        this.physics.world.setBounds(0, 0, worldPixelWidth, worldPixelHeight);
+        this.cameras.main.setBounds(0, 0, worldPixelWidth, worldPixelHeight);
+
+        // Initialize BiomeChunkSystem
+        this.biomeChunks = new BiomeChunkSystem(this);
+        this.renderedDecorations = new Map();
+        this.RENDER_DISTANCE_X = 28; // Increased to render decorations further offscreen
+        this.RENDER_DISTANCE_Y = 20; // Increased to render decorations further offscreen
+
+        const spawnX = (world.size / 2) * tileSize;
+        const spawnY = (world.size / 2) * tileSize;
+
+        // Show loading screen
+        this.showLoadingScreen();
+
+        console.log('🔄 Showing loading screen for 10-15 seconds while game loads...');
+
+        // Initialize BiomeChunkSystem - let it load chunks in the background
+        this.biomeChunks.preloadNearSpawn(spawnX, spawnY, 10);
+
+        // Show loading screen for 10-15 seconds (random duration)
+        const loadingDuration = 10000 + Math.random() * 5000; // 10-15 seconds
+        console.log(`⏰ Loading screen will show for ${Math.floor(loadingDuration / 1000)} seconds`);
+
+        // Fake progress animation
+        let fakeProgress = 0;
+        this.loadingInterval = setInterval(() => {
+            fakeProgress += Math.random() * 8 + 2; // Random progress between 2-10% per tick
+            if (fakeProgress > 95) fakeProgress = 95; // Don't exceed 95% until we're done
+
+            const fakeCurrent = Math.floor((fakeProgress / 100) * 441);
+            this.updateLoadingProgress(fakeCurrent, 441);
+        }, 300);
+
+        // After loading duration, hide loading screen and start game
+        setTimeout(() => {
+            clearInterval(this.loadingInterval);
+            this.updateLoadingProgress(441, 441); // Show 100%
+
+            setTimeout(() => {
+                console.log('✅ Loading complete - starting game!');
+                this.hideLoadingScreen();
+                this.continueGameInitialization();
+            }, 500);
+        }, loadingDuration);
+
+        // STOP HERE - don't continue until timer completes
+        console.log('⛔ Waiting for loading screen timer...');
+        return;
+    }
+
+    continueGameInitialization() {
+        console.log('🎮 Continuing game initialization after loading screen...');
 
         // Enhance spawn point with visuals
         this.createSpawnPoint();
@@ -843,61 +906,215 @@ class GameScene extends Phaser.Scene {
         // Network listeners already set up at the beginning of create()
     }
 
-    renderWorld(world) {
-        console.log(`🗺️ Generating world from seed: ${world.seed}`);
-        const startTime = Date.now();
 
-        const tileSize = GameConfig.GAME.TILE_SIZE;
+    showLoadingScreen() {
+        console.log('📺 SHOWING DOM LOADING SCREEN');
 
-        // Generate world from seed (same algorithm as server)
-        this.worldSeed = world.seed;
-        this.worldSize = world.size;
-
-        // Store for viewport-based rendering (don't pre-generate all tiles)
-        this.renderedTiles = new Map(); // Track rendered tiles
-        this.renderedDecorations = new Map(); // Track rendered decorations with their sprites
-        this.renderedChunks = new Map(); // Track rendered LDtk chunks
-        // PERFORMANCE: Asymmetric render distance to match screen aspect ratio (16:9)
-        // Increased for better visual experience now that GPU acceleration is confirmed working
-        this.RENDER_DISTANCE_X = 20; // Horizontal (loads tiles off-screen)
-        this.RENDER_DISTANCE_Y = 12; // Vertical (loads tiles off-screen)
-
-        // LDtk Chunk system (50x50 tiles per chunk)
-        this.LDTK_CHUNK_SIZE = 50; // Each LDtk chunk is 50x50 tiles
-
-        // Map biome types to tileset textures and tile indices
-        this.BIOME_TILESET_MAP = {};
-
-        // Basic Green Biome - A2 Terrain And Misc tiles 104-115
-        for (let i = 0; i < 12; i++) {
-            this.BIOME_TILESET_MAP[10 + i] = { texture: 'terrain_misc', frame: 104 + i };
+        // HIDE THE LOBBY SCREEN FIRST!
+        const lobbyScreen = document.getElementById('lobbyScreen');
+        const startScreen = document.getElementById('startScreen');
+        if (lobbyScreen) {
+            lobbyScreen.style.display = 'none';
+            console.log('  Hidden lobbyScreen');
+        }
+        if (startScreen) {
+            startScreen.style.display = 'none';
+            console.log('  Hidden startScreen');
         }
 
-        // Dark Green Biome - A2 Extended Forest Terrain tiles 78-89
-        for (let i = 0; i < 12; i++) {
-            this.BIOME_TILESET_MAP[30 + i] = { texture: 'forest_extended', frame: 78 + i };
+        // Create DOM overlay on top of canvas
+        this.loadingDiv = document.createElement('div');
+        this.loadingDiv.id = 'chunk-loading-overlay';
+        this.loadingDiv.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0f2e 50%, #0a0a0a 100%);
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Press Start 2P', monospace;
+            pointer-events: none;
+        `;
+
+        this.loadingDiv.innerHTML = `
+            <div style="text-align: center; position: relative;">
+                <!-- Glowing sword icon -->
+                <div style="font-size: 72px; margin-bottom: 40px; animation: float 3s ease-in-out infinite;">
+                    ⚔️
+                </div>
+
+                <!-- Title with glow effect -->
+                <div style="
+                    font-size: 48px;
+                    color: #00ff00;
+                    margin-bottom: 20px;
+                    text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00, 0 0 60px #00ff00;
+                    animation: glow 1.5s ease-in-out infinite alternate;
+                    letter-spacing: 4px;
+                ">
+                    KLYRA
+                </div>
+
+                <div style="
+                    font-size: 16px;
+                    color: #888888;
+                    margin-bottom: 60px;
+                    letter-spacing: 2px;
+                ">
+                    ENTERING THE REALM
+                </div>
+
+                <!-- Progress bar container -->
+                <div style="
+                    width: 500px;
+                    height: 8px;
+                    background: #1a1a1a;
+                    border: 3px solid #333333;
+                    border-radius: 4px;
+                    margin-bottom: 25px;
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+                ">
+                    <!-- Animated background shimmer -->
+                    <div style="
+                        position: absolute;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(90deg, transparent, rgba(0,255,0,0.1), transparent);
+                        animation: shimmer 2s infinite;
+                    "></div>
+
+                    <!-- Progress bar fill -->
+                    <div id="loading-bar-fill" style="
+                        width: 0%;
+                        height: 100%;
+                        background: linear-gradient(90deg, #00ff00, #00cc00, #00ff00);
+                        box-shadow: 0 0 20px #00ff00, 0 0 30px #00ff00;
+                        transition: width 0.3s ease-out;
+                        position: relative;
+                    ">
+                        <!-- Shine effect -->
+                        <div style="
+                            position: absolute;
+                            width: 100%;
+                            height: 100%;
+                            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                            animation: shine 1.5s infinite;
+                        "></div>
+                    </div>
+                </div>
+
+                <!-- Percentage display -->
+                <div id="loading-percent" style="
+                    font-size: 24px;
+                    color: #00ff00;
+                    margin-bottom: 15px;
+                    text-shadow: 0 0 10px #00ff00;
+                ">
+                    0%
+                </div>
+
+                <!-- Status text -->
+                <div id="loading-progress" style="
+                    font-size: 12px;
+                    color: #666666;
+                    animation: pulse 2s infinite;
+                ">
+                    Preparing your adventure...
+                </div>
+
+                <!-- Decorative pixel particles -->
+                <div style="position: absolute; top: -100px; left: 0; right: 0; opacity: 0.3;">
+                    <div style="animation: fall 4s infinite; font-size: 8px;">✦ ✦ ✦ ✦ ✦</div>
+                </div>
+            </div>
+
+            <style>
+                @keyframes glow {
+                    from {
+                        text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00, 0 0 60px #00ff00;
+                    }
+                    to {
+                        text-shadow: 0 0 30px #00ff00, 0 0 60px #00ff00, 0 0 90px #00ff00;
+                    }
+                }
+
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.4; }
+                }
+
+                @keyframes float {
+                    0%, 100% { transform: translateY(0px); }
+                    50% { transform: translateY(-20px); }
+                }
+
+                @keyframes shimmer {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+
+                @keyframes shine {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(200%); }
+                }
+
+                @keyframes fall {
+                    0% { transform: translateY(0px); opacity: 0; }
+                    50% { opacity: 0.3; }
+                    100% { transform: translateY(150px); opacity: 0; }
+                }
+            </style>
+        `;
+
+        document.body.appendChild(this.loadingDiv);
+        console.log('✅ DOM loading screen created');
+    }
+
+    updateLoadingProgress(current, total) {
+        const percent = Math.floor((current / total) * 100);
+        const progressEl = document.getElementById('loading-progress');
+        const percentEl = document.getElementById('loading-percent');
+        const barFill = document.getElementById('loading-bar-fill');
+
+        // Update progress bar width
+        if (barFill) {
+            barFill.style.width = `${percent}%`;
         }
 
-        // Red Biome - A2 Extended Forest Terrain tiles 468-479
-        for (let i = 0; i < 12; i++) {
-            this.BIOME_TILESET_MAP[50 + i] = { texture: 'forest_extended', frame: 468 + i };
+        // Update percentage text
+        if (percentEl) {
+            percentEl.textContent = `${percent}%`;
         }
 
-        // Create tile container if it doesn't exist
-        if (!this.tileContainer) {
-            this.tileContainer = this.add.container(0, 0);
+        // Update status text with different messages based on progress
+        if (progressEl) {
+            if (percent < 25) {
+                progressEl.textContent = 'Preparing your adventure...';
+            } else if (percent < 50) {
+                progressEl.textContent = 'Generating biomes...';
+            } else if (percent < 75) {
+                progressEl.textContent = 'Populating the world...';
+            } else if (percent < 95) {
+                progressEl.textContent = 'Almost ready...';
+            } else {
+                progressEl.textContent = 'Welcome to Klyra!';
+            }
         }
+    }
 
-        // Set world bounds based on actual world size
-        const worldPixelWidth = world.size * tileSize;
-        const worldPixelHeight = world.size * tileSize;
-        this.physics.world.setBounds(0, 0, worldPixelWidth, worldPixelHeight);
-        this.cameras.main.setBounds(0, 0, worldPixelWidth, worldPixelHeight);
-
-        const elapsed = Date.now() - startTime;
-        console.log(`✅ World setup complete in ${elapsed}ms`);
-        console.log(`   Bounds: ${worldPixelWidth}x${worldPixelHeight} pixels (${world.size}x${world.size} tiles)`);
-        console.log(`   Using on-demand generation (renders ${this.RENDER_DISTANCE_X}x${this.RENDER_DISTANCE_Y} tiles around camera)`);
+    hideLoadingScreen() {
+        console.log('🎬 Hiding loading screen...');
+        if (this.loadingDiv && this.loadingDiv.parentNode) {
+            this.loadingDiv.parentNode.removeChild(this.loadingDiv);
+        }
+        console.log('✅ Loading screen hidden - game ready!');
     }
 
     // Perlin-like noise for terrain generation (same as server)
@@ -910,7 +1127,7 @@ class GameScene extends Phaser.Scene {
     // Generate tile type for position (same algorithm as server)
     getTileType(x, y) {
         // Convert seed string to number
-        const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const seed = this.cachedNumericSeed;
 
         // Calculate randomized biome distribution once per world seed
         if (!this.biomeDistribution) {
@@ -981,44 +1198,49 @@ class GameScene extends Phaser.Scene {
     renderLDtkChunkIfNeeded(chunkX, chunkY) {
         const chunkKey = `${chunkX},${chunkY}`;
 
-        // Skip if already rendered
+        // Skip if already rendered or currently loading
         if (this.renderedChunks.has(chunkKey)) {
+            console.log(`⏭️ Skipping chunk (${chunkX},${chunkY}) - already rendered`);
+            return;
+        }
+
+        // Initialize loading tracker
+        if (!this.loadingChunks) {
+            this.loadingChunks = new Set();
+        }
+
+        // Skip if already loading
+        if (this.loadingChunks.has(chunkKey)) {
             return;
         }
 
         // Use chunk coordinates to deterministically select biome and chunk variant
-        const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const seed = this.cachedNumericSeed;
 
-        // Determine biome for this chunk (same logic as getTileType but for chunks)
-        const CHUNK_SIZE = 100; // Same as in getTileType
-        const chunkHash = this.seededRandom(seed + chunkX * 1000 + chunkY);
+        // Determine biome for this chunk using smooth noise for coherent biome regions
+        // Use smooth noise to create large coherent biome regions
+        // Scale of 3.0 means biomes change every ~3 chunks
+        const biomeNoise = this.smoothNoise(chunkX, chunkY, 3.0, seed);
 
         // Initialize biome distribution if not already done
         if (!this.biomeDistribution) {
             this.biomeDistribution = {
-                green: 0,
-                darkGreen: 0.5, // 50% Dark Forest
-                // Everything else (50%) is red/Ember Wilds
+                darkGreen: 0.5, // 50% Dark Forest, 50% Ember Wilds
             };
             console.log(`🌍 World biome distribution: Dark Forest=50%, Ember Wilds=50%`);
         }
 
-        // Determine biome
+        // Determine biome using noise value (creates coherent regions)
+        // Only two biomes: Dark Forest and Ember Wilds
         let biome;
-        if (chunkHash < this.biomeDistribution.green) {
-            biome = 'green';
-        } else if (chunkHash < this.biomeDistribution.darkGreen) {
+        if (biomeNoise < this.biomeDistribution.darkGreen) {
             biome = 'dark_green';
         } else {
             biome = 'red'; // Ember Wilds
         }
 
-        // Debug: Log biome selection for first few chunks
-        if (!this.debugBiomeCount) this.debugBiomeCount = 0;
-        if (this.debugBiomeCount < 10) {
-            console.log(`   🌲 Chunk (${chunkX},${chunkY}): hash=${chunkHash.toFixed(3)}, biome=${biome}`);
-            this.debugBiomeCount++;
-        }
+        // Debug: Log biome selection for ALL chunks
+        console.log(`🌲 Chunk (${chunkX},${chunkY}): noise=${biomeNoise.toFixed(3)}, biome=${biome}`);
 
         // Select chunk variant based on biome
         let chunkDataKey;
@@ -1026,37 +1248,75 @@ class GameScene extends Phaser.Scene {
         let biomeName;
 
         if (biome === 'dark_green') {
-            // Dark Forest biome - only 1 chunk for now
-            chunkDataKey = 'darkForestChunk1';
-            chunkIndex = 1;
-            biomeName = 'Dark Forest';
-        } else {
-            // Ember Wilds biome (red) - 3 chunk variants
+            // Dark Forest biome - 3 chunk variants
             const chunkSeed = seed + chunkX * 7919 + chunkY * 6563;
             const chunkRandom = this.seededRandom(chunkSeed);
 
             if (chunkRandom < 0.33) {
-                chunkDataKey = 'emberChunk1';
+                chunkDataKey = 'darkForestChunk1';
                 chunkIndex = 1;
             } else if (chunkRandom < 0.66) {
-                chunkDataKey = 'emberChunk2';
+                chunkDataKey = 'darkForestChunk2';
                 chunkIndex = 2;
             } else {
-                chunkDataKey = 'emberChunk3';
+                chunkDataKey = 'darkForestChunk3';
                 chunkIndex = 3;
+            }
+            biomeName = 'Dark Forest';
+        } else {
+            // Ember Wilds biome (red) - 2 chunk variants
+            const chunkSeed = seed + chunkX * 7919 + chunkY * 6563;
+            const chunkRandom = this.seededRandom(chunkSeed);
+
+            if (chunkRandom < 0.5) {
+                chunkDataKey = 'emberChunk1';
+                chunkIndex = 1;
+            } else {
+                chunkDataKey = 'emberChunk2';
+                chunkIndex = 2;
             }
             biomeName = 'Ember Wilds';
         }
 
-        // Check if chunk data is loaded
+        // Check if chunk data is loaded, if not load it on-demand
         if (!this.cache.json.exists(chunkDataKey)) {
-            console.error(`⚠️ ${biomeName} ${chunkDataKey} not loaded in cache`);
-            console.error(`   Available chunk keys:`, Object.keys(this.cache.json.entries.entries).filter(k => k.includes('Chunk') || k.includes('chunk')));
-            return;
+            console.log(`📥 Loading ${biomeName} ${chunkDataKey} on-demand...`);
+
+            // Mark this chunk as loading to prevent duplicate requests
+            this.loadingChunks.add(chunkKey);
+
+            // Determine file path based on chunk key
+            let filePath;
+            if (chunkDataKey.startsWith('darkForest')) {
+                // Dark Forest chunks: chunk1, chunk2, chunk3
+                filePath = `assets/ldtk/biomes/Dark Forest/chunk${chunkIndex}.ldtk`;
+            } else {
+                // Ember Wilds chunks: chunk1, chunk2
+                filePath = `assets/ldtk/biomes/Ember Wilds/chunk${chunkIndex}.ldtk`;
+            }
+
+            // Load the file asynchronously
+            fetch(filePath)
+                .then(response => response.json())
+                .then(data => {
+                    this.cache.json.add(chunkDataKey, data);
+                    console.log(`✅ ${chunkDataKey} loaded on-demand`);
+                    // Remove from loading set
+                    this.loadingChunks.delete(chunkKey);
+                    // Try rendering again now that it's loaded
+                    this.renderLDtkChunkIfNeeded(chunkX, chunkY);
+                })
+                .catch(err => {
+                    console.error(`❌ Failed to load ${chunkDataKey}:`, err);
+                    // Remove from loading set on error too
+                    this.loadingChunks.delete(chunkKey);
+                });
+            return; // Exit and wait for async load
         }
 
         // Calculate world position for this chunk (in pixels)
-        const tileSize = GameConfig.GAME.TILE_SIZE;
+        // World now uses 48px tiles to match LDtk chunks
+        const tileSize = GameConfig.GAME.TILE_SIZE; // 48px
         const worldX = chunkX * this.LDTK_CHUNK_SIZE * tileSize;
         const worldY = chunkY * this.LDTK_CHUNK_SIZE * tileSize;
 
@@ -1064,9 +1324,11 @@ class GameScene extends Phaser.Scene {
         console.log(`   Current chunks loaded: ${this.renderedChunks.size}`);
 
         // Load the LDtk chunk (use top-left positioning for chunks, not centered)
+        console.log(`🎯 Attempting to load chunk with key: ${chunkDataKey}`);
         const chunkData = this.loadLDtkMap(chunkDataKey, worldX, worldY, tileSize, true);
 
         if (chunkData) {
+            console.log(`✅ Chunk data loaded successfully with ${chunkData.layers.length} layers`);
             // Set all chunk layers to render DEEP in the background (behind everything)
             chunkData.layers.forEach(layer => {
                 if (layer.container) {
@@ -1095,7 +1357,7 @@ class GameScene extends Phaser.Scene {
 
     // Generate decoration for tile (client-side procedural)
     getDecoration(x, y) {
-        const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const seed = this.cachedNumericSeed;
         const decoSeed = seed + x * 7919 + y * 6563; // Prime numbers for distribution
         const decoChance = this.seededRandom(decoSeed);
 
@@ -1104,40 +1366,24 @@ class GameScene extends Phaser.Scene {
             this.biomeCache = {};
         }
 
-        // Get biome for this tile - calculate if not cached
+        // Get biome for this tile using the new BiomeChunkSystem
         let biome = this.biomeCache[`${x},${y}`];
         if (!biome) {
-            // Calculate biome based on chunk coordinates (same logic as renderLDtkChunkIfNeeded)
-            const CHUNK_SIZE = 100;
-            const chunkX = Math.floor(x / CHUNK_SIZE);
-            const chunkY = Math.floor(y / CHUNK_SIZE);
-            const chunkHash = this.seededRandom(seed + chunkX * 1000 + chunkY);
-
-            // Initialize biome distribution if needed
-            if (!this.biomeDistribution) {
-                this.biomeDistribution = {
-                    green: 0,
-                    darkGreen: 0.5, // 50% Dark Forest
-                };
-            }
-
-            if (chunkHash < this.biomeDistribution.green) {
-                biome = 'green';
-            } else if (chunkHash < this.biomeDistribution.darkGreen) {
-                biome = 'dark_green';
-            } else {
-                biome = 'red'; // Ember Wilds
-            }
-
-            // Cache it
+            const biomeName = this.biomeChunks.getBiomeAtTile(x, y);
+            // Convert biome name to old format for decoration logic
+            biome = biomeName === 'dark_forest' ? 'dark_green' : 'red';
             this.biomeCache[`${x},${y}`] = biome;
         }
 
-        // Decoration density - increased for more visual richness
+        // Decoration density
         let spawnChance;
-        if (biome === 'green') spawnChance = 0.15; // 15% - flowers and grass (was 4%)
-        else if (biome === 'dark_green') spawnChance = 0.18; // 18% - forest decorations (was 5%)
-        else if (biome === 'red') spawnChance = 0.18; // 18% - red biome decorations (was 5%)
+        if (biome === 'dark_green') {
+            spawnChance = 0.12; // 12% - Dark Forest decorations (trees, bushes, etc.)
+        } else if (biome === 'red') {
+            spawnChance = 0.12; // 12% - Ember Wilds decorations (red trees, rocks, etc.)
+        } else {
+            return null; // No decorations for unknown biomes
+        }
 
         if (decoChance > spawnChance) return null;
 
@@ -1145,19 +1391,12 @@ class GameScene extends Phaser.Scene {
 
         let decorationType;
 
-        // Check for flower patches (large clusters of flowers)
-        if (biome === 'green' && rand < 0.08) {
-            return 'flower_patch';
-        } else if (biome === 'red' && rand < 0.08) {
+        // Check for flower patches in Ember Wilds
+        if (biome === 'red' && rand < 0.08) {
             return 'red_flower_patch';
         }
-        if (biome === 'green') {
-            // Basic Green: lots of flowers and grass
-            if (rand < 0.5) decorationType = 'flower';
-            else if (rand < 0.8) decorationType = 'grass';
-            else if (rand < 0.95) decorationType = 'rock';
-            else decorationType = 'baby_tree';
-        } else if (biome === 'dark_green') {
+
+        if (biome === 'dark_green') {
             // Dark Green: forest with good tree coverage - randomly use green or red decor
             // Use chunk coordinates to determine decor color variant (consistent per chunk)
             const tileSize = GameConfig.GAME.TILE_SIZE;
@@ -1200,7 +1439,7 @@ class GameScene extends Phaser.Scene {
         return decorationType;
     }
 
-    updateVisibleTiles() {
+    updateVisibleDecorations() {
         if (!this.worldSeed || !this.localPlayer) return;
 
         const tileSize = GameConfig.GAME.TILE_SIZE;
@@ -1211,37 +1450,34 @@ class GameScene extends Phaser.Scene {
         const isFirstUpdate = !this.lastPlayerTileX;
         const playerMovedTile = playerTileX !== this.lastPlayerTileX || playerTileY !== this.lastPlayerTileY;
 
-        if (isFirstUpdate) {
-            this.lastPlayerTileX = playerTileX;
-            this.lastPlayerTileY = playerTileY;
-            // Don't return on first update - need to load initial chunks!
-        } else if (!playerMovedTile) {
-            // Player hasn't moved to a new tile
-            // Still run cleanup every 60 frames (~1 second) to prevent accumulation
-            if (!this.cleanupFrameCounter) this.cleanupFrameCounter = 0;
-            this.cleanupFrameCounter++;
+        // PERFORMANCE FIX: Only run cleanup when player moves OR every 2 frames
+        // This balances cleanup frequency with performance (optimized for faster cleanup)
+        if (!this.cleanupFrameCounter) this.cleanupFrameCounter = 0;
+        this.cleanupFrameCounter++;
 
-            if (this.cleanupFrameCounter < 60) {
-                return; // Skip update if no movement and not time for cleanup
-            }
-            this.cleanupFrameCounter = 0; // Reset counter, will run cleanup below
-        } else {
-            // Player moved, reset cleanup counter
+        const shouldRunCleanup = isFirstUpdate || playerMovedTile || (this.cleanupFrameCounter >= 2);
+        const shouldRenderNewDecorations = isFirstUpdate || playerMovedTile;
+
+        if (shouldRunCleanup) {
             this.cleanupFrameCounter = 0;
+        } else {
+            // Skip this update entirely - no cleanup, no rendering needed
+            return;
         }
 
         this.lastPlayerTileX = playerTileX;
         this.lastPlayerTileY = playerTileY;
 
-        // Debug: Log object counts every 5 seconds
+        // PERFORMANCE: Debug logging disabled (enable only when needed)
+        // PERFORMANCE DEBUG
         if (!this.debugLogTimer) this.debugLogTimer = 0;
         this.debugLogTimer++;
-        if (this.debugLogTimer >= 300) { // 300 frames = ~5 seconds at 60fps
-            console.log(`📊 Performance Stats:
+        if (this.debugLogTimer >= 180) { // Every 3 seconds
+            console.log(`📊 [PERFORMANCE] Stats:
   Decorations: ${this.renderedDecorations.size}
-  Chunks: ${this.renderedChunks.size}
-  Tiles: ${this.renderedTiles.size}
-  Total Phaser Objects: ${this.children.length}`);
+  Total Phaser Objects: ${this.children.length}
+  FPS: ${Math.round(this.game.loop.actualFps)}
+  Player Tile: (${playerTileX}, ${playerTileY})`);
             this.debugLogTimer = 0;
         }
 
@@ -1258,124 +1494,60 @@ class GameScene extends Phaser.Scene {
         const spawnMapSize = 50;
         const spawnMargin = spawnMapSize / 2;
 
-        // Check for LDtk chunks to render (50x50 tile chunks for Ember Wilds biome)
-        const playerChunkX = Math.floor(playerTileX / this.LDTK_CHUNK_SIZE);
-        const playerChunkY = Math.floor(playerTileY / this.LDTK_CHUNK_SIZE);
-
-        // Only load chunks when player enters a new chunk (not every frame!)
-        const currentChunkKey = `${playerChunkX},${playerChunkY}`;
-        if (!this.lastChunkKey || this.lastChunkKey !== currentChunkKey) {
-            console.log(`🎯 Player entered new chunk (${playerChunkX},${playerChunkY})`);
-            this.lastChunkKey = currentChunkKey;
-
-            // Render chunks around the player (3x3 grid for smooth transitions)
-            for (let cx = playerChunkX - 1; cx <= playerChunkX + 1; cx++) {
-                for (let cy = playerChunkY - 1; cy <= playerChunkY + 1; cy++) {
-                    this.renderLDtkChunkIfNeeded(cx, cy);
-                }
-            }
-
-            // Debug: Log chunk count
-            console.log(`📊 Active chunks: ${this.renderedChunks.size}`);
-        }
-
-        // Procedural decoration generation ON TOP of LDtk chunks
-        // Render decorations around player
-        for (let x = minX; x <= maxX; x++) {
-            for (let y = minY; y <= maxY; y++) {
-                const key = `${x},${y}`;
-
-                // Skip if decoration already rendered
-                if (this.renderedDecorations.has(key)) continue;
-
-                // Skip spawn building area
-                if (Math.abs(x - worldCenterTileX) < spawnMargin &&
-                    Math.abs(y - worldCenterTileY) < spawnMargin) {
-                    continue;
-                }
-
-                // Get decoration type for this tile
-                const decorationType = this.getDecoration(x, y);
-
-                if (decorationType) {
-                    const sprites = this.renderDecoration(x, y, decorationType);
-                    if (sprites && sprites.length > 0) {
-                        this.renderedDecorations.set(key, sprites);
-                    }
-                }
-            }
-        }
-
-        // Clean up tiles far from player (keep memory manageable)
-        // PERFORMANCE: Tight cleanup to prevent accumulation (996 tiles with 1.4x, trying 1.15x)
-        const CLEANUP_DISTANCE_X = this.RENDER_DISTANCE_X * 1.15;
-        const CLEANUP_DISTANCE_Y = this.RENDER_DISTANCE_Y * 1.15;
-
-        this.renderedTiles.forEach((sprite, key) => {
-            const [x, y] = key.split(',').map(Number);
-            const distX = Math.abs(x - playerTileX);
-            const distY = Math.abs(y - playerTileY);
-
-            if (distX > CLEANUP_DISTANCE_X || distY > CLEANUP_DISTANCE_Y) {
-                sprite.destroy();
-                this.renderedTiles.delete(key);
-            }
-        });
-
         // PERFORMANCE: Clean up decorations far from player (critical for FPS)
-        // Use larger cleanup distance for decorations so trees don't pop out while still visible
-        const DECORATION_CLEANUP_DISTANCE_X = this.RENDER_DISTANCE_X * 1.5; // Increased from 1.15
-        const DECORATION_CLEANUP_DISTANCE_Y = this.RENDER_DISTANCE_Y * 1.5; // Increased from 1.15
+        // Decorations despawn only when well off-screen to prevent pop-out
+        const DECORATION_CLEANUP_DISTANCE_X = this.RENDER_DISTANCE_X * 2.0; // Despawn much further off-screen
+        const DECORATION_CLEANUP_DISTANCE_Y = this.RENDER_DISTANCE_Y * 2.0; // Despawn much further off-screen
 
-        this.renderedDecorations.forEach((sprites, key) => {
-            const [x, y] = key.split(',').map(Number);
+        // PERFORMANCE: Use for...of instead of forEach, parse coordinates manually
+        for (const [key, sprites] of this.renderedDecorations) {
+            // Parse coordinates without creating arrays
+            const commaIndex = key.indexOf(',');
+            const x = parseInt(key.substring(0, commaIndex));
+            const y = parseInt(key.substring(commaIndex + 1));
             const distX = Math.abs(x - playerTileX);
             const distY = Math.abs(y - playerTileY);
 
             if (distX > DECORATION_CLEANUP_DISTANCE_X || distY > DECORATION_CLEANUP_DISTANCE_Y) {
-                // Destroy all sprites for this decoration
-                sprites.forEach(sprite => {
+                // Destroy all sprites for this decoration (use for...of here too)
+                for (const sprite of sprites) {
                     if (sprite && sprite.destroy) {
                         sprite.destroy();
                     }
-                });
+                }
                 this.renderedDecorations.delete(key);
             }
-        });
+        }
 
-        // PERFORMANCE: Clean up LDtk chunks far from player
-        // playerChunkX and playerChunkY already declared above
-        const CHUNK_CLEANUP_DISTANCE = 1; // Keep chunks within 1 chunk of player (3x3 grid = 9 max)
+        // Chunk cleanup is now handled by BiomeChunkSystem
 
-        const chunksToDelete = [];
-        this.renderedChunks.forEach((chunkData, chunkKey) => {
-            const [cx, cy] = chunkKey.split(',').map(Number);
-            const distX = Math.abs(cx - playerChunkX);
-            const distY = Math.abs(cy - playerChunkY);
-            const maxDist = Math.max(distX, distY);
+        // Procedural decoration generation ON TOP of LDtk chunks
+        // PERFORMANCE: Only render new decorations when player moves to new tile
+        if (shouldRenderNewDecorations) {
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    const key = `${x},${y}`;
 
-            // Use Math.max for diagonal distance (not OR) to prevent keeping too many chunks
-            if (maxDist > CHUNK_CLEANUP_DISTANCE) {
-                chunksToDelete.push({ key: chunkKey, cx, cy, dist: maxDist, data: chunkData });
-            }
-        });
+                    // Skip if decoration already rendered
+                    if (this.renderedDecorations.has(key)) continue;
 
-        // Delete chunks outside range
-        if (chunksToDelete.length > 0) {
-            console.log(`🗑️ Cleaning up ${chunksToDelete.length} chunks (player at chunk ${playerChunkX},${playerChunkY})`);
-            chunksToDelete.forEach(({ key, cx, cy, dist, data }) => {
-                // Destroy all layers in the chunk
-                if (data.ldtkData && data.ldtkData.layers) {
-                    data.ldtkData.layers.forEach(layer => {
-                        if (layer.container && layer.container.destroy) {
-                            layer.container.destroy(true); // true = destroy children too
+                    // Skip spawn building area
+                    if (Math.abs(x - worldCenterTileX) < spawnMargin &&
+                        Math.abs(y - worldCenterTileY) < spawnMargin) {
+                        continue;
+                    }
+
+                    // Get decoration type for this tile
+                    const decorationType = this.getDecoration(x, y);
+
+                    if (decorationType) {
+                        const sprites = this.renderDecoration(x, y, decorationType);
+                        if (sprites && sprites.length > 0) {
+                            this.renderedDecorations.set(key, sprites);
                         }
-                    });
+                    }
                 }
-                this.renderedChunks.delete(key);
-                console.log(`   🗑️ Removed chunk (${cx},${cy}) - distance: ${dist}`);
-            });
-            console.log(`   Chunks remaining: ${this.renderedChunks.size}`);
+            }
         }
     }
 
@@ -1383,6 +1555,38 @@ class GameScene extends Phaser.Scene {
         // Simple seeded random using sin (stateless)
         const x = Math.sin(seed) * 10000;
         return x - Math.floor(x);
+    }
+
+    // Smooth noise function for biome generation (creates coherent regions)
+    smoothNoise(x, y, scale, seed) {
+        // Scale down coordinates to create larger features
+        const scaledX = x / scale;
+        const scaledY = y / scale;
+
+        // Get integer coordinates
+        const x0 = Math.floor(scaledX);
+        const y0 = Math.floor(scaledY);
+        const x1 = x0 + 1;
+        const y1 = y0 + 1;
+
+        // Get fractional parts for interpolation
+        const fx = scaledX - x0;
+        const fy = scaledY - y0;
+
+        // Smooth interpolation (smoothstep)
+        const sx = fx * fx * (3 - 2 * fx);
+        const sy = fy * fy * (3 - 2 * fy);
+
+        // Get random values at corners
+        const v00 = this.seededRandom(seed + x0 * 7919 + y0 * 6563);
+        const v10 = this.seededRandom(seed + x1 * 7919 + y0 * 6563);
+        const v01 = this.seededRandom(seed + x0 * 7919 + y1 * 6563);
+        const v11 = this.seededRandom(seed + x1 * 7919 + y1 * 6563);
+
+        // Bilinear interpolation
+        const top = v00 * (1 - sx) + v10 * sx;
+        const bottom = v01 * (1 - sx) + v11 * sx;
+        return top * (1 - sy) + bottom * sy;
     }
 
     updatePlayerIndicators() {
@@ -1394,7 +1598,8 @@ class GameScene extends Phaser.Scene {
         const padding = 30; // Distance from screen edge
 
         // Check each other player
-        Object.keys(this.otherPlayers).forEach(playerId => {
+        // PERFORMANCE: Iterate without creating new array
+        for (const playerId in this.otherPlayers) {
             const player = this.otherPlayers[playerId];
             if (!player || !player.spriteRenderer || !player.spriteRenderer.sprite) {
                 // Clean up indicator if player is gone
@@ -1469,15 +1674,16 @@ class GameScene extends Phaser.Scene {
                     this.playerIndicators[playerId].setVisible(false);
                 }
             }
-        });
+        }
 
         // Clean up indicators for players that no longer exist
-        Object.keys(this.playerIndicators).forEach(playerId => {
+        // PERFORMANCE: Iterate without creating new array
+        for (const playerId in this.playerIndicators) {
             if (!this.otherPlayers[playerId]) {
                 this.playerIndicators[playerId].destroy();
                 delete this.playerIndicators[playerId];
             }
-        });
+        }
     }
 
     renderDecoration(x, y, type) {
@@ -1507,7 +1713,7 @@ class GameScene extends Phaser.Scene {
         ];
 
         // Select tree pattern using seeded random for consistency across clients
-        const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const seed = this.cachedNumericSeed;
         const treeSeed = seed + x * 1009 + y * 2003; // Unique seed per position
         const treeRandom = this.seededRandom(treeSeed);
         const TREE_TILES = treeRandom < 0.5 ? TREE_ONE : TREE_TWO;
@@ -1647,7 +1853,7 @@ class GameScene extends Phaser.Scene {
             ];
 
             // Randomly select one of the 4 tree types
-            const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const seed = this.cachedNumericSeed;
             const treeSeed = seed + x * 1009 + y * 2003;
             const treeRandom = this.seededRandom(treeSeed);
 
@@ -1746,7 +1952,7 @@ class GameScene extends Phaser.Scene {
         } else if (type === 'flower_patch') {
             // FLOWER PATCH - Large cluster of flowers (green biome)
             const scale = tileSize / 48;
-            const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const seed = this.cachedNumericSeed;
             const patchSeed = seed + x * 5003 + y * 7007;
 
             // Flower variants for patch
@@ -1780,14 +1986,14 @@ class GameScene extends Phaser.Scene {
                 flower.setOrigin(0, 0);
                 flower.setScale(scale * variant.scale);
                 flower.setDepth(flowerY + tileSize);
-                this.tileContainer.add(flower);
+                // Decorations are added directly to scene, not to a container
                 allSprites.push(flower);
             }
 
         } else if (type === 'red_flower_patch') {
             // RED FLOWER PATCH - Large cluster of red flowers (red biome)
             const scale = tileSize / 48;
-            const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const seed = this.cachedNumericSeed;
             const patchSeed = seed + x * 5003 + y * 7007;
 
             // Red flower variants for patch
@@ -1818,7 +2024,7 @@ class GameScene extends Phaser.Scene {
                 flower.setOrigin(0, 0);
                 flower.setScale(scale * variant.scale);
                 flower.setDepth(flowerY + tileSize);
-                this.tileContainer.add(flower);
+                // Decorations are added directly to scene, not to a container
                 allSprites.push(flower);
             }
 
@@ -1827,7 +2033,7 @@ class GameScene extends Phaser.Scene {
                    type === 'red_stump' || type === 'red_trunk' || type === 'red_baby_tree') {
             // RED BIOME DECORATIONS from Fantasy_Outside_D_red.png
             const scale = tileSize / 48;
-            const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const seed = this.cachedNumericSeed;
             const variantSeed = seed + x * 3001 + y * 7001;
             const variantRand = this.seededRandom(variantSeed);
 
@@ -2034,7 +2240,7 @@ class GameScene extends Phaser.Scene {
                 decoration.setOrigin(0, 0);
                 decoration.setScale(finalScale);
                 decoration.setDepth(py + tileSize);
-                this.tileContainer.add(decoration);
+                // Decorations are added directly to scene, not to a container
                 allSprites.push(decoration); // PERFORMANCE: Track for cleanup
 
             } else if (frames.length === 2 && decoInfo.horizontal) {
@@ -2043,14 +2249,14 @@ class GameScene extends Phaser.Scene {
                 sprite1.setOrigin(0, 0);
                 sprite1.setScale(finalScale);
                 sprite1.setDepth(py + tileSize);
-                this.tileContainer.add(sprite1);
+                // Decorations are added directly to scene, not to a container
 
                 // Position sprite2 based on actual width of sprite1 to avoid gaps
                 const sprite2 = this.add.sprite(px + sprite1.displayWidth, py, 'objects_d', frames[1]);
                 sprite2.setOrigin(0, 0);
                 sprite2.setScale(finalScale);
                 sprite2.setDepth(py + tileSize);
-                this.tileContainer.add(sprite2);
+                // Decorations are added directly to scene, not to a container
 
                 allSprites.push(sprite1, sprite2); // PERFORMANCE: Track for cleanup
 
@@ -2060,14 +2266,14 @@ class GameScene extends Phaser.Scene {
                 topSprite.setOrigin(0, 0);
                 topSprite.setScale(finalScale);
                 topSprite.setDepth(py + tileSize * 2);
-                this.tileContainer.add(topSprite);
+                // Decorations are added directly to scene, not to a container
 
                 // Position bottomSprite based on actual height of topSprite to avoid gaps
                 const bottomSprite = this.add.sprite(px, py + topSprite.displayHeight, 'objects_d', frames[1]);
                 bottomSprite.setOrigin(0, 0);
                 bottomSprite.setScale(finalScale);
                 bottomSprite.setDepth(py + tileSize * 2);
-                this.tileContainer.add(bottomSprite);
+                // Decorations are added directly to scene, not to a container
 
                 allSprites.push(topSprite, bottomSprite); // PERFORMANCE: Track for cleanup
             }
@@ -2364,11 +2570,11 @@ class GameScene extends Phaser.Scene {
     }
 
     createMerchantNPC() {
-        // Place merchant near spawn point (spawn is at 16176, 16016 in pixels)
-        const spawnX = 16176;
-        const spawnY = 16016;
-        const merchantX = spawnX + 100; // 100 pixels to the right of spawn
-        const merchantY = spawnY;
+        // Place merchant near spawn point (use world center from gameData)
+        const worldCenterX = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+        const worldCenterY = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+        const merchantX = worldCenterX + 100; // 100 pixels to the right of spawn
+        const merchantY = worldCenterY;
 
         this.merchantNPC = new MerchantNPC(this, merchantX, merchantY, 'Item Merchant');
         console.log('🛒 Item Merchant NPC created at spawn');
@@ -2376,10 +2582,10 @@ class GameScene extends Phaser.Scene {
 
     createSkillShopNPC() {
         // Place skill shop near spawn (to the left of spawn)
-        const spawnX = 16176;
-        const spawnY = 16016;
-        const skillShopX = spawnX - 100; // 100 pixels to the left of spawn
-        const skillShopY = spawnY;
+        const worldCenterX = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+        const worldCenterY = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+        const skillShopX = worldCenterX - 100; // 100 pixels to the left of spawn
+        const skillShopY = worldCenterY;
 
         this.skillShopNPC = new SkillShopNPC(this, skillShopX, skillShopY, 'Skill Trader');
         console.log('🛍️ Skill Shop NPC created at spawn');
@@ -2583,12 +2789,13 @@ class GameScene extends Phaser.Scene {
         }
 
         // Update existing particles
-        this.ambientParticles = this.ambientParticles.filter(particle => {
+        // PERFORMANCE: Iterate backwards and splice instead of filter (no array allocation)
+        for (let i = this.ambientParticles.length - 1; i >= 0; i--) {
+            const particle = this.ambientParticles[i];
             if (!particle || !particle.sprite || !particle.sprite.scene) {
-                return false;
+                this.ambientParticles.splice(i, 1);
             }
-            return true;
-        });
+        }
     }
 
     spawnAmbientParticle() {
@@ -2678,7 +2885,7 @@ class GameScene extends Phaser.Scene {
      * @param {number} tileSize - Target tile size (default: 32)
      * @returns {Object} Map data with layers and entities
      */
-    loadLDtkMap(ldtkKey, worldCenterX, worldCenterY, tileSize = 32) {
+    loadLDtkMap(ldtkKey, worldCenterX, worldCenterY, tileSize = 32, topLeft = false) {
         // Check if LDtkLoader is available
         if (typeof LDtkLoader === 'undefined') {
             console.error('❌ LDtkLoader not found! Make sure to include game/js/utils/LDtkLoader.js in index.html');
@@ -2692,9 +2899,8 @@ class GameScene extends Phaser.Scene {
             return null;
         }
 
-        // Create loader and load the map
-        const loader = new LDtkLoader(this);
-        const mapData = loader.loadMap(ldtkData, worldCenterX, worldCenterY, tileSize);
+        // Use static method to load the map
+        const mapData = LDtkLoader.load(this, ldtkData, worldCenterX, worldCenterY, tileSize, topLeft);
 
         console.log(`✅ LDtk map "${ldtkKey}" loaded successfully`);
 
@@ -4869,6 +5075,11 @@ class GameScene extends Phaser.Scene {
     update(time, delta) {
         if (!this.localPlayer) return;
 
+        // Update biome chunks based on player position
+        if (this.biomeChunks && this.localPlayer.sprite) {
+            this.biomeChunks.update(this.localPlayer.sprite.x, this.localPlayer.sprite.y);
+        }
+
         // Update music UI progress bar
         if (this.musicUI) {
             this.musicUI.update();
@@ -4879,51 +5090,95 @@ class GameScene extends Phaser.Scene {
             this.updateAmbientParticles(delta);
         }
 
+        // Camera-based culling for birds and butterflies (performance optimization)
+        const camera = this.cameras.main;
+        const cameraBuffer = 200; // Extra buffer to prevent pop-in
+        const cameraBounds = {
+            left: camera.scrollX - cameraBuffer,
+            right: camera.scrollX + camera.width + cameraBuffer,
+            top: camera.scrollY - cameraBuffer,
+            bottom: camera.scrollY + camera.height + cameraBuffer
+        };
+
+        // Cull butterflies outside camera view
+        if (this.butterflies) {
+            this.butterflies.forEach(butterfly => {
+                if (!butterfly || !butterfly.active) return;
+                const inView = butterfly.x >= cameraBounds.left &&
+                               butterfly.x <= cameraBounds.right &&
+                               butterfly.y >= cameraBounds.top &&
+                               butterfly.y <= cameraBounds.bottom;
+                butterfly.setVisible(inView);
+                butterfly.setActive(inView);
+            });
+        }
+
+        // Cull birds outside camera view
+        if (this.birds) {
+            this.birds.forEach(bird => {
+                if (!bird || !bird.active) return;
+                const inView = bird.x >= cameraBounds.left &&
+                               bird.x <= cameraBounds.right &&
+                               bird.y >= cameraBounds.top &&
+                               bird.y <= cameraBounds.bottom;
+                bird.setVisible(inView);
+                bird.setActive(inView);
+            });
+        }
+
         // Update ability manager cooldowns
         if (this.abilityManager) {
             this.abilityManager.update(time, delta);
         }
 
         // Update roof transparency based on player position
+        // PERFORMANCE: Only check when player moves to new tile, not every frame
         if (this.roofLayers && this.roofLayers.length > 0) {
-            this.roofLayers.forEach(roofLayer => {
-                if (!roofLayer || !roofLayer.active) return;
+            const playerX = this.localPlayer.sprite.x;
+            const playerY = this.localPlayer.sprite.y;
+            const playerRoofTileX = Math.floor(playerX / 32);
+            const playerRoofTileY = Math.floor(playerY / 32);
 
-                // Get player position in world coordinates
-                const playerX = this.localPlayer.sprite.x;
-                const playerY = this.localPlayer.sprite.y;
+            // Only update if player moved to a new tile
+            if (!this.lastRoofTileX || this.lastRoofTileX !== playerRoofTileX || this.lastRoofTileY !== playerRoofTileY) {
+                this.lastRoofTileX = playerRoofTileX;
+                this.lastRoofTileY = playerRoofTileY;
 
-                // Use Phaser's built-in method to convert world position to tile coordinates
-                const tilePos = roofLayer.worldToTileXY(playerX, playerY, true);
+                this.roofLayers.forEach(roofLayer => {
+                    if (!roofLayer || !roofLayer.active) return;
 
-                if (!tilePos) {
-                    // Player is outside this layer's bounds
-                    roofLayer.setAlpha(1.0);
-                    return;
-                }
+                    // Use Phaser's built-in method to convert world position to tile coordinates
+                    const tilePos = roofLayer.worldToTileXY(playerX, playerY, true);
 
-                const tileX = tilePos.x;
-                const tileY = tilePos.y;
-
-                // Check if there's a roof tile at the player's position or nearby
-                let isUnderRoof = false;
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        const tile = roofLayer.getTileAt(tileX + dx, tileY + dy);
-                        if (tile && tile.index !== -1) {
-                            isUnderRoof = true;
-                            break;
-                        }
+                    if (!tilePos) {
+                        // Player is outside this layer's bounds
+                        roofLayer.setAlpha(1.0);
+                        return;
                     }
-                    if (isUnderRoof) break;
-                }
 
-                if (isUnderRoof) {
-                    roofLayer.setAlpha(0.3); // Semi-transparent when under roof tiles
-                } else {
-                    roofLayer.setAlpha(1.0); // Fully visible when not under roof
-                }
-            });
+                    const tileX = tilePos.x;
+                    const tileY = tilePos.y;
+
+                    // Check if there's a roof tile at the player's position or nearby
+                    let isUnderRoof = false;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const tile = roofLayer.getTileAt(tileX + dx, tileY + dy);
+                            if (tile && tile.index !== -1) {
+                                isUnderRoof = true;
+                                break;
+                            }
+                        }
+                        if (isUnderRoof) break;
+                    }
+
+                    if (isUnderRoof) {
+                        roofLayer.setAlpha(0.3); // Semi-transparent when under roof tiles
+                    } else {
+                        roofLayer.setAlpha(1.0); // Fully visible when not under roof
+                    }
+                });
+            }
         }
 
         // Update controller manager (handles all controller input internally)
@@ -4986,16 +5241,21 @@ class GameScene extends Phaser.Scene {
 
         this.localPlayer.move(velocityX, velocityY);
 
-        // Update visible tiles based on camera position (viewport culling)
-        // PERFORMANCE: Run every frame to prevent tile accumulation (was every 5 frames causing 996 tiles!)
-        this.updateVisibleTiles();
+        // Decorations are now handled by updateVisibleDecorations only
+        // Chunks are handled by BiomeChunkSystem in the main update loop
+        if (velocityX !== 0 || velocityY !== 0 || !this.hasUpdatedTilesOnce) {
+            this.updateVisibleDecorations();
+            this.hasUpdatedTilesOnce = true;
+        }
 
         // Update animations (once per frame)
         this.localPlayer.updateAnimation(delta);
-        Object.values(this.otherPlayers).forEach(player => {
+        // PERFORMANCE: Iterate without creating new array
+        for (const playerId in this.otherPlayers) {
+            const player = this.otherPlayers[playerId];
             player.updateAnimation(delta);
             player.updateInterpolation(); // Smooth movement
-        });
+        }
 
         // Update off-screen player indicators
         this.updatePlayerIndicators();
@@ -5006,9 +5266,10 @@ class GameScene extends Phaser.Scene {
         if (this.uiUpdateCounter >= 5) {  // Every 5 frames (~83ms at 60fps)
             this.uiUpdateCounter = 0;
             this.localPlayer.updateElements();
-            Object.values(this.otherPlayers).forEach(player => {
-                player.updateElements();
-            });
+            // PERFORMANCE: Iterate without creating new array
+            for (const playerId in this.otherPlayers) {
+                this.otherPlayers[playerId].updateElements();
+            }
         }
 
             // Update modern HUD
@@ -5019,7 +5280,8 @@ class GameScene extends Phaser.Scene {
         // PERFORMANCE: Removed diagnostic logging and FPS counter (saves performance)
 
         // Update minions and cleanup dead ones
-        Object.keys(this.minions).forEach(minionId => {
+        // PERFORMANCE: Iterate without creating new array
+        for (const minionId in this.minions) {
             const minion = this.minions[minionId];
             if (minion.isAlive) {
                 minion.update();
@@ -5030,7 +5292,7 @@ class GameScene extends Phaser.Scene {
                     console.log(`🧹 Cleaned up dead minion: ${minionId.slice(0, 8)}`);
                 }
             }
-        });
+        }
 
         // Update all enemies (optimized: single iteration instead of 5 separate loops)
         const allEnemies = this.getAllEnemies();
@@ -5045,7 +5307,8 @@ class GameScene extends Phaser.Scene {
         const playerX = this.localPlayer.sprite.x;
         const playerY = this.localPlayer.sprite.y;
 
-        Object.keys(this.experienceOrbs).forEach(orbId => {
+        // PERFORMANCE: Iterate without creating new array
+        for (const orbId in this.experienceOrbs) {
             const orb = this.experienceOrbs[orbId];
             if (orb && orb.checkCollision(playerX, playerY)) {
                 // Collect the orb and pass player position
@@ -5066,7 +5329,9 @@ class GameScene extends Phaser.Scene {
 
                 // Add experience to all other players that are visible on screen (local only for smooth UX)
                 const camera = this.cameras.main;
-                Object.values(this.otherPlayers).forEach(otherPlayer => {
+                // PERFORMANCE: Iterate without creating new array
+                for (const otherPlayerId in this.otherPlayers) {
+                    const otherPlayer = this.otherPlayers[otherPlayerId];
                     if (otherPlayer.isAlive) {
                         const otherX = otherPlayer.sprite.x;
                         const otherY = otherPlayer.sprite.y;
@@ -5079,23 +5344,24 @@ class GameScene extends Phaser.Scene {
                             otherPlayer.addExperience(orb.expValue);
                         }
                     }
-                });
+                }
 
                 // Remove from collection
                 delete this.experienceOrbs[orbId];
             }
-        });
+        }
 
         // Check for item collection (auto-pickup)
         // Only pick up items if inventory is not full
         if (this.inventoryUI && !this.inventoryUI.isFull()) {
-            Object.keys(this.items).forEach(itemId => {
+            // PERFORMANCE: Iterate without creating new array
+            for (const itemId in this.items) {
                 const item = this.items[itemId];
                 if (item && item.checkCollision(playerX, playerY)) {
                     // Request pickup from server
                     item.requestPickup();
                 }
-            });
+            }
         }
 
         // Remaining update logic
@@ -5148,7 +5414,9 @@ class GameScene extends Phaser.Scene {
         }
 
         // Update passive skills for remote players
-        Object.values(this.otherPlayers).forEach(player => {
+        // PERFORMANCE: Iterate without creating new array
+        for (const playerId in this.otherPlayers) {
+            const player = this.otherPlayers[playerId];
             if (player.passiveSkills && player.sprite) {
                 player.passiveSkills.update(
                     player.sprite.x,
@@ -5156,7 +5424,7 @@ class GameScene extends Phaser.Scene {
                     false // isLocalPlayer = false
                 );
             }
-        });
+        }
 
         // Depth sorting - use Y position for proper layering
         // Higher Y = further down screen = higher depth (in front)
@@ -5169,25 +5437,37 @@ class GameScene extends Phaser.Scene {
         }
 
         // Update other players' depth
-        Object.values(this.otherPlayers).forEach(player => {
+        // PERFORMANCE: Iterate without creating new array
+        for (const playerId in this.otherPlayers) {
+            const player = this.otherPlayers[playerId];
             if (player && player.spriteRenderer && player.sprite && player.sprite.active) {
                 player.spriteRenderer.updateDepth();
             }
-        });
+        }
 
         // Update enemies' depth for Y-sorting with trees
-        Object.values(this.enemies).forEach(enemy => {
-            if (enemy && enemy.sprite && enemy.sprite.active) {
-                enemy.sprite.setDepth(enemy.sprite.y);
-            }
-        });
+        // PERFORMANCE: Only update depth every 3 frames to reduce display list sorting
+        if (!this.depthUpdateCounter) this.depthUpdateCounter = 0;
+        this.depthUpdateCounter++;
+        if (this.depthUpdateCounter >= 3) {
+            this.depthUpdateCounter = 0;
 
-        // Update minions' depth for Y-sorting with trees
-        Object.values(this.minions || {}).forEach(minion => {
-            if (minion && minion.sprite && minion.sprite.active) {
-                minion.sprite.setDepth(minion.sprite.y);
+            // PERFORMANCE: Iterate without creating new array
+            for (const enemyType in this.enemies) {
+                const enemy = this.enemies[enemyType];
+                if (enemy && enemy.sprite && enemy.sprite.active) {
+                    enemy.sprite.setDepth(enemy.sprite.y);
+                }
             }
-        });
+
+            // Update minions' depth for Y-sorting with trees
+            for (const minionId in this.minions) {
+                const minion = this.minions[minionId];
+                if (minion && minion.sprite && minion.sprite.active) {
+                    minion.sprite.setDepth(minion.sprite.y);
+                }
+            }
+        }
 
         // NOTE: Tree depths are set ONCE when created, not every frame!
         // This saves massive performance (was updating 100s of sprites every frame)
@@ -5332,7 +5612,7 @@ class GameScene extends Phaser.Scene {
 
         // Spawn butterflies in groups at random world positions
         this.butterflies = [];
-        const numGroups = 150; // Number of butterfly groups (increased for more visibility)
+        const numGroups = 20; // Number of butterfly groups (optimized for performance - approx 100 butterflies)
         const butterfliesPerGroup = Phaser.Math.Between(3, 8); // 3-8 butterflies per group
         const worldSize = this.gameData.world.size * GameConfig.GAME.TILE_SIZE;
 
@@ -5429,7 +5709,7 @@ class GameScene extends Phaser.Scene {
 
             // Spawn birds that fly across the world
             this.birds = [];
-            const numBirds = 500; // More birds for constant visibility
+            const numBirds = 50; // Optimized for performance
 
             console.log(`Starting to create ${numBirds} birds. World size: ${worldSize}`);
 
@@ -6159,21 +6439,23 @@ class GameScene extends Phaser.Scene {
     // DYNAMIC ENEMY SYSTEM: Get all enemies from all collections
     // This automatically includes any new enemy types added to the scene
     getAllEnemies() {
+        // PERFORMANCE: Avoid creating arrays with Object.values - iterate directly
         const allEnemies = [];
 
-        // Iterate through all properties of 'this' to find enemy collections
-        // Convention: enemy collections are objects with enemy IDs as keys
+        // Iterate through all enemy collections without creating intermediate arrays
         const potentialEnemyCollections = [
             'enemies', 'swordDemons', 'minotaurs', 'mushrooms', 'emberclaws'
-            // New enemy types will automatically be detected if they follow the pattern
         ];
 
-        potentialEnemyCollections.forEach(collectionName => {
-            if (this[collectionName] && typeof this[collectionName] === 'object') {
-                const enemies = Object.values(this[collectionName]);
-                allEnemies.push(...enemies);
+        for (const collectionName of potentialEnemyCollections) {
+            const collection = this[collectionName];
+            if (collection && typeof collection === 'object') {
+                // Direct iteration without Object.values
+                for (const enemyId in collection) {
+                    allEnemies.push(collection[enemyId]);
+                }
             }
-        });
+        }
 
         return allEnemies;
     }

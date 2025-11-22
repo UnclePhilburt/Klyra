@@ -103,6 +103,7 @@ function generateGuestName() {
 }
 
 // Game constants
+const TILE_SIZE = 48; // CRITICAL: Client uses 48px tiles (was 32px)
 const MAX_PLAYERS_PER_LOBBY = 10;
 const LOBBY_START_DELAY = 5000; // 5 seconds before game starts
 const RECONNECT_TIMEOUT = 30000; // 30 seconds to reconnect
@@ -557,7 +558,7 @@ class AIBot extends Player {
     findTarget(lobby) {
         if (!lobby.gameState || !lobby.gameState.enemies) return;
 
-        const TILE_SIZE = 32;
+        
         let bestTarget = null;
         let bestScore = -Infinity;
 
@@ -633,7 +634,7 @@ class AIBot extends Player {
     }
 
     makeMovement(lobby) {
-        const TILE_SIZE = 32;
+        
         const moveSpeed = 5; // Pixels per update
 
         // RETREAT BEHAVIOR: Run away from danger when low HP
@@ -917,7 +918,7 @@ class AIBot extends Player {
     attemptAttack(lobby) {
         if (!this.target || !this.target.isAlive) return;
 
-        const TILE_SIZE = 32;
+        
         const targetX = this.target.position.x * TILE_SIZE;
         const targetY = this.target.position.y * TILE_SIZE;
         const dx = targetX - this.position.x;
@@ -1051,7 +1052,7 @@ class AIBot extends Player {
         const minionId = `minion_${this.id}_${Date.now()}_${Math.random()}`;
 
         // Convert enemy tile position to pixel position for minion spawn
-        const TILE_SIZE = 32;
+        
         const minionPosition = {
             x: enemyPosition.x,
             y: enemyPosition.y
@@ -1123,11 +1124,11 @@ class AIBot extends Player {
                 if (nearbyEnemies.length > 0) {
                     // Face towards the nearest enemy
                     const nearestEnemy = nearbyEnemies[0];
-                    const TILE_SIZE = 32;
+                    
                     facingRight = (nearestEnemy.position.x * TILE_SIZE) > this.position.x;
                 } else if (this.target) {
                     // Face towards current target if no nearby enemies
-                    const TILE_SIZE = 32;
+                    
                     facingRight = (this.target.position.x * TILE_SIZE) > this.position.x;
                 }
 
@@ -1444,7 +1445,7 @@ class AIBot extends Player {
     getNearbyEnemies(lobby, range) {
         if (!lobby.gameState || !lobby.gameState.enemies) return [];
 
-        const TILE_SIZE = 32;
+        
         const nearbyEnemies = [];
 
         lobby.gameState.enemies.forEach(enemy => {
@@ -1669,8 +1670,8 @@ class Lobby {
                 const botClass = 'aldric';
                 const bot = new AIBot(this.id, botClass);
 
-                // Spawn bot at world center with some spacing
-                const worldCenter = (this.WORLD_SIZE * 32) / 2;
+                // Spawn bot at world center with some spacing (48px tiles, not 32px)
+                const worldCenter = (this.WORLD_SIZE * TILE_SIZE) / 2;
                 bot.position = {
                     x: worldCenter + (Math.random() - 0.5) * 400,
                     y: worldCenter + (Math.random() - 0.5) * 400
@@ -1755,7 +1756,7 @@ class Lobby {
     updateMinions(now) {
         if (!this.gameState || !this.gameState.minions) return;
 
-        const TILE_SIZE = 32;
+        
         const MINION_MOVE_SPEED = 80; // Pixels per update (2.5 tiles)
         const MINION_ATTACK_RANGE = 48; // Pixels (1.5 tiles)
         const MINION_ATTACK_COOLDOWN = 1000; // 1 second
@@ -2147,15 +2148,14 @@ class Lobby {
     }
 
 
-    // Get the dominant biome for a region
+    // Get the dominant biome for a region (UPDATED to match client's 50/50 split)
     getRegionBiome(regionX, regionY) {
         const REGION_SIZE = 50;
         const CHUNK_SIZE = 100;
         const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
-        // Biome distribution thresholds
-        const greenThreshold = 0.33;
-        const darkGreenThreshold = 0.66;
+        // Biome distribution thresholds - UPDATED to match client (50% Dark Forest, 50% Ember Wilds)
+        const darkGreenThreshold = 0.5; // 50% Dark Forest, 50% Ember Wilds
 
         // Get center of region
         const regionCenterX = regionX * REGION_SIZE + REGION_SIZE / 2;
@@ -2168,9 +2168,8 @@ class Lobby {
         // Use chunk coordinates to determine biome
         const chunkHash = this.seededRandom(seed + chunkX * 1000 + chunkY);
 
-        // Return biome based on hash
-        if (chunkHash < greenThreshold) return 'green';
-        else if (chunkHash < darkGreenThreshold) return 'dark_green';
+        // Return biome based on hash - only dark_green and red now
+        if (chunkHash < darkGreenThreshold) return 'dark_green';
         else return 'red';
     }
 
@@ -2188,10 +2187,13 @@ class Lobby {
         });
 
         // Skip if already spawned
-        if (this.spawnedRegions.has(regionKey)) return [];
+        if (this.spawnedRegions.has(regionKey)) {
+            console.log(`⏭️  Region ${regionKey} already spawned, skipping`);
+            return [];
+        }
 
         // PERFORMANCE: Global enemy cap per lobby (prevents runaway spawning)
-        const MAX_ENEMIES_TOTAL = 500;
+        const MAX_ENEMIES_TOTAL = 1000; // Increased from 500 for more intense battles
         if (this.gameState.enemies.length >= MAX_ENEMIES_TOTAL) {
             console.log(`⚠️ Enemy cap reached (${this.gameState.enemies.length}/${MAX_ENEMIES_TOTAL}), skipping spawn in region ${regionKey}`);
             return [];
@@ -2244,7 +2246,7 @@ class Lobby {
         // Calculate distance from world center (spawn point)
         const worldCenterX = this.WORLD_SIZE / 2;
         const worldCenterY = this.WORLD_SIZE / 2;
-        const safeZoneRadius = 20; // Safe zone around spawn (reduced from 30)
+        const safeZoneRadius = 3; // Very small safe zone - enemies spawn very close (was 8)
         const regionCenterX = regionX * REGION_SIZE + REGION_SIZE / 2;
         const regionCenterY = regionY * REGION_SIZE + REGION_SIZE / 2;
         const distanceFromSpawn = Math.sqrt(
@@ -2259,41 +2261,48 @@ class Lobby {
         let bossChance = 0;
         let emberclawSupportChance = 0; // Chance for emberclaw support packs
 
-        if (distanceFromSpawn < 50) {
-            // Near spawn: EASY START - 2-4 packs, 2-4 enemies each (~4-16 total)
-            packsToSpawn = 2 + Math.floor(Math.random() * 3); // 2-4 packs
-            minPackSize = 2;
-            maxPackSize = 4;
-            bossChance = 0;
-            emberclawSupportChance = 0; // No emberclaws yet
-        } else if (distanceFromSpawn < 100) {
-            // Close to spawn: EASY - 3-5 packs, 3-6 enemies (~9-30 total)
+        if (distanceFromSpawn < 25) {
+            // Very close to spawn: STARTER ENEMIES - Right outside safe zone
             packsToSpawn = 3 + Math.floor(Math.random() * 3); // 3-5 packs
-            minPackSize = 3;
-            maxPackSize = 6;
+            minPackSize = 2;
+            maxPackSize = 4; // 2-4 enemies per pack
             bossChance = 0;
-            emberclawSupportChance = 0.2; // 20% chance for emberclaw support
-        } else if (distanceFromSpawn < 200) {
-            // Medium distance: MODERATE - 4-7 packs, 5-8 enemies (~20-56 total)
+            emberclawSupportChance = 0; // No emberclaws this close
+        } else if (distanceFromSpawn < 50) {
+            // Near spawn: EASY START - More enemies for more action
             packsToSpawn = 4 + Math.floor(Math.random() * 4); // 4-7 packs
-            minPackSize = 5;
-            maxPackSize = 8;
-            bossChance = 0.02;
-            emberclawSupportChance = 0.35; // 35% chance for emberclaw support
-        } else if (distanceFromSpawn < 350) {
-            // Far: HARD - 6-9 packs, 8-12 enemies (~48-108 total)
-            packsToSpawn = 6 + Math.floor(Math.random() * 4); // 6-9 packs
-            minPackSize = 8;
-            maxPackSize = 12;
+            minPackSize = 3;
+            maxPackSize = 6; // 3-6 enemies per pack
+            bossChance = 0;
+            emberclawSupportChance = 0.1; // 10% emberclaw support
+        } else if (distanceFromSpawn < 100) {
+            // Close to spawn: EASY - Increased density
+            packsToSpawn = 5 + Math.floor(Math.random() * 4); // 5-8 packs (was 3-5)
+            minPackSize = 4;
+            maxPackSize = 8; // 4-8 enemies per pack (was 3-6)
             bossChance = 0.05;
-            emberclawSupportChance = 0.5; // 50% chance for emberclaw support
+            emberclawSupportChance = 0.3; // 30% chance for emberclaw support
+        } else if (distanceFromSpawn < 200) {
+            // Medium distance: MODERATE - More intense battles
+            packsToSpawn = 6 + Math.floor(Math.random() * 5); // 6-10 packs (was 4-7)
+            minPackSize = 6;
+            maxPackSize = 10; // 6-10 enemies per pack (was 5-8)
+            bossChance = 0.08;
+            emberclawSupportChance = 0.45; // 45% chance for emberclaw support
+        } else if (distanceFromSpawn < 350) {
+            // Far: HARD - Big battles
+            packsToSpawn = 8 + Math.floor(Math.random() * 5); // 8-12 packs (was 6-9)
+            minPackSize = 10;
+            maxPackSize = 15; // 10-15 enemies per pack (was 8-12)
+            bossChance = 0.12;
+            emberclawSupportChance = 0.6; // 60% chance for emberclaw support
         } else {
-            // Very far: BRUTAL - 8-12 packs, 12-18 enemies (~96-216 total)
-            packsToSpawn = 8 + Math.floor(Math.random() * 5); // 8-12 packs
-            minPackSize = 12;
-            maxPackSize = 18;
-            bossChance = 0.10;
-            emberclawSupportChance = 0.7; // 70% chance for emberclaw support
+            // Very far: BRUTAL - Massive hordes
+            packsToSpawn = 10 + Math.floor(Math.random() * 6); // 10-15 packs (was 8-12)
+            minPackSize = 15;
+            maxPackSize = 22; // 15-22 enemies per pack (was 12-18)
+            bossChance = 0.15;
+            emberclawSupportChance = 0.8; // 80% chance for emberclaw support
         }
 
         // CO-OP SCALING: Diablo-style diminishing returns
@@ -2324,10 +2333,10 @@ class Lobby {
         // Apply spawn multiplier
         packsToSpawn = Math.floor(packsToSpawn * spawnMultiplier);
 
-        // Hard cap: Max 200 enemies per region (increased for mega hordes)
+        // Hard cap: Max 300 enemies per region (increased from 200 for bigger battles)
         const estimatedEnemies = packsToSpawn * ((minPackSize + maxPackSize) / 2);
-        if (estimatedEnemies > 200) {
-            const scale = 200 / estimatedEnemies;
+        if (estimatedEnemies > 300) {
+            const scale = 300 / estimatedEnemies;
             packsToSpawn = Math.floor(packsToSpawn * scale);
         }
 
@@ -2341,7 +2350,10 @@ class Lobby {
         const regionSeed = seed + regionX * 7919 + regionY * 6563;
 
         // Log region spawn
-        console.log(`🌍 Spawning enemies in region ${regionKey} [Role-based distribution]`);
+        const spawnPixelX = worldCenterX * TILE_SIZE;
+        const spawnPixelY = worldCenterY * TILE_SIZE;
+        console.log(`🌍 Spawning enemies in region ${regionKey} at distance ${distanceFromSpawn.toFixed(1)} tiles from spawn`);
+        console.log(`   → Spawn center: (${spawnPixelX}, ${spawnPixelY}) pixels | ${packsToSpawn} packs, ${minPackSize}-${maxPackSize} enemies per pack`);
 
         // Spawn packs
         for (let packIndex = 0; packIndex < packsToSpawn; packIndex++) {
@@ -2397,7 +2409,7 @@ class Lobby {
                     const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
 
                     // Convert to pixel coordinates immediately
-                    const TILE_SIZE = 32;
+                    
                     const x = gridX * TILE_SIZE + TILE_SIZE / 2;
                     const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
@@ -2424,6 +2436,10 @@ class Lobby {
 
                     this.gameState.enemies.push(wolf);
                     newEnemies.push(wolf);
+
+                    if (packIndex === 0 && i === 0) {
+                        console.log(`   → Created ${variant} Sword Demon at pixel (${x.toFixed(0)}, ${y.toFixed(0)}) = grid (${gridX}, ${gridY})`);
+                    }
                 }
             } else if (enemyType === 'minotaur') {
                 // Spawn minotaurs in pack (smaller packs since they're tougher)
@@ -2438,7 +2454,7 @@ class Lobby {
                     const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
 
                     // Convert to pixel coordinates immediately
-                    const TILE_SIZE = 32;
+                    
                     const x = gridX * TILE_SIZE + TILE_SIZE / 2;
                     const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
@@ -2472,7 +2488,7 @@ class Lobby {
                     const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, packY + offsetY));
 
                     // Convert to pixel coordinates immediately
-                    const TILE_SIZE = 32;
+                    
                     const x = gridX * TILE_SIZE + TILE_SIZE / 2;
                     const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
@@ -2540,7 +2556,7 @@ class Lobby {
                     const gridY = Math.max(0, Math.min(this.WORLD_SIZE - 1, supportPackY + offsetY));
 
                     // Convert to pixel coordinates
-                    const TILE_SIZE = 32;
+                    
                     const x = gridX * TILE_SIZE + TILE_SIZE / 2;
                     const y = gridY * TILE_SIZE + TILE_SIZE / 2;
 
@@ -2564,7 +2580,7 @@ class Lobby {
 
     // DYNAMIC SPAWN SYSTEM: Get players in a specific region
     getPlayersInRegion(regionX, regionY) {
-        const TILE_SIZE = 32;
+        // Using global TILE_SIZE (48px)
         const REGION_SIZE = 50;
         const players = [];
 
@@ -2587,7 +2603,7 @@ class Lobby {
     // FLANKING HORDE SYSTEM: Spawn enemies to pincer/flank players in combat
     checkAndSpawnFlankingHorde(player) {
         const now = Date.now();
-        const TILE_SIZE = 32;
+        
 
         // Check cooldown
         const lastFlankTime = this.playerFlankingCooldowns.get(player.id) || 0;
@@ -2873,7 +2889,7 @@ class Lobby {
     getSpawnPoints() {
         const points = [];
         // Spawn at world center (in PIXEL coordinates)
-        const TILE_SIZE = 32;
+        
         const centerX = Math.floor(this.WORLD_SIZE / 2);
         const centerY = Math.floor(this.WORLD_SIZE / 2);
         const radius = 5;
@@ -3016,7 +3032,7 @@ class Lobby {
 
             // RANGED ENEMY TARGETING: Prioritize players over minions
             const isRangedEnemy = enemy.type === 'emberclaw';
-            const TILE_SIZE = 32;
+            
             const sightRangeSquared = (enemy.sightRange * TILE_SIZE) * (enemy.sightRange * TILE_SIZE); // PERFORMANCE: Squared comparison in pixels
 
             // Check players first if ranged enemy, minions first if melee
@@ -3209,7 +3225,7 @@ class Lobby {
             // EMBERCLAW KITING BEHAVIOR
             if (enemy.type === 'emberclaw') {
                 if (distance === null) distance = Math.sqrt(distanceSquared);
-                const TILE_SIZE = 32;
+                
                 const preferredDistance = (enemy.preferredDistance || 6) * TILE_SIZE; // Convert tiles to pixels
                 const attackRange = (enemy.attackRange || 8) * TILE_SIZE; // Convert tiles to pixels
 
@@ -3227,7 +3243,7 @@ class Lobby {
                     const newY = enemy.position.y - (dy / distance) * moveDistance;
 
                     // SAFE ZONE CHECK (convert to tiles for comparison)
-                    const TILE_SIZE = 32;
+                    
                     const worldCenterX = (this.WORLD_SIZE / 2) * TILE_SIZE;
                     const worldCenterY = (this.WORLD_SIZE / 2) * TILE_SIZE;
                     const safeZoneRadius = 25 * TILE_SIZE;
@@ -3286,7 +3302,7 @@ class Lobby {
                     const newY = enemy.position.y + (dy / distance) * moveDistance;
 
                     // SAFE ZONE CHECK (convert to pixels)
-                    const TILE_SIZE = 32;
+                    
                     const worldCenterX = (this.WORLD_SIZE / 2) * TILE_SIZE;
                     const worldCenterY = (this.WORLD_SIZE / 2) * TILE_SIZE;
                     const safeZoneRadius = 25 * TILE_SIZE;
@@ -3340,7 +3356,7 @@ class Lobby {
                 }
 
                 // SAFE ZONE CHECK: Prevent enemies from entering spawn building
-                const TILE_SIZE = 32;
+                
                 const worldCenterX = (this.WORLD_SIZE / 2) * TILE_SIZE;
                 const worldCenterY = (this.WORLD_SIZE / 2) * TILE_SIZE;
                 const safeZoneRadius = 25 * TILE_SIZE; // 50x50 tiles = 25 tiles from center in each direction
@@ -3474,7 +3490,7 @@ class Lobby {
                             }
 
                             // Respawn at spawn point (center of world) in PIXEL coordinates
-                            const TILE_SIZE = 32;
+                            
                             const worldCenterGrid = Math.floor(this.WORLD_SIZE / 2);
                             damageTarget.position = {
                                 x: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2,
@@ -3608,7 +3624,7 @@ function findOrCreateLobby(difficulty = 'normal') {
 // Validation helpers
 function isValidPosition(position, worldSize = 1000) {
     // Position is now in PIXELS, so validate against worldSize * TILE_SIZE
-    const TILE_SIZE = 32;
+    
     const maxPixelCoord = worldSize * TILE_SIZE;
     return position &&
            typeof position.x === 'number' &&
@@ -3826,7 +3842,7 @@ io.on('connection', (socket) => {
 
                     // Check if player entered new region - spawn enemies dynamically
                     // Convert pixel position to grid position for region calculation
-                    const TILE_SIZE = 32;
+                    
                     const REGION_SIZE = 50;
                     const gridX = Math.floor(player.position.x / TILE_SIZE);
                     const gridY = Math.floor(player.position.y / TILE_SIZE);
@@ -4159,7 +4175,7 @@ io.on('connection', (socket) => {
                 // Always drop a soul (currency)
                 const soulId = uuidv4();
                 // enemy.position is in PIXELS, convert to tiles
-                const TILE_SIZE = 32;
+                
                 const soulTileX = enemy.position.x / TILE_SIZE;
                 const soulTileY = enemy.position.y / TILE_SIZE;
 
@@ -4259,7 +4275,7 @@ io.on('connection', (socket) => {
                     hitPlayer.health = hitPlayer.maxHealth;
 
                     const worldCenterGrid = lobby.WORLD_SIZE / 2;
-                    const TILE_SIZE = 32;
+                    
                     hitPlayer.position = {
                         x: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2,
                         y: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2
@@ -4462,7 +4478,7 @@ io.on('connection', (socket) => {
             player.initializeMultipliers();
 
             // Respawn at spawn point (center of world) in PIXEL coordinates
-            const TILE_SIZE = 32;
+            
             const worldCenterGrid = Math.floor(lobby.WORLD_SIZE / 2);
             player.position = {
                 x: worldCenterGrid * TILE_SIZE + TILE_SIZE / 2,

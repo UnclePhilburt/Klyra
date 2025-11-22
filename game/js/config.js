@@ -5,7 +5,7 @@ const GameConfig = {
     GAME: {
         WIDTH: 1280,
         HEIGHT: 720,
-        TILE_SIZE: 32,
+        TILE_SIZE: 48,
         PIXEL_ART: true
     },
 
