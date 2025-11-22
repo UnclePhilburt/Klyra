@@ -6440,7 +6440,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // Play war cry sound
-        if (this.sound && this.cache.audio.exists('aldric_warcry')) {
+        if (this.sound) {
             this.sound.play('aldric_warcry', { volume: 0.6 });
         }
 

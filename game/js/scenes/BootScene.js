@@ -331,7 +331,8 @@ class BootScene extends Phaser.Scene {
         this.load.audio('aldric_attack2', 'assets/soundeffects/aldrick/attack2.mp3');
         this.load.audio('aldric_attack3', 'assets/soundeffects/aldrick/attack3.mp3');
         this.load.audio('aldric_shockwave', 'assets/soundeffects/aldrick/shockwave.mp3');
-        console.log('📦 Loading Aldric attack sounds (3 variations + shockwave)');
+        this.load.audio('aldric_warcry', 'assets/soundeffects/aldrick/warcry.mp3');
+        console.log('📦 Loading Aldric attack sounds (3 variations + shockwave + warcry)');
 
         // Load potions sprite sheet (16x16px, 14 frames per row)
         this.load.spritesheet('potions', 'assets/sprites/potions.png', {
