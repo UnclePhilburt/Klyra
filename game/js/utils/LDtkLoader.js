@@ -67,7 +67,9 @@ class LDtkLoader {
                 if (layer.__type === 'Tiles' || layer.__type === 'IntGrid') {
                     // Render tile layer
                     const container = scene.add.container(offsetX, offsetY);
-                    container.setDepth(-100 + layerIndex); // Spawn building behind everything
+
+                    // Roof layers render above player (depth 1000+), everything else behind player (depth -100)
+                    container.setDepth(isRoof ? (1000 + layerIndex) : (-100 + layerIndex));
 
                     // Get tileset
                     const tileset = layer.__tilesetDefUid ?
