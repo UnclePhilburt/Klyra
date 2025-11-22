@@ -5175,14 +5175,6 @@ class GameScene extends Phaser.Scene {
                         roofContainer.blitter.setDepth(targetDepth);
                     }
 
-                    // Debug logging (only log occasionally to avoid spam)
-                    if (!this.lastRoofDebugTime || time - this.lastRoofDebugTime > 1000) {
-                        this.lastRoofDebugTime = time;
-                        console.log(`🏠 Player: (${Math.round(playerX)}, ${Math.round(playerY)})`);
-                        console.log(`📦 Roof bounds: x=${Math.round(bounds.x)}, y=${Math.round(bounds.y)}, w=${Math.round(bounds.width)}, h=${Math.round(bounds.height)}`);
-                        console.log(`🎯 Under roof: ${isUnderRoof}, Alpha: ${roofContainer.alpha.toFixed(2)}, Depth: ${roofContainer.depth}`);
-                    }
-
                     // Smoothly transition alpha
                     const targetAlpha = isUnderRoof ? 0.0 : 1.0; // Fully transparent when under roof
 
