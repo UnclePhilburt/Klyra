@@ -5,27 +5,8 @@
 class ProgressionSystem {
     constructor() {
         this.saveKey = 'klyra_progression';
+        this.version = 3; // Version 3: ALL characters locked by default, only free rotation available
         this.data = this.loadData();
-
-        // Always ensure KELISE and MALACHAR are unlocked
-        this.ensureDefaultCharactersUnlocked();
-    }
-
-    ensureDefaultCharactersUnlocked() {
-        const defaultUnlocked = ['MALACHAR', 'KELISE', 'ALDRIC'];
-        let updated = false;
-
-        for (const charId of defaultUnlocked) {
-            if (!this.data.unlockedCharacters.includes(charId)) {
-                this.data.unlockedCharacters.push(charId);
-                updated = true;
-                console.log(`🔓 Auto-unlocked character: ${charId}`);
-            }
-        }
-
-        if (updated) {
-            this.saveData();
-        }
     }
 
     loadData() {
@@ -33,7 +14,15 @@ class ProgressionSystem {
 
         if (saved) {
             try {
-                return JSON.parse(saved);
+                const data = JSON.parse(saved);
+
+                // Check version - if old version, reset to defaults
+                if (!data.version || data.version < this.version) {
+                    console.log('🔄 Progression system updated - resetting character unlocks');
+                    return this.getDefaultData();
+                }
+
+                return data;
             } catch (e) {
                 console.warn('⚠️ Failed to load progression data, using defaults');
                 return this.getDefaultData();
@@ -45,11 +34,11 @@ class ProgressionSystem {
 
     getDefaultData() {
         return {
-            selectedCharacter: 'MALACHAR',
+            version: this.version,
+            selectedCharacter: null, // No default character - will use free rotation
             unlockedCharacters: [
-                'MALACHAR',    // Necromancer - Unlocked by default
-                'KELISE',      // Warrior - Unlocked by default
-                'ALDRIC',      // Tank/Fighter - Unlocked by default
+                // ALL characters are locked by default
+                // Must be unlocked with souls or play during free rotation
             ],
             stats: {
                 totalRuns: 0,
@@ -78,18 +67,25 @@ class ProgressionSystem {
 
     // Character Management
     getSelectedCharacter() {
-        return this.data.selectedCharacter || 'MALACHAR';
+        // Return selected character, or null if none selected
+        // CharacterSelectManager will handle defaulting to free character
+        return this.data.selectedCharacter || null;
     }
 
-    selectCharacter(characterId) {
-        if (!this.isCharacterUnlocked(characterId)) {
+    selectCharacter(characterId, isFree = false) {
+        if (!this.isCharacterUnlocked(characterId) && !isFree) {
             console.warn(`⚠️ Cannot select locked character: ${characterId}`);
             return false;
         }
 
         this.data.selectedCharacter = characterId;
         this.saveData();
-        console.log(`✅ Character selected: ${characterId}`);
+
+        if (isFree) {
+            console.log(`✅ Free character selected: ${characterId}`);
+        } else {
+            console.log(`✅ Character selected: ${characterId}`);
+        }
         return true;
     }
 

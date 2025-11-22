@@ -10,7 +10,8 @@ const CHARACTERS = {
             class: "Warrior/DPS",
             color: 0xFF6B9D,
             locked: false,
-            avatar: "assets/sprites/Kelise.png"
+            avatar: "assets/sprites/Kelise.png",
+            soulCost: 100
         },
         sprite: {
             frameWidth: 32,
@@ -87,7 +88,8 @@ const CHARACTERS = {
             class: "Necromancer",
             color: 0x8B008B,
             locked: false,
-            avatar: "assets/sprites/malachar/Idle.png"
+            avatar: "assets/sprites/malachar/Idle.png",
+            soulCost: 50
         },
         sprite: {
             frameWidth: 140,
@@ -143,7 +145,8 @@ const CHARACTERS = {
             class: "Tank/Fighter",
             color: 0x4169E1,
             locked: false,
-            avatar: "assets/sprites/Aldric/Idle.png"
+            avatar: "assets/sprites/Aldric/Idle.png",
+            soulCost: 100
         },
         sprite: {
             frameWidth: 67,

@@ -9,8 +9,12 @@
  * - Chunk caching to avoid repeated loading
  */
 class BiomeChunkSystem {
-    constructor(scene) {
+    constructor(scene, worldSeed) {
         this.scene = scene;
+        this.worldSeed = worldSeed;
+
+        // Convert world seed to numeric value for seeded random
+        this.numericSeed = worldSeed ? worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
 
         // Constants
         this.TILE_SIZE = 48;              // Everything uses 48px tiles
@@ -94,9 +98,9 @@ class BiomeChunkSystem {
         // Determine biome for this chunk
         const biome = this.getBiomeForChunk(chunkX, chunkY);
 
-        // Pick random chunk variant
+        // Pick random chunk variant using world seed + chunk coordinates
         const variants = this.biomes[biome].chunks;
-        const seed = chunkX * 7919 + chunkY * 6563;
+        const seed = this.numericSeed + (chunkX * 7919) + (chunkY * 6563);
         const variantIndex = Math.floor(this.seededRandom(seed) * variants.length);
         const chunkKey = variants[variantIndex];
 
@@ -145,6 +149,9 @@ class BiomeChunkSystem {
                     } else if (spawn.type === 'skill_trader') {
                         const trader = new SkillShopNPC(this.scene, spawn.x, spawn.y, 'Skill Trader');
                         console.log(`✅ Skill Trader spawned in chunk5 at (${spawn.x}, ${spawn.y})`);
+                    } else if (spawn.type === 'banker') {
+                        const banker = new BankerNPC(this.scene, spawn.x, spawn.y, 'Soul Banker');
+                        console.log(`✅ Soul Banker spawned in chunk5 at (${spawn.x}, ${spawn.y})`);
                     }
                 });
             }
@@ -254,11 +261,11 @@ class BiomeChunkSystem {
             const gridWidth = layer.__cWid;
             const tileSize = layer.__gridSize;
 
-            // Scan for NPC markers (2 = item merchant, 3 = skill trader)
+            // Scan for NPC markers (2 = item merchant, 3 = skill trader, 4 = banker)
             for (let i = 0; i < intGrid.length; i++) {
                 const value = intGrid[i];
 
-                if (value === 2 || value === 3) {
+                if (value === 2 || value === 3 || value === 4) {
                     // Convert 1D index to 2D coordinates
                     const gridX = i % gridWidth;
                     const gridY = Math.floor(i / gridWidth);
@@ -267,8 +274,13 @@ class BiomeChunkSystem {
                     const spawnX = worldX + (gridX * tileSize) + (tileSize / 2);
                     const spawnY = worldY + (gridY * tileSize) + (tileSize / 2);
 
+                    let npcType;
+                    if (value === 2) npcType = 'item_merchant';
+                    else if (value === 3) npcType = 'skill_trader';
+                    else if (value === 4) npcType = 'banker';
+
                     spawns.push({
-                        type: value === 2 ? 'item_merchant' : 'skill_trader',
+                        type: npcType,
                         x: spawnX,
                         y: spawnY
                     });

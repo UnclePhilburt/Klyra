@@ -81,6 +81,19 @@ async function initUsersTable() {
             }
         }
 
+        // Add soul banking columns if they don't exist
+        try {
+            await pool.query(`
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS banked_souls INTEGER DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS unlocked_characters JSONB DEFAULT '[]'
+            `);
+        } catch (err) {
+            if (err.code !== '42701') {
+                console.log('Note: soul banking columns migration -', err.message);
+            }
+        }
+
         console.log('✅ Users table initialized');
     } catch (error) {
         console.error('❌ Failed to initialize users table:', error);

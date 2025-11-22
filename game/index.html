@@ -89,6 +89,21 @@
                 Current Hero: <span id="currentCharacterName">ALDRIC</span>
             </div>
 
+            <!-- Banked Souls Display -->
+            <div id="bankedSoulsDisplay" style="margin-bottom: 20px; padding: 15px; background: rgba(155, 0, 255, 0.15); border: 2px solid #9d00ff; border-radius: 8px; text-align: center;">
+                <div style="font-family: 'Press Start 2P', monospace; color: #9d00ff; font-size: 12px; margin-bottom: 5px;">BANKED SOULS</div>
+                <div id="bankedSoulsCount" style="font-family: 'Press Start 2P', monospace; color: #ffaa00; font-size: 18px; font-weight: bold;">0</div>
+                <div style="font-family: 'Press Start 2P', monospace; color: #888; font-size: 9px; margin-top: 5px;">Deposit souls at the banker to unlock heroes</div>
+            </div>
+
+            <!-- Free Character Rotation Timer -->
+            <div id="freeCharacterTimer" style="margin-bottom: 20px; padding: 15px; background: rgba(255, 215, 0, 0.15); border: 2px solid #FFD700; border-radius: 8px; text-align: center;">
+                <div style="font-family: 'Press Start 2P', monospace; color: #FFD700; font-size: 12px; margin-bottom: 5px;">⭐ FREE CHARACTER ROTATION</div>
+                <div id="freeCharacterName" style="font-family: 'Press Start 2P', monospace; color: #FFA500; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Loading...</div>
+                <div style="font-family: 'Press Start 2P', monospace; color: #888; font-size: 9px; margin-bottom: 5px;">Next rotation in:</div>
+                <div id="rotationCountdown" style="font-family: 'Press Start 2P', monospace; color: #FFD700; font-size: 16px; font-weight: bold;">--:--</div>
+            </div>
+
             <div class="character-grid" id="characterGrid">
                 <!-- Character cards will be dynamically generated -->
             </div>
@@ -208,6 +223,7 @@
     <script src="js/entities/ExperienceOrb.js?v=2.4"></script>
     <script src="js/entities/MerchantNPC.js?v=2.0"></script>
     <script src="js/entities/SkillShopNPC.js?v=1.0"></script>
+    <script src="js/entities/BankerNPC.js?v=1.2"></script>
     <!-- UI System -->
     <script src="js/ui/ModernHUD.js?v=4.2"></script>
     <script src="js/ui/InventoryUI.js?v=2.0"></script>
@@ -232,8 +248,8 @@
     <!-- Custom Menu System -->
     <!-- mainmenu.js already loaded earlier before ScreenManager -->
     <script src="mainmenu/UISoundManager.js"></script>
-    <script src="mainmenu/ProgressionSystem.js"></script>
-    <script src="mainmenu/CharacterSelectManager.js"></script>
+    <script src="mainmenu/ProgressionSystem.js?v=3.0"></script>
+    <script src="mainmenu/CharacterSelectManager.js?v=2.8"></script>
 
     <!-- Initialize -->
     <script>

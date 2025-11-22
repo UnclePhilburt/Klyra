@@ -604,8 +604,8 @@ class GameScene extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, worldPixelWidth, worldPixelHeight);
         this.cameras.main.setBounds(0, 0, worldPixelWidth, worldPixelHeight);
 
-        // Initialize BiomeChunkSystem
-        this.biomeChunks = new BiomeChunkSystem(this);
+        // Initialize BiomeChunkSystem with world seed
+        this.biomeChunks = new BiomeChunkSystem(this, this.worldSeed);
         this.renderedDecorations = new Map();
         this.RENDER_DISTANCE_X = 28; // Increased to render decorations further offscreen
         this.RENDER_DISTANCE_Y = 20; // Increased to render decorations further offscreen
@@ -2762,6 +2762,9 @@ class GameScene extends Phaser.Scene {
 
         // Create skill shop NPC at spawn
         this.createSkillShopNPC();
+
+        // Create banker NPC at spawn
+        this.createBankerNPC();
     }
 
     createMerchantNPC() {
@@ -2800,6 +2803,16 @@ class GameScene extends Phaser.Scene {
         }
     }
 
+    createBankerNPC() {
+        // Spawn between item merchant and skill trader
+        const worldCenterX = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+        const worldCenterY = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+        const bankerX = worldCenterX + 460; // Between merchant (688) and skill trader (232)
+        const bankerY = worldCenterY - 392;
+        this.bankerNPC = new BankerNPC(this, bankerX, bankerY, 'Soul Banker');
+        console.log('✅ Soul Banker spawned at spawn building');
+    }
+
     /**
      * Find NPC spawn point from LDtk IntGrid markers
      * @param {string} npcType - 'merchant' or 'skill_trader'
@@ -2809,7 +2822,8 @@ class GameScene extends Phaser.Scene {
         // IntGrid values we're looking for
         const NPC_MARKERS = {
             'merchant': 2,      // Value 2 in IntGrid = Item Merchant
-            'skill_trader': 3   // Value 3 in IntGrid = Skill Trader
+            'skill_trader': 3,  // Value 3 in IntGrid = Skill Trader
+            'banker': 4         // Value 4 in IntGrid = Soul Banker
         };
 
         const markerValue = NPC_MARKERS[npcType];
@@ -2946,6 +2960,19 @@ class GameScene extends Phaser.Scene {
                     // Close skill shop if open (even when not in range)
                     if (this.skillShopNPC.isShopOpen) {
                         this.skillShopNPC.closeShop();
+                    }
+                }
+
+                // Check banker NPC
+                if (this.bankerNPC) {
+                    const bankerInRange = this.bankerNPC.checkPlayerDistance(playerX, playerY);
+                    if (bankerInRange) {
+                        this.bankerNPC.toggleBank();
+                        return;
+                    }
+                    // Close bank if open (even when not in range)
+                    if (this.bankerNPC.isBankOpen) {
+                        this.bankerNPC.closeBank();
                     }
                 }
             }
@@ -4263,6 +4290,35 @@ class GameScene extends Phaser.Scene {
                     effect,
                     false // dealDamage = false for remote players
                 );
+            }
+        });
+
+        // Bank system events
+        networkManager.on('bank:data', (data) => {
+            console.log('💰 Received bank data:', data);
+            if (this.bankerNPC) {
+                this.bankerNPC.updateBankData(data.bankedSouls);
+            }
+        });
+
+        networkManager.on('bank:depositConfirm', (data) => {
+            console.log('✅ Deposit confirmed:', data);
+            if (this.bankerNPC) {
+                this.bankerNPC.updateBankData(data.bankedSouls);
+            }
+        });
+
+        networkManager.on('bank:withdrawConfirm', (data) => {
+            console.log('✅ Withdrawal confirmed:', data);
+            if (this.bankerNPC) {
+                this.bankerNPC.updateBankData(data.bankedSouls);
+            }
+        });
+
+        networkManager.on('bank:error', (data) => {
+            console.error('❌ Bank error:', data.error);
+            if (this.bankerNPC) {
+                this.bankerNPC.showFeedback(data.error, '#ff6666');
             }
         });
 
@@ -5731,6 +5787,14 @@ class GameScene extends Phaser.Scene {
         // Update skill shop NPC (check player distance for prompt)
         if (this.skillShopNPC && this.localPlayer) {
             this.skillShopNPC.checkPlayerDistance(
+                this.localPlayer.sprite.x,
+                this.localPlayer.sprite.y
+            );
+        }
+
+        // Update banker NPC (check player distance for prompt)
+        if (this.bankerNPC && this.localPlayer) {
+            this.bankerNPC.checkPlayerDistance(
                 this.localPlayer.sprite.x,
                 this.localPlayer.sprite.y
             );

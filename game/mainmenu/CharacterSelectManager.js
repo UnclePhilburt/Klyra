@@ -11,7 +11,7 @@ class CharacterSelectManager {
         this.closeBtn = null;
         this.progressionSystem = null;
         this.characters = null;
-        
+
         // Settings modal
         this.settingsModal = null;
         this.settingsBtn = null;
@@ -19,7 +19,18 @@ class CharacterSelectManager {
         this.fullscreenToggle = null;
         this.musicVolume = null;
         this.volumeBar = null;
-        
+
+        // Bank data
+        this.bankedSouls = 0;
+        this.bankedSoulsDisplay = null;
+
+        // Free character rotation
+        this.freeCharacter = null;
+        this.freeCharacterRotationTime = null;
+        this.freeCharacterNameDisplay = null;
+        this.rotationCountdownDisplay = null;
+        this.countdownInterval = null;
+
         // Wait for page load
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.init());
@@ -31,13 +42,16 @@ class CharacterSelectManager {
     init() {
         // Load character definitions
         this.loadCharacterDefinitions();
-        
+
         // Get DOM elements
         this.modal = document.getElementById('characterSelectModal');
         this.characterGrid = document.getElementById('characterGrid');
         this.charactersBtn = document.getElementById('charactersBtn');
         this.closeBtn = document.getElementById('closeCharacterSelect');
-        
+        this.bankedSoulsDisplay = document.getElementById('bankedSoulsCount');
+        this.freeCharacterNameDisplay = document.getElementById('freeCharacterName');
+        this.rotationCountdownDisplay = document.getElementById('rotationCountdown');
+
         // Settings elements
         this.settingsModal = document.getElementById('settingsModal');
         this.settingsBtn = document.getElementById('settingsBtn');
@@ -45,14 +59,17 @@ class CharacterSelectManager {
         this.fullscreenToggle = document.getElementById('fullscreenToggle');
         this.musicVolume = document.getElementById('musicVolume');
         this.volumeBar = document.getElementById('volumeBar');
-        
+
         if (!this.modal || !this.characterGrid || !this.charactersBtn) {
             console.warn('⚠️ Character select elements not found - modal disabled');
             return;
         }
-        
+
         // Setup event listeners
         this.setupEventListeners();
+
+        // Setup socket listeners for bank data
+        this.setupSocketListeners();
     }
 
     loadCharacterDefinitions() {
@@ -162,6 +179,7 @@ class CharacterSelectManager {
     openModal() {
         this.modal.classList.add('active');
         this.renderCharacters();
+        this.fetchBankData();
         console.log('🎮 Character select opened');
     }
 
@@ -264,9 +282,15 @@ class CharacterSelectManager {
 
         this.characterGrid.innerHTML = '';
 
-        const selectedCharacterId = this.progressionSystem
+        let selectedCharacterId = this.progressionSystem
             ? this.progressionSystem.getSelectedCharacter()
-            : 'MALACHAR';
+            : null;
+
+        // If no character is selected, auto-select the free character
+        if (!selectedCharacterId && this.freeCharacter) {
+            selectedCharacterId = this.freeCharacter;
+            console.log(`🎲 Auto-selected free character: ${this.freeCharacter}`);
+        }
 
         console.log('🎨 Rendering characters, selected:', selectedCharacterId);
         console.log('📊 Available characters:', Object.keys(this.characters));
@@ -278,23 +302,25 @@ class CharacterSelectManager {
             const isUnlocked = this.progressionSystem
                 ? this.progressionSystem.isCharacterUnlocked(charId)
                 : true; // Default to unlocked if no progression system
+            const isFree = charId === this.freeCharacter; // Check if this is the free character
             const isSelected = charId === selectedCharacterId;
 
-            console.log(`  - ${charId}: locked=${!isUnlocked}, selected=${isSelected}, color=#${char.display.color.toString(16).padStart(6, '0')}, avatar=${char.display.avatar || 'none'}`);
+            console.log(`  - ${charId}: locked=${!isUnlocked}, free=${isFree}, selected=${isSelected}, color=#${char.display.color.toString(16).padStart(6, '0')}, avatar=${char.display.avatar || 'none'}`);
 
-            const card = this.createCharacterCard(char, isUnlocked, isSelected);
+            const card = this.createCharacterCard(char, isUnlocked, isSelected, isFree);
             this.characterGrid.appendChild(card);
         }
 
         console.log('✅ Character cards rendered');
     }
 
-    createCharacterCard(char, isUnlocked, isSelected) {
+    createCharacterCard(char, isUnlocked, isSelected, isFree) {
         const card = document.createElement('div');
         card.className = 'character-card';
+        card.style.position = 'relative'; // For absolute badge positioning
 
         if (isSelected) card.classList.add('selected');
-        if (!isUnlocked) card.classList.add('locked');
+        if (!isUnlocked && !isFree) card.classList.add('locked'); // Free characters are not locked even if not purchased
 
         console.log(`    🎴 Creating card for ${char.id}:`, {
             hasAvatar: !!char.display.avatar,
@@ -434,6 +460,30 @@ class CharacterSelectManager {
         weapon.className = 'character-weapon';
         weapon.textContent = `⚔️ ${char.equipment.startingWeapon.replace(/_/g, ' ').toUpperCase()}`;
 
+        // Free character badge
+        if (isFree) {
+            const freeBadge = document.createElement('div');
+            freeBadge.className = 'character-free-badge';
+            freeBadge.style.cssText = `
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                background: linear-gradient(135deg, #FFD700, #FFA500);
+                color: #000;
+                padding: 5px 10px;
+                border-radius: 15px;
+                font-family: 'Press Start 2P', monospace;
+                font-size: 9px;
+                font-weight: bold;
+                box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+                z-index: 10;
+                text-shadow: none;
+                border: 2px solid #FFD700;
+            `;
+            freeBadge.textContent = '⭐ FREE';
+            card.appendChild(freeBadge);
+        }
+
         // Assemble card
         card.appendChild(visual);
         card.appendChild(name);
@@ -441,23 +491,58 @@ class CharacterSelectManager {
         card.appendChild(stats);
         card.appendChild(weapon);
 
-        // Click handler
-        if (isUnlocked) {
+        // Click handler and unlock button
+        if (isUnlocked || isFree) {
             card.addEventListener('click', () => {
-                this.selectCharacter(char.id);
+                this.selectCharacter(char.id, isFree);
             });
         } else {
-            // Locked character - show tooltip or message
-            card.addEventListener('click', () => {
-                console.log(`🔒 ${char.display.name} is locked`);
-                // Future: Show unlock requirements
+            // Locked character - add buy button
+            const buyButton = document.createElement('div');
+            buyButton.className = 'character-buy-button';
+            buyButton.style.cssText = `
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #9d00ff, #6b00b3);
+                color: #fff;
+                padding: 15px 30px;
+                border-radius: 10px;
+                font-family: 'Press Start 2P', monospace;
+                font-size: 12px;
+                font-weight: bold;
+                cursor: pointer;
+                border: 3px solid #fff;
+                box-shadow: 0 0 15px rgba(157, 0, 255, 0.7);
+                z-index: 10;
+                transition: all 0.2s ease;
+            `;
+            const soulCost = char.display.soulCost || 0;
+            buyButton.textContent = `UNLOCK: ${soulCost} SOULS`;
+
+            buyButton.addEventListener('mouseenter', () => {
+                buyButton.style.background = 'linear-gradient(135deg, #b000ff, #8000d0)';
+                buyButton.style.transform = 'translateX(-50%) scale(1.05)';
             });
+
+            buyButton.addEventListener('mouseleave', () => {
+                buyButton.style.background = 'linear-gradient(135deg, #9d00ff, #6b00b3)';
+                buyButton.style.transform = 'translateX(-50%) scale(1)';
+            });
+
+            buyButton.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent card click event
+                this.unlockCharacter(char.id, soulCost);
+            });
+
+            card.appendChild(buyButton);
         }
 
         return card;
     }
 
-    selectCharacter(characterId) {
+    selectCharacter(characterId, isFree = false) {
         if (!this.progressionSystem) {
             console.warn('⚠️ No progression system - cannot select character');
             console.log('🔍 Debug info:', {
@@ -474,13 +559,17 @@ class CharacterSelectManager {
             }
         }
 
-        const success = this.progressionSystem.selectCharacter(characterId);
-        
+        const success = this.progressionSystem.selectCharacter(characterId, isFree);
+
         if (success) {
-            console.log(`✅ Selected character: ${characterId}`);
+            if (isFree) {
+                console.log(`✅ Selected FREE character: ${characterId}`);
+            } else {
+                console.log(`✅ Selected character: ${characterId}`);
+            }
             this.updateSelectedCharacterDisplay();
             this.renderCharacters(); // Re-render to update selected state
-            
+
             // Optional: Close modal after selection
             // this.closeModal();
         } else {
@@ -513,6 +602,259 @@ class CharacterSelectManager {
     getSelectedCharacter() {
         if (!this.progressionSystem) return 'MALACHAR';
         return this.progressionSystem.getSelectedCharacter();
+    }
+
+    setupSocketListeners() {
+        // Create our own socket connection for the main menu
+        // This connects before the game starts so we can show free character and bank data
+        if (!window.io) {
+            console.error('❌ Socket.IO not loaded');
+            return;
+        }
+
+        const serverUrl = typeof GameConfig !== 'undefined' ? GameConfig.SERVER_URL : 'http://localhost:3002';
+        console.log('🔌 Connecting to server for character data:', serverUrl);
+
+        this.socket = window.io(serverUrl);
+
+        this.socket.on('connect', () => {
+            console.log('✅ Character select connected to server');
+        });
+
+        // Listen for bank data updates
+        this.socket.on('bank:data', (data) => {
+            console.log('💰 Received bank data:', data);
+            this.bankedSouls = data.bankedSouls || 0;
+            this.updateBankedSoulsDisplay();
+
+            // Sync unlocked characters from server with local progression
+            if (data.unlockedCharacters && this.progressionSystem) {
+                const serverUnlocked = data.unlockedCharacters;
+                const localUnlocked = this.progressionSystem.getUnlockedCharacters();
+
+                // Add any characters that are unlocked on server but not locally
+                serverUnlocked.forEach(charId => {
+                    if (!localUnlocked.includes(charId)) {
+                        this.progressionSystem.unlockCharacter(charId);
+                        console.log(`🔄 Synced unlocked character from server: ${charId}`);
+                    }
+                });
+
+                // Re-render characters if modal is open
+                if (this.modal && this.modal.classList.contains('active')) {
+                    this.renderCharacters();
+                }
+            }
+        });
+
+        // Listen for deposit confirmations
+        this.socket.on('bank:depositConfirm', (data) => {
+            console.log('✅ Deposit confirmed:', data);
+            this.bankedSouls = data.newBalance || 0;
+            this.updateBankedSoulsDisplay();
+        });
+
+        // Listen for free character rotation
+        this.socket.on('freeCharacter:update', (data) => {
+            console.log('🎲 Free character update:', data);
+            this.freeCharacter = data.character;
+            this.freeCharacterRotationTime = data.rotationTime;
+
+            // Update the free character name display
+            this.updateFreeCharacterDisplay();
+
+            // Start the countdown timer
+            this.startCountdownTimer();
+
+            // Re-render characters to show the free character badge
+            if (this.modal && this.modal.classList.contains('active')) {
+                this.renderCharacters();
+            }
+        });
+
+        console.log('✅ Socket listeners for character data set up');
+    }
+
+    fetchBankData() {
+        const token = localStorage.getItem('klyra_token');
+        if (!token) {
+            console.log('⚠️ No token found - not logged in');
+            this.bankedSouls = 0;
+            this.updateBankedSoulsDisplay();
+            return;
+        }
+
+        if (this.socket && this.socket.connected) {
+            console.log('📡 Fetching bank data...');
+            this.socket.emit('bank:getData', { token });
+        } else {
+            console.log('⚠️ Socket not connected yet, retrying...');
+            // Retry after a delay
+            setTimeout(() => this.fetchBankData(), 500);
+        }
+    }
+
+    updateBankedSoulsDisplay() {
+        if (this.bankedSoulsDisplay) {
+            this.bankedSoulsDisplay.textContent = this.bankedSouls.toString();
+            console.log(`💰 Updated banked souls display: ${this.bankedSouls}`);
+        }
+    }
+
+    updateFreeCharacterDisplay() {
+        if (this.freeCharacterNameDisplay && this.freeCharacter) {
+            // Get the character display name from the character system
+            const charData = this.characters[this.freeCharacter];
+            if (charData) {
+                this.freeCharacterNameDisplay.textContent = charData.display.name.toUpperCase();
+            } else {
+                this.freeCharacterNameDisplay.textContent = this.freeCharacter;
+            }
+        }
+    }
+
+    startCountdownTimer() {
+        // Clear any existing interval
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+        }
+
+        // Update immediately
+        this.updateCountdown();
+
+        // Then update every second
+        this.countdownInterval = setInterval(() => {
+            this.updateCountdown();
+        }, 1000);
+    }
+
+    updateCountdown() {
+        if (!this.rotationCountdownDisplay || !this.freeCharacterRotationTime) {
+            return;
+        }
+
+        const now = Date.now();
+        const rotationDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
+        const nextRotation = this.freeCharacterRotationTime + rotationDuration;
+        const timeRemaining = nextRotation - now;
+
+        if (timeRemaining <= 0) {
+            this.rotationCountdownDisplay.textContent = 'Rotating...';
+            return;
+        }
+
+        // Convert to minutes and seconds
+        const minutes = Math.floor(timeRemaining / 60000);
+        const seconds = Math.floor((timeRemaining % 60000) / 1000);
+
+        // Format as MM:SS
+        const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        this.rotationCountdownDisplay.textContent = formattedTime;
+    }
+
+    unlockCharacter(characterId, soulCost) {
+        // Check if user is logged in
+        const token = localStorage.getItem('klyra_token');
+        if (!token) {
+            this.showFeedback('You must be logged in to unlock characters!', '#ff6666');
+            return;
+        }
+
+        // Check if character is already unlocked
+        if (this.progressionSystem && this.progressionSystem.isCharacterUnlocked(characterId)) {
+            this.showFeedback('Character already unlocked!', '#ffaa00');
+            return;
+        }
+
+        // Check if player has enough banked souls
+        if (this.bankedSouls < soulCost) {
+            this.showFeedback(`Not enough souls! You need ${soulCost} souls (you have ${this.bankedSouls})`, '#ff6666');
+            return;
+        }
+
+        // Send unlock request to server
+        if (this.socket && this.socket.connected) {
+            console.log(`🛒 Attempting to unlock ${characterId} for ${soulCost} souls`);
+            this.socket.emit('character:unlock', {
+                characterId,
+                soulCost,
+                token
+            });
+
+            // Listen for response
+            this.socket.once('character:unlocked', (response) => {
+                if (response.success) {
+                    // Update local progression
+                    if (this.progressionSystem) {
+                        this.progressionSystem.unlockCharacter(characterId);
+                    }
+
+                    // Update banked souls display
+                    this.bankedSouls = response.bankedSouls;
+                    if (this.bankedSoulsDisplay) {
+                        this.bankedSoulsDisplay.textContent = this.bankedSouls.toString();
+                    }
+
+                    // Re-render character grid to show unlocked state
+                    this.renderCharacters();
+
+                    this.showFeedback(`${characterId} unlocked successfully!`, '#00ff88');
+                    console.log(`✅ ${characterId} unlocked! Remaining souls: ${this.bankedSouls}`);
+                } else {
+                    this.showFeedback(response.message || 'Failed to unlock character', '#ff6666');
+                    console.error('❌ Failed to unlock character:', response.message);
+                }
+            });
+
+            this.socket.once('character:unlock:error', (error) => {
+                this.showFeedback(error.message || 'Error unlocking character', '#ff6666');
+                console.error('❌ Error unlocking character:', error.message);
+            });
+        } else {
+            this.showFeedback('Not connected to server!', '#ff6666');
+        }
+    }
+
+    showFeedback(message, color = '#00ff88') {
+        // Create feedback element if it doesn't exist
+        if (!this.feedbackElement) {
+            this.feedbackElement = document.createElement('div');
+            this.feedbackElement.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.9);
+                color: ${color};
+                padding: 15px 30px;
+                border-radius: 8px;
+                font-family: 'Press Start 2P', monospace;
+                font-size: 11px;
+                z-index: 10001;
+                border: 2px solid ${color};
+                box-shadow: 0 0 20px ${color}80;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            document.body.appendChild(this.feedbackElement);
+        }
+
+        // Update message and color
+        this.feedbackElement.textContent = message;
+        this.feedbackElement.style.color = color;
+        this.feedbackElement.style.borderColor = color;
+        this.feedbackElement.style.boxShadow = `0 0 20px ${color}80`;
+        this.feedbackElement.style.opacity = '1';
+
+        // Clear any existing timeout
+        if (this.feedbackTimeout) {
+            clearTimeout(this.feedbackTimeout);
+        }
+
+        // Hide after 3 seconds
+        this.feedbackTimeout = setTimeout(() => {
+            this.feedbackElement.style.opacity = '0';
+        }, 3000);
     }
 }
 

@@ -1583,13 +1583,13 @@ class AbilityManager {
         // Play war cry sound effect IMMEDIATELY
         if (this.scene.sound) {
             try {
-                this.scene.sound.play('aldric_warcry', { volume: 0.6 });
+                this.scene.sound.play('aldric_warcry', { volume: 0.2 });
                 console.log('📢 Playing Aldric war cry sound');
             } catch (error) {
                 console.warn('⚠️ War cry sound not loaded, using fallback:', error);
                 // Fallback to shockwave sound if war cry not loaded
                 if (this.scene.sound.get('aldric_shockwave')) {
-                    this.scene.sound.play('aldric_shockwave', { volume: 0.5, rate: 0.8 });
+                    this.scene.sound.play('aldric_shockwave', { volume: 0.2, rate: 0.8 });
                 }
             }
         }

@@ -125,6 +125,35 @@ const metrics = {
     peakPlayers: 0
 };
 
+// Free Character Rotation System (rotates every 30 minutes)
+const AVAILABLE_CHARACTERS = ['KELISE', 'MALACHAR', 'ALDRIC'];
+let currentFreeCharacter = AVAILABLE_CHARACTERS[Math.floor(Math.random() * AVAILABLE_CHARACTERS.length)];
+let freeCharacterRotationTime = Date.now();
+
+function rotateFreeCharacter() {
+    const previousCharacter = currentFreeCharacter;
+    // Pick a different character than the current one
+    let newCharacter;
+    do {
+        newCharacter = AVAILABLE_CHARACTERS[Math.floor(Math.random() * AVAILABLE_CHARACTERS.length)];
+    } while (newCharacter === currentFreeCharacter && AVAILABLE_CHARACTERS.length > 1);
+
+    currentFreeCharacter = newCharacter;
+    freeCharacterRotationTime = Date.now();
+
+    console.log(`🎲 Free character rotated: ${previousCharacter} → ${currentFreeCharacter}`);
+
+    // Broadcast to all connected clients
+    io.emit('freeCharacter:update', {
+        character: currentFreeCharacter,
+        rotationTime: freeCharacterRotationTime
+    });
+}
+
+// Rotate free character every 30 minutes (1800000 ms)
+setInterval(rotateFreeCharacter, 30 * 60 * 1000);
+console.log(`🎲 Free character rotation started. Current free character: ${currentFreeCharacter}`);
+
 // Player class
 class Player {
     constructor(socketId, username) {
@@ -3683,6 +3712,12 @@ io.on('connection', (socket) => {
         metrics.peakPlayers = players.size + 1;
     }
 
+    // Send current free character to client
+    socket.emit('freeCharacter:update', {
+        character: currentFreeCharacter,
+        rotationTime: freeCharacterRotationTime
+    });
+
     // Handle player joining
     socket.on('player:join', async (data) => {
         try {
@@ -5008,6 +5043,203 @@ io.on('connection', (socket) => {
             console.log(`   ✅ Broadcast sent to ${sentCount}/${lobby.players.length} players`);
         } catch (error) {
             console.error('Error in orb:collect:', error);
+        }
+    });
+
+    // Bank system handlers
+    socket.on('bank:getData', async (data) => {
+        try {
+            const { token } = data;
+            if (!token) {
+                socket.emit('bank:error', { error: 'Not logged in' });
+                return;
+            }
+
+            // Verify token and get user
+            const authResult = auth.verifyToken(token);
+            if (!authResult.success) {
+                socket.emit('bank:error', { error: 'Invalid token' });
+                return;
+            }
+
+            // Get user's banked souls and unlocked characters from database
+            const result = await auth.pool.query(
+                'SELECT banked_souls, unlocked_characters FROM users WHERE id = $1',
+                [authResult.userId]
+            );
+
+            if (result.rows.length === 0) {
+                socket.emit('bank:error', { error: 'User not found' });
+                return;
+            }
+
+            const bankedSouls = result.rows[0].banked_souls || 0;
+            const unlockedCharacters = result.rows[0].unlocked_characters || [];
+            socket.emit('bank:data', { bankedSouls, unlockedCharacters });
+            console.log(`💰 Sent bank data to user ${authResult.userId}: ${bankedSouls} souls, ${unlockedCharacters.length} unlocked characters`);
+        } catch (error) {
+            console.error('Error in bank:getData:', error);
+            socket.emit('bank:error', { error: 'Server error' });
+        }
+    });
+
+    socket.on('bank:deposit', async (data) => {
+        try {
+            const { amount, token } = data;
+            if (!token) {
+                socket.emit('bank:error', { error: 'Not logged in' });
+                return;
+            }
+
+            if (amount <= 0) {
+                socket.emit('bank:error', { error: 'Invalid amount' });
+                return;
+            }
+
+            // Verify token and get user
+            const authResult = auth.verifyToken(token);
+            if (!authResult.success) {
+                socket.emit('bank:error', { error: 'Invalid token' });
+                return;
+            }
+
+            // Update banked souls in database
+            const result = await auth.pool.query(
+                'UPDATE users SET banked_souls = COALESCE(banked_souls, 0) + $1 WHERE id = $2 RETURNING banked_souls',
+                [amount, authResult.userId]
+            );
+
+            if (result.rows.length === 0) {
+                socket.emit('bank:error', { error: 'User not found' });
+                return;
+            }
+
+            const bankedSouls = result.rows[0].banked_souls;
+            socket.emit('bank:depositConfirm', { bankedSouls, amount });
+            console.log(`💰 User ${authResult.userId} deposited ${amount} souls. New balance: ${bankedSouls}`);
+        } catch (error) {
+            console.error('Error in bank:deposit:', error);
+            socket.emit('bank:error', { error: 'Server error' });
+        }
+    });
+
+    socket.on('bank:withdraw', async (data) => {
+        try {
+            const { amount, token } = data;
+            if (!token) {
+                socket.emit('bank:error', { error: 'Not logged in' });
+                return;
+            }
+
+            if (amount <= 0) {
+                socket.emit('bank:error', { error: 'Invalid amount' });
+                return;
+            }
+
+            // Verify token and get user
+            const authResult = auth.verifyToken(token);
+            if (!authResult.success) {
+                socket.emit('bank:error', { error: 'Invalid token' });
+                return;
+            }
+
+            // Check if user has enough banked souls
+            const checkResult = await auth.pool.query(
+                'SELECT banked_souls FROM users WHERE id = $1',
+                [authResult.userId]
+            );
+
+            if (checkResult.rows.length === 0) {
+                socket.emit('bank:error', { error: 'User not found' });
+                return;
+            }
+
+            const currentBanked = checkResult.rows[0].banked_souls || 0;
+            if (currentBanked < amount) {
+                socket.emit('bank:error', { error: 'Not enough banked souls' });
+                return;
+            }
+
+            // Update banked souls in database
+            const result = await auth.pool.query(
+                'UPDATE users SET banked_souls = banked_souls - $1 WHERE id = $2 RETURNING banked_souls',
+                [amount, authResult.userId]
+            );
+
+            const bankedSouls = result.rows[0].banked_souls;
+            socket.emit('bank:withdrawConfirm', { bankedSouls, amount });
+            console.log(`💰 User ${authResult.userId} withdrew ${amount} souls. New balance: ${bankedSouls}`);
+        } catch (error) {
+            console.error('Error in bank:withdraw:', error);
+            socket.emit('bank:error', { error: 'Server error' });
+        }
+    });
+
+    // Character unlock purchase
+    socket.on('character:unlock', async (data) => {
+        try {
+            const { characterId, soulCost, token } = data;
+            if (!token) {
+                socket.emit('character:unlock:error', { message: 'Not logged in' });
+                return;
+            }
+
+            // Verify token and get user
+            const authResult = auth.verifyToken(token);
+            if (!authResult.success) {
+                socket.emit('character:unlock:error', { message: 'Invalid token' });
+                return;
+            }
+
+            // Get user's current data
+            const userResult = await auth.pool.query(
+                'SELECT banked_souls, unlocked_characters FROM users WHERE id = $1',
+                [authResult.userId]
+            );
+
+            if (userResult.rows.length === 0) {
+                socket.emit('character:unlock:error', { message: 'User not found' });
+                return;
+            }
+
+            const user = userResult.rows[0];
+            const bankedSouls = user.banked_souls || 0;
+            const unlockedCharacters = user.unlocked_characters || [];
+
+            // Check if character is already unlocked
+            if (unlockedCharacters.includes(characterId)) {
+                socket.emit('character:unlock:error', { message: 'Character already unlocked' });
+                return;
+            }
+
+            // Check if user has enough souls
+            if (bankedSouls < soulCost) {
+                socket.emit('character:unlock:error', {
+                    message: `Not enough souls. Need ${soulCost}, have ${bankedSouls}`
+                });
+                return;
+            }
+
+            // Unlock the character and deduct souls
+            const newUnlockedCharacters = [...unlockedCharacters, characterId];
+            const newBankedSouls = bankedSouls - soulCost;
+
+            await auth.pool.query(
+                'UPDATE users SET unlocked_characters = $1, banked_souls = $2 WHERE id = $3',
+                [JSON.stringify(newUnlockedCharacters), newBankedSouls, authResult.userId]
+            );
+
+            socket.emit('character:unlocked', {
+                success: true,
+                characterId,
+                bankedSouls: newBankedSouls,
+                unlockedCharacters: newUnlockedCharacters
+            });
+
+            console.log(`🎉 User ${authResult.userId} unlocked ${characterId} for ${soulCost} souls. Remaining: ${newBankedSouls}`);
+        } catch (error) {
+            console.error('Error in character:unlock:', error);
+            socket.emit('character:unlock:error', { message: 'Server error' });
         }
     });
 
