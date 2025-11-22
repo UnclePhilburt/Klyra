@@ -731,32 +731,53 @@ class ModernHUD {
     repositionUI() {
         const width = this.scene.cameras.main.width;
         const height = this.scene.cameras.main.height;
-        const padding = 16;
 
-        // Update currency container position (top-right)
+        // Calculate scale based on aspect ratio (ultrawide = bigger UI)
+        const aspectRatio = width / height;
+        let uiScale = 1.0;
+
+        // Scale up for ultrawide monitors
+        if (aspectRatio > 1.78) { // Wider than 16:9
+            uiScale = 1.0 + ((aspectRatio - 1.78) * 0.3); // Scale up gradually
+            uiScale = Math.min(uiScale, 1.5); // Max 1.5x scale
+        }
+
+        const padding = 16 * uiScale;
+
+        // Apply scale to containers
         if (this.currencyContainer) {
-            this.currencyContainer.x = width - padding - 100;
+            this.currencyContainer.setScale(uiScale);
+            this.currencyContainer.x = width - padding - (100 * uiScale);
             this.currencyContainer.y = padding;
         }
 
-        // Update skills container position (top-right)
         if (this.skillsContainer) {
-            this.skillsContainer.x = width - padding - 180;
+            this.skillsContainer.setScale(uiScale);
+            this.skillsContainer.x = width - padding - (180 * uiScale);
             this.skillsContainer.y = padding;
         }
 
-        // Update compact hub position (top-left)
         if (this.compactHub) {
+            this.compactHub.setScale(uiScale);
             this.compactHub.x = padding;
             this.compactHub.y = padding;
         }
 
+        // Scale health/xp bar graphics
+        if (this.healthBarBg) this.healthBarBg.setScale(uiScale);
+        if (this.healthBarFill) this.healthBarFill.setScale(uiScale);
+        if (this.shieldBarFill) this.shieldBarFill.setScale(uiScale);
+        if (this.xpBarFill) this.xpBarFill.setScale(uiScale);
+        if (this.healthText) this.healthText.setScale(uiScale);
+        if (this.levelText) this.levelText.setScale(uiScale);
+        if (this.xpText) this.xpText.setScale(uiScale);
+
         // Update health/xp bar positions (bottom-left)
-        const barX = 20;
+        const barX = 20 * uiScale;
         const healthBarHeight = 12;
         const xpBarHeight = 8;
         const barSpacing = 6;
-        const healthBarY = height - 20 - healthBarHeight - xpBarHeight - barSpacing - 10;
+        const healthBarY = height - (20 * uiScale) - healthBarHeight - xpBarHeight - barSpacing - 10;
         const xpBarY = healthBarY + healthBarHeight + barSpacing;
 
         this.healthBarX = barX;

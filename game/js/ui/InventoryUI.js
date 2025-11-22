@@ -689,37 +689,52 @@ class InventoryUI {
         const width = this.scene.cameras.main.width;
         const height = this.scene.cameras.main.height;
 
+        // Calculate scale based on aspect ratio (ultrawide = bigger UI)
+        const aspectRatio = width / height;
+        let uiScale = 1.0;
+
+        // Scale up for ultrawide monitors
+        if (aspectRatio > 1.78) { // Wider than 16:9
+            uiScale = 1.0 + ((aspectRatio - 1.78) * 0.3); // Scale up gradually
+            uiScale = Math.min(uiScale, 1.5); // Max 1.5x scale
+        }
+
         const slotSize = 35;
         const slotPadding = 10;
         const totalWidth = this.hotbarSlots * slotSize + (this.hotbarSlots - 1) * slotPadding;
         const startX = (width - totalWidth) / 2;
-        const startY = height - 50;
+        const startY = height - (50 * uiScale);
 
-        // Update positions of all hotbar elements
+        // Update positions and scale of all hotbar elements
         for (let i = 0; i < this.hotbarSlots; i++) {
             const x = startX + i * (slotSize + slotPadding);
 
             if (this.hotbarSlotGraphics[i]) {
+                this.hotbarSlotGraphics[i].setScale(uiScale);
                 this.hotbarSlotGraphics[i].x = x + slotSize / 2;
                 this.hotbarSlotGraphics[i].y = startY + slotSize / 2;
             }
             if (this.hotbarKeyTexts[i]) {
+                this.hotbarKeyTexts[i].setScale(uiScale);
                 this.hotbarKeyTexts[i].x = x + slotSize - 2;
                 this.hotbarKeyTexts[i].y = startY + slotSize - 2;
             }
             if (this.hotbarItemSprites[i]) {
+                this.hotbarItemSprites[i].setScale(1.3 * uiScale);
                 this.hotbarItemSprites[i].x = x + slotSize / 2;
                 this.hotbarItemSprites[i].y = startY + slotSize / 2;
             }
             if (this.hotbarItemTexts[i]) {
+                this.hotbarItemTexts[i].setScale(uiScale);
                 this.hotbarItemTexts[i].x = x + slotSize / 2;
                 this.hotbarItemTexts[i].y = startY + slotSize / 2;
             }
         }
 
-        // Update buffs container position (top-right)
+        // Update buffs container position and scale (top-right)
         if (this.buffsContainer) {
-            this.buffsContainer.x = width - 200;
+            this.buffsContainer.setScale(uiScale);
+            this.buffsContainer.x = width - (200 * uiScale);
         }
     }
 

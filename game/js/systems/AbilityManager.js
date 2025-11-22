@@ -1785,21 +1785,34 @@ class AbilityManager {
         const width = this.scene.cameras.main.width;
         const height = this.scene.cameras.main.height;
 
-        const centerX = width / 2;
-        const bottomY = height - 80;
+        // Calculate scale based on aspect ratio (ultrawide = bigger UI)
+        const aspectRatio = width / height;
+        let uiScale = 1.0;
 
-        // Update positions of ability containers
+        // Scale up for ultrawide monitors
+        if (aspectRatio > 1.78) { // Wider than 16:9
+            uiScale = 1.0 + ((aspectRatio - 1.78) * 0.3); // Scale up gradually
+            uiScale = Math.min(uiScale, 1.5); // Max 1.5x scale
+        }
+
+        const centerX = width / 2;
+        const bottomY = height - (80 * uiScale);
+
+        // Update positions and scale of ability containers
         if (this.cooldownUI) {
             if (this.cooldownUI.q && this.cooldownUI.q.container) {
-                this.cooldownUI.q.container.x = centerX - 180;
+                this.cooldownUI.q.container.setScale(uiScale);
+                this.cooldownUI.q.container.x = centerX - (180 * uiScale);
                 this.cooldownUI.q.container.y = bottomY;
             }
             if (this.cooldownUI.e && this.cooldownUI.e.container) {
+                this.cooldownUI.e.container.setScale(uiScale);
                 this.cooldownUI.e.container.x = centerX;
                 this.cooldownUI.e.container.y = bottomY;
             }
             if (this.cooldownUI.r && this.cooldownUI.r.container) {
-                this.cooldownUI.r.container.x = centerX + 180;
+                this.cooldownUI.r.container.setScale(uiScale);
+                this.cooldownUI.r.container.x = centerX + (180 * uiScale);
                 this.cooldownUI.r.container.y = bottomY;
             }
         }
