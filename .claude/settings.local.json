@@ -14,7 +14,19 @@
       "Bash(cmd //c \"taskkill //PID 153072 //F\")",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(dir /b \"game\\assets\\tilesets\\Fantasy_Outside_B.png\" 2)",
+      "Bash(nul)",
+      "Bash(dir /b \"game\\assets\\tilesets\\!$Glowing_tree.png\" 2)",
+      "Bash(dir /b \"game\\assets\\tilesets\\*Glow*\" 2)",
+      "Bash(dir /b \"game\\assets\\tilesets\\!$*\" 2)",
+      "Bash(echo:*)",
+      "Bash(dir /b \"game\\assets\\tilesets\\Fantasy*\" 2)",
+      "Bash(dir:*)",
+      "Bash(python:*)",
+      "Bash(cmd //c \"taskkill //PID 207316 //F\")",
+      "Bash(cmd //c \"taskkill //PID 19488 //F\")"
     ],
     "deny": [],
     "ask": []

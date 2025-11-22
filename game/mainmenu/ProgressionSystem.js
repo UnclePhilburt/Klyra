@@ -9,9 +9,6 @@ class ProgressionSystem {
 
         // Always ensure KELISE and MALACHAR are unlocked
         this.ensureDefaultCharactersUnlocked();
-
-        console.log('✅ Progression System initialized');
-        console.log('📊 Progression data:', this.data);
     }
 
     ensureDefaultCharactersUnlocked() {
@@ -228,9 +225,3 @@ if (!connectProgressionSystem()) {
         }
     }, 100);
 }
-
-console.log('💡 Progression System Commands:');
-console.log('  - progressionSystem.getStats() - View your stats');
-console.log('  - progressionSystem.getSelectedCharacter() - See selected character');
-console.log('  - progressionSystem.getUnlockedCharacters() - See unlocked characters');
-console.log('  - progressionSystem.resetProgress() - Reset all progress');

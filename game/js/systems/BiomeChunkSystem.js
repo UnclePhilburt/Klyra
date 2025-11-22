@@ -27,7 +27,7 @@ class BiomeChunkSystem {
         this.biomes = {
             dark_forest: {
                 name: 'Dark Forest',
-                chunks: ['darkForestChunk1', 'darkForestChunk2', 'darkForestChunk3'],
+                chunks: ['darkForestChunk1', 'darkForestChunk2', 'darkForestChunk3', 'darkForestChunk4', 'darkForestChunk5'],
                 tileset: 'a2_terrain_green',
                 threshold: 0.5 // If noise < 0.5, use this biome
             },
@@ -136,6 +136,19 @@ class BiomeChunkSystem {
         const chunkData = this.renderChunk(chunkKey, worldX, worldY);
 
         if (chunkData) {
+            // Spawn NPCs only for chunk5
+            if (chunkKey === 'darkForestChunk5' && chunkData.npcSpawns && chunkData.npcSpawns.length > 0) {
+                chunkData.npcSpawns.forEach(spawn => {
+                    if (spawn.type === 'item_merchant') {
+                        const merchant = new MerchantNPC(this.scene, spawn.x, spawn.y, 'Item Merchant');
+                        console.log(`✅ Item Merchant spawned in chunk5 at (${spawn.x}, ${spawn.y})`);
+                    } else if (spawn.type === 'skill_trader') {
+                        const trader = new SkillShopNPC(this.scene, spawn.x, spawn.y, 'Skill Trader');
+                        console.log(`✅ Skill Trader spawned in chunk5 at (${spawn.x}, ${spawn.y})`);
+                    }
+                });
+            }
+
             this.loadedChunks.set(key, {
                 biome: biome,
                 chunkKey: chunkKey,
@@ -219,7 +232,51 @@ class BiomeChunkSystem {
             });
         }
 
-        return { layers };
+        // Check for NPC spawn markers in IntGrid layers
+        const npcSpawns = this.findNPCSpawnsInChunk(level, worldX, worldY);
+
+        return { layers, npcSpawns };
+    }
+
+    /**
+     * Find NPC spawn markers in chunk IntGrid layers
+     */
+    findNPCSpawnsInChunk(level, worldX, worldY) {
+        const spawns = [];
+
+        if (!level.layerInstances) return spawns;
+
+        // Look for IntGrid layers with NPC markers
+        level.layerInstances.forEach(layer => {
+            if (layer.__type !== 'IntGrid') return;
+
+            const intGrid = layer.intGridCsv;
+            const gridWidth = layer.__cWid;
+            const tileSize = layer.__gridSize;
+
+            // Scan for NPC markers (2 = item merchant, 3 = skill trader)
+            for (let i = 0; i < intGrid.length; i++) {
+                const value = intGrid[i];
+
+                if (value === 2 || value === 3) {
+                    // Convert 1D index to 2D coordinates
+                    const gridX = i % gridWidth;
+                    const gridY = Math.floor(i / gridWidth);
+
+                    // Convert to world coordinates (center of tile)
+                    const spawnX = worldX + (gridX * tileSize) + (tileSize / 2);
+                    const spawnY = worldY + (gridY * tileSize) + (tileSize / 2);
+
+                    spawns.push({
+                        type: value === 2 ? 'item_merchant' : 'skill_trader',
+                        x: spawnX,
+                        y: spawnY
+                    });
+                }
+            }
+        });
+
+        return spawns;
     }
 
     /**

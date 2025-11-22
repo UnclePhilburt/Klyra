@@ -923,7 +923,7 @@ class GameScene extends Phaser.Scene {
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a0f2e 50%, #0a0a0a 100%);
+            background: #000000;
             z-index: 999999;
             display: flex;
             flex-direction: column;
@@ -931,141 +931,363 @@ class GameScene extends Phaser.Scene {
             align-items: center;
             font-family: 'Press Start 2P', monospace;
             pointer-events: none;
+            overflow: hidden;
         `;
 
         this.loadingDiv.innerHTML = `
-            <div style="text-align: center; position: relative;">
-                <!-- Glowing sword icon -->
-                <div style="font-size: 72px; margin-bottom: 40px; animation: float 3s ease-in-out infinite;">
-                    ⚔️
-                </div>
+            <!-- Animated gradient background -->
+            <div style="
+                position: absolute;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(ellipse at center, #1a0f2e 0%, #0a0515 40%, #000000 70%);
+                animation: bgPulse 8s ease-in-out infinite;
+            "></div>
 
-                <!-- Title with glow effect -->
-                <div style="
-                    font-size: 48px;
-                    color: #00ff00;
-                    margin-bottom: 20px;
-                    text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00, 0 0 60px #00ff00;
-                    animation: glow 1.5s ease-in-out infinite alternate;
-                    letter-spacing: 4px;
-                ">
-                    KLYRA
-                </div>
+            <!-- Scanline effect -->
+            <div style="
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                background: repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 0, 0, 0.15),
+                    rgba(0, 0, 0, 0.15) 1px,
+                    transparent 1px,
+                    transparent 2px
+                );
+                pointer-events: none;
+                opacity: 0.3;
+            "></div>
 
-                <div style="
-                    font-size: 16px;
-                    color: #888888;
-                    margin-bottom: 60px;
-                    letter-spacing: 2px;
-                ">
-                    ENTERING THE REALM
-                </div>
+            <!-- Dynamic particle field -->
+            <div style="position: absolute; width: 100%; height: 100%; overflow: hidden;">
+                <div class="orb" style="position: absolute; top: 15%; left: 10%; width: 100px; height: 100px; background: radial-gradient(circle, rgba(0,255,0,0.15) 0%, transparent 70%); border-radius: 50%; animation: orbFloat1 8s ease-in-out infinite;"></div>
+                <div class="orb" style="position: absolute; top: 60%; left: 75%; width: 80px; height: 80px; background: radial-gradient(circle, rgba(0,255,0,0.1) 0%, transparent 70%); border-radius: 50%; animation: orbFloat2 10s ease-in-out infinite;"></div>
+                <div class="orb" style="position: absolute; top: 80%; left: 20%; width: 60px; height: 60px; background: radial-gradient(circle, rgba(0,255,0,0.12) 0%, transparent 70%); border-radius: 50%; animation: orbFloat3 7s ease-in-out infinite;"></div>
+            </div>
 
-                <!-- Progress bar container -->
-                <div style="
-                    width: 500px;
-                    height: 8px;
-                    background: #1a1a1a;
-                    border: 3px solid #333333;
-                    border-radius: 4px;
-                    margin-bottom: 25px;
-                    position: relative;
-                    overflow: hidden;
-                    box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
-                ">
-                    <!-- Animated background shimmer -->
+            <!-- Floating particles -->
+            <div style="position: absolute; width: 100%; height: 100%; overflow: hidden; opacity: 0.2;">
+                ${Array.from({length: 20}, (_, i) => `
                     <div style="
                         position: absolute;
-                        width: 100%;
-                        height: 100%;
-                        background: linear-gradient(90deg, transparent, rgba(0,255,0,0.1), transparent);
-                        animation: shimmer 2s infinite;
+                        top: ${Math.random() * 100}%;
+                        left: ${Math.random() * 100}%;
+                        width: ${1 + Math.random() * 2}px;
+                        height: ${1 + Math.random() * 2}px;
+                        background: #00ff00;
+                        border-radius: 50%;
+                        animation: particleFloat ${3 + Math.random() * 4}s ease-in-out infinite;
+                        animation-delay: ${Math.random() * 2}s;
+                    "></div>
+                `).join('')}
+            </div>
+
+            <div style="text-align: center; position: relative; z-index: 10;">
+                <!-- Corner decorations -->
+                <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 600px; height: 2px; background: linear-gradient(90deg, transparent, rgba(0,255,0,0.3), transparent);"></div>
+
+                <!-- Main Logo Container with Glow -->
+                <div style="
+                    margin-bottom: 100px;
+                    position: relative;
+                ">
+                    <!-- Outer glow ring -->
+                    <div style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 550px;
+                        height: 550px;
+                        border: 1px solid rgba(0, 255, 0, 0.1);
+                        border-radius: 50%;
+                        animation: ringPulse 3s ease-in-out infinite;
                     "></div>
 
-                    <!-- Progress bar fill -->
-                    <div id="loading-bar-fill" style="
-                        width: 0%;
-                        height: 100%;
-                        background: linear-gradient(90deg, #00ff00, #00cc00, #00ff00);
-                        box-shadow: 0 0 20px #00ff00, 0 0 30px #00ff00;
-                        transition: width 0.3s ease-out;
+                    <!-- Logo with effects -->
+                    <div style="
+                        animation: logoEntrance 2s cubic-bezier(0.34, 1.56, 0.64, 1);
                         position: relative;
                     ">
-                        <!-- Shine effect -->
-                        <div style="
-                            position: absolute;
-                            width: 100%;
+                        <img src="assets/logo.png" style="
+                            max-width: 550px;
+                            height: auto;
+                            filter: drop-shadow(0 0 60px rgba(0, 255, 0, 0.4));
+                            animation: logoFloat 4s ease-in-out infinite, logoBreath 3s ease-in-out infinite;
+                        " alt="Klyra Logo">
+                    </div>
+
+                    <!-- Light rays -->
+                    <div style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 600px;
+                        height: 600px;
+                        background: conic-gradient(from 0deg, transparent 0deg 10deg, rgba(0,255,0,0.03) 10deg 20deg);
+                        border-radius: 50%;
+                        animation: rayRotate 20s linear infinite;
+                        pointer-events: none;
+                    "></div>
+                </div>
+
+                <!-- Elegant multi-line divider -->
+                <div style="margin-bottom: 50px;">
+                    <div style="width: 450px; height: 1px; background: linear-gradient(90deg, transparent, #00ff00, transparent); margin: 0 auto 8px auto; opacity: 0.6;"></div>
+                    <div style="width: 400px; height: 1px; background: linear-gradient(90deg, transparent, #00ff00, transparent); margin: 0 auto; opacity: 0.3;"></div>
+                </div>
+
+                <!-- Progress container with depth -->
+                <div style="margin-bottom: 40px; padding: 0 20px;">
+                    <!-- Progress bar background -->
+                    <div style="
+                        width: 600px;
+                        height: 6px;
+                        background: rgba(0, 255, 0, 0.05);
+                        border-radius: 3px;
+                        margin: 0 auto;
+                        position: relative;
+                        overflow: hidden;
+                        box-shadow:
+                            inset 0 1px 3px rgba(0, 0, 0, 0.5),
+                            0 0 20px rgba(0, 255, 0, 0.1);
+                        border: 1px solid rgba(0, 255, 0, 0.1);
+                    ">
+                        <!-- Progress fill -->
+                        <div id="loading-bar-fill" style="
+                            width: 0%;
                             height: 100%;
-                            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                            animation: shine 1.5s infinite;
-                        "></div>
+                            background: linear-gradient(90deg, #00ff00 0%, #00ff88 50%, #00ff00 100%);
+                            box-shadow:
+                                0 0 30px rgba(0, 255, 0, 0.8),
+                                0 0 60px rgba(0, 255, 0, 0.4),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                            transition: width 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+                            position: relative;
+                        ">
+                            <!-- Animated shine -->
+                            <div style="
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                width: 100%;
+                                height: 100%;
+                                background: linear-gradient(90deg,
+                                    transparent 0%,
+                                    rgba(255,255,255,0.8) 50%,
+                                    transparent 100%
+                                );
+                                animation: progressShine 2.5s ease-in-out infinite;
+                            "></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Percentage display -->
+                <!-- Percentage with enhanced styling -->
                 <div id="loading-percent" style="
-                    font-size: 24px;
+                    font-size: 32px;
                     color: #00ff00;
-                    margin-bottom: 15px;
-                    text-shadow: 0 0 10px #00ff00;
+                    margin-bottom: 25px;
+                    text-shadow:
+                        0 0 10px rgba(0, 255, 0, 1),
+                        0 0 20px rgba(0, 255, 0, 0.8),
+                        0 0 40px rgba(0, 255, 0, 0.6),
+                        0 0 80px rgba(0, 255, 0, 0.3);
+                    letter-spacing: 6px;
+                    font-weight: bold;
+                    animation: percentGlow 2s ease-in-out infinite;
                 ">
                     0%
                 </div>
 
-                <!-- Status text -->
+                <!-- Status text with icon -->
                 <div id="loading-progress" style="
-                    font-size: 12px;
-                    color: #666666;
-                    animation: pulse 2s infinite;
+                    font-size: 10px;
+                    color: #999999;
+                    letter-spacing: 3px;
+                    animation: statusPulse 2s ease-in-out infinite;
+                    text-transform: uppercase;
+                    position: relative;
                 ">
-                    Preparing your adventure...
+                    <span style="display: inline-block; animation: dotPulse 1.5s infinite;">⬢</span>
+                    <span id="status-text">Initializing</span>
+                    <span style="display: inline-block; animation: dotPulse 1.5s infinite 0.5s;">⬢</span>
                 </div>
 
-                <!-- Decorative pixel particles -->
-                <div style="position: absolute; top: -100px; left: 0; right: 0; opacity: 0.3;">
-                    <div style="animation: fall 4s infinite; font-size: 8px;">✦ ✦ ✦ ✦ ✦</div>
-                </div>
+                <!-- Bottom decoration -->
+                <div style="position: absolute; bottom: -80px; left: 50%; transform: translateX(-50%); width: 500px; height: 2px; background: linear-gradient(90deg, transparent, rgba(0,255,0,0.3), transparent);"></div>
             </div>
 
             <style>
-                @keyframes glow {
+                @keyframes logoEntrance {
+                    0% {
+                        opacity: 0;
+                        transform: scale(0.5) translateY(50px);
+                        filter: blur(10px);
+                    }
+                    60% {
+                        transform: scale(1.05) translateY(0);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                        filter: blur(0px);
+                    }
+                }
+
+                @keyframes logoFloat {
+                    0%, 100% {
+                        transform: translateY(0px) scale(1);
+                    }
+                    50% {
+                        transform: translateY(-20px) scale(1.02);
+                    }
+                }
+
+                @keyframes logoBreath {
+                    0%, 100% {
+                        filter: drop-shadow(0 0 40px rgba(0, 255, 0, 0.3));
+                    }
+                    50% {
+                        filter: drop-shadow(0 0 70px rgba(0, 255, 0, 0.6));
+                    }
+                }
+
+                @keyframes ringPulse {
+                    0%, 100% {
+                        transform: translate(-50%, -50%) scale(1);
+                        opacity: 0.3;
+                    }
+                    50% {
+                        transform: translate(-50%, -50%) scale(1.1);
+                        opacity: 0.6;
+                    }
+                }
+
+                @keyframes rayRotate {
                     from {
-                        text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00, 0 0 60px #00ff00;
+                        transform: translate(-50%, -50%) rotate(0deg);
                     }
                     to {
-                        text-shadow: 0 0 30px #00ff00, 0 0 60px #00ff00, 0 0 90px #00ff00;
+                        transform: translate(-50%, -50%) rotate(360deg);
                     }
                 }
 
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.4; }
+                @keyframes bgPulse {
+                    0%, 100% {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                    50% {
+                        transform: scale(1.1);
+                        opacity: 0.8;
+                    }
                 }
 
-                @keyframes float {
-                    0%, 100% { transform: translateY(0px); }
-                    50% { transform: translateY(-20px); }
+                @keyframes orbFloat1 {
+                    0%, 100% {
+                        transform: translate(0, 0);
+                    }
+                    33% {
+                        transform: translate(30px, -40px);
+                    }
+                    66% {
+                        transform: translate(-20px, 30px);
+                    }
                 }
 
-                @keyframes shimmer {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(100%); }
+                @keyframes orbFloat2 {
+                    0%, 100% {
+                        transform: translate(0, 0);
+                    }
+                    33% {
+                        transform: translate(-40px, 30px);
+                    }
+                    66% {
+                        transform: translate(20px, -20px);
+                    }
                 }
 
-                @keyframes shine {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(200%); }
+                @keyframes orbFloat3 {
+                    0%, 100% {
+                        transform: translate(0, 0);
+                    }
+                    33% {
+                        transform: translate(25px, 35px);
+                    }
+                    66% {
+                        transform: translate(-30px, -25px);
+                    }
                 }
 
-                @keyframes fall {
-                    0% { transform: translateY(0px); opacity: 0; }
-                    50% { opacity: 0.3; }
-                    100% { transform: translateY(150px); opacity: 0; }
+                @keyframes particleFloat {
+                    0% {
+                        transform: translateY(0) translateX(0);
+                        opacity: 0;
+                    }
+                    10% {
+                        opacity: 1;
+                    }
+                    90% {
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translateY(-100px) translateX(20px);
+                        opacity: 0;
+                    }
+                }
+
+                @keyframes statusPulse {
+                    0%, 100% { opacity: 0.5; }
+                    50% { opacity: 1; }
+                }
+
+                @keyframes dotPulse {
+                    0%, 100% {
+                        opacity: 0.3;
+                        transform: scale(1);
+                    }
+                    50% {
+                        opacity: 1;
+                        transform: scale(1.3);
+                    }
+                }
+
+                @keyframes progressShine {
+                    0% {
+                        transform: translateX(-200%);
+                    }
+                    100% {
+                        transform: translateX(300%);
+                    }
+                }
+
+                @keyframes percentGlow {
+                    0%, 100% {
+                        text-shadow:
+                            0 0 10px rgba(0, 255, 0, 1),
+                            0 0 20px rgba(0, 255, 0, 0.8),
+                            0 0 40px rgba(0, 255, 0, 0.6),
+                            0 0 80px rgba(0, 255, 0, 0.3);
+                    }
+                    50% {
+                        text-shadow:
+                            0 0 15px rgba(0, 255, 0, 1),
+                            0 0 30px rgba(0, 255, 0, 1),
+                            0 0 60px rgba(0, 255, 0, 0.8),
+                            0 0 120px rgba(0, 255, 0, 0.5);
+                    }
                 }
             </style>
         `;
 
         document.body.appendChild(this.loadingDiv);
+
+        // Track when loading started for minimum duration
+        this.loadingStartTime = Date.now();
     }
 
     updateLoadingProgress(current, total) {
@@ -1085,24 +1307,47 @@ class GameScene extends Phaser.Scene {
         }
 
         // Update status text with different messages based on progress
-        if (progressEl) {
-            if (percent < 25) {
-                progressEl.textContent = 'Preparing your adventure...';
-            } else if (percent < 50) {
-                progressEl.textContent = 'Generating biomes...';
-            } else if (percent < 75) {
-                progressEl.textContent = 'Populating the world...';
+        const statusTextEl = document.getElementById('status-text');
+        if (statusTextEl) {
+            if (percent < 20) {
+                statusTextEl.textContent = 'Awakening the realm';
+            } else if (percent < 40) {
+                statusTextEl.textContent = 'Forging landscapes';
+            } else if (percent < 60) {
+                statusTextEl.textContent = 'Summoning creatures';
+            } else if (percent < 80) {
+                statusTextEl.textContent = 'Weaving magic';
             } else if (percent < 95) {
-                progressEl.textContent = 'Almost ready...';
+                statusTextEl.textContent = 'Preparing your destiny';
             } else {
-                progressEl.textContent = 'Welcome to Klyra!';
+                statusTextEl.textContent = 'Welcome, warrior';
             }
         }
     }
 
     hideLoadingScreen() {
         if (this.loadingDiv && this.loadingDiv.parentNode) {
-            this.loadingDiv.parentNode.removeChild(this.loadingDiv);
+            // Enforce minimum loading duration of 9-10 seconds
+            const minDuration = 9000 + Math.random() * 1000; // 9-10 seconds
+            const elapsed = Date.now() - (this.loadingStartTime || 0);
+            const remainingTime = Math.max(0, minDuration - elapsed);
+
+            console.log(`⏱️ Loading screen: ${elapsed}ms elapsed, waiting ${remainingTime}ms more for cinematic experience...`);
+
+            // Fade out animation
+            setTimeout(() => {
+                if (this.loadingDiv) {
+                    this.loadingDiv.style.transition = 'opacity 1s ease-out';
+                    this.loadingDiv.style.opacity = '0';
+
+                    setTimeout(() => {
+                        if (this.loadingDiv && this.loadingDiv.parentNode) {
+                            this.loadingDiv.parentNode.removeChild(this.loadingDiv);
+                            console.log('✅ Loading screen removed');
+                        }
+                    }, 1000);
+                }
+            }, remainingTime);
         }
     }
 
@@ -2520,23 +2765,111 @@ class GameScene extends Phaser.Scene {
     }
 
     createMerchantNPC() {
-        // Place merchant inside the spawn building under the roof (top-right area)
-        const worldCenterX = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
-        const worldCenterY = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
-        const merchantX = worldCenterX + 688; // Right 4 more tiles
-        const merchantY = worldCenterY - 392; // Up 2 more tiles
+        // Try to spawn from LDtk spawn markers first
+        const spawnPos = this.findNPCSpawnPoint('merchant');
 
-        this.merchantNPC = new MerchantNPC(this, merchantX, merchantY, 'Item Merchant');
+        if (spawnPos) {
+            this.merchantNPC = new MerchantNPC(this, spawnPos.x, spawnPos.y, 'Item Merchant');
+            console.log('✅ Merchant spawned from LDtk at', spawnPos.x, spawnPos.y);
+        } else {
+            // Fallback to hardcoded position if not found in LDtk
+            const worldCenterX = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+            const worldCenterY = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+            const merchantX = worldCenterX + 688;
+            const merchantY = worldCenterY - 392;
+            this.merchantNPC = new MerchantNPC(this, merchantX, merchantY, 'Item Merchant');
+            console.log('⚠️ Merchant spawned at fallback position');
+        }
     }
 
     createSkillShopNPC() {
-        // Place skill shop inside the spawn building under the roof (top-right area)
+        // Try to spawn from LDtk spawn markers first
+        const spawnPos = this.findNPCSpawnPoint('skill_trader');
+
+        if (spawnPos) {
+            this.skillShopNPC = new SkillShopNPC(this, spawnPos.x, spawnPos.y, 'Skill Trader');
+            console.log('✅ Skill Trader spawned from LDtk at', spawnPos.x, spawnPos.y);
+        } else {
+            // Fallback to hardcoded position if not found in LDtk
+            const worldCenterX = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+            const worldCenterY = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
+            const skillShopX = worldCenterX + 232;
+            const skillShopY = worldCenterY - 392;
+            this.skillShopNPC = new SkillShopNPC(this, skillShopX, skillShopY, 'Skill Trader');
+            console.log('⚠️ Skill Trader spawned at fallback position');
+        }
+    }
+
+    /**
+     * Find NPC spawn point from LDtk IntGrid markers
+     * @param {string} npcType - 'merchant' or 'skill_trader'
+     * @returns {Object|null} {x, y} position or null if not found
+     */
+    findNPCSpawnPoint(npcType) {
+        // IntGrid values we're looking for
+        const NPC_MARKERS = {
+            'merchant': 2,      // Value 2 in IntGrid = Item Merchant
+            'skill_trader': 3   // Value 3 in IntGrid = Skill Trader
+        };
+
+        const markerValue = NPC_MARKERS[npcType];
+        if (!markerValue) return null;
+
+        // Load spawn map LDtk data
+        const spawnMapData = this.cache.json.get('spawnMapLDtk');
+        if (!spawnMapData || !spawnMapData.levels || spawnMapData.levels.length === 0) {
+            console.warn('⚠️ Spawn map LDtk data not found');
+            return null;
+        }
+
+        const level = spawnMapData.levels[0];
+
+        // Find the IntGrid layer (look for layer named "NPCs" or "Spawns" or any IntGrid layer)
+        const spawnLayer = level.layerInstances?.find(layer =>
+            layer.__type === 'IntGrid' &&
+            (layer.__identifier.toLowerCase().includes('npc') ||
+             layer.__identifier.toLowerCase().includes('spawn') ||
+             layer.intGridCsv.includes(markerValue))
+        );
+
+        if (!spawnLayer) {
+            console.warn(`⚠️ No IntGrid layer found for ${npcType}`);
+            return null;
+        }
+
+        // Get world center where spawn building is located
         const worldCenterX = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
         const worldCenterY = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
-        const skillShopX = worldCenterX + 232; // Same X position
-        const skillShopY = worldCenterY - 392; // Up 2 more tiles
 
-        this.skillShopNPC = new SkillShopNPC(this, skillShopX, skillShopY, 'Skill Trader');
+        // Calculate spawn map offset (centered on world center)
+        const mapWidth = level.pxWid;
+        const mapHeight = level.pxHei;
+        const offsetX = worldCenterX - (mapWidth / 2);
+        const offsetY = worldCenterY - (mapHeight / 2);
+
+        // Read IntGrid CSV data
+        const intGrid = spawnLayer.intGridCsv;
+        const gridWidth = spawnLayer.__cWid;
+        const gridHeight = spawnLayer.__cHei;
+        const tileSize = spawnLayer.__gridSize;
+
+        // Find the marker in the grid
+        for (let i = 0; i < intGrid.length; i++) {
+            if (intGrid[i] === markerValue) {
+                // Convert 1D index to 2D coordinates
+                const gridX = i % gridWidth;
+                const gridY = Math.floor(i / gridWidth);
+
+                // Convert to world coordinates (center of tile)
+                const worldX = offsetX + (gridX * tileSize) + (tileSize / 2);
+                const worldY = offsetY + (gridY * tileSize) + (tileSize / 2);
+
+                return { x: worldX, y: worldY };
+            }
+        }
+
+        console.warn(`⚠️ Marker ${markerValue} not found in IntGrid for ${npcType}`);
+        return null;
     }
 
     setupControls() {
@@ -2860,7 +3193,7 @@ class GameScene extends Phaser.Scene {
             'player:damaged', 'player:levelup', 'player:died',
             'enemy:spawned', 'enemy:despawned', 'enemy:damaged', 'enemy:moved', 'enemies:moved:batch', 'enemy:killed',
             'minion:spawned', 'minion:moved', 'minion:died', 'minion:damaged', 'minion:healed',
-            'item:spawned', 'item:collected', 'chat:message', 'passiveSkill:activated'
+            'item:spawned', 'item:collected', 'chat:message', 'passiveSkill:activated', 'piercingFireball:cast'
         ];
 
         eventsToClear.forEach(event => {
@@ -3901,6 +4234,35 @@ class GameScene extends Phaser.Scene {
                         }
                     }
                 }
+            }
+        });
+
+        // Piercing fireball cast by another player
+        networkManager.on('piercingFireball:cast', (data) => {
+            const { playerId, startX, startY, targetX, targetY } = data;
+
+            // Don't create duplicate fireball for local player
+            if (playerId === networkManager.currentPlayer.id) return;
+
+            console.log(`🔥 Remote player ${playerId} cast Piercing Inferno`);
+
+            // Find the remote player
+            const player = this.otherPlayers[playerId];
+            if (!player || !player.passiveSkills) {
+                console.warn(`⚠️ Player ${playerId} not found or has no passive skills`);
+                return;
+            }
+
+            // Create visual fireball (no damage)
+            const effect = player.passiveSkills.activeEffects.piercing_fireball;
+            if (effect) {
+                player.passiveSkills.createPiercingFireballProjectile(
+                    startX,
+                    startY,
+                    { x: targetX, y: targetY }, // Fake target object with just coordinates
+                    effect,
+                    false // dealDamage = false for remote players
+                );
             }
         });
 
@@ -6309,21 +6671,25 @@ class GameScene extends Phaser.Scene {
         this.cameras.main.shake(400, 0.008);
 
         // Execute ground slams
-        const explosionAnims = ['aldric_titansfury_1', 'aldric_titansfury_2', 'aldric_titansfury_3'];
-        const explosionStartFrames = [0, 98, 112];
+        // Note: aldric_titansfury animations/sounds not yet implemented
+        // const explosionAnims = ['aldric_titansfury_1', 'aldric_titansfury_2', 'aldric_titansfury_3'];
+        // const explosionStartFrames = [0, 98, 112];
 
         for (let i = 0; i < slamCount; i++) {
             this.time.delayedCall(warCryDelay + (slamInterval * i), () => {
                 console.log(`💥 Titan's Fury slam ${i + 1}/${slamCount} visual`);
 
-                // Create explosion sprite animation
-                const explosion = this.add.sprite(startX, startY, 'aldric_titansfury', explosionStartFrames[i]);
-                explosion.setDepth(9000);
-                explosion.setScale(4.0);
-                explosion.play(explosionAnims[i]);
+                // Create simple explosion circle instead of sprite animation
+                const explosionCircle = this.add.circle(startX, startY, slamRadius * 0.5, 0xFF4500, 0.6);
+                explosionCircle.setDepth(9000);
 
-                explosion.on('animationcomplete', () => {
-                    explosion.destroy();
+                this.tweens.add({
+                    targets: explosionCircle,
+                    radius: slamRadius,
+                    alpha: 0,
+                    duration: 400,
+                    ease: 'Power2',
+                    onComplete: () => explosionCircle.destroy()
                 });
 
                 // Ground impact particles
@@ -6353,10 +6719,10 @@ class GameScene extends Phaser.Scene {
                 // Camera shake
                 this.cameras.main.shake(250, 0.008);
 
-                // Play explosion sound
-                if (this.sound) {
-                    this.sound.play('aldric_titansfury', { volume: 0.5 });
-                }
+                // Play explosion sound (disabled - asset not loaded)
+                // if (this.sound) {
+                //     this.sound.play('aldric_titansfury', { volume: 0.5 });
+                // }
             });
         }
 

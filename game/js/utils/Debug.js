@@ -173,11 +173,3 @@ class Debug {
 
 // Create global instance
 window.debug = new Debug();
-
-// Quick access in console
-console.log(`✅ Debug System Loaded`);
-console.log(`   Use: debug.setLevel('DEBUG')  - Set log level`);
-console.log(`   Use: debug.setCategory('NETWORK', true)  - Toggle category`);
-console.log(`   Use: debug.enableAll()  - Enable all logging`);
-console.log(`   Use: debug.disableAll()  - Disable all logging`);
-console.log(`   Categories:`, Object.keys(window.debug.categories).join(', '));

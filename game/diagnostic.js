@@ -81,5 +81,3 @@ function runDiagnostic() {
     console.log('');
     console.log('=== END DIAGNOSTIC ===');
 }
-
-console.log('💊 Diagnostic tool loaded! Type: runDiagnostic()');

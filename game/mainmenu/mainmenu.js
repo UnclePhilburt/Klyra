@@ -42,7 +42,7 @@ class MainMenu {
         this.loadMenuMusic();
         this.loadSavedPlayerName();
         this.setupLobbyControllerNavigation();
-        this.setupControllerActivation();
+        // this.setupControllerActivation(); // Disabled - no popup needed
 
         // Auto-start music immediately (user already clicked start screen)
         // Small delay to ensure audio context is ready

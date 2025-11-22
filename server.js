@@ -4823,6 +4823,30 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle Piercing Fireball cast (broadcast to other players for animation)
+    socket.on('piercingFireball:cast', (data) => {
+        try {
+            const player = players.get(socket.id);
+            if (!player) return;
+
+            const lobby = lobbies.get(player.lobbyId);
+            if (!lobby) return;
+
+            console.log(`🔥 ${player.username} cast Piercing Fireball, broadcasting to other players`);
+
+            // Broadcast to all players in lobby (including sender, they'll filter it out)
+            lobby.broadcast('piercingFireball:cast', {
+                playerId: player.id,
+                startX: data.startX,
+                startY: data.startY,
+                targetX: data.targetX,
+                targetY: data.targetY
+            });
+        } catch (error) {
+            console.error('Error in piercingFireball:cast:', error);
+        }
+    });
+
     // Handle Malachar ability usage
     socket.on('ability:use', (data) => {
         try {

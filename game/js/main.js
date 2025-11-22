@@ -44,18 +44,7 @@ const config = {
     scene: [BootScene, MenuScene, CharacterSelectScene, LobbyScene, LoadingScene, GameScene]
 };
 
-// Verify all scenes are defined
-console.log('Scene classes check:');
-console.log('  BootScene:', typeof BootScene);
-console.log('  MenuScene:', typeof MenuScene);
-console.log('  CharacterSelectScene:', typeof CharacterSelectScene);
-console.log('  LobbyScene:', typeof LobbyScene);
-console.log('  LoadingScene:', typeof LoadingScene);
-console.log('  GameScene:', typeof GameScene);
-
 const game = new Phaser.Game(config);
-
-console.log('Game created, scenes:', game.scene.keys);
 
 // Fix for random loud sounds when refocusing window
 // Stop all sounds when losing focus, prevent queued sounds on resume
@@ -127,7 +116,7 @@ game.connect = async function(username) {
         return new Promise((resolve, reject) => {
             networkManager.on('game:start', (data) => {
                 console.log('🎮 Game started!');
-                console.log('🚀 Starting GameScene with built-in loading screen...');
+                console.log('🚀 Starting LoadingScene...');
 
                 // Stop all other scenes first
                 game.scene.stop('BootScene');
@@ -135,14 +124,14 @@ game.connect = async function(username) {
                 game.scene.stop('CharacterSelectScene');
                 game.scene.stop('LobbyScene');
 
-                // Start GameScene directly (has built-in loading screen now)
-                game.scene.start('GameScene', {
+                // Start LoadingScene (which will show logo and then launch GameScene)
+                game.scene.start('LoadingScene', {
                     username: username,
                     selectedCharacter: selectedCharacter,
                     gameData: data
                 });
 
-                console.log('✅ GameScene.start() called');
+                console.log('✅ LoadingScene.start() called');
                 resolve();
             });
 

@@ -199,9 +199,4 @@ if (typeof window !== 'undefined') {
     window.getAvailableChoices = getAvailableChoices;
     window.getBuildById = getBuildById;
     window.getBuildSummary = getBuildSummary;
-    
-    console.log('✅ Malachar Skill Tree - Bone Commander Only');
-    console.log('📊 Single Build:');
-    console.log('  • Bone Commander (Co-op + 5 Permanent Minions)');
-    console.log('🎮 Ready for gameplay!');
 }

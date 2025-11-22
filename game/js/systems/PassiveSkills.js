@@ -260,12 +260,25 @@ class PassiveSkills {
 
         // Pick random enemy as target
         const target = enemiesInRange[Math.floor(Math.random() * enemiesInRange.length)];
+        const targetX = target.sprite.x;
+        const targetY = target.sprite.y;
+
+        // Broadcast to other players so they can see the animation
+        if (window.networkManager && window.networkManager.connected) {
+            window.networkManager.socket.emit('piercingFireball:cast', {
+                startX: playerX,
+                startY: playerY,
+                targetX: targetX,
+                targetY: targetY,
+                playerId: window.networkManager.currentPlayer.id
+            });
+        }
 
         // Create piercing fireball projectile
-        this.createPiercingFireballProjectile(playerX, playerY, target, effect);
+        this.createPiercingFireballProjectile(playerX, playerY, target, effect, true);
     }
 
-    createPiercingFireballProjectile(startX, startY, initialTarget, effect) {
+    createPiercingFireballProjectile(startX, startY, initialTarget, effect, dealDamage = true) {
         // Play cast sound locally
         if (this.scene.sound) {
             this.scene.sound.play('piercing_inferno_cast', { volume: 0.35 });
@@ -277,8 +290,8 @@ class PassiveSkills {
         }
 
         // Calculate direction to target first
-        const targetX = initialTarget.sprite.x;
-        const targetY = initialTarget.sprite.y;
+        const targetX = initialTarget.sprite ? initialTarget.sprite.x : initialTarget.x;
+        const targetY = initialTarget.sprite ? initialTarget.sprite.y : initialTarget.y;
         const angle = Phaser.Math.Angle.Between(startX, startY, targetX, targetY);
 
         // Create fireball sprite with animation
@@ -330,63 +343,66 @@ class PassiveSkills {
                 trail.x = fireball.x - Math.cos(angle) * 12;
                 trail.y = fireball.y - Math.sin(angle) * 12;
 
-                // Check for collisions with enemies (only if we haven't maxed out yet)
-                if (pierceCount >= effect.maxPierces) {
-                    // Max pierces reached, mark for destruction
-                    fireball.shouldDestroy = true;
-                    return;
-                }
-
-                // Get all enemies
-                const allEnemies = [];
-                if (this.scene.swordDemons) allEnemies.push(...Object.values(this.scene.swordDemons));
-                if (this.scene.minotaurs) allEnemies.push(...Object.values(this.scene.minotaurs));
-                if (this.scene.mushrooms) allEnemies.push(...Object.values(this.scene.mushrooms));
-                if (this.scene.emberclaws) allEnemies.push(...Object.values(this.scene.emberclaws));
-
-                // Check collision with each enemy
-                allEnemies.forEach(enemy => {
-                    if (!enemy || !enemy.sprite || !enemy.isAlive) return;
-
-                    const enemyId = enemy.data?.id || enemy.id;
-                    if (piercedEnemies.includes(enemyId)) return; // Already hit
-
-                    // Check distance to fireball
-                    const dist = Phaser.Math.Distance.Between(
-                        fireball.x, fireball.y,
-                        enemy.sprite.x, enemy.sprite.y
-                    );
-
-                    // Collision radius (fireball + enemy hitbox)
-                    if (dist < 25) {
-                        // Hit!
-                        piercedEnemies.push(enemyId);
-                        pierceCount++;
-                        this.damageEnemy(enemyId, effect.damage);
-
-                        // Play impact sound locally
-                        if (this.scene.sound) {
-                            this.scene.sound.play('piercing_inferno', { volume: 0.3 });
-                        }
-
-                        // Broadcast to other players
-                        if (window.networkManager && window.networkManager.connected) {
-                            window.networkManager.playSkillSound('piercing_inferno', { x: enemy.sprite.x, y: enemy.sprite.y });
-                        }
-
-                        // Create hit effect
-                        const hitEffect = this.scene.add.circle(enemy.sprite.x, enemy.sprite.y, 15, 0xff4400, 0.8);
-                        hitEffect.setDepth(10001);
-                        this.scene.tweens.add({
-                            targets: hitEffect,
-                            scaleX: 2,
-                            scaleY: 2,
-                            alpha: 0,
-                            duration: 300,
-                            onComplete: () => hitEffect.destroy()
-                        });
+                // Only check collisions and deal damage if this is the local player's fireball
+                if (dealDamage) {
+                    // Check for collisions with enemies (only if we haven't maxed out yet)
+                    if (pierceCount >= effect.maxPierces) {
+                        // Max pierces reached, mark for destruction
+                        fireball.shouldDestroy = true;
+                        return;
                     }
-                });
+
+                    // Get all enemies
+                    const allEnemies = [];
+                    if (this.scene.swordDemons) allEnemies.push(...Object.values(this.scene.swordDemons));
+                    if (this.scene.minotaurs) allEnemies.push(...Object.values(this.scene.minotaurs));
+                    if (this.scene.mushrooms) allEnemies.push(...Object.values(this.scene.mushrooms));
+                    if (this.scene.emberclaws) allEnemies.push(...Object.values(this.scene.emberclaws));
+
+                    // Check collision with each enemy
+                    allEnemies.forEach(enemy => {
+                        if (!enemy || !enemy.sprite || !enemy.isAlive) return;
+
+                        const enemyId = enemy.data?.id || enemy.id;
+                        if (piercedEnemies.includes(enemyId)) return; // Already hit
+
+                        // Check distance to fireball
+                        const dist = Phaser.Math.Distance.Between(
+                            fireball.x, fireball.y,
+                            enemy.sprite.x, enemy.sprite.y
+                        );
+
+                        // Collision radius (fireball + enemy hitbox)
+                        if (dist < 25) {
+                            // Hit!
+                            piercedEnemies.push(enemyId);
+                            pierceCount++;
+                            this.damageEnemy(enemyId, effect.damage);
+
+                            // Play impact sound locally
+                            if (this.scene.sound) {
+                                this.scene.sound.play('piercing_inferno', { volume: 0.3 });
+                            }
+
+                            // Broadcast to other players
+                            if (window.networkManager && window.networkManager.connected) {
+                                window.networkManager.playSkillSound('piercing_inferno', { x: enemy.sprite.x, y: enemy.sprite.y });
+                            }
+
+                            // Create hit effect
+                            const hitEffect = this.scene.add.circle(enemy.sprite.x, enemy.sprite.y, 15, 0xff4400, 0.8);
+                            hitEffect.setDepth(10001);
+                            this.scene.tweens.add({
+                                targets: hitEffect,
+                                scaleX: 2,
+                                scaleY: 2,
+                                alpha: 0,
+                                duration: 300,
+                                onComplete: () => hitEffect.destroy()
+                            });
+                        }
+                    });
+                }
             },
             onComplete: () => {
                 // Destroy fireball when it reaches end (check if still active)

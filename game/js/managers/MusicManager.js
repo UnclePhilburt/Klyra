@@ -27,8 +27,6 @@ class MusicManager {
 
     // Load all music files
     static preload(scene) {
-        console.log('🎵 Loading music files...');
-
         // Menu music
         scene.load.audio('poltergeist', 'assets/music/poltergeist-and-a-piano.mp3');
 
@@ -44,8 +42,6 @@ class MusicManager {
         scene.load.audio('julia', 'assets/music/julia.mp3');
         scene.load.audio('lady-of-80s', 'assets/music/lady-of-the-80s.mp3');
         scene.load.audio('return-to-8-bit', 'assets/music/return-to-the-8-bit.mp3');
-
-        console.log('✅ Queued 12 music tracks for loading');
     }
 
     // Play menu music

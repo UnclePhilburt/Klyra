@@ -1630,27 +1630,28 @@ class AbilityManager {
         this.scene.cameras.main.shake(400, 0.008);
 
         // Execute ground slams AFTER war cry delay (500ms + interval between each)
-        // Each slam uses a different explosion animation
-        const explosionAnims = ['aldric_titansfury_1', 'aldric_titansfury_2', 'aldric_titansfury_3'];
-        const explosionStartFrames = [0, 98, 112]; // Starting frame for each animation
+        // Note: aldric_titansfury animations/sounds not yet implemented
+        // const explosionAnims = ['aldric_titansfury_1', 'aldric_titansfury_2', 'aldric_titansfury_3'];
+        // const explosionStartFrames = [0, 98, 112]; // Starting frame for each animation
 
         for (let i = 0; i < slamCount; i++) {
             this.scene.time.delayedCall(warCryDelay + (slamInterval * i), () => {
-                console.log(`💥 Titan's Fury slam ${i + 1}/${slamCount} - Using ${explosionAnims[i]}`);
+                console.log(`💥 Titan's Fury slam ${i + 1}/${slamCount}`);
 
-                // Create explosion sprite animation centered on player
-                // Use different animation for each slam (1st, 2nd, 3rd)
-                const explosion = this.scene.add.sprite(startX, startY, 'aldric_titansfury', explosionStartFrames[i]);
-                explosion.setDepth(9000);
-                explosion.setScale(4.0); // Scale up for large AoE effect (64px -> 256px radius)
-                explosion.play(explosionAnims[i]);
+                // Create simple explosion circle instead of sprite animation
+                const explosionCircle = this.scene.add.circle(startX, startY, slamRadius * 0.5, 0xFF4500, 0.6);
+                explosionCircle.setDepth(9000);
 
-                // Auto-destroy when animation completes
-                explosion.on('animationcomplete', () => {
-                    explosion.destroy();
+                this.scene.tweens.add({
+                    targets: explosionCircle,
+                    radius: slamRadius,
+                    alpha: 0,
+                    duration: 400,
+                    ease: 'Power2',
+                    onComplete: () => explosionCircle.destroy()
                 });
 
-                // Ground impact particles for each slam (fewer particles since we have sprite)
+                // Ground impact particles for each slam
                 for (let j = 0; j < 12; j++) {
                     const angle = (Math.PI * 2 / 12) * j;
                     const particle = this.scene.add.circle(
@@ -1677,18 +1678,9 @@ class AbilityManager {
                 // Camera shake for each slam
                 this.scene.cameras.main.shake(250, 0.008);
 
-                // Play explosion sound (Titan's Fury slam)
-                if (this.scene.sound) {
-                    try {
-                        this.scene.sound.play('aldric_titansfury', { volume: 0.5 });
-                        console.log(`🔊 Playing Titan's Fury explosion sound for slam ${i + 1}`);
-                    } catch (error) {
-                        console.warn('⚠️ Titan\'s Fury sound not loaded, using fallback');
-                        // Fallback to punch sound if titansfury not loaded
-                        if (this.scene.sound.get('hit_punch_1')) {
-                            this.scene.sound.play('hit_punch_1', { volume: 0.4, rate: 0.9 });
-                        }
-                    }
+                // Play explosion sound - using fallback
+                if (this.scene.sound && this.scene.sound.get('hit_punch_1')) {
+                    this.scene.sound.play('hit_punch_1', { volume: 0.4, rate: 0.9 });
                 }
 
                 // Damage is calculated server-side

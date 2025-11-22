@@ -18,12 +18,6 @@ class MobileOptimizer {
         if (this.isMobile) {
             this.init();
         }
-
-        console.log('📱 MobileOptimizer initialized:', {
-            isMobile: this.isMobile,
-            isLowEnd: this.isLowEnd,
-            settings: this.settings
-        });
     }
 
     detectMobile() {

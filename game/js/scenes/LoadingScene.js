@@ -4,7 +4,6 @@
 class LoadingScene extends Phaser.Scene {
     constructor() {
         super({ key: 'LoadingScene' });
-        console.log('🎬 LoadingScene constructor called');
     }
 
     init(data) {
@@ -17,14 +16,56 @@ class LoadingScene extends Phaser.Scene {
 
     create() {
         console.log('🎬 LoadingScene create() called');
-        console.log('🎬 Camera size:', this.cameras.main.width, 'x', this.cameras.main.height);
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
+
+        // Get dimensions from canvas element
+        const canvas = this.game.canvas;
+        const width = canvas.width || window.innerWidth;
+        const height = canvas.height || window.innerHeight;
+
+        console.log('🎬 Canvas size:', width, 'x', height);
+        console.log('🔍 Logo texture exists:', this.textures.exists('logo'));
+        console.log('🔍 Logo sound exists:', this.cache.audio.exists('logo_sound'));
 
         // Create black background
         const bg = this.add.rectangle(width / 2, height / 2, width, height, 0x000000);
         bg.setDepth(10000); // Very high depth to be on top
         console.log('  Background created:', bg);
+
+        // Add logo image
+        if (this.textures.exists('logo')) {
+            try {
+                console.log('🖼️ Creating logo image...');
+                this.logo = this.add.image(width / 2, height / 2 - 150, 'logo');
+                this.logo.setOrigin(0.5);
+                this.logo.setDepth(100000); // Very high depth to ensure it's on top
+                this.logo.setAlpha(1); // Ensure it's fully visible
+                this.logo.setVisible(true); // Ensure visibility is on
+
+                // Scale logo to fit screen nicely (max 400px wide)
+                const maxWidth = 400;
+                if (this.logo.width > maxWidth) {
+                    const scale = maxWidth / this.logo.width;
+                    this.logo.setScale(scale);
+                }
+
+                // Make sure it's not scrolling with camera
+                this.logo.setScrollFactor(0);
+
+                console.log('✅ Logo created:', this.logo.width, 'x', this.logo.height, 'at position', this.logo.x, this.logo.y, 'depth:', this.logo.depth);
+            } catch (error) {
+                console.error('❌ Failed to create logo image:', error);
+            }
+        } else {
+            console.error('❌ Logo texture not found in cache!');
+        }
+
+        // Play logo sound
+        if (this.sound && this.cache.audio.exists('logo_sound')) {
+            this.sound.play('logo_sound', { volume: 0.21 });
+            console.log('🔊 Logo sound playing at 21% volume');
+        } else {
+            console.error('❌ Logo sound not found in cache!');
+        }
 
         // Loading title
         this.loadingText = this.add.text(width / 2, height / 2 - 60, 'LOADING WORLD', {

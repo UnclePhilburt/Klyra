@@ -156,8 +156,3 @@ window.debugMinionRoles = function() {
     });
     console.log('========================\n');
 };
-
-console.log('✅ Minion Debug loaded');
-console.log('   debugMinions() - Full formation analysis');
-console.log('   debugMinionRoles() - Quick role check');
-console.log('   debugFormationCalc() - Force calculate formations NOW');

@@ -178,27 +178,17 @@ class BootScene extends Phaser.Scene {
             margin: 0
         });
 
-        console.log('📦 Loading sprite: kelise from assets/sprites/Kelise.png');
-        console.log('📦 Loading Malachar animations:');
-        console.log('  - Idle (10 frames)');
-        console.log('  - Walk (8 frames)');
-        console.log('  - Attack (13 frames)');
-        console.log('  - Death (18 frames)');
-        console.log('📦 Loading sprite: malacharminion from assets/sprites/malacharminion.png');
-
         // Load bone commander auto-attack aura (9 frames, 64x64px each)
         this.load.spritesheet('autoattackbonecommander', 'assets/sprites/malachar/autoattackbonecommander.png', {
             frameWidth: 64,
             frameHeight: 64
         });
-        console.log('📦 Loading sprite: autoattackbonecommander (bone commander aura)');
 
         // Load blood damage sprite sheet (124x124px frames)
         this.load.spritesheet('blood', 'assets/sprites/blood.png', {
             frameWidth: 124,
             frameHeight: 124
         });
-        console.log('📦 Loading sprite: blood (damage effects)');
 
         // Load blood splash animations (48x48px, 4x4 grid = 16 frames each)
         this.load.spritesheet('blood_splash_1', 'assets/sprites/Blood Animations/Blood Splash/Blood Splash 1.png', {
@@ -213,14 +203,12 @@ class BootScene extends Phaser.Scene {
             frameWidth: 48,
             frameHeight: 48
         });
-        console.log('📦 Loading sprites: blood_splash_1, blood_splash_2, blood_splash_3 (gore effects)');
 
         // Load Legion's Call ability effect (row 3, 9 frames, 64x64px each)
         this.load.spritesheet('legionscall', 'assets/sprites/malachar/legionscall.png', {
             frameWidth: 64,
             frameHeight: 64
         });
-        console.log('📦 Loading sprite: legionscall (Legion\'s Call R ability)');
 
         // Load fire sprites for Pact of Bones (32x32px, 8 frames each, 0-7)
         const fireSprites = ['4-2', '4-4', '4-5', '5-1', '5-2', '5-4', '5-5', '6-1', '6-2', '6-4', '6-5', '7-1', '7-2', '7-4', '7-5'];
@@ -230,26 +218,42 @@ class BootScene extends Phaser.Scene {
                 frameHeight: 32
             });
         });
-        console.log(`📦 Loading ${fireSprites.length} fire sprites (Pact of Bones effect)`);
 
         // Load music files
         MusicManager.preload(this);
+
+        // Load logo
+        this.load.image('logo', 'assets/logo.png');
+        this.load.audio('logo_sound', 'assets/soundeffects/logo.mp3');
+
+        // Load tilesets for LDtk chunks as spritesheets (using exact filenames as keys for BiomeChunkSystem)
+        this.load.spritesheet('!$Glowing_tree', 'assets/tilesets/!$Glowing_tree.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('a1_water_green', 'assets/tilesets/a1_water_green.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('A4 - Walls', 'assets/tilesets/A4 - Walls.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('A3 - Walls And Floors', 'assets/tilesets/A3 - Walls And Floors.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('Fantasy_Outside_B', 'assets/tilesets/Fantasy_Outside_B.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('Fantasy_Roofs', 'assets/tilesets/Fantasy_Roofs.png', { frameWidth: 48, frameHeight: 48 });
+
+        // Also load with mapped keys for LDtkLoader compatibility
+        this.load.spritesheet('glowing_tree', 'assets/tilesets/!$Glowing_tree.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('water_green', 'assets/tilesets/a1_water_green.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('walls', 'assets/tilesets/A4 - Walls.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('walls_floors', 'assets/tilesets/A3 - Walls And Floors.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('fantasy_outside_b', 'assets/tilesets/Fantasy_Outside_B.png', { frameWidth: 48, frameHeight: 48 });
+        this.load.spritesheet('fantasy_roofs', 'assets/tilesets/Fantasy_Roofs.png', { frameWidth: 48, frameHeight: 48 });
 
         // Load footstep sound effects
         this.load.audio('footstep1', 'assets/soundeffects/digital_footstep_grass_1.wav');
         this.load.audio('footstep2', 'assets/soundeffects/digital_footstep_grass_2.wav');
         this.load.audio('footstep3', 'assets/soundeffects/digital_footstep_grass_3.wav');
         this.load.audio('footstep4', 'assets/soundeffects/digital_footstep_grass_4.wav');
-        console.log('📦 Loading footstep sounds (4 variations)');
 
         // Load UI sound effects
         this.load.audio('ui_cursor', 'assets/soundeffects/JDSherbert - Ultimate UI SFX Pack - Cursor - 1.mp3');
         this.load.audio('ui_select', 'assets/soundeffects/JDSherbert - Ultimate UI SFX Pack - Select - 1.mp3');
-        console.log('📦 Loading UI sounds (cursor hover, select click)');
 
         // Load attack sound effects
         this.load.audio('swipe', 'assets/soundeffects/swipe.wav');
-        console.log('📦 Loading attack sound: swipe');
 
         // Load death sound effects
         this.load.audio('death_bone_snap', 'assets/soundeffects/deathsounds/bone_snap.wav');
@@ -267,21 +271,17 @@ class BootScene extends Phaser.Scene {
         this.load.audio('death_squelch_2', 'assets/soundeffects/deathsounds/squelching_2.wav');
         this.load.audio('death_squelch_3', 'assets/soundeffects/deathsounds/squelching_3.wav');
         this.load.audio('death_squelch_4', 'assets/soundeffects/deathsounds/squelching_4.wav');
-        console.log('📦 Loading death sounds (15 variations)');
 
         // Load minion attack sound
         this.load.audio('minion_punch', 'assets/soundeffects/punch.wav');
-        console.log('📦 Loading minion attack sound');
 
         // Load skill sound effects
         this.load.audio('meteor_explosion', 'assets/sprites/skills/sounds/meteorexplosion.mp3');
         this.load.audio('piercing_inferno', 'assets/sprites/skills/sounds/piercinginferno.mp3');
         this.load.audio('piercing_inferno_cast', 'assets/sprites/skills/sounds/piercinginfernocast.mp3');
-        console.log('📦 Loading skill sounds (meteor explosion, piercing inferno)');
 
         // Load soul collection sound effect
         this.load.audio('soulcollect', 'assets/soundeffects/soulcollect.mp3');
-        console.log('👻 Loading soul collection sound');
 
         // Load butterfly sprites (16x16, 5 frames each)
         this.load.spritesheet('butterfly_blue', 'assets/sprites/Butterfly/Blue.png', {
@@ -308,23 +308,19 @@ class BootScene extends Phaser.Scene {
             frameWidth: 16,
             frameHeight: 16
         });
-        console.log('🦋 Loading butterfly sprites (6 variations)');
 
         // Load bird sprite (16x16, row 1 frames 0-7)
         this.load.spritesheet('bird', 'assets/sprites/Bird/Bird/Spritesheet/Bird Spritesheet.png', {
             frameWidth: 16,
             frameHeight: 16
         });
-        console.log('🐦 Loading bird sprite');
 
         // Load minion explosion sound (Pact of Bones ability)
         this.load.audio('minionexplosion', 'assets/soundeffects/minionexplosion.mp3');
-        console.log('📦 Loading minion explosion sound');
 
         // Load orb collection and level up sounds
         this.load.audio('orbcollect', 'assets/soundeffects/orbcollect.mp3');
         this.load.audio('levelup', 'assets/soundeffects/levelup.mp3');
-        console.log('📦 Loading orb collection and level up sounds');
 
         // Load Aldric attack sounds
         this.load.audio('aldric_attack1', 'assets/soundeffects/aldrick/attack1.mp3');
@@ -332,14 +328,12 @@ class BootScene extends Phaser.Scene {
         this.load.audio('aldric_attack3', 'assets/soundeffects/aldrick/attack3.mp3');
         this.load.audio('aldric_shockwave', 'assets/soundeffects/aldrick/shockwave.mp3');
         this.load.audio('aldric_warcry', 'assets/soundeffects/aldrick/warcry.mp3');
-        console.log('📦 Loading Aldric attack sounds (3 variations + shockwave + warcry)');
 
         // Load potions sprite sheet (16x16px, 14 frames per row)
         this.load.spritesheet('potions', 'assets/sprites/potions.png', {
             frameWidth: 16,
             frameHeight: 16
         });
-        console.log('📦 Loading potions sprite sheet (for XP orbs)');
 
         // Load NPC sprites (32x32px individual frames)
         // Merchant NPC (4 frames)
@@ -347,55 +341,45 @@ class BootScene extends Phaser.Scene {
         this.load.image('merchant_2', 'assets/sprites/merchant/2.png');
         this.load.image('merchant_3', 'assets/sprites/merchant/3.png');
         this.load.image('merchant_4', 'assets/sprites/merchant/4.png');
-        console.log('📦 Loading merchant NPC sprites (4 frames)');
 
         // Skill Merchant NPC (4 frames)
         this.load.image('skillmerchant_1', 'assets/sprites/skillmerchant/1.png');
         this.load.image('skillmerchant_2', 'assets/sprites/skillmerchant/2.png');
         this.load.image('skillmerchant_3', 'assets/sprites/skillmerchant/3.png');
         this.load.image('skillmerchant_4', 'assets/sprites/skillmerchant/4.png');
-        console.log('📦 Loading skill merchant NPC sprites (4 frames)');
 
         // Merchant items sprite sheet (potions, etc)
         this.load.spritesheet('merchantitems', 'assets/sprites/merchantitems/potions.png', {
             frameWidth: 16,
             frameHeight: 16
         });
-        console.log('📦 Loading merchant items sprite sheet');
 
         // Souls sprite sheet (currency)
         this.load.spritesheet('souls', 'assets/sprites/ExtraCharacters/Items/Items/Magic/4.png', {
             frameWidth: 32,
             frameHeight: 32
         });
-        console.log('👻 Loading souls sprite sheet');
 
         // Load passive skill sprites
         this.load.image('chads_shield', 'assets/sprites/skills/pic/Chad\'s Shield.png');
-        console.log('📦 Loading Chad\'s Shield sprite (passive skill)');
 
         // Load Meteor Storm sprite sheet (64x64 frames, row 0 tiles 0-9)
         this.load.spritesheet('meteorstorm', 'assets/sprites/skills/pic/meteorstormrow1.png', {
             frameWidth: 64,
             frameHeight: 64
         });
-        console.log('📦 Loading Meteor Storm sprite sheet (passive skill)');
 
         // Load Burning Aura sprite sheet (64x64 frames, row 7 tiles 98-111)
         this.load.spritesheet('burningaura', 'assets/sprites/skills/pic/Burningaurarow7.png', {
             frameWidth: 64,
             frameHeight: 64
         });
-        console.log('📦 Loading Burning Aura sprite sheet (passive skill)');
 
         // Load Piercing Flame sprite sheet (64x64 frames, row 2 tiles 24-35)
         this.load.spritesheet('piercingflame', 'assets/sprites/skills/pic/piercingflamerow2.png', {
             frameWidth: 64,
             frameHeight: 64
         });
-        console.log('📦 Loading Piercing Flame sprite sheet (passive skill)');
-
-        console.log('✅ Loaded character sprites: kelise, malachar');
     }
 
     async create() {
@@ -430,8 +414,6 @@ class BootScene extends Phaser.Scene {
             repeat: 0
         });
 
-        console.log('✅ Created Kelise animations: idle (0-1), running (24-31), attack (64-71), death (56-63)');
-
         // Create Malachar animations (1x1 character with 140x140 frames)
         this.anims.create({
             key: 'malachar_idle',
@@ -460,8 +442,6 @@ class BootScene extends Phaser.Scene {
             frameRate: 10,
             repeat: 0
         });
-
-        console.log('✅ Created Malachar animations: idle (10 frames), walk (8 frames), attack (13 frames), death (18 frames)');
 
         // Create Aldric animations (1x1 character with varying frame sizes)
         this.anims.create({

@@ -53,18 +53,14 @@ class CharacterSelectManager {
         
         // Setup event listeners
         this.setupEventListeners();
-        
-        console.log('✅ Character Select Manager initialized');
     }
 
     loadCharacterDefinitions() {
         // Characters are loaded from characters/index.js which sets window.CharacterSystem.CHARACTERS
         if (window.CharacterSystem && window.CharacterSystem.CHARACTERS) {
             this.characters = window.CharacterSystem.CHARACTERS;
-            console.log('✅ Character definitions loaded:', Object.keys(this.characters).length, 'characters');
         } else {
             console.error('❌ Character definitions not found!');
-            console.log('⏳ Retrying in 100ms...');
             // Retry after a short delay in case modules are still loading
             setTimeout(() => this.loadCharacterDefinitions(), 100);
             this.characters = {};
@@ -73,10 +69,6 @@ class CharacterSelectManager {
 
     setProgressionSystem(progressionSystem) {
         this.progressionSystem = progressionSystem;
-        console.log('✅ Progression system connected to character select', {
-            hasProgressionSystem: !!this.progressionSystem,
-            selectedChar: this.progressionSystem?.getSelectedCharacter()
-        });
         this.updateSelectedCharacterDisplay();
     }
 
@@ -164,17 +156,6 @@ class CharacterSelectManager {
             
             this.musicVolume.addEventListener('input', updateVolume);
             this.musicVolume.addEventListener('change', updateVolume);
-            
-            console.log('✅ Volume bar initialized:', {
-                slider: !!this.musicVolume,
-                bar: !!this.volumeBar,
-                currentValue: this.musicVolume.value
-            });
-        } else {
-            console.warn('⚠️ Volume elements not found:', {
-                slider: !!this.musicVolume,
-                bar: !!this.volumeBar
-            });
         }
     }
 
@@ -251,10 +232,10 @@ class CharacterSelectManager {
 
     updateVolumeBar(volume) {
         if (!this.volumeBar) return;
-        
+
         const segments = this.volumeBar.children;
         const filledSegments = Math.floor(volume / 10); // 0-100 -> 0-10 segments
-        
+
         for (let i = 0; i < segments.length; i++) {
             if (i < filledSegments) {
                 // Filled segment - bright purple/pink
@@ -264,8 +245,6 @@ class CharacterSelectManager {
                 segments[i].style.background = '#2C1B47';
             }
         }
-        
-        console.log('🔊 Volume bar updated:', filledSegments + '/10 segments');
     }
 
     setMusicVolume(volume) {

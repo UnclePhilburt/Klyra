@@ -263,6 +263,12 @@ class NetworkManager {
             console.log(`🛡️ Socket received passiveSkill:activated from server:`, data);
             this.emit('passiveSkill:activated', data);
         });
+
+        // Piercing fireball cast
+        this.socket.on('piercingFireball:cast', (data) => {
+            console.log(`🔥 Socket received piercingFireball:cast from server:`, data);
+            this.emit('piercingFireball:cast', data);
+        });
     }
 
     // Send player join
