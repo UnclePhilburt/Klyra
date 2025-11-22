@@ -417,9 +417,6 @@ class BiomeChunkSystem {
                             this.scene.updateLoadingProgress(loadedCount, totalChunks);
                         }
 
-                        if (loadedCount % 5 === 0 || loadedCount === totalChunks) {
-                            console.log(`   Loading chunks: ${loadedCount}/${totalChunks} (${percent}%)`);
-                        }
                         resolve();
                     });
                 });
