@@ -55,10 +55,17 @@ class LDtkLoader {
 
                 // Check if this layer needs collision (doc field is in layer definition, not instance)
                 const layerDef = ldtkData.defs.layers.find(l => l.uid === layer.layerDefUid);
-                const hasCollision = layerDef && layerDef.doc && layerDef.doc.toLowerCase().includes('collision');
+                const hasCollision = layerDef && layerDef.doc && (
+                    layerDef.doc.toLowerCase().includes('collision') ||
+                    layerDef.doc.toLowerCase().includes('water')
+                );
                 const isRoof = layerDef && layerDef.doc && layerDef.doc.toLowerCase().includes('roof');
+                const isWater = layerDef && layerDef.doc && layerDef.doc.toLowerCase().includes('water');
                 if (hasCollision) {
                     console.log(`   🛡️ Layer has collision enabled`);
+                }
+                if (isWater) {
+                    console.log(`   💧 Layer is water (players cannot walk on it)`);
                 }
                 if (isRoof) {
                     console.log(`   🏠 Layer is a roof (will become transparent when player walks under)`);
