@@ -939,10 +939,12 @@ class GameScene extends Phaser.Scene {
         this.createUI();
 
         // Create dark overlay for when player is under roof (blackout rest of world)
-        this.roofDarkOverlay = this.add.rectangle(0, 0, 10000, 10000, 0x000000, 0);
-        this.roofDarkOverlay.setOrigin(0, 0);
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        this.roofDarkOverlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0);
+        this.roofDarkOverlay.setOrigin(0.5, 0.5);
         this.roofDarkOverlay.setScrollFactor(0); // Fixed to camera
-        this.roofDarkOverlay.setDepth(900); // Above world, below UI
+        this.roofDarkOverlay.setDepth(10000); // Above everything except UI
         console.log('🌑 Dark overlay created for roof interior effect');
 
         // Setup controls
@@ -5183,7 +5185,7 @@ class GameScene extends Phaser.Scene {
                     }
 
                     // Smoothly transition alpha
-                    const targetAlpha = isUnderRoof ? 0.3 : 1.0;
+                    const targetAlpha = isUnderRoof ? 0.0 : 1.0; // Fully transparent when under roof
 
                     // Set alpha on both container AND blitter
                     if (roofContainer.blitter) {
