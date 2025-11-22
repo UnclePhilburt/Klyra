@@ -5138,18 +5138,22 @@ class GameScene extends Phaser.Scene {
             const playerX = this.localPlayer.sprite.x;
 
             this.spawnRoofLayers.forEach(roofContainer => {
-                // Check if player is in the vertical range of this roof (under it)
-                // Roofs are above players, so we check if player Y is greater than roof Y
-                const roofY = roofContainer.y;
-                const roofHeight = this.spawnMapData.size.height;
+                // Use the actual roof tile bounds if available
+                if (roofContainer.roofBounds) {
+                    const bounds = roofContainer.roofBounds;
 
-                // Player is "under" the roof if they're in the building area
-                const isUnderRoof = playerY > roofY && playerY < (roofY + roofHeight);
+                    // Player is "under" the roof if they're inside the roof tile bounds
+                    const isUnderRoof =
+                        playerX >= bounds.x &&
+                        playerX <= (bounds.x + bounds.width) &&
+                        playerY >= bounds.y &&
+                        playerY <= (bounds.y + bounds.height);
 
-                // Smoothly transition alpha
-                const targetAlpha = isUnderRoof ? 0.3 : 1.0;
-                const currentAlpha = roofContainer.alpha;
-                roofContainer.alpha = Phaser.Math.Linear(currentAlpha, targetAlpha, 0.1);
+                    // Smoothly transition alpha
+                    const targetAlpha = isUnderRoof ? 0.3 : 1.0;
+                    const currentAlpha = roofContainer.alpha;
+                    roofContainer.alpha = Phaser.Math.Linear(currentAlpha, targetAlpha, 0.1);
+                }
             });
         }
 

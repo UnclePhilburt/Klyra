@@ -162,6 +162,35 @@ class LDtkLoader {
 
                     // Track roof layers for transparency
                     if (isRoof) {
+                        container.alpha = 1.0; // Start fully visible
+                        console.log(`   🏠 Setting up roof layer with ${allTiles.length} tiles`);
+
+                        // Calculate the bounding box of roof tiles
+                        let minX = Infinity, minY = Infinity;
+                        let maxX = -Infinity, maxY = -Infinity;
+
+                        allTiles.forEach(tile => {
+                            const tileX = tile.px[0];
+                            const tileY = tile.px[1];
+                            const tileSize = tileset.tileGridSize;
+
+                            minX = Math.min(minX, tileX);
+                            minY = Math.min(minY, tileY);
+                            maxX = Math.max(maxX, tileX + tileSize);
+                            maxY = Math.max(maxY, tileY + tileSize);
+                        });
+
+                        // Store roof bounds in world coordinates
+                        container.roofBounds = {
+                            x: offsetX + minX,
+                            y: offsetY + minY,
+                            width: maxX - minX,
+                            height: maxY - minY
+                        };
+
+                        console.log(`   📏 Roof bounds: x=${container.roofBounds.x}, y=${container.roofBounds.y}, w=${container.roofBounds.width}, h=${container.roofBounds.height}`);
+                        console.log(`   🎨 Roof alpha: ${container.alpha}, depth: ${container.depth}`);
+
                         roofLayers.push(container);
                     }
 
