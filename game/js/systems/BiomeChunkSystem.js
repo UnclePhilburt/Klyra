@@ -100,8 +100,6 @@ class BiomeChunkSystem {
         const variantIndex = Math.floor(this.seededRandom(seed) * variants.length);
         const chunkKey = variants[variantIndex];
 
-        console.log(`📦 Loading ${biome} chunk at (${chunkX},${chunkY}) - variant: ${chunkKey}`);
-
         // Mark as loading
         this.loadingChunks.add(key);
 
@@ -109,7 +107,6 @@ class BiomeChunkSystem {
         if (!this.scene.cache.json.exists(chunkKey)) {
             // Load chunk file
             const filePath = this.getChunkFilePath(biome, variantIndex + 1);
-            console.log(`   Fetching: ${filePath}`);
 
             fetch(filePath)
                 .then(response => {
