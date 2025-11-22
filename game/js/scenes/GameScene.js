@@ -2622,8 +2622,8 @@ class GameScene extends Phaser.Scene {
         // Place merchant inside the spawn building under the roof (top-right area)
         const worldCenterX = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
         const worldCenterY = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
-        const merchantX = worldCenterX + 400; // Right side of the building, under roof
-        const merchantY = worldCenterY - 200; // North side, under roof
+        const merchantX = worldCenterX + 560; // Right 5 tiles from original position
+        const merchantY = worldCenterY - 328; // Up 4 tiles from original position
 
         this.merchantNPC = new MerchantNPC(this, merchantX, merchantY, 'Item Merchant');
         console.log('🛒 Item Merchant NPC created inside spawn building');
@@ -2633,8 +2633,8 @@ class GameScene extends Phaser.Scene {
         // Place skill shop inside the spawn building under the roof (top-right area)
         const worldCenterX = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
         const worldCenterY = (this.gameData.world.size / 2) * GameConfig.GAME.TILE_SIZE;
-        const skillShopX = worldCenterX + 200; // Center-right of the building, under roof
-        const skillShopY = worldCenterY - 200; // North side, under roof
+        const skillShopX = worldCenterX + 232; // Right 1 tile from original position
+        const skillShopY = worldCenterY - 328; // Up 4 tiles from original position
 
         this.skillShopNPC = new SkillShopNPC(this, skillShopX, skillShopY, 'Skill Trader');
         console.log('🛍️ Skill Shop NPC created inside spawn building');
