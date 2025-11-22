@@ -946,6 +946,11 @@ class GameScene extends Phaser.Scene {
         this.roofDarkOverlay.setScrollFactor(0); // Fixed to camera
         this.roofDarkOverlay.setDepth(10000); // Above everything except UI
         console.log('🌑 Dark overlay created for roof interior effect');
+        console.log(`   Position: (${this.roofDarkOverlay.x}, ${this.roofDarkOverlay.y})`);
+        console.log(`   Size: ${this.roofDarkOverlay.width}x${this.roofDarkOverlay.height}`);
+        console.log(`   Depth: ${this.roofDarkOverlay.depth}`);
+        console.log(`   Alpha: ${this.roofDarkOverlay.alpha}`);
+        console.log(`   Visible: ${this.roofDarkOverlay.visible}`);
 
         // Setup controls
         this.setupControls();
@@ -5204,7 +5209,18 @@ class GameScene extends Phaser.Scene {
             if (this.roofDarkOverlay) {
                 const targetOverlayAlpha = playerUnderAnyRoof ? 0.5 : 0; // 50% dark when under roof
                 const currentOverlayAlpha = this.roofDarkOverlay.alpha;
-                this.roofDarkOverlay.alpha = Phaser.Math.Linear(currentOverlayAlpha, targetOverlayAlpha, 0.1);
+                const newOverlayAlpha = Phaser.Math.Linear(currentOverlayAlpha, targetOverlayAlpha, 0.1);
+                this.roofDarkOverlay.alpha = newOverlayAlpha;
+
+                // Debug logging when player enters/exits roof
+                if (playerUnderAnyRoof && currentOverlayAlpha < 0.01) {
+                    console.log('🌑 Player entered roof - overlay should appear');
+                    console.log(`   Overlay alpha: ${newOverlayAlpha} (target: 0.5)`);
+                    console.log(`   Overlay depth: ${this.roofDarkOverlay.depth}`);
+                    console.log(`   Overlay visible: ${this.roofDarkOverlay.visible}`);
+                } else if (!playerUnderAnyRoof && currentOverlayAlpha > 0.49) {
+                    console.log('🌑 Player exited roof - overlay should fade');
+                }
             }
         }
 
