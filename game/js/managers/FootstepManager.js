@@ -13,8 +13,6 @@ class FootstepManager {
             const sound = this.scene.sound.add(`footstep${i}`, { volume: this.volume });
             this.footstepSounds.push(sound);
         }
-
-        console.log('🦶 FootstepManager initialized with 4 sound variations');
     }
 
     /**

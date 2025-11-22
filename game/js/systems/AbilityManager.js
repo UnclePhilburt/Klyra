@@ -35,12 +35,6 @@ class AbilityManager {
     initializeCharacterHandler() {
         // Try both player.data.characterId and player.class as fallback
         const characterId = (this.player.data?.characterId || this.player.class)?.toUpperCase();
-        console.log(`🎮 Initializing ability handler for character: ${characterId}`);
-        console.log(`   Player.data.characterId:`, this.player.data?.characterId);
-        console.log(`   Player.class:`, this.player.class);
-        console.log(`   Final characterId:`, characterId);
-        console.log(`   AldricAbilityHandler exists:`, typeof AldricAbilityHandler !== 'undefined');
-        console.log(`   KeliseAbilityHandler exists:`, typeof KeliseAbilityHandler !== 'undefined');
 
         if (!characterId) {
             console.error('❌ No characterId found on player.data or player.class');
@@ -51,7 +45,6 @@ class AbilityManager {
             case 'ALDRIC':
                 if (typeof AldricAbilityHandler !== 'undefined') {
                     this.characterHandler = new AldricAbilityHandler(this.scene, this.player, this);
-                    console.log('✅ Aldric ability handler initialized');
                 } else {
                     console.error('❌ AldricAbilityHandler class not found');
                 }
@@ -60,7 +53,6 @@ class AbilityManager {
             case 'KELISE':
                 if (typeof KeliseAbilityHandler !== 'undefined') {
                     this.characterHandler = new KeliseAbilityHandler(this.scene, this.player, this);
-                    console.log('✅ Kelise ability handler initialized');
                 } else {
                     console.error('❌ KeliseAbilityHandler class not found');
                 }
@@ -68,7 +60,6 @@ class AbilityManager {
 
             case 'MALACHAR':
                 // Malachar uses the skill tree system, not this handler
-                console.log('ℹ️ Malachar uses MalacharAbilityHandler (skill tree system)');
                 break;
 
             default:
@@ -1735,7 +1726,6 @@ class AbilityManager {
 
     setInputMode(mode) {
         this.inputMode = mode;
-        console.log(`🎮 AbilityManager: Switched to ${mode} mode`);
 
         // Update all ability key displays immediately
         ['q', 'e', 'r'].forEach(key => {

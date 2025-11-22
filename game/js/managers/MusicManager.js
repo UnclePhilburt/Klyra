@@ -95,8 +95,6 @@ class MusicManager {
         this.currentTrack.play();
         this.lastTrack = track;
 
-        console.log(`🎵 Now playing: ${track.title}`);
-
         // Notify UI of track change
         if (this.onTrackChange) {
             this.onTrackChange(track);

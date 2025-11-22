@@ -4,8 +4,6 @@ class AldricAbilityHandler {
         this.scene = scene;
         this.player = player;
         this.abilityManager = abilityManager;
-
-        console.log(`⚔️ Aldric Ability Handler initialized`);
     }
 
     // Use Q ability - Battle Rush

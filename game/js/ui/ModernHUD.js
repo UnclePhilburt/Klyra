@@ -1,7 +1,6 @@
 // ModernHUD - Ultra-lightweight, performance-optimized HUD
 class ModernHUD {
     constructor(scene, player) {
-        console.log('🎮 ModernHUD constructor called!');
         this.scene = scene;
         this.player = player;
 
@@ -346,8 +345,6 @@ class ModernHUD {
     }
 
     setupMenuControls() {
-        console.log('✅ Simple menu created!');
-
         // Tab key to toggle menu
         const tabKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
         tabKey.on('down', (event) => {

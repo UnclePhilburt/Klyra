@@ -92,7 +92,6 @@ class GameScene extends Phaser.Scene {
     preload() {
         // Load tileset spritesheets for dungeon rendering
         // RPG Maker tilesets are 48x48 pixels per tile
-        console.log('📦 Loading PNG tilesets as spritesheets...');
 
         const tileWidth = 48;
         const tileHeight = 48;
@@ -340,27 +339,15 @@ class GameScene extends Phaser.Scene {
 
         // Emberclaw projectile
         this.load.image('emberclaw-projectile', 'assets/sprites/Emberclaw/projectile.png');
-
-        console.log('✅ All tilesets queued for loading');
-
-        // Debug: Log sword demon spritesheet info after load
-        this.load.on('filecomplete-spritesheet-sworddemon', () => {
-            const texture = this.textures.get('sworddemon');
-            console.log('🗡️ Sword Demon spritesheet loaded:');
-            console.log(`   Total frames: ${texture.frameTotal}`);
-            console.log(`   Frame names:`, Object.keys(texture.frames).slice(0, 10), '...');
-        });
     }
 
     create() {
         // Register networkManager in game registry for global access
         this.game.registry.set('networkManager', networkManager);
-        console.log('✅ NetworkManager registered in game registry');
 
         // Register mobile optimizer with this scene
         if (typeof mobileOptimizer !== 'undefined') {
             mobileOptimizer.setGameScene(this);
-            console.log('📱 MobileOptimizer integrated with GameScene');
         }
 
         // Initialize controller manager
@@ -396,7 +383,6 @@ class GameScene extends Phaser.Scene {
 
         // Setup network listeners FIRST (before game:start, so minion:spawned is ready)
         this.setupNetworkListeners();
-        console.log('✅ Network listeners set up');
 
         // Wait for game:start event (instant join - no lobby)
         networkManager.on('game:start', (data) => {
@@ -478,8 +464,6 @@ class GameScene extends Phaser.Scene {
             repeat: 0
         });
 
-        console.log('✅ Created enemy animations: sworddemon (idle, walk, attack, damage, death)');
-
         // Create enemy animations - Minotaur (96x96 tiles, 10 columns)
         // Row 0: Idle (tiles 0-4)
         this.anims.create({
@@ -520,8 +504,6 @@ class GameScene extends Phaser.Scene {
             frameRate: 10,
             repeat: 0
         });
-
-        console.log('✅ Created enemy animations: minotaur (idle, run, attack, damage, death)');
 
         // Create enemy animations - Mushroom (80x64 tiles, separate sprite sheets)
         // Idle animation (7 frames)
@@ -564,8 +546,6 @@ class GameScene extends Phaser.Scene {
             repeat: 0
         });
 
-        console.log('✅ Created enemy animations: mushroom (idle, run, attack, damage, death)');
-
         // Create enemy animations - Emberclaw (64x64 tiles, separate sprite sheets)
         // Idle animation (4 frames)
         this.anims.create({
@@ -607,8 +587,6 @@ class GameScene extends Phaser.Scene {
             repeat: 0
         });
 
-        console.log('✅ Created enemy animations: emberclaw (idle, flying, attack, hurt, death)');
-
         // Initialize tree collision array
         this.treeCollisions = [];
         this.treeSprites = [];
@@ -638,14 +616,11 @@ class GameScene extends Phaser.Scene {
         // Show loading screen
         this.showLoadingScreen();
 
-        console.log('🔄 Showing loading screen for 10-15 seconds while game loads...');
-
         // Initialize BiomeChunkSystem - let it load chunks in the background
         this.biomeChunks.preloadNearSpawn(spawnX, spawnY, 10);
 
         // Show loading screen for 10-15 seconds (random duration)
         const loadingDuration = 10000 + Math.random() * 5000; // 10-15 seconds
-        console.log(`⏰ Loading screen will show for ${Math.floor(loadingDuration / 1000)} seconds`);
 
         // Fake progress animation
         let fakeProgress = 0;
@@ -663,29 +638,23 @@ class GameScene extends Phaser.Scene {
             this.updateLoadingProgress(441, 441); // Show 100%
 
             setTimeout(() => {
-                console.log('✅ Loading complete - starting game!');
                 this.hideLoadingScreen();
                 this.continueGameInitialization();
             }, 500);
         }, loadingDuration);
 
         // STOP HERE - don't continue until timer completes
-        console.log('⛔ Waiting for loading screen timer...');
         return;
     }
 
     continueGameInitialization() {
-        console.log('🎮 Continuing game initialization after loading screen...');
-
         // Enhance spawn point with visuals
         this.createSpawnPoint();
 
         // Create local player
         const myData = this.gameData.players.find(p => p.id === networkManager.currentPlayer.id);
         if (myData) {
-            console.log(`👤 Creating local player with position:`, myData.position);
             this.localPlayer = new Player(this, myData, true);
-            console.log(`📍 Local player spawned at pixel position (${this.localPlayer.sprite.x}, ${this.localPlayer.sprite.y})`);
 
             // Smooth camera with dead zone
             this.cameras.main.startFollow(this.localPlayer.sprite, true, 0.08, 0.08); // Smoother lerp
@@ -698,7 +667,6 @@ class GameScene extends Phaser.Scene {
             const characterDef = CHARACTERS[myData.class.toUpperCase()];
             if (characterDef && characterDef.autoAttack) {
                 this.localPlayer.autoAttackConfig = characterDef.autoAttack;
-                console.log(`⚔️ Auto-attack enabled: ${characterDef.autoAttack.name}`);
             }
 
             // Load character's default abilities from character definition
@@ -708,13 +676,11 @@ class GameScene extends Phaser.Scene {
                 }
                 Object.keys(characterDef.abilities).forEach(key => {
                     this.localPlayer.abilities[key] = characterDef.abilities[key];
-                    console.log(`✨ Loaded ability ${characterDef.abilities[key].name} on key ${key.toUpperCase()}`);
                 });
             }
 
             // Initialize Ally Manager (detects nearby players for co-op abilities)
             this.allyManager = new AllyManager(this);
-            console.log('✅ AllyManager initialized');
 
             // Initialize character build and unlock starting ability (delayed slightly to ensure everything is initialized)
             this.time.delayedCall(500, () => {
@@ -724,19 +690,16 @@ class GameScene extends Phaser.Scene {
                         return;
                     }
 
-                    console.log('🎮 Initializing character build and abilities...');
 
                     // Apply character's starting build (e.g., Bone Commander for Malachar)
                     this.applyCharacterBuild(this.localPlayer);
 
                     // Unlock starting ability (E at level 1 for Malachar)
                     this.time.delayedCall(500, () => {
-                        console.log('⏰ Delayed ability unlock triggered');
                         this.checkAndUnlockAbilities(this.localPlayer, 1);
 
                         // Force UI update
                         if (this.abilityManager) {
-                            console.log('🔄 Forcing ability UI update');
                             this.abilityManager.updateCooldownUI();
                         }
                     });
@@ -750,14 +713,12 @@ class GameScene extends Phaser.Scene {
                 x: Math.round(this.localPlayer.sprite.x),
                 y: Math.round(this.localPlayer.sprite.y)
             };
-            console.log(`📍 Sending initial pixel position: (${pixelPos.x}, ${pixelPos.y})`);
             networkManager.movePlayer(pixelPos);
 
             // Minions are now spawned via applyCharacterBuild() system
 
             // Show skill selector immediately at level 1 for path selection
             if (myData.level === 1) {
-                console.log('🎯 Level 1 - showing initial path selection');
                 // Delay slightly to ensure all systems are initialized
                 this.time.delayedCall(500, () => {
                     if (this.skillSelector) {
@@ -803,7 +764,6 @@ class GameScene extends Phaser.Scene {
                     playerData.passiveSkills.forEach(skillId => {
                         otherPlayer.passiveSkills.addSkill(skillId, false);
                     });
-                    console.log(`🛡️ Initialized ${playerData.passiveSkills.length} passive skills for existing player ${playerData.id}`);
                 }
 
                 // Minions are now spawned via applyCharacterBuild() system
@@ -822,7 +782,6 @@ class GameScene extends Phaser.Scene {
             this.castleCollisionLayers.forEach(layer => {
                 this.physics.add.collider(this.localPlayer.sprite, layer);
             });
-            console.log(`🏰 Added ${this.castleCollisionLayers.length} castle collision layers to local player`);
         }
 
         // Add spawn building collision to player
@@ -830,7 +789,6 @@ class GameScene extends Phaser.Scene {
             this.spawnCollisionBodies.forEach(body => {
                 this.physics.add.collider(this.localPlayer.sprite, body);
             });
-            console.log(`🏛️ Added ${this.spawnCollisionBodies.length} spawn building collision tiles to local player`);
         }
 
         // Create enemies
@@ -838,7 +796,6 @@ class GameScene extends Phaser.Scene {
             if (enemyData.type === 'wolf') {
                 // Skip dead sword demons from initial game state
                 if (enemyData.isAlive === false) {
-                    console.log(`⚰️ Skipping dead sword demon ${enemyData.id}`);
                     return;
                 }
 
@@ -854,7 +811,6 @@ class GameScene extends Phaser.Scene {
             } else if (enemyData.type === 'minotaur') {
                 // Skip dead minotaurs from initial game state
                 if (enemyData.isAlive === false) {
-                    console.log(`⚰️ Skipping dead minotaur ${enemyData.id}`);
                     return;
                 }
 
@@ -870,7 +826,6 @@ class GameScene extends Phaser.Scene {
             } else if (enemyData.type === 'mushroom') {
                 // Skip dead mushrooms from initial game state
                 if (enemyData.isAlive === false) {
-                    console.log(`⚰️ Skipping dead mushroom ${enemyData.id}`);
                     return;
                 }
 
@@ -886,7 +841,6 @@ class GameScene extends Phaser.Scene {
             } else if (enemyData.type === 'emberclaw') {
                 // Skip dead emberclaws from initial game state
                 if (enemyData.isAlive === false) {
-                    console.log(`⚰️ Skipping dead emberclaw ${enemyData.id}`);
                     return;
                 }
 
@@ -894,13 +848,11 @@ class GameScene extends Phaser.Scene {
                 this.emberclaws[enemyData.id] = emberclaw;
 
                 // Emberclaws fly - no collision needed
-                console.log(`🔥 Created emberclaw ${enemyData.id} at grid (${enemyData.position.x}, ${enemyData.position.y})`);
             } else {
                 console.warn(`⚠️ Unknown enemy type "${enemyData.type}" for enemy ${enemyData.id} - skipping`);
             }
         });
 
-        console.log(`📊 Total sword demons: ${Object.keys(this.swordDemons).length}, Total minotaurs: ${Object.keys(this.minotaurs).length}, Total mushrooms: ${Object.keys(this.mushrooms).length}, Total emberclaws: ${Object.keys(this.emberclaws).length}`);
 
         // Create items
         if (this.gameData.gameState.items) {
@@ -916,7 +868,6 @@ class GameScene extends Phaser.Scene {
 
         // Create existing minions from other players
         if (this.gameData.minions && this.gameData.minions.length > 0) {
-            console.log(`🔮 Spawning ${this.gameData.minions.length} existing minions from other players`);
             this.gameData.minions.forEach(minionData => {
                 // Don't spawn our own minions (they'll be spawned by our own commands)
                 if (minionData.ownerId !== networkManager.currentPlayer.id) {
@@ -924,7 +875,6 @@ class GameScene extends Phaser.Scene {
                     const x = minionData.position.x * tileSize + tileSize / 2;
                     const y = minionData.position.y * tileSize + tileSize / 2;
                     this.spawnMinion(x, y, minionData.ownerId, minionData.isPermanent, minionData.id);
-                    console.log(`🔮 Spawned existing minion ${minionData.id} for player ${minionData.ownerId}`);
                 }
             });
         }
@@ -941,10 +891,6 @@ class GameScene extends Phaser.Scene {
         this.roofDarkOverlay.setScrollFactor(0); // Fixed to camera
         this.roofDarkOverlay.setDepth(98000); // Below UI (99000) but above game world
         this.roofDarkOverlay.setAlpha(0); // Start invisible
-        console.log('🌑 Dark overlay created for roof interior effect');
-        console.log(`   Size: ${width}x${height}`);
-        console.log(`   Depth: ${this.roofDarkOverlay.depth}`);
-        console.log(`   Alpha: ${this.roofDarkOverlay.alpha}`);
 
         // Setup controls
         this.setupControls();
@@ -957,18 +903,15 @@ class GameScene extends Phaser.Scene {
 
 
     showLoadingScreen() {
-        console.log('📺 SHOWING DOM LOADING SCREEN');
 
         // HIDE THE LOBBY SCREEN FIRST!
         const lobbyScreen = document.getElementById('lobbyScreen');
         const startScreen = document.getElementById('startScreen');
         if (lobbyScreen) {
             lobbyScreen.style.display = 'none';
-            console.log('  Hidden lobbyScreen');
         }
         if (startScreen) {
             startScreen.style.display = 'none';
-            console.log('  Hidden startScreen');
         }
 
         // Create DOM overlay on top of canvas
@@ -1123,7 +1066,6 @@ class GameScene extends Phaser.Scene {
         `;
 
         document.body.appendChild(this.loadingDiv);
-        console.log('✅ DOM loading screen created');
     }
 
     updateLoadingProgress(current, total) {
@@ -1159,11 +1101,9 @@ class GameScene extends Phaser.Scene {
     }
 
     hideLoadingScreen() {
-        console.log('🎬 Hiding loading screen...');
         if (this.loadingDiv && this.loadingDiv.parentNode) {
             this.loadingDiv.parentNode.removeChild(this.loadingDiv);
         }
-        console.log('✅ Loading screen hidden - game ready!');
     }
 
     // Perlin-like noise for terrain generation (same as server)
@@ -1186,7 +1126,6 @@ class GameScene extends Phaser.Scene {
                 // Everything else (50%) is red/Ember Wilds
             };
 
-            console.log(`🌍 World biome distribution: Dark Forest=50%, Ember Wilds=50%`);
         }
 
         // Biome definitions with 12 tile variations each
@@ -1218,7 +1157,6 @@ class GameScene extends Phaser.Scene {
         if (!this.debugChunks) this.debugChunks = new Set();
         const chunkKey = `${chunkX},${chunkY}`;
         if (this.debugChunks.size < 5 && !this.debugChunks.has(chunkKey)) {
-            console.log(`🗺️ Chunk (${chunkX},${chunkY}): hash=${chunkHash.toFixed(3)}, biome=${selectedBiome.id}`);
             this.debugChunks.add(chunkKey);
         }
 
@@ -1230,7 +1168,6 @@ class GameScene extends Phaser.Scene {
         if (!this.debugTileCount) this.debugTileCount = 0;
         if (this.debugTileCount < 10) {
             const tileMapping = this.BIOME_TILESET_MAP[tileId];
-            console.log(`🔍 Tile (${x},${y}) in chunk (${chunkX},${chunkY}): biome=${selectedBiome.id}, tileId=${tileId}, texture=${tileMapping?.texture}, frame=${tileMapping?.frame}`);
             this.debugTileCount++;
         }
 
@@ -1249,7 +1186,6 @@ class GameScene extends Phaser.Scene {
 
         // Skip if already rendered or currently loading
         if (this.renderedChunks.has(chunkKey)) {
-            console.log(`⏭️ Skipping chunk (${chunkX},${chunkY}) - already rendered`);
             return;
         }
 
@@ -1276,7 +1212,6 @@ class GameScene extends Phaser.Scene {
             this.biomeDistribution = {
                 darkGreen: 0.5, // 50% Dark Forest, 50% Ember Wilds
             };
-            console.log(`🌍 World biome distribution: Dark Forest=50%, Ember Wilds=50%`);
         }
 
         // Determine biome using noise value (creates coherent regions)
@@ -1289,7 +1224,6 @@ class GameScene extends Phaser.Scene {
         }
 
         // Debug: Log biome selection for ALL chunks
-        console.log(`🌲 Chunk (${chunkX},${chunkY}): noise=${biomeNoise.toFixed(3)}, biome=${biome}`);
 
         // Select chunk variant based on biome
         let chunkDataKey;
@@ -1329,7 +1263,6 @@ class GameScene extends Phaser.Scene {
 
         // Check if chunk data is loaded, if not load it on-demand
         if (!this.cache.json.exists(chunkDataKey)) {
-            console.log(`📥 Loading ${biomeName} ${chunkDataKey} on-demand...`);
 
             // Mark this chunk as loading to prevent duplicate requests
             this.loadingChunks.add(chunkKey);
@@ -1349,7 +1282,6 @@ class GameScene extends Phaser.Scene {
                 .then(response => response.json())
                 .then(data => {
                     this.cache.json.add(chunkDataKey, data);
-                    console.log(`✅ ${chunkDataKey} loaded on-demand`);
                     // Remove from loading set
                     this.loadingChunks.delete(chunkKey);
                     // Try rendering again now that it's loaded
@@ -1369,22 +1301,17 @@ class GameScene extends Phaser.Scene {
         const worldX = chunkX * this.LDTK_CHUNK_SIZE * tileSize;
         const worldY = chunkY * this.LDTK_CHUNK_SIZE * tileSize;
 
-        console.log(`🔥 Loading ${biomeName} chunk${chunkIndex} at chunk coords (${chunkX},${chunkY}) -> world pixel pos (${worldX},${worldY})`);
-        console.log(`   Current chunks loaded: ${this.renderedChunks.size}`);
 
         // Load the LDtk chunk (use top-left positioning for chunks, not centered)
-        console.log(`🎯 Attempting to load chunk with key: ${chunkDataKey}`);
         const chunkData = this.loadLDtkMap(chunkDataKey, worldX, worldY, tileSize, true);
 
         if (chunkData) {
-            console.log(`✅ Chunk data loaded successfully with ${chunkData.layers.length} layers`);
             // Set all chunk layers to render DEEP in the background (behind everything)
             chunkData.layers.forEach(layer => {
                 if (layer.container) {
                     // Push layers to -200 range so they're behind spawn building (-100) and enemies (0+)
                     const newDepth = -200 + layer.depth;
                     layer.container.setDepth(newDepth);
-                    console.log(`   Layer "${layer.name}" depth: ${newDepth}`);
                 }
             });
 
@@ -1396,9 +1323,6 @@ class GameScene extends Phaser.Scene {
                 position: { x: worldX, y: worldY }
             });
 
-            console.log(`✅ ${biomeName} chunk${chunkIndex} loaded at (${chunkX},${chunkY}) -> world pos (${worldX},${worldY})`);
-            console.log(`   Chunk has ${chunkData.layers.length} layers`);
-            console.log(`   Total chunks now: ${this.renderedChunks.size}`);
         } else {
             console.error(`❌ Failed to load ${biomeName} chunk${chunkIndex} at (${chunkX},${chunkY})`);
         }
@@ -1522,7 +1446,6 @@ class GameScene extends Phaser.Scene {
         if (!this.debugLogTimer) this.debugLogTimer = 0;
         this.debugLogTimer++;
         if (this.debugLogTimer >= 180) { // Every 3 seconds
-            console.log(`📊 [PERFORMANCE] Stats:
   Decorations: ${this.renderedDecorations.size}
   Total Phaser Objects: ${this.children.length}
   FPS: ${Math.round(this.game.loop.actualFps)}
@@ -2340,7 +2263,6 @@ class GameScene extends Phaser.Scene {
         const worldCenterY = (worldSize / 2) * tileSize;
         const safeZoneRadius = 800; // pixels
 
-        console.log(`✨ Creating spawn point at world center (${worldCenterX}, ${worldCenterY})`);
 
         // Create particle texture if it doesn't exist
         if (!this.textures.exists('particle')) {
@@ -2352,17 +2274,10 @@ class GameScene extends Phaser.Scene {
         }
 
         // === LOAD LDTK MAP FOR SPAWN BUILDING ===
-        console.log('📦 Loading LDtk spawn building...');
 
         const spawnMapData = this.loadLDtkMap('spawnMapLDtk', worldCenterX, worldCenterY, tileSize);
 
         if (spawnMapData) {
-            console.log(`✅ LDtk spawn map loaded!`);
-            console.log(`   Layers: ${spawnMapData.layers.length}`);
-            console.log(`   Entities: ${spawnMapData.entities.length}`);
-            console.log(`   Collision tiles: ${spawnMapData.collisionBodies?.length || 0}`);
-            console.log(`   Size: ${spawnMapData.size.width}x${spawnMapData.size.height}px`);
-            console.log(`   Offset: (${spawnMapData.offset.x}, ${spawnMapData.offset.y})`);
 
             // Store map data for later use
             this.spawnMapData = spawnMapData;
@@ -2372,11 +2287,9 @@ class GameScene extends Phaser.Scene {
 
             // Store roof layers for transparency effect
             this.spawnRoofLayers = spawnMapData.roofLayers || [];
-            console.log(`   Roof layers: ${this.spawnRoofLayers.length}`);
 
             // Process entities (doors, NPCs, etc.)
             spawnMapData.entities.forEach(entity => {
-                console.log(`   📍 Entity: ${entity.identifier} at (${entity.x}, ${entity.y})`);
 
                 // Handle door entities if you have them
                 if (entity.identifier === 'Door') {
@@ -2401,7 +2314,6 @@ class GameScene extends Phaser.Scene {
         const townOffsetX = mapOffsetX + mapWidthPx; // Start where spawn building ends
         const townOffsetY = mapOffsetY; // Same Y position as spawn building
 
-        console.log(`🏘️ Loading town map at offset (${townOffsetX}, ${townOffsetY})`);
 
         // Add tilesets in EXACT ORDER from town.tmj (order matters for tile ID mapping!)
         const townTilesets = [
@@ -2418,7 +2330,6 @@ class GameScene extends Phaser.Scene {
             townMap.addTilesetImage('Fantasy_Outside_C', 'fantasy_outside_c')           // firstgid 5078
         ];
 
-        console.log(`✅ Loaded ${townTilesets.filter(t => t).length} tilesets for town`);
 
         // Create all layers from town map
         const townLayerNames = ['Ground', 'Paths', 'Walls', 'Roof1', 'Windows'];
@@ -2428,7 +2339,6 @@ class GameScene extends Phaser.Scene {
             if (layer) {
                 layer.setScale(scale);
                 layer.setDepth(index); // Simple depth ordering
-                console.log(`  ✅ Created town layer: ${layerName} (depth: ${index}, alpha: ${layer.alpha})`);
 
                 // Check for collision property
                 const collisionProp = layer.layer.properties?.find(p =>
@@ -2437,7 +2347,6 @@ class GameScene extends Phaser.Scene {
 
                 if (collisionProp) {
                     layer.setCollisionByExclusion([-1]);
-                    console.log(`  🔒 Enabled collision for town layer: ${layerName}`);
 
                     if (!this.castleCollisionLayers) {
                         this.castleCollisionLayers = [];
@@ -2456,7 +2365,6 @@ class GameScene extends Phaser.Scene {
                         this.roofLayers = [];
                     }
                     this.roofLayers.push(layer);
-                    console.log(`  🏠 Marked as roof layer: ${layerName} (depth changed to 5)`);
                 }
             } else {
                 console.warn(`  ⚠️ Town layer not found: ${layerName}`);
@@ -2468,7 +2376,6 @@ class GameScene extends Phaser.Scene {
         // Spawn point is now at the CENTER of the map (tile 25, 25)
         const spawnX = worldCenterX; // Center of map
         const spawnY = worldCenterY; // Center of map
-        console.log(`👤 Player spawn at map center: (${spawnX}, ${spawnY})`);
 
         // Create container for spawn point visual effects (on top of building)
         this.spawnPointContainer = this.add.container(0, 0);
@@ -2568,7 +2475,6 @@ class GameScene extends Phaser.Scene {
             safeZoneRadius: safeZoneRadius
         };
 
-        console.log(`✅ Spawn point created with ${safeZoneRadius}px safe zone`);
     }
 
     createUI() {
@@ -2583,7 +2489,6 @@ class GameScene extends Phaser.Scene {
         // Create inventory system (C key, hotbar 1-5)
         try {
             this.inventoryUI = new InventoryUI(this, this.localPlayer);
-            console.log('✅ InventoryUI created');
         } catch (error) {
             console.error('❌ Error creating InventoryUI:', error);
         }
@@ -2591,7 +2496,6 @@ class GameScene extends Phaser.Scene {
         // Create skill selector system
         try {
             this.skillSelector = new SkillSelector(this);
-            console.log('✅ SkillSelector created');
         } catch (error) {
             console.error('❌ Error creating SkillSelector:', error);
         }
@@ -2599,7 +2503,6 @@ class GameScene extends Phaser.Scene {
         // Create ability manager system (Q/E/R abilities)
         try {
             this.abilityManager = new AbilityManager(this, this.localPlayer);
-            console.log('✅ AbilityManager created');
         } catch (error) {
             console.error('❌ Error creating AbilityManager:', error);
         }
@@ -2634,7 +2537,6 @@ class GameScene extends Phaser.Scene {
         const merchantY = worldCenterY - 392; // Up 2 more tiles
 
         this.merchantNPC = new MerchantNPC(this, merchantX, merchantY, 'Item Merchant');
-        console.log('🛒 Item Merchant NPC created inside spawn building');
     }
 
     createSkillShopNPC() {
@@ -2645,7 +2547,6 @@ class GameScene extends Phaser.Scene {
         const skillShopY = worldCenterY - 392; // Up 2 more tiles
 
         this.skillShopNPC = new SkillShopNPC(this, skillShopX, skillShopY, 'Skill Trader');
-        console.log('🛍️ Skill Shop NPC created inside spawn building');
     }
 
     setupControls() {
@@ -2679,12 +2580,9 @@ class GameScene extends Phaser.Scene {
         });
 
         this.keyE.on('down', () => {
-            console.log('🔑 E key pressed!');
             if (this.abilityManager) {
-                console.log('🎯 Calling abilityManager.useAbility(e)');
                 this.abilityManager.useAbility('e');
             } else {
-                console.log('❌ No abilityManager!');
             }
         });
 
@@ -2785,7 +2683,6 @@ class GameScene extends Phaser.Scene {
                     this.showMinionHealEffect(minion.sprite.x, minion.sprite.y);
                 }
             });
-            console.log('🧪 [DEV] Showing heal animation on all minions (Press H to test)');
         });
 
         // Mouse click to attack
@@ -2829,7 +2726,6 @@ class GameScene extends Phaser.Scene {
         this.particleSpawnRate = 200; // Spawn particle every 200ms
         this.maxAmbientParticles = 120; // Max particles on screen (reduced for better FPS)
 
-        console.log('✨ Ambient particle system initialized');
     }
 
     updateAmbientParticles(delta) {
@@ -2959,7 +2855,6 @@ class GameScene extends Phaser.Scene {
         // Use static method to load the map
         const mapData = LDtkLoader.load(this, ldtkData, worldCenterX, worldCenterY, tileSize, topLeft);
 
-        console.log(`✅ LDtk map "${ldtkKey}" loaded successfully`);
 
         return mapData;
     }
@@ -3025,7 +2920,6 @@ class GameScene extends Phaser.Scene {
                     data.player.passiveSkills.forEach(skillId => {
                         newPlayer.passiveSkills.addSkill(skillId, false);
                     });
-                    console.log(`🛡️ Initialized ${data.player.passiveSkills.length} passive skills for player ${data.player.id}`);
                 }
 
                 // Show join notification
@@ -3074,7 +2968,6 @@ class GameScene extends Phaser.Scene {
                 if (player.ui) {
                     player.ui.setVisible(onSameMap);
                 }
-                console.log(`👤 ${player.data.username} is now on ${data.mapName} map (visible: ${onSameMap})`);
             }
         });
 
@@ -3140,7 +3033,6 @@ class GameScene extends Phaser.Scene {
 
             // Handle local player death (server says we died)
             if (data.playerId === networkManager.currentPlayer.id && this.localPlayer) {
-                console.log('💀 Server says we died - processing death...');
 
                 // Set health to 0 and mark as dead
                 this.localPlayer.health = 0;
@@ -3172,21 +3064,17 @@ class GameScene extends Phaser.Scene {
                     this.skillSelector.selectedSkills = [];
                 }
 
-                console.log('💀 Death processed - awaiting respawn in 3 seconds...');
             }
         });
 
         // Player respawned after death
         networkManager.on('player:respawned', (data) => {
-            console.log('📨 Received player:respawned event:', data);
 
             if (data.playerId === networkManager.currentPlayer.id || data.id === networkManager.currentPlayer.id) {
-                console.log('♻️ Respawning local player at spawn point - Level 1');
 
                 try {
                     // Restore player from server state
                     this.restorePlayerFromDeath(data);
-                    console.log('✅ Respawn complete');
                 } catch (error) {
                     console.error('❌ Error during respawn:', error);
                 }
@@ -3298,7 +3186,6 @@ class GameScene extends Phaser.Scene {
             if (data.enemy.type === 'wolf') {
                 // Skip dead sword demons
                 if (data.enemy.isAlive === false) {
-                    console.log(`⚰️ Skipping spawning dead sword demon ${data.enemy.id}`);
                     return;
                 }
 
@@ -3314,7 +3201,6 @@ class GameScene extends Phaser.Scene {
             } else if (data.enemy.type === 'minotaur') {
                 // Skip dead minotaurs
                 if (data.enemy.isAlive === false) {
-                    console.log(`⚰️ Skipping spawning dead minotaur ${data.enemy.id}`);
                     return;
                 }
 
@@ -3330,7 +3216,6 @@ class GameScene extends Phaser.Scene {
             } else if (data.enemy.type === 'mushroom') {
                 // Skip dead mushrooms
                 if (data.enemy.isAlive === false) {
-                    console.log(`⚰️ Skipping spawning dead mushroom ${data.enemy.id}`);
                     return;
                 }
 
@@ -3346,7 +3231,6 @@ class GameScene extends Phaser.Scene {
             } else if (data.enemy.type === 'emberclaw') {
                 // Skip dead emberclaws
                 if (data.enemy.isAlive === false) {
-                    console.log(`⚰️ Skipping spawning dead emberclaw ${data.enemy.id}`);
                     return;
                 }
 
@@ -3354,7 +3238,6 @@ class GameScene extends Phaser.Scene {
                 this.emberclaws[data.enemy.id] = emberclaw;
 
                 // Emberclaws fly - no collision needed
-                console.log(`🔥 Spawned Emberclaw ${data.enemy.id} at (${data.enemy.position.x}, ${data.enemy.position.y})`);
             } else {
                 console.warn(`⚠️ Unknown enemy type "${data.enemy.type}" for enemy ${data.enemy.id} - skipping spawn`);
             }
@@ -3369,23 +3252,18 @@ class GameScene extends Phaser.Scene {
             const enemy = this.enemies[data.enemyId];
 
             if (swordDemon) {
-                console.log(`🌙 Despawning sword demon ${data.enemyId}`);
                 swordDemon.destroy();
                 delete this.swordDemons[data.enemyId];
             } else if (minotaur) {
-                console.log(`🌙 Despawning minotaur ${data.enemyId}`);
                 minotaur.destroy();
                 delete this.minotaurs[data.enemyId];
             } else if (mushroom) {
-                console.log(`🌙 Despawning mushroom ${data.enemyId}`);
                 mushroom.destroy();
                 delete this.mushrooms[data.enemyId];
             } else if (emberclaw) {
-                console.log(`🌙 Despawning emberclaw ${data.enemyId}`);
                 emberclaw.destroy();
                 delete this.emberclaws[data.enemyId];
             } else if (enemy) {
-                console.log(`🌙 Despawning enemy ${data.enemyId}`);
                 enemy.destroy();
                 delete this.enemies[data.enemyId];
             }
@@ -3406,12 +3284,10 @@ class GameScene extends Phaser.Scene {
 
         // Enemy position updated (knockback from Aldric's attacks)
         networkManager.on('enemy:position', (data) => {
-            console.log(`📩 CLIENT: Received enemy:position for ${data.enemyId}`, data.position);
             const enemy = this.enemies[data.enemyId] || this.swordDemons[data.enemyId] || this.minotaurs[data.enemyId] || this.mushrooms[data.enemyId] || this.emberclaws[data.enemyId];
             if (enemy && enemy.setTargetPosition) {
                 // Ignore position updates for dead enemies
                 if (!enemy.isAlive) {
-                    console.log(`⚰️ CLIENT: Ignoring position update for dead enemy ${data.enemyId}`);
                     return;
                 }
 
@@ -3420,24 +3296,18 @@ class GameScene extends Phaser.Scene {
                 const targetX = data.position.x * tileSize + tileSize / 2;
                 const targetY = data.position.y * tileSize + tileSize / 2;
 
-                console.log(`🎯 CLIENT: Setting enemy position from (${enemy.sprite?.x}, ${enemy.sprite?.y}) to (${targetX}, ${targetY})`);
 
                 // Update enemy's target position for smooth movement
                 enemy.setTargetPosition(targetX, targetY);
             } else {
-                console.log(`❌ CLIENT: Enemy ${data.enemyId} not found or no setTargetPosition method`);
             }
         });
 
         // Minion spawned by another player
         networkManager.on('minion:spawned', (data) => {
-            console.log(`🔮 CLIENT RECEIVED minion:spawned from server:`, data);
-            console.log(`   - minionId: ${data.minionId}, ownerId: ${data.ownerId}, myId: ${networkManager.currentPlayer?.id}`);
-            console.log(`   - Is my minion: ${data.ownerId === networkManager.currentPlayer?.id}`);
 
             // Don't create if we already have this minion
             if (this.minions[data.minionId]) {
-                console.log(`⚠️ Minion ${data.minionId} already exists, skipping`);
                 return;
             }
 
@@ -3446,16 +3316,10 @@ class GameScene extends Phaser.Scene {
             const x = data.position.x * tileSize + tileSize / 2;
             const y = data.position.y * tileSize + tileSize / 2;
 
-            console.log(`🔮 Converting grid position (${data.position.x}, ${data.position.y}) to pixels (${x}, ${y})`);
-            console.log(`🔮 About to call spawnMinion() for remote minion`);
 
             // Spawn the minion
             const minion = this.spawnMinion(x, y, data.ownerId, data.isPermanent, data.minionId);
 
-            console.log(`🔮 spawnMinion() returned:`, minion);
-            console.log(`   - minion exists: ${!!minion}`);
-            console.log(`   - has sprite: ${!!minion?.sprite}`);
-            console.log(`   - sprite visible: ${minion?.sprite?.visible}`);
 
             // Apply initial animation state and flip if provided
             if (minion && minion.sprite) {
@@ -3474,7 +3338,6 @@ class GameScene extends Phaser.Scene {
 
             // DEBUG: Log every minion:moved event
             if (Math.random() < 0.05) { // Log 5% to see if events are firing
-                console.log(`🔍 minion:moved - ID: ${data.minionId}, exists: ${!!minion}, ownerId: ${minion?.ownerId}, currentPlayer: ${networkManager.currentPlayer?.id}`);
             }
 
             if (minion && minion.sprite && minion.sprite.active) {
@@ -3490,7 +3353,6 @@ class GameScene extends Phaser.Scene {
 
                     // DEBUG: Log animation changes occasionally
                     if (Math.random() < 0.01) {
-                        console.log(`🎬 Animation update - current: ${currentAnim}, target: ${data.animationState}, isPlaying: ${isPlaying}`);
                     }
 
                     // Always play the animation to ensure it's running
@@ -3509,7 +3371,6 @@ class GameScene extends Phaser.Scene {
 
                 // DEBUG: Log target position setting
                 if (Math.random() < 0.05) {
-                    console.log(`🎯 Setting target for ${data.minionId}: (${targetX}, ${targetY}), distance: ${distance.toFixed(2)}, snap: ${distance > 200}`);
                 }
 
                 // If distance is too large (teleport/spawn), snap instantly
@@ -3529,7 +3390,6 @@ class GameScene extends Phaser.Scene {
             } else if (!minion) {
                 // Debug: Log when we receive a move event for a minion that doesn't exist locally
                 if (Math.random() < 0.01) { // Log 1% of missing minions to avoid spam
-                    console.log(`⚠️ Received minion:moved for unknown minion: ${data.minionId}`);
                 }
             }
         });
@@ -3538,7 +3398,6 @@ class GameScene extends Phaser.Scene {
         networkManager.on('minion:died', (data) => {
             const minion = this.minions[data.minionId];
             if (minion && minion.sprite && minion.sprite.active) {
-                console.log(`💀 Remote minion died: ${data.minionId}`);
                 // Call die() to play death animation and destroy
                 minion.die();
             }
@@ -3732,7 +3591,6 @@ class GameScene extends Phaser.Scene {
             if (data.abilityName === 'Pact of Bones' && data.effects && data.effects.minions) {
                 // Don't play visuals for the caster (they already see their own effects)
                 if (data.effects.playerId === this.localPlayer?.data?.id) {
-                    console.log(`💀 Pact of Bones - I'm the caster, skipping visual replay`);
                     return;
                 }
                 console.log(`💀 Pact of Bones visual effect from ${data.playerName}`);
@@ -3744,7 +3602,6 @@ class GameScene extends Phaser.Scene {
             if (data.effects && data.effects.type === 'dash') {
                 // Don't play visuals for the caster (they already see their own effects)
                 if (data.playerId === this.localPlayer?.data?.id) {
-                    console.log(`🏃 Battle Rush - I'm the caster, skipping visual replay`);
                     return;
                 }
                 console.log(`🏃 Battle Rush visual effect from ${data.playerName}`);
@@ -3756,7 +3613,6 @@ class GameScene extends Phaser.Scene {
             if (data.effects && data.effects.type === 'shockwave') {
                 // Don't play visuals for the caster (they already see their own effects)
                 if (data.playerId === this.localPlayer?.data?.id) {
-                    console.log(`🌊 Shockwave - I'm the caster, skipping visual replay`);
                     return;
                 }
                 console.log(`🌊 Shockwave visual effect from ${data.playerName}`);
@@ -3768,10 +3624,8 @@ class GameScene extends Phaser.Scene {
             if (data.effects && data.effects.type === 'war_cry_slam') {
                 // Don't play visuals for the caster (they already see their own effects)
                 if (data.playerId === this.localPlayer?.data?.id) {
-                    console.log(`🔥 Titan's Fury - I'm the caster, skipping visual replay`);
                     return;
                 }
-                console.log(`🔥 Titan's Fury visual effect from ${data.playerName}`);
                 this.playTitansFuryVisual(data.effects, data.playerId);
                 return;
             }
@@ -3826,7 +3680,6 @@ class GameScene extends Phaser.Scene {
             const orb = this.experienceOrbs[data.orbId];
             console.log(`   Orb ${data.orbId} exists: ${!!orb}`);
             if (!orb) {
-                console.log(`   ⚠️ Orb ${data.orbId} not found (may have already collected)`);
                 return;
             }
 
@@ -3864,7 +3717,6 @@ class GameScene extends Phaser.Scene {
         // Enemy attack (Emberclaw shooting)
         networkManager.on('enemy:attack', (data) => {
             console.log(`🎯 CLIENT RECEIVED enemy:attack - enemyId: ${data.enemyId}, targetPos: (${data.targetX}, ${data.targetY})`);
-            console.log(`🔍 Available emberclaws:`, Object.keys(this.emberclaws));
             const emberclaw = this.emberclaws[data.enemyId];
             if (emberclaw && emberclaw.shootProjectile) {
                 console.log(`✅ Emberclaw found, calling shootProjectile(${data.targetX}, ${data.targetY})`);
@@ -4559,7 +4411,6 @@ class GameScene extends Phaser.Scene {
         this.swordDemons = {};
         this.minotaurs = {};
         this.mushrooms = {};
-        console.log('🧹 Cleared all enemies, sword demons, minotaurs, and mushrooms');
     }
 
     healPlayer() {
@@ -4740,7 +4591,6 @@ class GameScene extends Phaser.Scene {
             playerData.permanentMinions.forEach((minionId, index) => {
                 // Skip if minion already exists
                 if (this.minions[minionId]) {
-                    console.log(`⏭️ Minion ${minionId} already exists, skipping`);
                     return;
                 }
 
@@ -5202,7 +5052,6 @@ class GameScene extends Phaser.Scene {
                 if (playerUnderAnyRoof && currentOverlayAlpha < 0.01) {
                     console.log('🌑 Player entered roof - overlay should appear');
                     console.log(`   Overlay alpha: ${newOverlayAlpha} (target: 0.5)`);
-                    console.log(`   Overlay depth: ${this.roofDarkOverlay.depth}`);
                     console.log(`   Overlay visible: ${this.roofDarkOverlay.visible}`);
                 } else if (!playerUnderAnyRoof && currentOverlayAlpha > 0.49) {
                     console.log('🌑 Player exited roof - overlay should fade');
@@ -5824,7 +5673,6 @@ class GameScene extends Phaser.Scene {
         if (!this.textures.exists('bird')) {
             console.error('❌ Bird texture not loaded! Skipping bird spawning.');
         } else {
-            console.log('✅ Bird texture loaded successfully');
 
             // Create bird animation (flying = frames 8-15)
             if (!this.anims.exists('bird_fly')) {
@@ -6629,7 +6477,6 @@ class GameScene extends Phaser.Scene {
         }
 
         const characterId = player.data?.characterId || player.class;
-        console.log(`🔍 applyCharacterBuild - characterId: ${characterId}`);
 
         // For Malachar, apply Bone Commander build
         if (characterId && characterId.toLowerCase() === 'malachar' && typeof window.getBuildById === 'function') {
@@ -6715,7 +6562,6 @@ class GameScene extends Phaser.Scene {
         // Get character class (normalize to uppercase)
         const characterId = (player.data?.characterId || player.data?.class || player.class || '').toUpperCase();
 
-        console.log(`🔍 === ABILITY UNLOCK CHECK ===`);
         console.log(`🔍 Character ID: ${characterId}`);
         console.log(`🔍 Level: ${level}`);
         console.log(`🔍 player.data.characterId: ${player.data?.characterId}`);
@@ -6744,7 +6590,6 @@ class GameScene extends Phaser.Scene {
 
                 // Check if already unlocked (prevent duplicates)
                 if (this.unlockedAbilityIds.includes(ability.id)) {
-                    console.log(`⚠️ Ability ${ability.id} already unlocked, skipping`);
                     return;
                 }
 
@@ -6809,15 +6654,12 @@ class GameScene extends Phaser.Scene {
 
                 console.log(`✅ Auto-unlocked ${ability.name} at level ${level}`);
             } else {
-                console.log(`⚠️ No abilities available for level ${level}`);
             }
         } else {
-            console.log(`⚠️ Skipping ability unlock - characterId: ${characterId}, getAvailableChoices exists: ${typeof window.getAvailableChoices === 'function'}`);
         }
 
         // ALDRIC: Auto-unlock abilities at specific levels
         if (characterId && characterId.toLowerCase() === 'aldric') {
-            console.log(`🔥 ALDRIC UNLOCK CHECK - Level: ${level}`);
 
             if (!player.abilities) {
                 player.abilities = {};
@@ -6841,12 +6683,10 @@ class GameScene extends Phaser.Scene {
                             damage: 60
                         }
                     };
-                    console.log(`✅ Aldric set E - Shockwave ability`);
                 }
 
                 // Show notification if we haven't shown it yet
                 if (!player.shownAbilityNotifications.e) {
-                    console.log(`🎨 About to call showAbilityUnlockedNotification for Shockwave`);
                     this.showAbilityUnlockedNotification({
                         name: 'Shockwave',
                         description: 'Release a devastating shockwave that damages all nearby enemies.',
@@ -6871,12 +6711,10 @@ class GameScene extends Phaser.Scene {
                             iframesDuration: 300 // 0.3 seconds of invincibility
                         }
                     };
-                    console.log(`✅ Aldric set Q - Battle Rush ability`);
                 }
 
                 // Show notification if we haven't shown it yet
                 if (!player.shownAbilityNotifications.q) {
-                    console.log(`🎨 About to call showAbilityUnlockedNotification for Battle Rush`);
                     this.showAbilityUnlockedNotification({
                         name: 'Battle Rush',
                         description: 'Dash forward, damaging enemies. Grants brief invincibility.',
@@ -6907,7 +6745,6 @@ class GameScene extends Phaser.Scene {
                             slowDuration: 1500
                         }
                     };
-                    console.log(`✅ Aldric set R - Titan's Fury ability`);
                 }
 
                 if (!player.shownAbilityNotifications.r) {
@@ -6933,7 +6770,6 @@ class GameScene extends Phaser.Scene {
     // Show a sleek ability unlock notification
     showAbilityUnlockedNotification(ability) {
         try {
-            console.log(`🎨 Showing ability notification for:`, ability.name);
 
             const width = this.cameras.main.width;
             const height = this.cameras.main.height;

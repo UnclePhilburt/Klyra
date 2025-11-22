@@ -299,8 +299,6 @@ class SkillShopNPC {
 
         // Recreate the skill cards
         this.createSkillCards();
-
-        console.log('🔄 Skill shop refreshed with:', this.currentSkills.map(s => s.name));
     }
 
     setupRotationTimer() {

@@ -155,7 +155,6 @@ class LDtkLoader {
                     if (isRoof) {
                         container.alpha = 1.0; // Start fully visible
                         blitter.alpha = 1.0; // Also set blitter alpha
-                        console.log(`   🏠 Setting up roof layer with ${allTiles.length} tiles`);
 
                         // Calculate the bounding box of roof tiles
                         let minX = Infinity, minY = Infinity;

@@ -51,11 +51,9 @@ class PlayerSprite {
 
         if (tileSize === 1) {
             // 1x1 character (like Kelise)
-            console.log(`✅ Creating 1x1 sprite for ${this.characterClass}`);
             this.create1x1Sprite(x, y, textureKey, character);
         } else {
             // 2x2 character (like Malachar)
-            console.log(`✅ Creating 2x2 sprite for ${this.characterClass}`);
             this.create2x2Sprite(x, y, textureKey, character);
         }
     }
@@ -97,8 +95,6 @@ class PlayerSprite {
 
         this.usingSprite = true;
         this.is1x1 = true;
-
-        console.log(`✅ 1x1 sprite character created (${frameWidth}px @ ${scale.toFixed(2)}x scale) with collision box: ${collisionWidth}x${collisionHeight}`);
     }
 
     create2x2Sprite(x, y, textureKey, character) {
@@ -133,8 +129,6 @@ class PlayerSprite {
         this.updateSpritePositions();
         this.usingSprite = true;
         this.is1x1 = false;
-
-        console.log(`✅ 2x2 sprite character created with collision box: ${collisionWidth}x${collisionHeight}`);
     }
 
     createFallbackCharacter(x, y, character) {
