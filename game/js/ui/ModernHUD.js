@@ -727,6 +727,54 @@ class ModernHUD {
         this.playerStats.damageTaken += amount;
     }
 
+    // Reposition UI elements when screen size changes
+    repositionUI() {
+        const width = this.scene.cameras.main.width;
+        const height = this.scene.cameras.main.height;
+        const padding = 16;
+
+        // Update currency container position (top-right)
+        if (this.currencyContainer) {
+            this.currencyContainer.x = width - padding - 100;
+            this.currencyContainer.y = padding;
+        }
+
+        // Update skills container position (top-right)
+        if (this.skillsContainer) {
+            this.skillsContainer.x = width - padding - 180;
+            this.skillsContainer.y = padding;
+        }
+
+        // Update compact hub position (top-left)
+        if (this.compactHub) {
+            this.compactHub.x = padding;
+            this.compactHub.y = padding;
+        }
+
+        // Update health/xp bar positions (bottom-left)
+        const barX = 20;
+        const healthBarHeight = 12;
+        const xpBarHeight = 8;
+        const barSpacing = 6;
+        const healthBarY = height - 20 - healthBarHeight - xpBarHeight - barSpacing - 10;
+        const xpBarY = healthBarY + healthBarHeight + barSpacing;
+
+        this.healthBarX = barX;
+        this.healthBarY = healthBarY;
+        this.xpBarY = xpBarY;
+
+        // Update text positions
+        if (this.healthText) {
+            this.healthText.y = healthBarY + healthBarHeight / 2;
+        }
+
+        // Force redraw health and XP bars with new positions
+        if (this.player) {
+            this.updateHealthBar();
+            this.updateXPBar();
+        }
+    }
+
     destroy() {
         // Stop any active tweens
         if (this.lowHealthPulse) {

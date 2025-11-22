@@ -1779,4 +1779,29 @@ class AbilityManager {
             this.cooldownUI = null;
         }
     }
+
+    // Reposition UI elements when screen size changes
+    repositionUI() {
+        const width = this.scene.cameras.main.width;
+        const height = this.scene.cameras.main.height;
+
+        const centerX = width / 2;
+        const bottomY = height - 80;
+
+        // Update positions of ability containers
+        if (this.cooldownUI) {
+            if (this.cooldownUI.q && this.cooldownUI.q.container) {
+                this.cooldownUI.q.container.x = centerX - 180;
+                this.cooldownUI.q.container.y = bottomY;
+            }
+            if (this.cooldownUI.e && this.cooldownUI.e.container) {
+                this.cooldownUI.e.container.x = centerX;
+                this.cooldownUI.e.container.y = bottomY;
+            }
+            if (this.cooldownUI.r && this.cooldownUI.r.container) {
+                this.cooldownUI.r.container.x = centerX + 180;
+                this.cooldownUI.r.container.y = bottomY;
+            }
+        }
+    }
 }

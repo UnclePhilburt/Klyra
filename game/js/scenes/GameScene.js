@@ -359,6 +359,24 @@ class GameScene extends Phaser.Scene {
         this.input.gamepad.start();
         this.controllerManager = new ControllerManager(this);
 
+        // Listen for window resize to update UI positions
+        this.scale.on('resize', (gameSize) => {
+            if (this.cameras && this.cameras.main) {
+                this.cameras.main.setSize(gameSize.width, gameSize.height);
+
+                // Reposition UI elements
+                if (this.modernHUD && this.modernHUD.repositionUI) {
+                    this.modernHUD.repositionUI();
+                }
+                if (this.inventoryUI && this.inventoryUI.repositionUI) {
+                    this.inventoryUI.repositionUI();
+                }
+                if (this.abilityManager && this.abilityManager.repositionUI) {
+                    this.abilityManager.repositionUI();
+                }
+            }
+        });
+
         // Show loading message
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;

@@ -684,6 +684,45 @@ class InventoryUI {
         console.log(`🎮 InventoryUI: Switched to ${mode} mode`);
     }
 
+    // Reposition UI elements when screen size changes
+    repositionUI() {
+        const width = this.scene.cameras.main.width;
+        const height = this.scene.cameras.main.height;
+
+        const slotSize = 35;
+        const slotPadding = 10;
+        const totalWidth = this.hotbarSlots * slotSize + (this.hotbarSlots - 1) * slotPadding;
+        const startX = (width - totalWidth) / 2;
+        const startY = height - 50;
+
+        // Update positions of all hotbar elements
+        for (let i = 0; i < this.hotbarSlots; i++) {
+            const x = startX + i * (slotSize + slotPadding);
+
+            if (this.hotbarSlotGraphics[i]) {
+                this.hotbarSlotGraphics[i].x = x + slotSize / 2;
+                this.hotbarSlotGraphics[i].y = startY + slotSize / 2;
+            }
+            if (this.hotbarKeyTexts[i]) {
+                this.hotbarKeyTexts[i].x = x + slotSize - 2;
+                this.hotbarKeyTexts[i].y = startY + slotSize - 2;
+            }
+            if (this.hotbarItemSprites[i]) {
+                this.hotbarItemSprites[i].x = x + slotSize / 2;
+                this.hotbarItemSprites[i].y = startY + slotSize / 2;
+            }
+            if (this.hotbarItemTexts[i]) {
+                this.hotbarItemTexts[i].x = x + slotSize / 2;
+                this.hotbarItemTexts[i].y = startY + slotSize / 2;
+            }
+        }
+
+        // Update buffs container position (top-right)
+        if (this.buffsContainer) {
+            this.buffsContainer.x = width - 200;
+        }
+    }
+
     destroy() {
         this.hotbarElements.forEach(elem => {
             if (elem) elem.destroy();
