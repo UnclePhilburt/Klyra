@@ -144,7 +144,6 @@ class BiomeChunkSystem {
                 chunkX: chunkX,
                 chunkY: chunkY
             });
-            console.log(`✅ Chunk (${chunkX},${chunkY}) loaded at pixel (${worldX},${worldY})`);
         } else {
             console.error(`❌ Failed to render chunk (${chunkX},${chunkY})`);
         }
