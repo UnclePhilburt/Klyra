@@ -5153,6 +5153,14 @@ class GameScene extends Phaser.Scene {
                         playerY >= bounds.y &&
                         playerY <= (bounds.y + bounds.height);
 
+                    // Debug logging (only log occasionally to avoid spam)
+                    if (!this.lastRoofDebugTime || time - this.lastRoofDebugTime > 1000) {
+                        this.lastRoofDebugTime = time;
+                        console.log(`🏠 Player: (${Math.round(playerX)}, ${Math.round(playerY)})`);
+                        console.log(`📦 Roof bounds: x=${Math.round(bounds.x)}, y=${Math.round(bounds.y)}, w=${Math.round(bounds.width)}, h=${Math.round(bounds.height)}`);
+                        console.log(`🎯 Under roof: ${isUnderRoof}, Alpha: ${roofContainer.alpha.toFixed(2)}`);
+                    }
+
                     // Smoothly transition alpha
                     const targetAlpha = isUnderRoof ? 0.3 : 1.0;
                     const currentAlpha = roofContainer.alpha;
