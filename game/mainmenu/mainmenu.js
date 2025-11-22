@@ -640,11 +640,11 @@ class MainMenu {
         let modalShown = false;
         let controllerActivated = false;
 
-        // Check if controller was previously activated
+        // Check if controller was previously activated or skipped
         const wasActivated = localStorage.getItem('klyra_controller_activated');
-        if (wasActivated === 'true') {
+        if (wasActivated === 'true' || wasActivated === 'skipped') {
             controllerActivated = true;
-            console.log('🎮 Controller previously activated');
+            console.log('🎮 Controller previously activated or skipped');
         }
 
         // Check for gamepad and handle activation
@@ -680,6 +680,7 @@ class MainMenu {
 
             if (anyButtonPressed) {
                 controllerActivated = true;
+                modalShown = false;
                 localStorage.setItem('klyra_controller_activated', 'true');
                 modal.style.display = 'none';
                 console.log('🎮 Controller activated via button press');
@@ -688,8 +689,10 @@ class MainMenu {
 
         // Skip button handler
         skipBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+            controllerActivated = true; // Mark as handled so modal doesn't reappear
             modalShown = false;
+            localStorage.setItem('klyra_controller_activated', 'skipped');
+            modal.style.display = 'none';
             console.log('🎮 Controller activation skipped - using keyboard');
         });
 
