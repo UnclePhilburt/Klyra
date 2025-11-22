@@ -941,16 +941,16 @@ class GameScene extends Phaser.Scene {
         // Create dark overlay for when player is under roof (blackout rest of world)
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
-        this.roofDarkOverlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0);
-        this.roofDarkOverlay.setOrigin(0.5, 0.5);
+        this.roofDarkOverlay = this.add.graphics();
+        this.roofDarkOverlay.fillStyle(0x000000, 1); // Black, full opacity
+        this.roofDarkOverlay.fillRect(0, 0, width, height); // Fill entire screen
         this.roofDarkOverlay.setScrollFactor(0); // Fixed to camera
         this.roofDarkOverlay.setDepth(98000); // Below UI (99000) but above game world
+        this.roofDarkOverlay.setAlpha(0); // Start invisible
         console.log('🌑 Dark overlay created for roof interior effect');
-        console.log(`   Position: (${this.roofDarkOverlay.x}, ${this.roofDarkOverlay.y})`);
-        console.log(`   Size: ${this.roofDarkOverlay.width}x${this.roofDarkOverlay.height}`);
+        console.log(`   Size: ${width}x${height}`);
         console.log(`   Depth: ${this.roofDarkOverlay.depth}`);
         console.log(`   Alpha: ${this.roofDarkOverlay.alpha}`);
-        console.log(`   Visible: ${this.roofDarkOverlay.visible}`);
 
         // Setup controls
         this.setupControls();
