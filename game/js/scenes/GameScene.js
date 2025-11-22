@@ -183,26 +183,44 @@ class GameScene extends Phaser.Scene {
             frameHeight: 48
         });
 
-        // Load spawn point building Tiled map
-        this.load.tilemapTiledJSON('spawnMap', 'assets/spawnpointbuilding.tmj');
+        // Red biome tilesets (2448x672 = 51 tiles wide × 14 tiles tall)
+        this.load.spritesheet('a2_terrain_red', 'assets/tilesets/a2_terrain_red.png', {
+            frameWidth: 48,
+            frameHeight: 48,
+            endFrame: 713  // 51 × 14 - 1 = 713 (0-indexed)
+        });
 
-        // Load town Tiled map
-        // DISABLED: Switching to LDtk - will re-add later
-        // this.load.tilemapTiledJSON('townMap', 'assets/town.tmj');
+        // Load spawn point building - LDtk map
+        this.load.json('spawnMapLDtk', 'assets/spawnpointbuilding.ldtk');
+
+        // Load Ember Wilds biome chunks (3 variations for variety)
+        this.load.json('emberChunk1', 'assets/ldtk/biomes/Ember Wilds/chunk1.ldtk');
+        this.load.json('emberChunk2', 'assets/ldtk/biomes/Ember Wilds/chunk2.ldtk');
+        this.load.json('emberChunk3', 'assets/ldtk/biomes/Ember Wilds/chunk3.ldtk');
+
+        // Load Dark Forest biome chunks
+        this.load.json('darkForestChunk1', 'assets/ldtk/biomes/Dark Forest/chunk1.ldtk');
+
+        // OLD Tiled version (disabled)
+        // this.load.tilemapTiledJSON('spawnMap', 'assets/spawnpointbuilding.tmj');
+
+        // Load town LDtk map (optional)
+        // this.load.json('townLDtk', 'assets/town.ldtk');
 
         // Load town tilesets (48x48 tiles)
-        this.load.spritesheet('fantasy_roofs', 'assets/Fantasy Exterior - Other Engines/Fantasy_Roofs.png', {
-            frameWidth: 48,
-            frameHeight: 48
-        });
-        this.load.spritesheet('fantasy_outside_b', 'assets/Fantasy Exterior - Other Engines/Fantasy_Outside_B.png', {
-            frameWidth: 48,
-            frameHeight: 48
-        });
-        this.load.spritesheet('roof_center', 'assets/Fantasy Exterior - Other Engines/Objects/!$Roof_center.png', {
-            frameWidth: 48,
-            frameHeight: 48
-        });
+        // DISABLED: These files don't exist yet - uncomment when you add them
+        // this.load.spritesheet('fantasy_roofs', 'assets/Fantasy Exterior - Other Engines/Fantasy_Roofs.png', {
+        //     frameWidth: 48,
+        //     frameHeight: 48
+        // });
+        // this.load.spritesheet('fantasy_outside_b', 'assets/Fantasy Exterior - Other Engines/Fantasy_Outside_B.png', {
+        //     frameWidth: 48,
+        //     frameHeight: 48
+        // });
+        // this.load.spritesheet('roof_center', 'assets/Fantasy Exterior - Other Engines/Objects/!$Roof_center.png', {
+        //     frameWidth: 48,
+        //     frameHeight: 48
+        // });
 
         // Red biome trees - 48x48 tiles, 12 columns x 24 rows
         this.load.spritesheet('red_trees', 'assets/tilesets/redbiome/Big_Trees_red.png', {
@@ -836,10 +854,14 @@ class GameScene extends Phaser.Scene {
         // Store for viewport-based rendering (don't pre-generate all tiles)
         this.renderedTiles = new Map(); // Track rendered tiles
         this.renderedDecorations = new Map(); // Track rendered decorations with their sprites
+        this.renderedChunks = new Map(); // Track rendered LDtk chunks
         // PERFORMANCE: Asymmetric render distance to match screen aspect ratio (16:9)
         // Increased for better visual experience now that GPU acceleration is confirmed working
         this.RENDER_DISTANCE_X = 20; // Horizontal (loads tiles off-screen)
         this.RENDER_DISTANCE_Y = 12; // Vertical (loads tiles off-screen)
+
+        // LDtk Chunk system (50x50 tiles per chunk)
+        this.LDTK_CHUNK_SIZE = 50; // Each LDtk chunk is 50x50 tiles
 
         // Map biome types to tileset textures and tile indices
         this.BIOME_TILESET_MAP = {};
@@ -890,25 +912,13 @@ class GameScene extends Phaser.Scene {
 
         // Calculate randomized biome distribution once per world seed
         if (!this.biomeDistribution) {
-            // Generate 3 random weights from seed
-            const weight1 = this.seededRandom(seed + 1234) * 40 + 15; // 15-55%
-            const weight2 = this.seededRandom(seed + 5678) * 40 + 15; // 15-55%
-            const weight3 = this.seededRandom(seed + 9012) * 40 + 15; // 15-55%
-
-            // Normalize to 100%
-            const total = weight1 + weight2 + weight3;
-            const green = weight1 / total;
-            const darkGreen = weight2 / total;
-            // red gets the remainder
-
             this.biomeDistribution = {
-                green: green,
-                darkGreen: green + darkGreen,
-                // red: 1.0 (everything above darkGreen threshold)
+                green: 0,
+                darkGreen: 0.5, // 50% Dark Forest
+                // Everything else (50%) is red/Ember Wilds
             };
 
-            console.log(`🌍 World biome distribution: Green=${(green*100).toFixed(1)}% DarkGreen=${(darkGreen*100).toFixed(1)}% Red=${((1-green-darkGreen)*100).toFixed(1)}%`);
-            console.log(`📊 Biome thresholds: green=${this.biomeDistribution.green.toFixed(3)}, darkGreen=${this.biomeDistribution.darkGreen.toFixed(3)}`);
+            console.log(`🌍 World biome distribution: Dark Forest=50%, Ember Wilds=50%`);
         }
 
         // Biome definitions with 12 tile variations each
@@ -963,14 +973,163 @@ class GameScene extends Phaser.Scene {
         return tileId;
     }
 
+    /**
+     * Render an LDtk chunk - selects appropriate biome chunk based on position
+     */
+    renderLDtkChunkIfNeeded(chunkX, chunkY) {
+        const chunkKey = `${chunkX},${chunkY}`;
+
+        // Skip if already rendered
+        if (this.renderedChunks.has(chunkKey)) {
+            return;
+        }
+
+        // Use chunk coordinates to deterministically select biome and chunk variant
+        const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
+        // Determine biome for this chunk (same logic as getTileType but for chunks)
+        const CHUNK_SIZE = 100; // Same as in getTileType
+        const chunkHash = this.seededRandom(seed + chunkX * 1000 + chunkY);
+
+        // Initialize biome distribution if not already done
+        if (!this.biomeDistribution) {
+            this.biomeDistribution = {
+                green: 0,
+                darkGreen: 0.5, // 50% Dark Forest
+                // Everything else (50%) is red/Ember Wilds
+            };
+            console.log(`🌍 World biome distribution: Dark Forest=50%, Ember Wilds=50%`);
+        }
+
+        // Determine biome
+        let biome;
+        if (chunkHash < this.biomeDistribution.green) {
+            biome = 'green';
+        } else if (chunkHash < this.biomeDistribution.darkGreen) {
+            biome = 'dark_green';
+        } else {
+            biome = 'red'; // Ember Wilds
+        }
+
+        // Debug: Log biome selection for first few chunks
+        if (!this.debugBiomeCount) this.debugBiomeCount = 0;
+        if (this.debugBiomeCount < 10) {
+            console.log(`   🌲 Chunk (${chunkX},${chunkY}): hash=${chunkHash.toFixed(3)}, biome=${biome}`);
+            this.debugBiomeCount++;
+        }
+
+        // Select chunk variant based on biome
+        let chunkDataKey;
+        let chunkIndex;
+        let biomeName;
+
+        if (biome === 'dark_green') {
+            // Dark Forest biome - only 1 chunk for now
+            chunkDataKey = 'darkForestChunk1';
+            chunkIndex = 1;
+            biomeName = 'Dark Forest';
+        } else {
+            // Ember Wilds biome (red) - 3 chunk variants
+            const chunkSeed = seed + chunkX * 7919 + chunkY * 6563;
+            const chunkRandom = this.seededRandom(chunkSeed);
+
+            if (chunkRandom < 0.33) {
+                chunkDataKey = 'emberChunk1';
+                chunkIndex = 1;
+            } else if (chunkRandom < 0.66) {
+                chunkDataKey = 'emberChunk2';
+                chunkIndex = 2;
+            } else {
+                chunkDataKey = 'emberChunk3';
+                chunkIndex = 3;
+            }
+            biomeName = 'Ember Wilds';
+        }
+
+        // Check if chunk data is loaded
+        if (!this.cache.json.exists(chunkDataKey)) {
+            console.error(`⚠️ ${biomeName} ${chunkDataKey} not loaded in cache`);
+            console.error(`   Available chunk keys:`, Object.keys(this.cache.json.entries.entries).filter(k => k.includes('Chunk') || k.includes('chunk')));
+            return;
+        }
+
+        // Calculate world position for this chunk (in pixels)
+        const tileSize = GameConfig.GAME.TILE_SIZE;
+        const worldX = chunkX * this.LDTK_CHUNK_SIZE * tileSize;
+        const worldY = chunkY * this.LDTK_CHUNK_SIZE * tileSize;
+
+        console.log(`🔥 Loading ${biomeName} chunk${chunkIndex} at chunk coords (${chunkX},${chunkY}) -> world pixel pos (${worldX},${worldY})`);
+        console.log(`   Current chunks loaded: ${this.renderedChunks.size}`);
+
+        // Load the LDtk chunk (use top-left positioning for chunks, not centered)
+        const chunkData = this.loadLDtkMap(chunkDataKey, worldX, worldY, tileSize, true);
+
+        if (chunkData) {
+            // Set all chunk layers to render DEEP in the background (behind everything)
+            chunkData.layers.forEach(layer => {
+                if (layer.container) {
+                    // Push layers to -200 range so they're behind spawn building (-100) and enemies (0+)
+                    const newDepth = -200 + layer.depth;
+                    layer.container.setDepth(newDepth);
+                    console.log(`   Layer "${layer.name}" depth: ${newDepth}`);
+                }
+            });
+
+            // Mark this chunk as rendered
+            this.renderedChunks.set(chunkKey, {
+                ldtkData: chunkData,
+                chunkIndex: chunkIndex,
+                biome: biomeName,
+                position: { x: worldX, y: worldY }
+            });
+
+            console.log(`✅ ${biomeName} chunk${chunkIndex} loaded at (${chunkX},${chunkY}) -> world pos (${worldX},${worldY})`);
+            console.log(`   Chunk has ${chunkData.layers.length} layers`);
+            console.log(`   Total chunks now: ${this.renderedChunks.size}`);
+        } else {
+            console.error(`❌ Failed to load ${biomeName} chunk${chunkIndex} at (${chunkX},${chunkY})`);
+        }
+    }
+
     // Generate decoration for tile (client-side procedural)
     getDecoration(x, y) {
         const seed = this.worldSeed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const decoSeed = seed + x * 7919 + y * 6563; // Prime numbers for distribution
         const decoChance = this.seededRandom(decoSeed);
 
-        // Get biome for this tile
-        const biome = this.biomeCache[`${x},${y}`] || 'green';
+        // Initialize biome cache if not exists
+        if (!this.biomeCache) {
+            this.biomeCache = {};
+        }
+
+        // Get biome for this tile - calculate if not cached
+        let biome = this.biomeCache[`${x},${y}`];
+        if (!biome) {
+            // Calculate biome based on chunk coordinates (same logic as renderLDtkChunkIfNeeded)
+            const CHUNK_SIZE = 100;
+            const chunkX = Math.floor(x / CHUNK_SIZE);
+            const chunkY = Math.floor(y / CHUNK_SIZE);
+            const chunkHash = this.seededRandom(seed + chunkX * 1000 + chunkY);
+
+            // Initialize biome distribution if needed
+            if (!this.biomeDistribution) {
+                this.biomeDistribution = {
+                    green: 0,
+                    darkGreen: 0.5, // 50% Dark Forest
+                };
+            }
+
+            if (chunkHash < this.biomeDistribution.green) {
+                biome = 'green';
+            } else if (chunkHash < this.biomeDistribution.darkGreen) {
+                biome = 'dark_green';
+            } else {
+                biome = 'red'; // Ember Wilds
+            }
+
+            // Cache it
+            this.biomeCache[`${x},${y}`] = biome;
+        }
 
         // Decoration density - increased for more visual richness
         let spawnChance;
@@ -997,12 +1156,31 @@ class GameScene extends Phaser.Scene {
             else if (rand < 0.95) decorationType = 'rock';
             else decorationType = 'baby_tree';
         } else if (biome === 'dark_green') {
-            // Dark Green: forest with good tree coverage
-            if (rand < 0.30) decorationType = 'tree';           // 30% - more trees
-            else if (rand < 0.50) decorationType = 'bush';      // 20%
-            else if (rand < 0.70) decorationType = 'log';       // 20%
-            else if (rand < 0.85) decorationType = 'tree_stump'; // 15%
-            else decorationType = 'grass';                      // 15%
+            // Dark Green: forest with good tree coverage - randomly use green or red decor
+            // Use chunk coordinates to determine decor color variant (consistent per chunk)
+            const tileSize = GameConfig.GAME.TILE_SIZE;
+            const chunkSize = 16; // tiles per chunk
+            const chunkX = Math.floor(x / chunkSize);
+            const chunkY = Math.floor(y / chunkSize);
+            const chunkSeed = seed + chunkX * 5003 + chunkY * 9001;
+            const chunkRand = this.seededRandom(chunkSeed);
+            const useRedDecor = chunkRand < 0.5; // 50% chance for red, 50% for green
+
+            if (useRedDecor) {
+                // Red variant decorations
+                if (rand < 0.30) decorationType = 'red_tree';           // 30% - more trees
+                else if (rand < 0.50) decorationType = 'red_bush';      // 20%
+                else if (rand < 0.70) decorationType = 'red_log';       // 20%
+                else if (rand < 0.85) decorationType = 'red_stump';     // 15%
+                else decorationType = 'red_grass';                      // 15%
+            } else {
+                // Green variant decorations
+                if (rand < 0.30) decorationType = 'tree';           // 30% - more trees
+                else if (rand < 0.50) decorationType = 'bush';      // 20%
+                else if (rand < 0.70) decorationType = 'log';       // 20%
+                else if (rand < 0.85) decorationType = 'tree_stump'; // 15%
+                else decorationType = 'grass';                      // 15%
+            }
         } else if (biome === 'red') {
             // Red biome: red trees + red decorations
             if (rand < 0.25) decorationType = 'red_tree';           // 25% - more trees
@@ -1027,19 +1205,43 @@ class GameScene extends Phaser.Scene {
         const playerTileX = Math.floor(this.localPlayer.sprite.x / tileSize);
         const playerTileY = Math.floor(this.localPlayer.sprite.y / tileSize);
 
-        // PERFORMANCE: Only update when player moves to a new tile (not every frame!)
-        // This avoids 1,265+ iterations per frame (589 tiles + 656 cleanup + 20 decorations)
-        if (!this.lastPlayerTileX) {
+        // Track if player moved to new tile
+        const isFirstUpdate = !this.lastPlayerTileX;
+        const playerMovedTile = playerTileX !== this.lastPlayerTileX || playerTileY !== this.lastPlayerTileY;
+
+        if (isFirstUpdate) {
             this.lastPlayerTileX = playerTileX;
             this.lastPlayerTileY = playerTileY;
-        }
+            // Don't return on first update - need to load initial chunks!
+        } else if (!playerMovedTile) {
+            // Player hasn't moved to a new tile
+            // Still run cleanup every 60 frames (~1 second) to prevent accumulation
+            if (!this.cleanupFrameCounter) this.cleanupFrameCounter = 0;
+            this.cleanupFrameCounter++;
 
-        if (playerTileX === this.lastPlayerTileX && playerTileY === this.lastPlayerTileY) {
-            return; // Player hasn't moved to a new tile, skip expensive update
+            if (this.cleanupFrameCounter < 60) {
+                return; // Skip update if no movement and not time for cleanup
+            }
+            this.cleanupFrameCounter = 0; // Reset counter, will run cleanup below
+        } else {
+            // Player moved, reset cleanup counter
+            this.cleanupFrameCounter = 0;
         }
 
         this.lastPlayerTileX = playerTileX;
         this.lastPlayerTileY = playerTileY;
+
+        // Debug: Log object counts every 5 seconds
+        if (!this.debugLogTimer) this.debugLogTimer = 0;
+        this.debugLogTimer++;
+        if (this.debugLogTimer >= 300) { // 300 frames = ~5 seconds at 60fps
+            console.log(`📊 Performance Stats:
+  Decorations: ${this.renderedDecorations.size}
+  Chunks: ${this.renderedChunks.size}
+  Tiles: ${this.renderedTiles.size}
+  Total Phaser Objects: ${this.children.length}`);
+            this.debugLogTimer = 0;
+        }
 
         // Calculate visible tile range (asymmetric for aspect ratio)
         const minX = Math.max(0, playerTileX - this.RENDER_DISTANCE_X);
@@ -1054,57 +1256,47 @@ class GameScene extends Phaser.Scene {
         const spawnMapSize = 50;
         const spawnMargin = spawnMapSize / 2;
 
-        // Render visible tiles
-        for (let y = minY; y <= maxY; y++) {
-            for (let x = minX; x <= maxX; x++) {
+        // Check for LDtk chunks to render (50x50 tile chunks for Ember Wilds biome)
+        const playerChunkX = Math.floor(playerTileX / this.LDTK_CHUNK_SIZE);
+        const playerChunkY = Math.floor(playerTileY / this.LDTK_CHUNK_SIZE);
+
+        // Only load chunks when player enters a new chunk (not every frame!)
+        const currentChunkKey = `${playerChunkX},${playerChunkY}`;
+        if (!this.lastChunkKey || this.lastChunkKey !== currentChunkKey) {
+            console.log(`🎯 Player entered new chunk (${playerChunkX},${playerChunkY})`);
+            this.lastChunkKey = currentChunkKey;
+
+            // Render chunks around the player (3x3 grid for smooth transitions)
+            for (let cx = playerChunkX - 1; cx <= playerChunkX + 1; cx++) {
+                for (let cy = playerChunkY - 1; cy <= playerChunkY + 1; cy++) {
+                    this.renderLDtkChunkIfNeeded(cx, cy);
+                }
+            }
+
+            // Debug: Log chunk count
+            console.log(`📊 Active chunks: ${this.renderedChunks.size}`);
+        }
+
+        // Procedural decoration generation ON TOP of LDtk chunks
+        // Render decorations around player
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
                 const key = `${x},${y}`;
 
-                // Skip if already rendered
-                if (this.renderedTiles.has(key)) continue;
+                // Skip if decoration already rendered
+                if (this.renderedDecorations.has(key)) continue;
 
-                // Check if this tile is within the spawn building area
-                const isInSpawnArea = (
-                    x >= (worldCenterTileX - spawnMargin) &&
-                    x < (worldCenterTileX + spawnMargin) &&
-                    y >= (worldCenterTileY - spawnMargin) &&
-                    y < (worldCenterTileY + spawnMargin)
-                );
-
-                // Skip rendering procedural terrain in spawn area (Tiled map handles it)
-                if (isInSpawnArea) continue;
-
-                // Generate tile on-demand
-                const tile = this.getTileType(x, y);
-                const px = x * tileSize;
-                const py = y * tileSize;
-
-                // Get tileset mapping for this biome
-                const tileInfo = this.BIOME_TILESET_MAP[tile];
-
-                if (!tileInfo || !this.textures.exists(tileInfo.texture)) {
-                    continue; // Skip invalid tiles
+                // Skip spawn building area
+                if (Math.abs(x - worldCenterTileX) < spawnMargin &&
+                    Math.abs(y - worldCenterTileY) < spawnMargin) {
+                    continue;
                 }
 
-                // Create sprite from specific tile frame in the spritesheet
-                try {
-                    const tileSprite = this.add.sprite(px, py, tileInfo.texture, tileInfo.frame);
-                    tileSprite.setOrigin(0, 0);
+                // Get decoration type for this tile
+                const decorationType = this.getDecoration(x, y);
 
-                    // Scale to game tile size (48px tileset -> 32px game tile)
-                    const scale = tileSize / 48;
-                    tileSprite.setScale(scale);
-                    tileSprite.setDepth(-1); // Background layer
-
-                    this.tileContainer.add(tileSprite);
-                    this.renderedTiles.set(key, tileSprite);
-                } catch (error) {
-                    // Silent fail for performance
-                }
-
-                // Generate decorations on-demand (already outside spawn area due to continue above)
-                const decoration = this.getDecoration(x, y);
-                if (decoration && !this.renderedDecorations.has(key)) {
-                    const sprites = this.renderDecoration(x, y, decoration);
+                if (decorationType) {
+                    const sprites = this.renderDecoration(x, y, decorationType);
                     if (sprites && sprites.length > 0) {
                         this.renderedDecorations.set(key, sprites);
                     }
@@ -1129,12 +1321,16 @@ class GameScene extends Phaser.Scene {
         });
 
         // PERFORMANCE: Clean up decorations far from player (critical for FPS)
+        // Use larger cleanup distance for decorations so trees don't pop out while still visible
+        const DECORATION_CLEANUP_DISTANCE_X = this.RENDER_DISTANCE_X * 1.5; // Increased from 1.15
+        const DECORATION_CLEANUP_DISTANCE_Y = this.RENDER_DISTANCE_Y * 1.5; // Increased from 1.15
+
         this.renderedDecorations.forEach((sprites, key) => {
             const [x, y] = key.split(',').map(Number);
             const distX = Math.abs(x - playerTileX);
             const distY = Math.abs(y - playerTileY);
 
-            if (distX > CLEANUP_DISTANCE_X || distY > CLEANUP_DISTANCE_Y) {
+            if (distX > DECORATION_CLEANUP_DISTANCE_X || distY > DECORATION_CLEANUP_DISTANCE_Y) {
                 // Destroy all sprites for this decoration
                 sprites.forEach(sprite => {
                     if (sprite && sprite.destroy) {
@@ -1144,6 +1340,41 @@ class GameScene extends Phaser.Scene {
                 this.renderedDecorations.delete(key);
             }
         });
+
+        // PERFORMANCE: Clean up LDtk chunks far from player
+        // playerChunkX and playerChunkY already declared above
+        const CHUNK_CLEANUP_DISTANCE = 1; // Keep chunks within 1 chunk of player (3x3 grid = 9 max)
+
+        const chunksToDelete = [];
+        this.renderedChunks.forEach((chunkData, chunkKey) => {
+            const [cx, cy] = chunkKey.split(',').map(Number);
+            const distX = Math.abs(cx - playerChunkX);
+            const distY = Math.abs(cy - playerChunkY);
+            const maxDist = Math.max(distX, distY);
+
+            // Use Math.max for diagonal distance (not OR) to prevent keeping too many chunks
+            if (maxDist > CHUNK_CLEANUP_DISTANCE) {
+                chunksToDelete.push({ key: chunkKey, cx, cy, dist: maxDist, data: chunkData });
+            }
+        });
+
+        // Delete chunks outside range
+        if (chunksToDelete.length > 0) {
+            console.log(`🗑️ Cleaning up ${chunksToDelete.length} chunks (player at chunk ${playerChunkX},${playerChunkY})`);
+            chunksToDelete.forEach(({ key, cx, cy, dist, data }) => {
+                // Destroy all layers in the chunk
+                if (data.ldtkData && data.ldtkData.layers) {
+                    data.ldtkData.layers.forEach(layer => {
+                        if (layer.container && layer.container.destroy) {
+                            layer.container.destroy(true); // true = destroy children too
+                        }
+                    });
+                }
+                this.renderedChunks.delete(key);
+                console.log(`   🗑️ Removed chunk (${cx},${cy}) - distance: ${dist}`);
+            });
+            console.log(`   Chunks remaining: ${this.renderedChunks.size}`);
+        }
     }
 
     seededRandom(seed) {
@@ -1863,105 +2094,35 @@ class GameScene extends Phaser.Scene {
             graphics.destroy();
         }
 
-        // === LOAD TILED MAP FOR SPAWN BUILDING ===
-        const map = this.make.tilemap({ key: 'spawnMap' });
+        // === LOAD LDTK MAP FOR SPAWN BUILDING ===
+        console.log('📦 Loading LDtk spawn building...');
 
-        // Map is 50x50 tiles, each tile is 48px source but we use 32px game tiles
-        const mapWidthTiles = 50;
-        const mapHeightTiles = 50;
-        const mapWidthPx = mapWidthTiles * tileSize;
-        const mapHeightPx = mapHeightTiles * tileSize;
+        const spawnMapData = this.loadLDtkMap('spawnMapLDtk', worldCenterX, worldCenterY, tileSize);
 
-        // Position map so its center aligns with world center
-        const mapOffsetX = worldCenterX - (mapWidthPx / 2);
-        const mapOffsetY = worldCenterY - (mapHeightPx / 2);
+        if (spawnMapData) {
+            console.log(`✅ LDtk spawn map loaded!`);
+            console.log(`   Layers: ${spawnMapData.layers.length}`);
+            console.log(`   Entities: ${spawnMapData.entities.length}`);
+            console.log(`   Size: ${spawnMapData.size.width}x${spawnMapData.size.height}px`);
+            console.log(`   Offset: (${spawnMapData.offset.x}, ${spawnMapData.offset.y})`);
 
-        console.log(`📍 Spawn map: ${mapWidthTiles}x${mapHeightTiles} tiles (${mapWidthPx}x${mapHeightPx}px)`);
-        console.log(`📍 Map positioned at offset (${mapOffsetX}, ${mapOffsetY})`);
+            // Store map data for later use
+            this.spawnMapData = spawnMapData;
 
-        // Add ALL tilesets used in the map (must match TMJ embedded tileset names)
-        const tilesets = [
-            map.addTilesetImage('A2 - Terrain And Misc', 'terrain_misc'),
-            map.addTilesetImage('Fantasy_Outside_A5', 'fantasy_outside_a5'),
-            map.addTilesetImage('a2_terrain_base', 'terrain_base'),
-            map.addTilesetImage('A1 - Liquids And Misc', 'liquids_misc'),
-            map.addTilesetImage('A3 - Walls And Floors', 'walls_floors'),
-            map.addTilesetImage('A4 - Walls', 'walls'),
-            map.addTilesetImage('Fantasy_door1', 'fantasy_door1'),
-            map.addTilesetImage('Fantasy_door2', 'fantasy_door2'),
-            map.addTilesetImage('Gate_Cathedral1', 'gate_cathedral1'),
-            map.addTilesetImage('Fantasy_Outside_D', 'objects_d'),
-            map.addTilesetImage('Fantasy_Outside_C', 'fantasy_outside_c'),
-            map.addTilesetImage('A2_extended_forest_terrain', 'forest_extended'),
-            map.addTilesetImage('Big_Trees_red', 'red_trees'),
-            map.addTilesetImage('Fantasy_Outside_D_red', 'red_decorations')
-        ];
+            // Process entities (doors, NPCs, etc.)
+            spawnMapData.entities.forEach(entity => {
+                console.log(`   📍 Entity: ${entity.identifier} at (${entity.x}, ${entity.y})`);
 
-        console.log(`✅ Loaded ${tilesets.filter(t => t).length} tilesets for spawn building`);
-
-        // Create all layers from the map (actual layer names from TMJ)
-        const scale = tileSize / 48; // Scale from 48px tileset to 32px game tiles
-        const layerConfig = [
-            { name: 'Ground', depth: -1 },
-            { name: 'water', depth: 0 },
-            { name: 'walkway', depth: 1 },
-            { name: 'walls', depth: 2 },
-            { name: 'door', depth: 3 },
-            { name: 'roof', depth: 4 },
-            { name: 'roof decor', depth: 5 },
-            { name: 'fence', depth: 6 }
-        ];
-
-        // Store layers for collision setup
-        const createdLayers = [];
-
-        layerConfig.forEach(({ name, depth }) => {
-            const layer = map.createLayer(name, tilesets, mapOffsetX, mapOffsetY);
-            if (layer) {
-                layer.setScale(scale);
-                layer.setDepth(depth);
-                createdLayers.push(layer);
-
-                // Store door layer for interaction
-                if (name === 'door') {
-                    this.doorLayer = layer;
-                    this.doorLayerOffset = { x: mapOffsetX, y: mapOffsetY };
-                    this.doorLayerScale = scale;
+                // Handle door entities if you have them
+                if (entity.identifier === 'Door') {
+                    // Store door for interaction
+                    if (!this.doorEntities) this.doorEntities = [];
+                    this.doorEntities.push(entity);
                 }
-
-                console.log(`  ✅ Created layer: ${name} (depth: ${depth})`);
-            }
-        });
-
-        // === SETUP COLLISION FOR LAYERS WITH CUSTOM PROPERTIES ===
-        console.log('🔒 Setting up collision for castle layers...');
-        createdLayers.forEach(layer => {
-            // Skip door layer - players need to walk through it
-            if (layer.layer.name === 'door') {
-                console.log(`  🚪 Skipping collision for door layer (walkable)`);
-                return;
-            }
-
-            // Check if layer has collision property set to true
-            const layerData = map.getLayer(layer.layer.name);
-            if (layerData && layerData.properties) {
-                const collisionProp = layerData.properties.find(p =>
-                    (p.name === 'collision' || p.name === 'collides') && p.value === true
-                );
-
-                if (collisionProp) {
-                    // Enable collision on all tiles in this layer
-                    layer.setCollisionByExclusion([-1]);
-                    console.log(`  🔒 Enabled collision for layer: ${layer.layer.name}`);
-
-                    // Store this layer for later collision setup with player
-                    if (!this.castleCollisionLayers) {
-                        this.castleCollisionLayers = [];
-                    }
-                    this.castleCollisionLayers.push(layer);
-                }
-            }
-        });
+            });
+        } else {
+            console.error('❌ Failed to load LDtk spawn map!');
+        }
 
         // === LOAD TOWN MAP (next to spawn building) ===
         // DISABLED: Switching to LDtk - will re-add later
@@ -2505,6 +2666,37 @@ class GameScene extends Phaser.Scene {
         }
 
         this.ambientParticles.push({ sprite: particle, type });
+    }
+
+    /**
+     * Load an LDtk map file
+     * @param {string} ldtkKey - The cache key for the loaded LDtk JSON
+     * @param {number} worldCenterX - World center X position
+     * @param {number} worldCenterY - World center Y position
+     * @param {number} tileSize - Target tile size (default: 32)
+     * @returns {Object} Map data with layers and entities
+     */
+    loadLDtkMap(ldtkKey, worldCenterX, worldCenterY, tileSize = 32) {
+        // Check if LDtkLoader is available
+        if (typeof LDtkLoader === 'undefined') {
+            console.error('❌ LDtkLoader not found! Make sure to include game/js/utils/LDtkLoader.js in index.html');
+            return null;
+        }
+
+        // Get the cached LDtk JSON data
+        const ldtkData = this.cache.json.get(ldtkKey);
+        if (!ldtkData) {
+            console.error(`❌ LDtk map "${ldtkKey}" not found in cache`);
+            return null;
+        }
+
+        // Create loader and load the map
+        const loader = new LDtkLoader(this);
+        const mapData = loader.loadMap(ldtkData, worldCenterX, worldCenterY, tileSize);
+
+        console.log(`✅ LDtk map "${ldtkKey}" loaded successfully`);
+
+        return mapData;
     }
 
     setupNetworkListeners() {
@@ -3230,6 +3422,15 @@ class GameScene extends Phaser.Scene {
 
                 // Show damage effect
                 this.cameras.main.shake(100, 0.005);
+            } else {
+                // Update health bar for other players in multiplayer
+                const otherPlayer = this.otherPlayers[data.playerId];
+                if (otherPlayer) {
+                    otherPlayer.health = data.health;
+                    if (otherPlayer.ui && otherPlayer.ui.updateHealthBar) {
+                        otherPlayer.ui.updateHealthBar();
+                    }
+                }
             }
 
             // Trigger attack animation for the attacker
