@@ -111,7 +111,7 @@ class MainMenu {
 
         try {
             // Check Socket.IO endpoint instead of root
-            const serverURL = typeof GameConfig !== 'undefined' ? GameConfig.SERVER_URL : 'https://klyra-server.onrender.com';
+            const serverURL = typeof GameConfig !== 'undefined' ? GameConfig.SERVER_URL : 'http://localhost:3002';
             const response = await fetch(`${serverURL}/socket.io/`, {
                 method: 'GET',
                 mode: 'cors',

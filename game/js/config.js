@@ -1,6 +1,6 @@
-// Game Configuration v5.10 - Render deployment
+// Game Configuration v5.10 - Local development
 const GameConfig = {
-    SERVER_URL: 'https://klyra-server.onrender.com',
+    SERVER_URL: 'http://localhost:3002',
 
     GAME: {
         WIDTH: 1280,
