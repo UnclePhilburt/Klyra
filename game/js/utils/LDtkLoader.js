@@ -172,8 +172,9 @@ class LDtkLoader {
             'A3 - Walls And Floors': 'walls_floors',
             'A4 - Walls': 'walls',
             'Fantasy_Outside_A5': 'fantasy_outside_a5',
-            'Fantasy_Outside_D': 'objects_d',
+            'Fantasy_Outside_B': 'fantasy_outside_b',
             'Fantasy_Outside_C': 'fantasy_outside_c',
+            'Fantasy_Outside_D': 'objects_d',
             'A2_extended_forest_terrain': 'forest_extended',
             'Big_Trees_red': 'red_trees',
             'Fantasy_Outside_D_red': 'red_decorations',
@@ -183,7 +184,8 @@ class LDtkLoader {
             'a2_forest': 'forest',
             'a1_water_base': 'water_base',
             'a1_water_green': 'water_green',
-            'a1_water_red': 'water_red'
+            'a1_water_red': 'water_red',
+            '!$Glowing_tree': 'glowing_tree'
         };
 
         return mappings[filename] || filename;

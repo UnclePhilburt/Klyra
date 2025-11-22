@@ -194,6 +194,10 @@ class GameScene extends Phaser.Scene {
             frameHeight: 48,
             endFrame: 713  // 51 × 14 - 1 = 713 (0-indexed)
         });
+        this.load.spritesheet('fantasy_outside_b', 'assets/tilesets/Fantasy_Outside_B.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
 
         // Load spawn point building - LDtk map (small file, load in preload)
         this.load.json('spawnMapLDtk', 'assets/spawnpointbuilding.ldtk');
