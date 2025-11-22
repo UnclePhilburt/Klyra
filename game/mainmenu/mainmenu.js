@@ -15,6 +15,7 @@ class MainMenu {
         // Controller navigation state
         this.controllerMenuOptions = [];
         this.selectedMenuIndex = 0;
+        this.selectedCharacterIndex = 0;
         this.lastButtonState = {
             A: false,
             B: false,
@@ -515,12 +516,7 @@ class MainMenu {
 
         // Handle character select panel controller input
         if (characterSelectOpen) {
-            // B button to close character select
-            if (this.isControllerButtonPressed(pad, 'B')) {
-                const closeBtn = document.getElementById('closeCharacterSelect');
-                if (closeBtn) closeBtn.click();
-                console.log('🎮 Closed character select with B button');
-            }
+            this.handleCharacterSelectController(pad);
             return;
         }
 
@@ -582,6 +578,78 @@ class MainMenu {
                 console.log(`🎮 Settings: Volume set to ${newVolume}%`);
             }
         }
+    }
+
+    handleCharacterSelectController(pad) {
+        // Get all character cards
+        const characterGrid = document.getElementById('characterGrid');
+        if (!characterGrid) return;
+
+        const characterCards = Array.from(characterGrid.querySelectorAll('.character-card:not(.locked)'));
+        if (characterCards.length === 0) return;
+
+        // Initialize highlight on first call
+        if (!this.characterSelectInitialized) {
+            this.selectedCharacterIndex = 0;
+            this.updateCharacterSelectHighlight(characterCards);
+            this.characterSelectInitialized = true;
+            console.log('🎮 Character Select: Controller navigation initialized');
+        }
+
+        // B button to close character select
+        if (this.isControllerButtonPressed(pad, 'B')) {
+            const closeBtn = document.getElementById('closeCharacterSelect');
+            if (closeBtn) {
+                closeBtn.click();
+                this.characterSelectInitialized = false; // Reset for next time
+            }
+            console.log('🎮 Closed character select with B button');
+            return;
+        }
+
+        // D-pad left - navigate to previous character
+        if (this.isControllerButtonPressed(pad, 'DPadLeft')) {
+            this.selectedCharacterIndex = (this.selectedCharacterIndex - 1 + characterCards.length) % characterCards.length;
+            this.updateCharacterSelectHighlight(characterCards);
+            console.log(`🎮 Character Select: Navigated to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
+        }
+
+        // D-pad right - navigate to next character
+        if (this.isControllerButtonPressed(pad, 'DPadRight')) {
+            this.selectedCharacterIndex = (this.selectedCharacterIndex + 1) % characterCards.length;
+            this.updateCharacterSelectHighlight(characterCards);
+            console.log(`🎮 Character Select: Navigated to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
+        }
+
+        // A button - select character
+        if (this.isControllerButtonPressed(pad, 'A')) {
+            const selectedCard = characterCards[this.selectedCharacterIndex];
+            if (selectedCard) {
+                selectedCard.click();
+                console.log(`🎮 Character Select: Selected character at index ${this.selectedCharacterIndex}`);
+            }
+        }
+    }
+
+    updateCharacterSelectHighlight(characterCards) {
+        // Remove highlight from all cards
+        characterCards.forEach((card, index) => {
+            if (index === this.selectedCharacterIndex) {
+                // Add controller highlight
+                card.style.outline = '4px solid #FFD700';
+                card.style.outlineOffset = '4px';
+                card.style.transform = 'scale(1.05)';
+                card.style.transition = 'all 0.2s ease';
+
+                // Scroll card into view if needed
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } else {
+                // Remove highlight
+                card.style.outline = '';
+                card.style.outlineOffset = '';
+                card.style.transform = '';
+            }
+        });
     }
 
     updateLobbyMenuHighlight() {
