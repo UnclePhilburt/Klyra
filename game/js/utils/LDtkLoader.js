@@ -140,7 +140,7 @@ class LDtkLoader {
                             scene.physics.add.existing(rect, true); // true = static body
                             rect.setVisible(false); // Hide the rectangle (only used for collision)
 
-                            collisionBodies.push(rect.body);
+                            collisionBodies.push(rect); // Push the game object, not just the body
                         }
                     }
 
