@@ -1,8 +1,8 @@
 // Main game initialization
 const config = {
     type: Phaser.WEBGL, // Force WebGL for better performance
-    width: GameConfig.GAME.WIDTH,
-    height: GameConfig.GAME.HEIGHT,
+    width: window.innerWidth,
+    height: window.innerHeight,
     parent: 'game-container',
     backgroundColor: '#0a0a0a',
     pixelArt: GameConfig.GAME.PIXEL_ART,
@@ -25,8 +25,10 @@ const config = {
         noAudio: false
     },
     scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.NO_CENTER,
+        width: '100%',
+        height: '100%'
     },
     physics: {
         default: 'arcade',

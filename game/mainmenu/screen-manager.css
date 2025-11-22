@@ -53,6 +53,14 @@ body[data-screen="game"] #game-container {
     opacity: 1;
     pointer-events: all;
     display: block !important; /* Override any inline styles */
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+body[data-screen="game"] #game-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
 }
 
 body[data-screen="game"] #lobbyScreen,
