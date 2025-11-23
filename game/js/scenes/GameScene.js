@@ -4836,9 +4836,10 @@ class GameScene extends Phaser.Scene {
 
         // If this is a local player spawn (no provided ID), request from server instead
         if (!providedMinionId && ownerId === networkManager.currentPlayer.id) {
+            const tileSize = GameConfig.GAME.TILE_SIZE;
             const gridPosition = {
-                x: Math.floor(x / 32),
-                y: Math.floor(y / 32)
+                x: Math.floor(x / tileSize),
+                y: Math.floor(y / tileSize)
             };
             console.log(`🔮 Requesting minion spawn from server: ${minionId} at grid (${gridPosition.x}, ${gridPosition.y})`);
             networkManager.requestMinionSpawn(minionId, gridPosition, isPermanent);
