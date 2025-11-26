@@ -6830,20 +6830,12 @@ io.on('connection', (socket) => {
             const lobby = lobbies.get(player.lobbyId);
 
             if (lobby) {
-                // Immediate cleanup - no reconnection window
-                // Clean up player's minions
-                const minionsToRemove = [];
-                lobby.gameState.minions.forEach((minion, minionId) => {
-                    if (minion.ownerId === socket.id) {
-                        minionsToRemove.push(minionId);
-                    }
-                });
+                // Save player for reconnection window (30 seconds)
+                player.disconnectedAt = Date.now();
+                disconnectedPlayers.set(player.username, player);
+                console.log(`💾 Saved ${player.username} for reconnection (30s window)`);
 
-                minionsToRemove.forEach(minionId => {
-                    lobby.gameState.minions.delete(minionId);
-                    lobby.broadcast('minion:died', { minionId });
-                    console.log(`🧹 Cleaned up minion ${minionId} from disconnected player ${player.username}`);
-                });
+                // Keep minions alive for reconnection - don't clean them up yet
 
                 // Clean up blackjack table if player was at table
                 if (lobby.blackjackTable) {
