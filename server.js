@@ -2293,6 +2293,7 @@ class Lobby {
         this.createdAt = Date.now();
         this.readyPlayers = new Set();
         this.votes = new Map();
+        this.shutdownTimer = null; // Timer for delayed shutdown when all players leave
 
         // Large static world - generated once
         this.WORLD_SIZE = 1000; // 1000x1000 tiles (massive world)
@@ -4653,6 +4654,13 @@ io.on('connection', (socket) => {
                 return;
             }
 
+            // Cancel any pending shutdown timer if player joins
+            if (lobby.shutdownTimer) {
+                clearTimeout(lobby.shutdownTimer);
+                lobby.shutdownTimer = null;
+                console.log(`✅ Lobby ${lobby.id.slice(0, 8)} shutdown cancelled - ${finalUsername} joined`);
+            }
+
             socket.join(lobby.id);
 
             // Adjust bot count BEFORE sending game state (so bots are included)
@@ -6860,10 +6868,18 @@ io.on('connection', (socket) => {
                 // Adjust bot count when player leaves
                 lobby.spawnBotsToFillSlots();
 
-                // Auto-delete lobby if all real players have left (creates fresh world next time)
+                // Schedule lobby deletion if all real players have left (5 second grace period for reconnects)
                 if (lobby.players.size === 0) {
-                    lobbies.delete(lobby.id);
-                    console.log(`🗑️  Deleted empty lobby ${lobby.id.slice(0, 8)} - new world will be created on next join`);
+                    console.log(`⏳ All players left lobby ${lobby.id.slice(0, 8)} - scheduling shutdown in 5 seconds...`);
+                    lobby.shutdownTimer = setTimeout(() => {
+                        // Double-check lobby is still empty before deleting
+                        if (lobby.players.size === 0) {
+                            lobbies.delete(lobby.id);
+                            console.log(`🗑️  Deleted empty lobby ${lobby.id.slice(0, 8)} - new world will be created on next join`);
+                        } else {
+                            console.log(`♻️  Lobby ${lobby.id.slice(0, 8)} shutdown cancelled - players reconnected`);
+                        }
+                    }, 5000); // 5 second delay
                 }
             }
         }
