@@ -78,6 +78,7 @@ class ScreenManager {
 
     async autoReconnect(session) {
         try {
+            console.log('🔄 Auto-reconnect starting...', session);
             debug.info('CORE', `Reconnecting as ${session.username} (${session.character})`);
 
             // Set screen to lobby first (to hide start screen)
@@ -89,26 +90,49 @@ class ScreenManager {
                 this.initialized = true;
             }
 
-            // Wait a moment for everything to initialize
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Wait for CharacterSelectManager to be ready
+            console.log('⏳ Waiting for CharacterSelectManager...');
+            let attempts = 0;
+            while (!window.characterSelectManager && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+
+            if (!window.characterSelectManager) {
+                throw new Error('CharacterSelectManager not initialized');
+            }
+            console.log('✅ CharacterSelectManager ready');
 
             // Set the character selection
-            if (window.characterSelectManager) {
-                window.characterSelectManager.selectCharacter(session.character);
+            console.log('🎭 Selecting character:', session.character);
+            window.characterSelectManager.selectCharacter(session.character);
+
+            // Wait for game to be ready
+            console.log('⏳ Waiting for game...');
+            attempts = 0;
+            while (!window.game && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
             }
 
-            // Connect to game
-            if (window.game) {
-                debug.info('CORE', 'Reconnecting to game...');
-                await window.game.connect(session.username);
-
-                // Transition to game screen
-                await this.transitionToGame();
-                debug.info('CORE', 'Auto-reconnect successful!');
-            } else {
+            if (!window.game) {
                 throw new Error('Game not initialized');
             }
+            console.log('✅ Game ready');
+
+            // Connect to game
+            console.log('🎮 Connecting to game...');
+            debug.info('CORE', 'Reconnecting to game...');
+            await window.game.connect(session.username);
+            console.log('✅ Connected to game');
+
+            // Transition to game screen
+            console.log('🎬 Transitioning to game screen...');
+            await this.transitionToGame();
+            console.log('✅ Auto-reconnect successful!');
+            debug.info('CORE', 'Auto-reconnect successful!');
         } catch (error) {
+            console.error('❌ Auto-reconnect failed:', error);
             debug.error('CORE', 'Auto-reconnect failed:', error);
             // Clear invalid session and show lobby
             localStorage.removeItem('klyra_game_session');
