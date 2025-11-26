@@ -184,9 +184,11 @@ class PetMerchantNPC {
                 strokeThickness: 2
             }).setOrigin(0, 0.5);
 
-            // Ownership status
-            const isOwned = this.scene.petManager && this.scene.petManager.ownedPets.has(pet.id);
-            const statusText = this.scene.add.text(-230, y + 25, isOwned ? '✓ Already Owned' : '', {
+            // Ownership status - only check if currently equipped (not stored)
+            const isActive = this.scene.petManager &&
+                           this.scene.petManager.activePet &&
+                           this.scene.petManager.activePet.petType === pet.id;
+            const statusText = this.scene.add.text(-230, y + 25, isActive ? '✓ Currently Active' : '', {
                 font: 'bold 11px monospace',
                 fill: '#00ff00',
                 stroke: '#000000',
@@ -321,10 +323,10 @@ class PetMerchantNPC {
         const pet = this.pets.find(p => p.keyBind === keyPressed);
         if (!pet) return;
 
-        // Check if already owned
-        if (this.scene.petManager && this.scene.petManager.ownedPets.has(pet.id)) {
-            console.log('⚠️ Pet already owned!');
-            this.showFeedback('You Already Own This Pet!', '#ff6666');
+        // Check if player currently has an active pet (not stored)
+        if (this.scene.petManager && this.scene.petManager.activePet) {
+            console.log('⚠️ You already have an active pet! Store it first.');
+            this.showFeedback('Store Your Current Pet First!', '#ff6666');
             return;
         }
 
