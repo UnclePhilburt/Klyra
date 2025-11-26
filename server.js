@@ -4570,6 +4570,10 @@ io.on('connection', (socket) => {
             // Sanitize username (generates guest name if needed)
             finalUsername = new Player(socket.id, '').sanitizeUsername(finalUsername);
 
+            // DEBUG: Log reconnection lookup details
+            console.log(`🔍 RECONNECT DEBUG: Looking up "${finalUsername}"`);
+            console.log(`🔍 RECONNECT DEBUG: disconnectedPlayers keys: [${Array.from(disconnectedPlayers.keys()).join(', ')}]`);
+
             // Check if player is reconnecting
             const disconnectedPlayer = disconnectedPlayers.get(finalUsername);
             let player;
