@@ -19,6 +19,12 @@ class MainMenu {
         this.controllerDebugLogged = false;
         this.screenDebugLogged = false;
         this.gamepadDebugLogged = false;
+
+        // Analog stick navigation
+        this.analogDeadzone = 0.3; // Threshold for analog stick input
+        this.lastAnalogInputTime = 0;
+        this.analogInputDelay = 200; // ms between analog stick navigation inputs
+
         this.lastButtonState = {
             A: false,
             B: false,
@@ -582,18 +588,30 @@ class MainMenu {
             return;
         }
 
-        // D-pad up - navigate up
-        if (this.isControllerButtonPressed(pad, 'DPadUp')) {
+        // Get analog stick values (left stick vertical axis)
+        const leftStickY = pad.axes[1] || 0; // Vertical axis (up/down)
+        const now = Date.now();
+
+        // D-pad up OR left stick up - navigate up
+        if (this.isControllerButtonPressed(pad, 'DPadUp') ||
+            (leftStickY < -this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
             this.selectedMenuIndex = (this.selectedMenuIndex - 1 + this.controllerMenuOptions.length) % this.controllerMenuOptions.length;
             this.updateLobbyMenuHighlight();
             console.log(`🎮 Lobby: Selected ${this.controllerMenuOptions[this.selectedMenuIndex].name}`);
+            if (leftStickY < -this.analogDeadzone) {
+                this.lastAnalogInputTime = now;
+            }
         }
 
-        // D-pad down - navigate down
-        if (this.isControllerButtonPressed(pad, 'DPadDown')) {
+        // D-pad down OR left stick down - navigate down
+        if (this.isControllerButtonPressed(pad, 'DPadDown') ||
+            (leftStickY > this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
             this.selectedMenuIndex = (this.selectedMenuIndex + 1) % this.controllerMenuOptions.length;
             this.updateLobbyMenuHighlight();
             console.log(`🎮 Lobby: Selected ${this.controllerMenuOptions[this.selectedMenuIndex].name}`);
+            if (leftStickY > this.analogDeadzone) {
+                this.lastAnalogInputTime = now;
+            }
         }
 
         // A button or Start button - activate selected option
@@ -618,18 +636,30 @@ class MainMenu {
             return;
         }
 
-        // D-pad left/right to adjust volume
+        // Get analog stick values
+        const leftStickX = pad.axes[0] || 0; // Horizontal axis (left/right)
+        const now = Date.now();
+
+        // D-pad left/right OR left stick left/right to adjust volume
         if (musicVolume) {
             let volumeChanged = false;
             let newVolume = parseInt(musicVolume.value);
 
-            if (this.isControllerButtonPressed(pad, 'DPadLeft')) {
+            if (this.isControllerButtonPressed(pad, 'DPadLeft') ||
+                (leftStickX < -this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
                 newVolume = Math.max(0, newVolume - 5);
                 volumeChanged = true;
+                if (leftStickX < -this.analogDeadzone) {
+                    this.lastAnalogInputTime = now;
+                }
             }
-            if (this.isControllerButtonPressed(pad, 'DPadRight')) {
+            if (this.isControllerButtonPressed(pad, 'DPadRight') ||
+                (leftStickX > this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
                 newVolume = Math.min(100, newVolume + 5);
                 volumeChanged = true;
+                if (leftStickX > this.analogDeadzone) {
+                    this.lastAnalogInputTime = now;
+                }
             }
 
             if (volumeChanged) {
@@ -669,18 +699,30 @@ class MainMenu {
             return;
         }
 
-        // D-pad left - navigate to previous character
-        if (this.isControllerButtonPressed(pad, 'DPadLeft')) {
+        // Get analog stick values
+        const leftStickX = pad.axes[0] || 0; // Horizontal axis (left/right)
+        const now = Date.now();
+
+        // D-pad left OR left stick left - navigate to previous character
+        if (this.isControllerButtonPressed(pad, 'DPadLeft') ||
+            (leftStickX < -this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
             this.selectedCharacterIndex = (this.selectedCharacterIndex - 1 + characterCards.length) % characterCards.length;
             this.updateCharacterSelectHighlight(characterCards);
             console.log(`🎮 Character Select: Navigated to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
+            if (leftStickX < -this.analogDeadzone) {
+                this.lastAnalogInputTime = now;
+            }
         }
 
-        // D-pad right - navigate to next character
-        if (this.isControllerButtonPressed(pad, 'DPadRight')) {
+        // D-pad right OR left stick right - navigate to next character
+        if (this.isControllerButtonPressed(pad, 'DPadRight') ||
+            (leftStickX > this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
             this.selectedCharacterIndex = (this.selectedCharacterIndex + 1) % characterCards.length;
             this.updateCharacterSelectHighlight(characterCards);
             console.log(`🎮 Character Select: Navigated to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
+            if (leftStickX > this.analogDeadzone) {
+                this.lastAnalogInputTime = now;
+            }
         }
 
         // A button - select character
