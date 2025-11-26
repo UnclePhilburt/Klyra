@@ -6821,10 +6821,21 @@ io.on('connection', (socket) => {
 
         const player = players.get(socket.id);
 
-        // Save player stats to database
+        // IMPORTANT: Save for reconnection FIRST, before any async operations
+        // This prevents a race condition where quick refresh reconnects before being saved
+        if (player && player.lobbyId) {
+            const lobby = lobbies.get(player.lobbyId);
+            if (lobby) {
+                player.disconnectedAt = Date.now();
+                disconnectedPlayers.set(player.username, player);
+                console.log(`💾 Saved ${player.username} for reconnection (30s window)`);
+            }
+        }
+
+        // Save player stats to database (async - can happen after reconnection save)
         if (player && process.env.DATABASE_URL) {
             const sessionPlaytime = Date.now() - player.sessionStartTime;
-            await db.updatePlayerStats(player.id, player.username, {
+            db.updatePlayerStats(player.id, player.username, {
                 kills: player.kills || 0,
                 deaths: player.deaths || 0,
                 damageDealt: player.damageDealt || 0,
@@ -6850,10 +6861,7 @@ io.on('connection', (socket) => {
             const lobby = lobbies.get(player.lobbyId);
 
             if (lobby) {
-                // Save player for reconnection window (30 seconds)
-                player.disconnectedAt = Date.now();
-                disconnectedPlayers.set(player.username, player);
-                console.log(`💾 Saved ${player.username} for reconnection (30s window)`);
+                // Player already saved for reconnection above
 
                 // Keep minions alive for reconnection - don't clean them up yet
 
