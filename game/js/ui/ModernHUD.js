@@ -321,7 +321,7 @@ class ModernHUD {
         this.controllerMenuItems.push(settingsBtn);
 
         const mainBtn = this.createMenuButton(menuW/2, btnY + btnGap*2, 'MAIN MENU', 0xef4444, () => {
-            if (confirm('Return to main menu?')) window.location.reload();
+            window.location.reload();
         });
         this.menuPanel.add(mainBtn.container);
         this.controllerMenuItems.push(mainBtn);
