@@ -321,6 +321,8 @@ class ModernHUD {
         this.controllerMenuItems.push(settingsBtn);
 
         const mainBtn = this.createMenuButton(menuW/2, btnY + btnGap*2, 'MAIN MENU', 0xef4444, () => {
+            // Clear game session so they don't auto-reconnect
+            localStorage.removeItem('klyra_game_session');
             window.location.reload();
         });
         this.menuPanel.add(mainBtn.container);

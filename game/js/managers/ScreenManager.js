@@ -30,6 +30,27 @@ class ScreenManager {
     }
 
     init() {
+        // Check if user has an active game session (for auto-reconnect)
+        const gameSession = localStorage.getItem('klyra_game_session');
+        if (gameSession) {
+            try {
+                const session = JSON.parse(gameSession);
+                // Session is valid if less than 30 minutes old
+                const sessionAge = Date.now() - session.timestamp;
+                if (sessionAge < 30 * 60 * 1000) { // 30 minutes
+                    debug.info('CORE', 'Active game session found - auto-reconnecting...');
+                    this.autoReconnect(session);
+                    return;
+                } else {
+                    debug.info('CORE', 'Game session expired - clearing');
+                    localStorage.removeItem('klyra_game_session');
+                }
+            } catch (e) {
+                debug.error('CORE', 'Invalid game session data');
+                localStorage.removeItem('klyra_game_session');
+            }
+        }
+
         // Check if user is already logged in
         const token = localStorage.getItem('klyra_token');
         const userData = localStorage.getItem('klyra_user');
@@ -53,6 +74,50 @@ class ScreenManager {
         }
 
         debug.info('CORE', 'ScreenManager initialized');
+    }
+
+    async autoReconnect(session) {
+        try {
+            debug.info('CORE', `Reconnecting as ${session.username} (${session.character})`);
+
+            // Set screen to lobby first (to hide start screen)
+            this.setScreen('LOBBY', false);
+
+            // Initialize main menu
+            if (!this.initialized) {
+                window.mainMenuInstance = new MainMenu();
+                this.initialized = true;
+            }
+
+            // Wait a moment for everything to initialize
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Set the character selection
+            if (window.characterSelectManager) {
+                window.characterSelectManager.selectCharacter(session.character);
+            }
+
+            // Connect to game
+            if (window.game) {
+                debug.info('CORE', 'Reconnecting to game...');
+                await window.game.connect(session.username);
+
+                // Transition to game screen
+                await this.transitionToGame();
+                debug.info('CORE', 'Auto-reconnect successful!');
+            } else {
+                throw new Error('Game not initialized');
+            }
+        } catch (error) {
+            debug.error('CORE', 'Auto-reconnect failed:', error);
+            // Clear invalid session and show lobby
+            localStorage.removeItem('klyra_game_session');
+            this.setScreen('LOBBY', false);
+            if (!this.initialized) {
+                window.mainMenuInstance = new MainMenu();
+                this.initialized = true;
+            }
+        }
     }
 
     setupStartScreen() {

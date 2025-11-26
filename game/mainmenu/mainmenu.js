@@ -313,6 +313,17 @@ class MainMenu {
                         await window.game.connect(name);
                         console.log('✅ game.connect() completed successfully');
 
+                        // Save game session for auto-reconnect on refresh
+                        const selectedCharacter = window.characterSelectManager
+                            ? window.characterSelectManager.getSelectedCharacter()
+                            : 'MALACHAR';
+                        localStorage.setItem('klyra_game_session', JSON.stringify({
+                            username: name,
+                            character: selectedCharacter,
+                            timestamp: Date.now()
+                        }));
+                        console.log('💾 Game session saved for auto-reconnect');
+
                         setTimeout(() => {
                             // Use ScreenManager for clean transition
                             if (window.screenManager) {
