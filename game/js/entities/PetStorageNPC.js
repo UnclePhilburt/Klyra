@@ -397,7 +397,7 @@ class PetStorageNPC {
         }
 
         // Check if player is logged in
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('klyra_token');
         if (!token) {
             this.showFeedback('You must be logged in to use pet storage!', '#ff6666');
             return;
@@ -468,6 +468,18 @@ class PetStorageNPC {
         const distance = Phaser.Math.Distance.Between(playerX, playerY, this.x, this.y);
         const inRange = distance < this.interactionRange;
 
+        // Update prompt text based on login status
+        if (inRange && !this.isStorageOpen) {
+            const token = localStorage.getItem('klyra_token');
+            if (!token) {
+                this.promptText.setText('Login Required');
+                this.promptText.setStyle({ fill: '#ff6666' });
+            } else {
+                this.promptText.setText('Press F for Pet Storage');
+                this.promptText.setStyle({ fill: '#22bb44' });
+            }
+        }
+
         this.prompt.setVisible(inRange && !this.isStorageOpen);
 
         return inRange;
@@ -482,6 +494,14 @@ class PetStorageNPC {
     }
 
     openStorage() {
+        // Check if player is logged in
+        const token = localStorage.getItem('klyra_token');
+        if (!token) {
+            this.showFeedback('You must be logged in to use pet storage!', '#ff6666');
+            console.log('⚠️ Player not logged in - cannot access pet storage');
+            return;
+        }
+
         this.isStorageOpen = true;
         this.storageContainer.setVisible(true);
         this.prompt.setVisible(false);

@@ -29,6 +29,9 @@ class BastionAbilityHandler {
         this.projectiles = [];
         this.autoShootEnabled = true; // Auto-attack ON by default
 
+        // Out of ammo vibration
+        this.outOfAmmoVibrationInterval = null;
+
         // Apply initial stance stats
         this.applyStanceStats();
 
@@ -104,6 +107,11 @@ class BastionAbilityHandler {
         this.currentAmmo--;
         console.log(`🎮 Manual ${this.currentStance.toUpperCase()} shot! Ammo: ${this.currentAmmo}/${this.maxAmmo}`);
 
+        // Start out of ammo vibration if ammo reaches 0
+        if (this.currentAmmo === 0) {
+            this.startOutOfAmmoVibration();
+        }
+
         // Face the shooting direction
         if (this.player.spriteRenderer && this.player.spriteRenderer.sprite) {
             // Flip sprite based on aiming direction
@@ -154,6 +162,11 @@ class BastionAbilityHandler {
         // Consume ammo
         this.currentAmmo--;
         console.log(`🔫 ${this.currentStance.toUpperCase()} fired! Ammo: ${this.currentAmmo}/${this.maxAmmo}`);
+
+        // Start out of ammo vibration if ammo reaches 0
+        if (this.currentAmmo === 0) {
+            this.startOutOfAmmoVibration();
+        }
 
         // Face the target direction
         if (this.player.spriteRenderer && this.player.spriteRenderer.sprite && target.sprite) {
@@ -479,6 +492,9 @@ class BastionAbilityHandler {
             return;
         }
 
+        // Stop out of ammo vibration when switching stances
+        this.stopOutOfAmmoVibration();
+
         // Cycle through stances: scar -> shield -> shotgun -> scar
         const stances = ['scar', 'shield', 'shotgun'];
         const currentIndex = stances.indexOf(this.currentStance);
@@ -539,6 +555,9 @@ class BastionAbilityHandler {
 
     startReload() {
         if (this.isReloading) return;
+
+        // Stop out of ammo vibration when reload starts
+        this.stopOutOfAmmoVibration();
 
         this.isReloading = true;
         this.reloadStartTime = Date.now();
@@ -650,7 +669,36 @@ class BastionAbilityHandler {
         }
     }
 
+    startOutOfAmmoVibration() {
+        // Clear any existing vibration interval
+        this.stopOutOfAmmoVibration();
+
+        // Start pulsing vibration (300ms on, 300ms off)
+        let isVibrating = false;
+        this.outOfAmmoVibrationInterval = setInterval(() => {
+            if (!isVibrating && this.scene.controllerManager) {
+                this.scene.controllerManager.vibrateLight();
+                isVibrating = true;
+            } else {
+                isVibrating = false;
+            }
+        }, 300);
+
+        console.log('🎮 Out of ammo - controller vibrating');
+    }
+
+    stopOutOfAmmoVibration() {
+        if (this.outOfAmmoVibrationInterval) {
+            clearInterval(this.outOfAmmoVibrationInterval);
+            this.outOfAmmoVibrationInterval = null;
+            console.log('🎮 Stopped out of ammo vibration');
+        }
+    }
+
     destroy() {
+        // Stop out of ammo vibration
+        this.stopOutOfAmmoVibration();
+
         // Clean up projectiles
         this.projectiles.forEach(proj => {
             if (proj.sprite) proj.sprite.destroy();
