@@ -680,12 +680,18 @@ class MainMenu {
         const characterCards = Array.from(characterGrid.querySelectorAll('.character-card:not(.locked)'));
         if (characterCards.length === 0) return;
 
+        // Calculate grid dimensions based on window width
+        const gridWidth = characterGrid.offsetWidth;
+        const cardMinWidth = 320; // From CSS: minmax(320px, 1fr)
+        const gap = 35; // From CSS
+        const columnsPerRow = Math.max(1, Math.floor((gridWidth + gap) / (cardMinWidth + gap)));
+
         // Initialize highlight on first call
         if (!this.characterSelectInitialized) {
             this.selectedCharacterIndex = 0;
             this.updateCharacterSelectHighlight(characterCards);
             this.characterSelectInitialized = true;
-            console.log('🎮 Character Select: Controller navigation initialized');
+            console.log(`🎮 Character Select: Controller navigation initialized (${columnsPerRow} columns)`);
         }
 
         // B button to close character select
@@ -701,25 +707,93 @@ class MainMenu {
 
         // Get analog stick values
         const leftStickX = pad.axes[0] || 0; // Horizontal axis (left/right)
+        const leftStickY = pad.axes[1] || 0; // Vertical axis (up/down)
         const now = Date.now();
 
-        // D-pad left OR left stick left - navigate to previous character
+        // Calculate current row and column
+        const currentRow = Math.floor(this.selectedCharacterIndex / columnsPerRow);
+        const currentCol = this.selectedCharacterIndex % columnsPerRow;
+        const totalRows = Math.ceil(characterCards.length / columnsPerRow);
+
+        // D-pad UP OR left stick up - move up one row
+        if (this.isControllerButtonPressed(pad, 'DPadUp') ||
+            (leftStickY < -this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
+            if (currentRow > 0) {
+                // Move to same column in previous row
+                const newIndex = (currentRow - 1) * columnsPerRow + currentCol;
+                this.selectedCharacterIndex = Math.min(newIndex, characterCards.length - 1);
+            } else {
+                // Wrap to bottom row, same column
+                const newRow = totalRows - 1;
+                const newIndex = newRow * columnsPerRow + currentCol;
+                this.selectedCharacterIndex = Math.min(newIndex, characterCards.length - 1);
+            }
+            this.updateCharacterSelectHighlight(characterCards);
+            console.log(`🎮 Character Select: Moved UP to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
+            if (leftStickY < -this.analogDeadzone) {
+                this.lastAnalogInputTime = now;
+            }
+        }
+
+        // D-pad DOWN OR left stick down - move down one row
+        if (this.isControllerButtonPressed(pad, 'DPadDown') ||
+            (leftStickY > this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
+            if (currentRow < totalRows - 1) {
+                // Move to same column in next row
+                const newIndex = (currentRow + 1) * columnsPerRow + currentCol;
+                this.selectedCharacterIndex = Math.min(newIndex, characterCards.length - 1);
+            } else {
+                // Wrap to top row, same column
+                this.selectedCharacterIndex = currentCol;
+            }
+            this.updateCharacterSelectHighlight(characterCards);
+            console.log(`🎮 Character Select: Moved DOWN to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
+            if (leftStickY > this.analogDeadzone) {
+                this.lastAnalogInputTime = now;
+            }
+        }
+
+        // D-pad LEFT OR left stick left - move left within row
         if (this.isControllerButtonPressed(pad, 'DPadLeft') ||
             (leftStickX < -this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
-            this.selectedCharacterIndex = (this.selectedCharacterIndex - 1 + characterCards.length) % characterCards.length;
+            if (currentCol > 0) {
+                // Move left in same row
+                this.selectedCharacterIndex--;
+            } else {
+                // Wrap to end of previous row
+                if (currentRow > 0) {
+                    const prevRowEnd = currentRow * columnsPerRow - 1;
+                    this.selectedCharacterIndex = prevRowEnd;
+                } else {
+                    // Wrap to last card
+                    this.selectedCharacterIndex = characterCards.length - 1;
+                }
+            }
             this.updateCharacterSelectHighlight(characterCards);
-            console.log(`🎮 Character Select: Navigated to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
+            console.log(`🎮 Character Select: Moved LEFT to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
             if (leftStickX < -this.analogDeadzone) {
                 this.lastAnalogInputTime = now;
             }
         }
 
-        // D-pad right OR left stick right - navigate to next character
+        // D-pad RIGHT OR left stick right - move right within row
         if (this.isControllerButtonPressed(pad, 'DPadRight') ||
             (leftStickX > this.analogDeadzone && now - this.lastAnalogInputTime > this.analogInputDelay)) {
-            this.selectedCharacterIndex = (this.selectedCharacterIndex + 1) % characterCards.length;
+            const rowEnd = Math.min((currentRow + 1) * columnsPerRow - 1, characterCards.length - 1);
+            if (this.selectedCharacterIndex < rowEnd) {
+                // Move right in same row
+                this.selectedCharacterIndex++;
+            } else {
+                // Wrap to start of next row
+                if (currentRow < totalRows - 1) {
+                    this.selectedCharacterIndex = (currentRow + 1) * columnsPerRow;
+                } else {
+                    // Wrap to first card
+                    this.selectedCharacterIndex = 0;
+                }
+            }
             this.updateCharacterSelectHighlight(characterCards);
-            console.log(`🎮 Character Select: Navigated to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
+            console.log(`🎮 Character Select: Moved RIGHT to card ${this.selectedCharacterIndex + 1}/${characterCards.length}`);
             if (leftStickX > this.analogDeadzone) {
                 this.lastAnalogInputTime = now;
             }
