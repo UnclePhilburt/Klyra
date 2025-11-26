@@ -30,6 +30,7 @@ class ModernHUD {
         this.menuElements = [];
         this.skillTexts = [];
         this.lowHealthTween = null;
+        this.isReloading = false; // Prevent multiple reload calls
 
         // ─── Controller ──────────────────────────────────────────────────────
         this.controllerIndex = 0;
@@ -321,6 +322,10 @@ class ModernHUD {
         this.controllerMenuItems.push(settingsBtn);
 
         const mainBtn = this.createMenuButton(menuW/2, btnY + btnGap*2, 'MAIN MENU', 0xef4444, () => {
+            // Prevent multiple calls during page reload
+            if (this.isReloading) return;
+            this.isReloading = true;
+
             // Clear game session so they don't auto-reconnect
             localStorage.removeItem('klyra_game_session');
             window.location.reload();
@@ -365,7 +370,10 @@ class ModernHUD {
 
         container.on('pointerover', () => highlight(true));
         container.on('pointerout', () => highlight(false));
-        container.on('pointerdown', callback);
+        container.on('pointerdown', (pointer, localX, localY, event) => {
+            event.stopPropagation(); // Prevent overlay from catching this click
+            callback();
+        });
 
         return { container, highlight, callback };
     }
