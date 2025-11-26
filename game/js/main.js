@@ -76,8 +76,8 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Add connect method for custom menu system
-game.connect = async function(username) {
-    console.log('🎮 Connecting to game...', username);
+game.connect = async function(username, overrideCharacter = null) {
+    console.log('🎮 Connecting to game...', username, overrideCharacter ? `(char: ${overrideCharacter})` : '');
 
     try {
         // Wait for BootScene to finish loading assets
@@ -101,12 +101,13 @@ game.connect = async function(username) {
         console.log('✅ Connected to server');
         console.log('🎮 Waiting for game:start event...');
 
-        // Get selected character from CharacterSelectManager
-        const selectedCharacter = window.characterSelectManager
-            ? window.characterSelectManager.getSelectedCharacter()
-            : 'MALACHAR';
+        // Get selected character - use override if provided (for auto-reconnect), otherwise read from UI
+        const selectedCharacter = overrideCharacter ||
+            (window.characterSelectManager
+                ? window.characterSelectManager.getSelectedCharacter()
+                : 'MALACHAR');
 
-        console.log('⚔️ Selected character:', selectedCharacter);
+        console.log('⚔️ Selected character:', selectedCharacter, overrideCharacter ? '(from auto-reconnect)' : '(from UI)');
 
         // Join game
         networkManager.joinGame(username, selectedCharacter);

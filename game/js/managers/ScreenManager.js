@@ -103,7 +103,7 @@ class ScreenManager {
             }
             console.log('✅ CharacterSelectManager ready');
 
-            // Set the character selection
+            // Set the character selection for UI display
             console.log('🎭 Selecting character:', session.character);
             window.characterSelectManager.selectCharacter(session.character);
 
@@ -120,10 +120,10 @@ class ScreenManager {
             }
             console.log('✅ Game ready');
 
-            // Connect to game
+            // Connect to game - pass character directly to bypass UI state
             console.log('🎮 Connecting to game...');
             debug.info('CORE', 'Reconnecting to game...');
-            await window.game.connect(session.username);
+            await window.game.connect(session.username, session.character);
             console.log('✅ Connected to game');
 
             // Transition to game screen
