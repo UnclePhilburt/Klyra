@@ -1,0 +1,297 @@
+/* Screen Manager CSS - Clean state-based transitions */
+/* Uses data-screen attribute on body to control visibility */
+
+/* === BASE SETUP === */
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    transition: background-color 0.5s ease;
+    font-family: 'Press Start 2P', monospace;
+}
+
+/* Hide all screens by default */
+#startScreen,
+#lobbyScreen,
+#game-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+/* Background canvas transitions */
+#backgroundCanvas {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+/* === START SCREEN STATE === */
+body[data-screen="start"] #startScreen {
+    opacity: 1;
+    pointer-events: all;
+    z-index: 10000;
+}
+
+/* === LOBBY SCREEN STATE === */
+body[data-screen="lobby"] #lobbyScreen {
+    opacity: 1;
+    pointer-events: all;
+    display: block !important; /* Override any inline styles */
+}
+
+body[data-screen="lobby"] #backgroundCanvas {
+    opacity: 1;
+}
+
+/* === GAME SCREEN STATE === */
+body[data-screen="game"] #game-container {
+    opacity: 1;
+    pointer-events: all;
+    display: block !important; /* Override any inline styles */
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+body[data-screen="game"] #game-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+}
+
+body[data-screen="game"] #lobbyScreen,
+body[data-screen="game"] #startScreen,
+body[data-screen="game"] #backgroundCanvas {
+    display: none !important;
+}
+
+/* === LOADING STATE (OPTIONAL) === */
+body[data-screen="loading"] {
+    background: #0a0a0f;
+}
+
+body[data-screen="loading"]::after {
+    content: 'LOADING...';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 24px;
+    color: #6B4FFF;
+    text-shadow: 0 0 20px rgba(107, 79, 255, 0.8);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* === TRANSITIONS === */
+/* Smooth fade between screens */
+#startScreen,
+#lobbyScreen,
+#game-container,
+#backgroundCanvas {
+    transition:
+        opacity 0.5s cubic-bezier(0.4, 0.0, 0.2, 1),
+        transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Fade in animation */
+body[data-screen="lobby"] #lobbyScreen {
+    animation: fadeIn 0.5s ease;
+}
+
+body[data-screen="game"] #game-container {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Prevent any flash of content */
+body:not([data-screen]) #startScreen,
+body:not([data-screen]) #lobbyScreen,
+body:not([data-screen]) #game-container {
+    display: none;
+}
+
+/* === BUTTON VISIBILITY === */
+/* Hide settings and character buttons on start screen */
+body[data-screen="start"] #settingsBtn,
+body[data-screen="start"] #charactersBtn {
+    display: none !important;
+}
+
+/* Hide buttons when in game */
+body[data-screen="game"] #settingsBtn,
+body[data-screen="game"] #charactersBtn,
+body[data-screen="game"] #serverStatus {
+    display: none !important;
+}
+
+/* === START SCREEN STYLING === */
+#startScreen {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0a2f 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.start-container {
+    text-align: center;
+    padding: 40px;
+}
+
+.start-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 72px;
+    color: #FC0FC0;
+    margin: 0 0 20px 0;
+    text-shadow:
+        0 0 40px rgba(252, 15, 192, 1),
+        0 0 80px rgba(107, 79, 255, 0.8),
+        6px 6px 0px #000;
+    letter-spacing: 12px;
+    animation: titlePulse 3s ease-in-out infinite;
+}
+
+@keyframes titlePulse {
+    0%, 100% {
+        text-shadow:
+            0 0 40px rgba(252, 15, 192, 1),
+            0 0 80px rgba(107, 79, 255, 0.8),
+            6px 6px 0px #000;
+        transform: scale(1);
+    }
+    50% {
+        text-shadow:
+            0 0 60px rgba(252, 15, 192, 1),
+            0 0 120px rgba(107, 79, 255, 1),
+            6px 6px 0px #000;
+        transform: scale(1.02);
+    }
+}
+
+.start-subtitle {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    color: #6B4FFF;
+    margin: 0 0 40px 0;
+    text-shadow:
+        0 0 20px rgba(107, 79, 255, 0.8),
+        3px 3px 0px #000;
+    letter-spacing: 3px;
+}
+
+.start-ornament {
+    font-size: 48px;
+    color: #FFD700;
+    margin: 30px 0;
+    text-shadow:
+        0 0 30px rgba(255, 215, 0, 0.8),
+        4px 4px 0px #000;
+    animation: ornamentFloat 3s ease-in-out infinite;
+}
+
+@keyframes ornamentFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.start-button {
+    background: linear-gradient(135deg, rgba(252, 15, 192, 0.95), rgba(107, 79, 255, 0.95));
+    border: 4px solid #FFD700;
+    border-radius: 12px;
+    padding: 25px 50px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 18px;
+    color: #FFFFFF;
+    cursor: pointer;
+    box-shadow:
+        0 0 40px rgba(252, 15, 192, 0.8),
+        0 0 80px rgba(107, 79, 255, 0.5),
+        6px 6px 0px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+    text-shadow: 3px 3px 0px #000;
+    letter-spacing: 4px;
+    animation: buttonPulse 2s ease-in-out infinite;
+}
+
+@keyframes buttonPulse {
+    0%, 100% {
+        box-shadow:
+            0 0 40px rgba(252, 15, 192, 0.8),
+            0 0 80px rgba(107, 79, 255, 0.5),
+            6px 6px 0px rgba(0, 0, 0, 0.5);
+    }
+    50% {
+        box-shadow:
+            0 0 60px rgba(252, 15, 192, 1),
+            0 0 120px rgba(107, 79, 255, 0.8),
+            6px 6px 0px rgba(0, 0, 0, 0.5);
+    }
+}
+
+.start-button:hover {
+    background: linear-gradient(135deg, rgba(252, 15, 192, 1), rgba(107, 79, 255, 1));
+    transform: translateY(-5px) scale(1.05);
+    box-shadow:
+        0 0 60px rgba(252, 15, 192, 1),
+        0 0 120px rgba(107, 79, 255, 0.8),
+        8px 8px 0px rgba(0, 0, 0, 0.6);
+}
+
+.start-button:active {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+        0 0 40px rgba(252, 15, 192, 0.8),
+        0 0 80px rgba(107, 79, 255, 0.5),
+        4px 4px 0px rgba(0, 0, 0, 0.5);
+}
+
+.start-hint {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #888;
+    margin-top: 30px;
+    text-shadow: 2px 2px 0px #000;
+    letter-spacing: 2px;
+    animation: hintBlink 2s ease-in-out infinite;
+}
+
+@keyframes hintBlink {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* Responsive for start screen */
+@media (max-width: 768px) {
+    .start-title {
+        font-size: 36px;
+        letter-spacing: 6px;
+    }
+
+    .start-subtitle {
+        font-size: 12px;
+    }
+
+    .start-button {
+        font-size: 14px;
+        padding: 20px 40px;
+    }
+}

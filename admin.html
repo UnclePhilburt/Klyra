@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - KLYRA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #13131a;
+            --bg-tertiary: #1a1a24;
+            --accent-primary: #8b5cf6;
+            --accent-secondary: #ec4899;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-gold: #f59e0b;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-tertiary: #52525b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Animated Mesh Gradient Background */
+        .mesh-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        .gradient-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.6;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .blob-1 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #8b5cf6, transparent);
+            top: -200px;
+            left: -100px;
+        }
+
+        .blob-2 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, #ec4899, transparent);
+            top: 20%;
+            right: -200px;
+            animation-delay: 5s;
+        }
+
+        .blob-3 {
+            width: 550px;
+            height: 550px;
+            background: radial-gradient(circle, #06b6d4, transparent);
+            bottom: -200px;
+            left: 30%;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(50px, 100px) scale(1.1); }
+            50% { transform: translate(-30px, 50px) scale(0.9); }
+            75% { transform: translate(20px, -40px) scale(1.05); }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+        }
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 2rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--accent-primary);
+        }
+
+        /* Main Content */
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 8rem 2rem 4rem;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-primary);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Users Table */
+        .users-table-container {
+            background: var(--bg-secondary);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .table-header {
+            padding: 1.5rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .table-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .search-box {
+            margin-top: 1rem;
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: var(--bg-primary);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: var(--bg-tertiary);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 1rem;
+            border-top: 1px solid rgba(139, 92, 246, 0.1);
+        }
+
+        tbody tr {
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-admin {
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--accent-primary);
+        }
+
+        .badge-verified {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .badge-unverified {
+            background: rgba(161, 161, 170, 0.2);
+            color: var(--text-secondary);
+        }
+
+        .badge-banned {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        .banned-row {
+            background: rgba(239, 68, 68, 0.05);
+            opacity: 0.7;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-secondary {
+            background: rgba(161, 161, 170, 0.2);
+            color: var(--text-primary);
+            border: 1px solid rgba(161, 161, 170, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(161, 161, 170, 0.3);
+        }
+
+        .btn-small {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        .character-card {
+            background: var(--bg-tertiary);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .character-card.unlocked {
+            border-color: var(--accent-green);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .character-card.locked {
+            border-color: var(--text-tertiary);
+            background: rgba(82, 82, 91, 0.1);
+            opacity: 0.6;
+        }
+
+        .character-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .character-status {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .character-status.unlocked {
+            color: var(--accent-green);
+        }
+
+        .character-status.locked {
+            color: var(--text-tertiary);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover {
+            color: var(--accent-red);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: var(--bg-primary);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .no-access {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .no-access h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--accent-red);
+        }
+
+        @media (max-width: 768px) {
+            header {
+                padding: 1rem 1.5rem;
+            }
+
+            .container {
+                padding: 6rem 1rem 2rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.75rem 0.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mesh-gradient">
+        <div class="gradient-blob blob-1"></div>
+        <div class="gradient-blob blob-2"></div>
+        <div class="gradient-blob blob-3"></div>
+    </div>
+
+    <header>
+        <div class="logo">KLYRA</div>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="account.html">Account</a>
+            <a href="#" id="logoutLink">Logout</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div id="noAccessMessage" class="no-access" style="display: none;">
+            <h2>Access Denied</h2>
+            <p class="subtitle">You need admin privileges to access this page.</p>
+            <a href="account.html"><button class="btn btn-primary">Go to Account</button></a>
+        </div>
+
+        <div id="adminContent" style="display: none;">
+            <h1>Admin Panel</h1>
+            <p class="subtitle">Manage users and system settings</p>
+
+            <div id="alertContainer"></div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalUsers">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="verifiedUsers">0</div>
+                    <div class="stat-label">Verified Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="adminUsers">0</div>
+                    <div class="stat-label">Admins</div>
+                </div>
+            </div>
+
+            <div class="users-table-container">
+                <div class="table-header">
+                    <h2>All Users</h2>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; align-items: center;">
+                        <input type="text" id="searchBox" class="search-box" placeholder="Search by username or email..." style="flex: 1; min-width: 200px; margin: 0;">
+                        <select id="filterStatus" class="search-box" style="width: auto; margin: 0;">
+                            <option value="all">All Status</option>
+                            <option value="verified">Verified</option>
+                            <option value="unverified">Unverified</option>
+                            <option value="admin">Admins</option>
+                            <option value="banned">Banned</option>
+                        </select>
+                        <button class="btn btn-success btn-small" onclick="exportToCSV()">📊 Export CSV</button>
+                        <button class="btn btn-primary btn-small" id="bulkActionsBtn" onclick="showBulkActions()" style="display: none;">Bulk Actions</button>
+                    </div>
+                </div>
+                <div id="tableContent">
+                    <div class="loading">Loading users...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Reset Password</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="resetPasswordForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="resetUsername" readonly>
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password (min 8 characters)" required minlength="8">
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Confirm new password" required minlength="8">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-danger" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete User Confirmation Modal -->
+    <div id="deleteUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Delete User Account</h2>
+                <button class="close-btn" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <p style="color: var(--accent-red); font-weight: 600; margin-bottom: 1rem;">⚠️ Warning: This action cannot be undone!</p>
+                <p>Are you sure you want to delete the account for:</p>
+                <p style="font-weight: 600; margin-top: 0.5rem;" id="deleteUsername"></p>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1rem;">This will permanently delete all user data and stats.</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="deleteUser()">Delete Account</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character View Modal -->
+    <div id="characterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Unlocked Characters</h2>
+                <button class="close-btn" onclick="closeCharacterModal()">&times;</button>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <p style="font-weight: 600; margin-bottom: 1rem; color: var(--accent-primary);" id="characterUsername"></p>
+                <div id="characterList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                    <!-- Character cards will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" onclick="closeCharacterModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unlock Characters Modal -->
+    <div id="unlockCharactersModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Unlock Characters</h2>
+                <button class="close-btn" onclick="closeUnlockCharactersModal()">&times;</button>
+            </div>
+            <form id="unlockCharactersForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="unlockUsername" readonly>
+                </div>
+                <div class="form-group">
+                    <label style="margin-bottom: 1rem; display: block;">Select Characters to Unlock</label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <button type="button" class="btn btn-primary btn-small" onclick="selectAllCharacters()">Select All</button>
+                        <button type="button" class="btn btn-secondary btn-small" onclick="deselectAllCharacters()">Deselect All</button>
+                    </div>
+                    <div id="characterCheckboxList" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                        <!-- Character checkboxes will be inserted here -->
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-success">Unlock Selected</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeUnlockCharactersModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Souls Management Modal -->
+    <div id="soulsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Manage Souls</h2>
+                <button class="close-btn" onclick="closeSoulsModal()">&times;</button>
+            </div>
+            <form id="soulsForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="soulsUsername" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Current Souls: <span id="currentSouls" style="color: var(--accent-gold); font-weight: 700;">0</span></label>
+                </div>
+                <div class="form-group">
+                    <label>Set Souls To:</label>
+                    <input type="number" id="newSouls" min="0" step="1" placeholder="Enter new soul count" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-danger" onclick="closeSoulsModal()">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update Souls</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ban User Modal -->
+    <div id="banModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="banModalTitle">Ban User</h2>
+                <button class="close-btn" onclick="closeBanModal()">&times;</button>
+            </div>
+            <form id="banForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="banUsername" readonly>
+                </div>
+                <div class="form-group" id="banReasonGroup">
+                    <label>Reason for Ban (optional)</label>
+                    <textarea id="banReason" rows="3" placeholder="Enter reason for ban..." style="width: 100%; padding: 0.8rem; background: var(--bg-primary); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: var(--text-primary); font-family: 'Inter', sans-serif; resize: vertical;"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-primary" onclick="closeBanModal()">Cancel</button>
+                    <button type="submit" class="btn btn-danger" id="banSubmitBtn">Ban User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Detail Modal -->
+    <div id="userDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="userDetailName">User Details</h2>
+                <button class="close-btn" onclick="closeUserDetailModal()">&times;</button>
+            </div>
+            <div id="userDetailContent" style="margin-bottom: 1.5rem;">
+                <!-- User details will be inserted here -->
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" onclick="closeUserDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Character System -->
+    <script src="game/js/config/characters.js"></script>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:3001'
+            : 'https://klyra-server.onrender.com';
+
+        let allUsers = [];
+        let currentResetUserId = null;
+        let currentDeleteUserId = null;
+
+        // Auto-detect all characters from CharacterSystem
+        const ALL_CHARACTERS = window.CharacterSystem ? Object.keys(window.CharacterSystem.CHARACTERS) : ['KELISE', 'MALACHAR', 'ALDRIC', 'ZENRYU'];
+        const TOTAL_CHARACTERS = ALL_CHARACTERS.length;
+        console.log('📋 Detected characters:', ALL_CHARACTERS);
+
+        async function checkAdminAccess() {
+            const token = localStorage.getItem('klyra_token');
+            const userDataStr = localStorage.getItem('klyra_user');
+            const userData = userDataStr ? JSON.parse(userDataStr) : null;
+            const userId = userData?.id;
+
+            console.log('=== Admin Access Check ===');
+            console.log('Token exists:', !!token);
+            console.log('User data:', userData);
+            console.log('User ID:', userId);
+            console.log('API URL:', API_URL);
+
+            if (!token || !userId) {
+                console.log('❌ No token or userId found');
+                document.getElementById('noAccessMessage').style.display = 'block';
+                return false;
+            }
+
+            try {
+                const url = `${API_URL}/auth/profile/${userId}`;
+                console.log('Fetching:', url);
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                console.log('Is admin?:', data.user?.isAdmin);
+
+                if (data.success && data.user.isAdmin) {
+                    console.log('✅ Admin access granted');
+                    document.getElementById('adminContent').style.display = 'block';
+                    loadUsers();
+                    return true;
+                } else {
+                    console.log('❌ Not an admin or request failed');
+                    document.getElementById('noAccessMessage').style.display = 'block';
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error checking admin access:', error);
+                document.getElementById('noAccessMessage').style.display = 'block';
+                return false;
+            }
+        }
+
+        async function loadUsers() {
+            const token = localStorage.getItem('klyra_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/users`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    allUsers = data.users;
+                    displayUsers(allUsers);
+                    updateStats(allUsers);
+                } else {
+                    showAlert('Failed to load users: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showAlert('Failed to load users', 'error');
+            }
+        }
+
+        function displayUsers(users) {
+            const tableContent = document.getElementById('tableContent');
+
+            if (users.length === 0) {
+                tableContent.innerHTML = '<div class="loading">No users found</div>';
+                return;
+            }
+
+            const table = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Souls</th>
+                            <th>Games</th>
+                            <th>Floor</th>
+                            <th>Kills</th>
+                            <th>Chars</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr class="${user.isBanned ? 'banned-row' : ''}">
+                                <td><input type="checkbox" class="user-select" value="${user.id}"></td>
+                                <td>${user.id}</td>
+                                <td>
+                                    <div style="cursor: pointer;" onclick="showUserDetail(${user.id})">
+                                        ${user.username}
+                                        ${user.isAdmin ? '<span class="badge badge-admin">ADMIN</span>' : ''}
+                                        ${user.isBanned ? '<span class="badge badge-banned">BANNED</span>' : ''}
+                                    </div>
+                                </td>
+                                <td>${user.email}</td>
+                                <td>
+                                    <span class="badge ${user.isVerified ? 'badge-verified' : 'badge-unverified'}"
+                                          style="cursor: pointer;"
+                                          onclick="resendVerification(${user.id}, '${user.username}')"
+                                          title="Click to resend verification email">
+                                        ${user.isVerified ? '✓' : '✗'}
+                                    </span>
+                                </td>
+                                <td onclick="openSoulsModal(${user.id}, '${user.username}', ${user.bankedSouls || 0})" style="cursor: pointer; color: var(--accent-gold);">
+                                    <strong>${user.bankedSouls || 0}</strong>
+                                </td>
+                                <td>${user.gamesPlayed || 0}</td>
+                                <td>${user.deepestFloor || 0}</td>
+                                <td>${user.totalKills || 0}</td>
+                                <td>
+                                    <button class="btn btn-primary btn-small" onclick="showCharacters(${user.id}, '${user.username}', ${JSON.stringify(user.unlockedCharacters || []).replace(/"/g, '&quot;')})">
+                                        ${(user.unlockedCharacters || []).length}/${TOTAL_CHARACTERS}
+                                    </button>
+                                </td>
+                                <td>
+                                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                        <button class="btn btn-primary btn-small" onclick="openResetModal(${user.id}, '${user.username}')">
+                                            Password
+                                        </button>
+                                        <button class="btn btn-success btn-small" onclick="openUnlockCharactersModal(${user.id}, '${user.username}', ${JSON.stringify(user.unlockedCharacters || []).replace(/"/g, '&quot;')})">
+                                            Unlock
+                                        </button>
+                                        <button class="btn ${user.isAdmin ? 'btn-danger' : 'btn-success'} btn-small" onclick="toggleAdmin(${user.id}, '${user.username}', ${!user.isAdmin})">
+                                            ${user.isAdmin ? 'Demote' : 'Promote'}
+                                        </button>
+                                        <button class="btn ${user.isBanned ? 'btn-success' : 'btn-danger'} btn-small" onclick="openBanModal(${user.id}, '${user.username}', ${!user.isBanned})">
+                                            ${user.isBanned ? 'Unban' : 'Ban'}
+                                        </button>
+                                        <button class="btn btn-danger btn-small" onclick="confirmDeleteUser(${user.id}, '${user.username}')">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            tableContent.innerHTML = table;
+        }
+
+        function updateStats(users) {
+            document.getElementById('totalUsers').textContent = users.length;
+            document.getElementById('verifiedUsers').textContent = users.filter(u => u.isVerified).length;
+            document.getElementById('adminUsers').textContent = users.filter(u => u.isAdmin).length;
+        }
+
+        function openResetModal(userId, username) {
+            currentResetUserId = userId;
+            document.getElementById('resetUsername').value = username;
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('resetPasswordModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('resetPasswordModal').classList.remove('active');
+            currentResetUserId = null;
+        }
+
+        function confirmDeleteUser(userId, username) {
+            currentDeleteUserId = userId;
+            document.getElementById('deleteUsername').textContent = username;
+            document.getElementById('deleteUserModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteUserModal').classList.remove('active');
+            currentDeleteUserId = null;
+        }
+
+        async function deleteUser() {
+            const token = localStorage.getItem('klyra_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/delete-user/${currentDeleteUserId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    closeDeleteModal();
+                    loadUsers(); // Reload the user list
+                } else {
+                    showAlert('Failed to delete user: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showAlert('Failed to delete user', 'error');
+            }
+        }
+
+        let currentUnlockUserId = null;
+
+        function openUnlockCharactersModal(userId, username, unlockedCharacters) {
+            currentUnlockUserId = userId;
+            document.getElementById('unlockUsername').value = username;
+
+            const checkboxList = document.getElementById('characterCheckboxList');
+            checkboxList.innerHTML = ALL_CHARACTERS.map(char => {
+                const isUnlocked = unlockedCharacters.includes(char);
+                return `
+                    <label style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem; background: var(--bg-secondary); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox"
+                               name="characters"
+                               value="${char}"
+                               ${isUnlocked ? 'checked' : ''}
+                               style="width: 20px; height: 20px; cursor: pointer;">
+                        <span style="font-weight: 600; color: ${isUnlocked ? 'var(--accent-green)' : 'var(--text-primary)'};">
+                            ${char} ${isUnlocked ? '(Already Unlocked)' : ''}
+                        </span>
+                    </label>
+                `;
+            }).join('');
+
+            document.getElementById('unlockCharactersModal').style.display = 'flex';
+        }
+
+        function closeUnlockCharactersModal() {
+            document.getElementById('unlockCharactersModal').style.display = 'none';
+            currentUnlockUserId = null;
+        }
+
+        function selectAllCharacters() {
+            document.querySelectorAll('input[name="characters"]').forEach(cb => cb.checked = true);
+        }
+
+        function deselectAllCharacters() {
+            document.querySelectorAll('input[name="characters"]').forEach(cb => cb.checked = false);
+        }
+
+        document.getElementById('unlockCharactersForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const checkboxes = document.querySelectorAll('input[name="characters"]:checked');
+            const selectedCharacters = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedCharacters.length === 0) {
+                showAlert('Please select at least one character', 'error');
+                return;
+            }
+
+            const token = localStorage.getItem('klyra_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/unlock-characters/${currentUnlockUserId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ characters: selectedCharacters })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(data.message + ': ' + data.characters.join(', '), 'success');
+                    closeUnlockCharactersModal();
+                    loadUsers(); // Reload to update character counts
+                } else {
+                    showAlert('Failed to unlock characters: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error unlocking characters:', error);
+                showAlert('Failed to unlock characters', 'error');
+            }
+        });
+
+        function showCharacters(userId, username, unlockedCharacters) {
+            document.getElementById('characterUsername').textContent = `${username}'s Characters`;
+
+            const characterList = document.getElementById('characterList');
+            characterList.innerHTML = ALL_CHARACTERS.map(char => {
+                const isUnlocked = unlockedCharacters.includes(char);
+                return `
+                    <div class="character-card ${isUnlocked ? 'unlocked' : 'locked'}">
+                        <div class="character-name">${char}</div>
+                        <div class="character-status ${isUnlocked ? 'unlocked' : 'locked'}">
+                            ${isUnlocked ? '✓ Unlocked' : '✗ Locked'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('characterModal').classList.add('active');
+        }
+
+        function closeCharacterModal() {
+            document.getElementById('characterModal').classList.remove('active');
+        }
+
+        // Souls Management
+        let currentSoulsUserId = null;
+        function openSoulsModal(userId, username, currentSouls) {
+            currentSoulsUserId = userId;
+            document.getElementById('soulsUsername').value = username;
+            document.getElementById('currentSouls').textContent = currentSouls;
+            document.getElementById('newSouls').value = currentSouls;
+            document.getElementById('soulsModal').classList.add('active');
+        }
+
+        function closeSoulsModal() {
+            document.getElementById('soulsModal').classList.remove('active');
+            currentSoulsUserId = null;
+        }
+
+        document.getElementById('soulsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newSouls = parseInt(document.getElementById('newSouls').value);
+            const token = localStorage.getItem('klyra_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/update-souls/${currentSoulsUserId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ souls: newSouls })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    closeSoulsModal();
+                    loadUsers();
+                } else {
+                    showAlert('Failed to update souls: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error updating souls:', error);
+                showAlert('Failed to update souls', 'error');
+            }
+        });
+
+        // Ban/Unban Functionality
+        let currentBanUserId = null;
+        let currentBanAction = false;
+        function openBanModal(userId, username, shouldBan) {
+            currentBanUserId = userId;
+            currentBanAction = shouldBan;
+            document.getElementById('banUsername').value = username;
+            document.getElementById('banModalTitle').textContent = shouldBan ? 'Ban User' : 'Unban User';
+            document.getElementById('banSubmitBtn').textContent = shouldBan ? 'Ban User' : 'Unban User';
+            document.getElementById('banReasonGroup').style.display = shouldBan ? 'block' : 'none';
+            document.getElementById('banReason').value = '';
+            document.getElementById('banModal').classList.add('active');
+        }
+
+        function closeBanModal() {
+            document.getElementById('banModal').classList.remove('active');
+            currentBanUserId = null;
+        }
+
+        document.getElementById('banForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const reason = document.getElementById('banReason').value;
+            const token = localStorage.getItem('klyra_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/ban-user/${currentBanUserId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ isBanned: currentBanAction, reason })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    closeBanModal();
+                    loadUsers();
+                } else {
+                    showAlert('Failed to update ban status: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error updating ban status:', error);
+                showAlert('Failed to update ban status', 'error');
+            }
+        });
+
+        // Admin Toggle
+        async function toggleAdmin(userId, username, makeAdmin) {
+            if (!confirm(`${makeAdmin ? 'Promote' : 'Demote'} ${username} ${makeAdmin ? 'to admin' : 'from admin'}?`)) {
+                return;
+            }
+
+            const token = localStorage.getItem('klyra_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/toggle-admin/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ isAdmin: makeAdmin })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    loadUsers();
+                } else {
+                    showAlert('Failed to toggle admin: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling admin:', error);
+                showAlert('Failed to toggle admin', 'error');
+            }
+        }
+
+        // User Detail View
+        async function showUserDetail(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            if (!user) return;
+
+            document.getElementById('userDetailName').textContent = `${user.username}'s Profile`;
+            document.getElementById('userDetailContent').innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+                    <div>
+                        <h3 style="color: var(--accent-primary); margin-bottom: 1rem;">Account Info</h3>
+                        <p><strong>ID:</strong> ${user.id}</p>
+                        <p><strong>Username:</strong> ${user.username}</p>
+                        <p><strong>Email:</strong> ${user.email}</p>
+                        <p><strong>Verified:</strong> ${user.isVerified ? '✓ Yes' : '✗ No'}</p>
+                        <p><strong>Admin:</strong> ${user.isAdmin ? '✓ Yes' : '✗ No'}</p>
+                        <p><strong>Banned:</strong> ${user.isBanned ? '✓ Yes' : '✗ No'}</p>
+                        ${user.bannedReason ? `<p><strong>Ban Reason:</strong> ${user.bannedReason}</p>` : ''}
+                        <p><strong>Created:</strong> ${new Date(user.createdAt).toLocaleString()}</p>
+                        <p><strong>Last Login:</strong> ${user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</p>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--accent-green); margin-bottom: 1rem;">Game Stats</h3>
+                        <p><strong>Banked Souls:</strong> ${user.bankedSouls || 0}</p>
+                        <p><strong>Games Played:</strong> ${user.gamesPlayed || 0}</p>
+                        <p><strong>Deepest Floor:</strong> ${user.deepestFloor || 0}</p>
+                        <p><strong>Total Kills:</strong> ${user.totalKills || 0}</p>
+                        <p><strong>Characters Unlocked:</strong> ${(user.unlockedCharacters || []).length}/${TOTAL_CHARACTERS}</p>
+                        <p style="margin-top: 0.5rem; color: var(--text-secondary);">
+                            ${(user.unlockedCharacters || []).join(', ') || 'None'}
+                        </p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('userDetailModal').classList.add('active');
+        }
+
+        function closeUserDetailModal() {
+            document.getElementById('userDetailModal').classList.remove('active');
+        }
+
+        // Bulk Actions
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.user-select');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            updateBulkActionsBtn();
+        }
+
+        function updateBulkActionsBtn() {
+            const selectedCount = document.querySelectorAll('.user-select:checked').length;
+            const bulkBtn = document.getElementById('bulkActionsBtn');
+            if (selectedCount > 0) {
+                bulkBtn.style.display = 'block';
+                bulkBtn.textContent = `Bulk Actions (${selectedCount})`;
+            } else {
+                bulkBtn.style.display = 'none';
+            }
+        }
+
+        function showBulkActions() {
+            const selected = Array.from(document.querySelectorAll('.user-select:checked')).map(cb => parseInt(cb.value));
+            if (selected.length === 0) return;
+
+            const action = prompt(`Select action for ${selected.length} users:\n1 = Delete\n2 = Ban\n3 = Unban\n4 = Unlock All Characters`);
+
+            if (action === '1') {
+                if (confirm(`Delete ${selected.length} users? This cannot be undone!`)) {
+                    bulkDelete(selected);
+                }
+            } else if (action === '2') {
+                const reason = prompt('Enter ban reason (optional):');
+                bulkBan(selected, true, reason);
+            } else if (action === '3') {
+                bulkBan(selected, false, null);
+            } else if (action === '4') {
+                bulkUnlockCharacters(selected);
+            }
+        }
+
+        async function bulkDelete(userIds) {
+            const token = localStorage.getItem('klyra_token');
+            let success = 0;
+            for (const userId of userIds) {
+                try {
+                    const response = await fetch(`${API_URL}/admin/delete-user/${userId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (response.ok) success++;
+                } catch (error) {
+                    console.error('Error deleting user:', userId, error);
+                }
+            }
+            showAlert(`Deleted ${success}/${userIds.length} users`, 'success');
+            loadUsers();
+        }
+
+        async function bulkBan(userIds, isBanned, reason) {
+            const token = localStorage.getItem('klyra_token');
+            let success = 0;
+            for (const userId of userIds) {
+                try {
+                    const response = await fetch(`${API_URL}/admin/ban-user/${userId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ isBanned, reason })
+                    });
+                    if (response.ok) success++;
+                } catch (error) {
+                    console.error('Error banning user:', userId, error);
+                }
+            }
+            showAlert(`${isBanned ? 'Banned' : 'Unbanned'} ${success}/${userIds.length} users`, 'success');
+            loadUsers();
+        }
+
+        async function bulkUnlockCharacters(userIds) {
+            const token = localStorage.getItem('klyra_token');
+            let success = 0;
+            for (const userId of userIds) {
+                try {
+                    const response = await fetch(`${API_URL}/admin/unlock-characters/${userId}`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (response.ok) success++;
+                } catch (error) {
+                    console.error('Error unlocking characters:', userId, error);
+                }
+            }
+            showAlert(`Unlocked characters for ${success}/${userIds.length} users`, 'success');
+            loadUsers();
+        }
+
+        // Export to CSV
+        function exportToCSV() {
+            const csvContent = [
+                ['ID', 'Username', 'Email', 'Verified', 'Admin', 'Banned', 'Souls', 'Games', 'Floor', 'Kills', 'Created'].join(','),
+                ...allUsers.map(user => [
+                    user.id,
+                    user.username,
+                    user.email,
+                    user.isVerified,
+                    user.isAdmin,
+                    user.isBanned,
+                    user.bankedSouls || 0,
+                    user.gamesPlayed || 0,
+                    user.deepestFloor || 0,
+                    user.totalKills || 0,
+                    new Date(user.createdAt).toLocaleString()
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `klyra-users-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            showAlert('CSV exported successfully!', 'success');
+        }
+
+        // Resend Verification Email
+        async function resendVerification(userId, username) {
+            if (!confirm(`Resend verification email to ${username}?`)) {
+                return;
+            }
+
+            const token = localStorage.getItem('klyra_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/resend-verification/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                } else {
+                    showAlert('Failed to resend verification: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error resending verification:', error);
+                showAlert('Failed to resend verification', 'error');
+            }
+        }
+
+        // Filters
+        document.getElementById('filterStatus').addEventListener('change', () => {
+            applyFilters();
+        });
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            const statusFilter = document.getElementById('filterStatus').value;
+
+            let filtered = allUsers.filter(user => {
+                const matchesSearch = user.username.toLowerCase().includes(searchTerm) ||
+                                    user.email.toLowerCase().includes(searchTerm);
+
+                const matchesStatus = statusFilter === 'all' ||
+                    (statusFilter === 'verified' && user.isVerified) ||
+                    (statusFilter === 'unverified' && !user.isVerified) ||
+                    (statusFilter === 'admin' && user.isAdmin) ||
+                    (statusFilter === 'banned' && user.isBanned);
+
+                return matchesSearch && matchesStatus;
+            });
+
+            displayUsers(filtered);
+        }
+
+        document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showAlert('Passwords do not match', 'error');
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                showAlert('Password must be at least 8 characters', 'error');
+                return;
+            }
+
+            const token = localStorage.getItem('klyra_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/reset-password/${currentResetUserId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ newPassword })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(`Password reset successfully for ${data.message.split('user ')[1]}`, 'success');
+                    closeModal();
+                } else {
+                    showAlert('Failed to reset password: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error resetting password:', error);
+                showAlert('Failed to reset password', 'error');
+            }
+        });
+
+        document.getElementById('searchBox').addEventListener('input', () => {
+            applyFilters();
+        });
+
+        // Add event listener to checkboxes after table is rendered
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('user-select')) {
+                updateBulkActionsBtn();
+            }
+        });
+
+        document.getElementById('logoutLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('klyra_token');
+            localStorage.removeItem('klyra_user');
+            window.location.href = 'account.html';
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Initialize
+        checkAdminAccess();
+    </script>
+</body>
+</html>

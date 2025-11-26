@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account - KLYRA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #13131a;
+            --bg-tertiary: #1a1a24;
+            --accent-primary: #8b5cf6;
+            --accent-secondary: #ec4899;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-gold: #f59e0b;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-tertiary: #52525b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Animated Mesh Gradient Background */
+        .mesh-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        .gradient-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.6;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .blob-1 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #8b5cf6, transparent);
+            top: -200px;
+            left: -100px;
+        }
+
+        .blob-2 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, #ec4899, transparent);
+            top: 20%;
+            right: -200px;
+            animation-delay: 5s;
+        }
+
+        .blob-3 {
+            width: 550px;
+            height: 550px;
+            background: radial-gradient(circle, #06b6d4, transparent);
+            bottom: -200px;
+            left: 30%;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(50px, 100px) scale(1.1); }
+            50% { transform: translate(-30px, 50px) scale(0.9); }
+            75% { transform: translate(20px, -40px) scale(1.05); }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--text-primary);
+        }
+
+        /* Main Content */
+        main {
+            position: relative;
+            z-index: 1;
+            padding-top: 120px;
+            padding-bottom: 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+
+        /* Auth Container */
+        .auth-container {
+            background: rgba(26, 26, 36, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 3rem;
+            backdrop-filter: blur(20px);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.875rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .success-message {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .link-text {
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .link-text a {
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+
+        .link-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Profile Section */
+        .profile-section {
+            display: none;
+        }
+
+        .profile-section.active {
+            display: block;
+        }
+
+        .profile-header {
+            background: rgba(26, 26, 36, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .profile-info {
+            flex: 1;
+        }
+
+        .profile-username {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-email {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .profile-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-play {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-play:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn-logout {
+            padding: 0.75rem 1.5rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            color: var(--accent-red);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-logout:hover {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stats-category {
+            background: rgba(26, 26, 36, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .category-icon {
+            font-size: 1.5rem;
+        }
+
+        .category-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        /* Leaderboard Rankings */
+        .rankings-section {
+            background: rgba(26, 26, 36, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            margin-bottom: 2rem;
+        }
+
+        .rankings-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .rank-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .rank-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .rank-card:hover {
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+        }
+
+        .rank-card.gold {
+            border-color: var(--accent-gold);
+        }
+
+        .rank-card.silver {
+            border-color: #94a3b8;
+        }
+
+        .rank-card.bronze {
+            border-color: #cd7f32;
+        }
+
+        .rank-number {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .rank-number.gold {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .rank-number.silver {
+            background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .rank-number.bronze {
+            background: linear-gradient(135deg, #ea9f6b, #cd7f32);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .rank-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .rank-category {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Achievements */
+        .achievements-section {
+            background: rgba(26, 26, 36, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            margin-bottom: 2rem;
+        }
+
+        .achievements-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .achievement-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .achievement-card.unlocked {
+            border-color: var(--accent-gold);
+        }
+
+        .achievement-card.locked {
+            opacity: 0.4;
+        }
+
+        .achievement-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            filter: grayscale(100%);
+        }
+
+        .achievement-card.unlocked .achievement-icon {
+            filter: grayscale(0%);
+            animation: unlock 0.5s ease-out;
+        }
+
+        @keyframes unlock {
+            0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .achievement-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+        }
+
+        .achievement-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Loading Spinner */
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(139, 92, 246, 0.2);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* KDA Display */
+        .kda-display {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.1));
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .kda-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        .kda-label {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                padding: 1rem 1.5rem;
+            }
+
+            nav ul {
+                gap: 1rem;
+                font-size: 0.85rem;
+            }
+
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .profile-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .achievements-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Mesh Gradient Background -->
+    <div class="mesh-gradient">
+        <div class="gradient-blob blob-1"></div>
+        <div class="gradient-blob blob-2"></div>
+        <div class="gradient-blob blob-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <a href="index.html" class="logo">KLYRA</a>
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="characters.html">Characters</a></li>
+                <li><a href="enemies.html">Enemies</a></li>
+                <li><a href="lore.html">Lore</a></li>
+                <li><a href="live-trackers.html">Live Trackers</a></li>
+                <li><a href="account.html" class="active">Account</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Auth Section (Login/Register) -->
+        <div id="auth-section" class="auth-container">
+            <div class="auth-tabs">
+                <button class="tab-btn active" onclick="switchTab('login')">Login</button>
+                <button class="tab-btn" onclick="switchTab('register')">Register</button>
+            </div>
+
+            <!-- Login Tab -->
+            <div id="login-tab" class="tab-content active">
+                <h1>Welcome Back</h1>
+                <p class="subtitle">Login to access your account</p>
+
+                <div id="login-error" class="error-message" style="display: none;"></div>
+
+                <form id="login-form" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>Username or Email</label>
+                        <input type="text" id="login-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn" id="login-btn">Login</button>
+                </form>
+
+                <div class="link-text">
+                    <a href="#" onclick="showForgotPassword(); return false;">Forgot password?</a>
+                </div>
+                <div class="link-text">
+                    Or <a href="game/" style="color: var(--accent-cyan);">Play as Guest</a>
+                </div>
+            </div>
+
+            <!-- Register Tab -->
+            <div id="register-tab" class="tab-content">
+                <h1>Create Account</h1>
+                <p class="subtitle">Join the KLYRA community</p>
+
+                <div id="register-error" class="error-message" style="display: none;"></div>
+                <div id="register-success" class="success-message" style="display: none;"></div>
+
+                <form id="register-form" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label>Username (3-20 characters)</label>
+                        <input type="text" id="register-username" minlength="3" maxlength="20" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="register-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password (min. 8 characters)</label>
+                        <input type="password" id="register-password" minlength="8" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="register-confirm" required>
+                    </div>
+                    <button type="submit" class="btn" id="register-btn">Create Account</button>
+                </form>
+
+                <div class="link-text">
+                    Or <a href="game/" style="color: var(--accent-cyan);">Play as Guest</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Section (Logged In) -->
+        <div id="profile-section" class="profile-section">
+            <!-- Profile Header -->
+            <div class="profile-header">
+                <div class="profile-avatar" id="profile-avatar">U</div>
+                <div class="profile-info">
+                    <div class="profile-username" id="profile-username">Username</div>
+                    <div class="profile-email" id="profile-email">email@example.com</div>
+                    <div class="profile-actions">
+                        <a href="game/" class="btn-play">Play Game</a>
+                        <button class="btn-logout" onclick="handleLogout()">Logout</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Rankings -->
+            <div class="rankings-section">
+                <div class="rankings-title">🏆 Your Rankings</div>
+                <div class="rank-cards">
+                    <div class="rank-card" id="kills-rank-card">
+                        <div class="rank-number" id="kills-rank">#1</div>
+                        <div class="rank-label">Global Rank</div>
+                        <div class="rank-category">Total Kills</div>
+                    </div>
+                    <div class="rank-card" id="damage-rank-card">
+                        <div class="rank-number" id="damage-rank">#1</div>
+                        <div class="rank-label">Global Rank</div>
+                        <div class="rank-category">Total Damage</div>
+                    </div>
+                    <div class="rank-card" id="floor-rank-card">
+                        <div class="rank-number" id="floor-rank">#1</div>
+                        <div class="rank-label">Global Rank</div>
+                        <div class="rank-category">Deepest Floor</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <!-- Combat Stats -->
+                <div class="stats-category">
+                    <div class="category-header">
+                        <span class="category-icon">⚔️</span>
+                        <span class="category-title">Combat</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Kills</span>
+                        <span class="stat-value" id="user-kills">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Deaths</span>
+                        <span class="stat-value" id="user-deaths">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Boss Kills</span>
+                        <span class="stat-value" id="user-boss-kills">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Elite Kills</span>
+                        <span class="stat-value" id="user-elite-kills">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Mushrooms Killed</span>
+                        <span class="stat-value" id="user-mushrooms">0</span>
+                    </div>
+                    <div class="kda-display">
+                        <div class="kda-value" id="kda-ratio">0.00</div>
+                        <div class="kda-label">K/D Ratio</div>
+                    </div>
+                </div>
+
+                <!-- Damage Stats -->
+                <div class="stats-category">
+                    <div class="category-header">
+                        <span class="category-icon">💥</span>
+                        <span class="category-title">Damage</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Damage Dealt</span>
+                        <span class="stat-value" id="user-damage">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Damage Taken</span>
+                        <span class="stat-value" id="user-damage-taken">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Abilities Used</span>
+                        <span class="stat-value" id="user-abilities">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Avg Damage/Game</span>
+                        <span class="stat-value" id="avg-damage">0</span>
+                    </div>
+                </div>
+
+                <!-- Progression Stats -->
+                <div class="stats-category">
+                    <div class="category-header">
+                        <span class="category-icon">📈</span>
+                        <span class="category-title">Progression</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Games Played</span>
+                        <span class="stat-value" id="user-games">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Games Completed</span>
+                        <span class="stat-value" id="user-completed">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Deepest Floor</span>
+                        <span class="stat-value" id="user-deepest-floor">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Floors</span>
+                        <span class="stat-value" id="user-total-floors">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Completion Rate</span>
+                        <span class="stat-value" id="completion-rate">0%</span>
+                    </div>
+                </div>
+
+                <!-- Loot Stats -->
+                <div class="stats-category">
+                    <div class="category-header">
+                        <span class="category-icon">💎</span>
+                        <span class="category-title">Loot</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Gold</span>
+                        <span class="stat-value" id="user-gold">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Legendary Items</span>
+                        <span class="stat-value" id="user-legendary">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Rare Items</span>
+                        <span class="stat-value" id="user-rare">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Items</span>
+                        <span class="stat-value" id="user-items">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Potions Consumed</span>
+                        <span class="stat-value" id="user-potions">0</span>
+                    </div>
+                </div>
+
+                <!-- Exploration Stats -->
+                <div class="stats-category">
+                    <div class="category-header">
+                        <span class="category-icon">🗺️</span>
+                        <span class="category-title">Exploration</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Distance Traveled</span>
+                        <span class="stat-value" id="user-distance">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Playtime</span>
+                        <span class="stat-value" id="user-playtime">0h 0m</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Avg Session</span>
+                        <span class="stat-value" id="avg-session">0m</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Achievements -->
+            <div class="achievements-section">
+                <div class="achievements-title">🏅 Achievements</div>
+                <div class="achievements-grid" id="achievements-grid">
+                    <!-- Achievements will be dynamically generated -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-section" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem; color: var(--text-secondary);">Loading...</p>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = 'https://klyra-server.onrender.com';
+
+        // Check if user is already logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+        });
+
+        async function checkAuth() {
+            const token = localStorage.getItem('klyra_token');
+            if (!token) {
+                showAuthSection();
+                return;
+            }
+
+            document.getElementById('loading-section').style.display = 'block';
+            document.getElementById('auth-section').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/auth/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    await loadUserProfile(data.userId);
+                } else {
+                    localStorage.removeItem('klyra_token');
+                    showAuthSection();
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                localStorage.removeItem('klyra_token');
+                showAuthSection();
+            }
+
+            document.getElementById('loading-section').style.display = 'none';
+        }
+
+        async function loadUserProfile(userId) {
+            try {
+                const response = await fetch(`${API_URL}/auth/profile/${userId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const user = data.user;
+                    document.getElementById('profile-username').textContent = user.username;
+                    document.getElementById('profile-email').textContent = user.email;
+                    document.getElementById('profile-avatar').textContent = user.username[0].toUpperCase();
+
+                    // Load user stats and rankings
+                    await Promise.all([
+                        loadUserStats(userId),
+                        loadUserRankings(userId)
+                    ]);
+
+                    showProfileSection();
+                }
+            } catch (error) {
+                console.error('Failed to load profile:', error);
+            }
+        }
+
+        async function loadUserStats(userId) {
+            try {
+                const response = await fetch(`${API_URL}/user-stats/${userId}`);
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Combat stats
+                    document.getElementById('user-kills').textContent = formatNumber(data.totalKills || 0);
+                    document.getElementById('user-deaths').textContent = formatNumber(data.totalDeaths || 0);
+                    document.getElementById('user-boss-kills').textContent = formatNumber(data.bossKills || 0);
+                    document.getElementById('user-elite-kills').textContent = formatNumber(data.eliteKills || 0);
+                    document.getElementById('user-mushrooms').textContent = formatNumber(data.mushroomsKilled || 0);
+
+                    // K/D ratio
+                    const kda = data.totalDeaths > 0 ? (data.totalKills / data.totalDeaths).toFixed(2) : data.totalKills.toFixed(2);
+                    document.getElementById('kda-ratio').textContent = kda;
+
+                    // Damage stats
+                    document.getElementById('user-damage').textContent = formatNumber(data.totalDamage || 0);
+                    document.getElementById('user-damage-taken').textContent = formatNumber(data.damageTaken || 0);
+                    document.getElementById('user-abilities').textContent = formatNumber(data.abilitiesUsed || 0);
+                    const avgDamage = data.gamesPlayed > 0 ? Math.floor(data.totalDamage / data.gamesPlayed) : 0;
+                    document.getElementById('avg-damage').textContent = formatNumber(avgDamage);
+
+                    // Progression stats
+                    document.getElementById('user-games').textContent = formatNumber(data.gamesPlayed || 0);
+                    document.getElementById('user-completed').textContent = formatNumber(data.gamesCompleted || 0);
+                    document.getElementById('user-deepest-floor').textContent = formatNumber(data.deepestFloor || 0);
+                    document.getElementById('user-total-floors').textContent = formatNumber(data.totalFloors || 0);
+                    const completionRate = data.gamesPlayed > 0 ? Math.floor((data.gamesCompleted / data.gamesPlayed) * 100) : 0;
+                    document.getElementById('completion-rate').textContent = completionRate + '%';
+
+                    // Loot stats
+                    document.getElementById('user-gold').textContent = formatNumber(data.totalGold || 0);
+                    document.getElementById('user-legendary').textContent = formatNumber(data.legendaryItems || 0);
+                    document.getElementById('user-rare').textContent = formatNumber(data.rareItems || 0);
+                    document.getElementById('user-items').textContent = formatNumber(data.totalItems || 0);
+                    document.getElementById('user-potions').textContent = formatNumber(data.potionsConsumed || 0);
+
+                    // Exploration stats
+                    document.getElementById('user-distance').textContent = formatNumber(data.distanceTraveled || 0);
+                    const playtimeHours = Math.floor((data.playtime || 0) / (1000 * 60 * 60));
+                    const playtimeMinutes = Math.floor(((data.playtime || 0) % (1000 * 60 * 60)) / (1000 * 60));
+                    document.getElementById('user-playtime').textContent = `${playtimeHours}h ${playtimeMinutes}m`;
+                    const avgSession = data.gamesPlayed > 0 ? Math.floor((data.playtime || 0) / data.gamesPlayed / (1000 * 60)) : 0;
+                    document.getElementById('avg-session').textContent = avgSession + 'm';
+
+                    // Generate achievements
+                    generateAchievements(data);
+                }
+            } catch (error) {
+                console.error('Failed to load user stats:', error);
+            }
+        }
+
+        async function loadUserRankings(userId) {
+            try {
+                const response = await fetch(`${API_URL}/user-rank/${userId}`);
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Update rankings
+                    updateRankCard('kills-rank', data.killsRank);
+                    updateRankCard('damage-rank', data.damageRank);
+                    updateRankCard('floor-rank', data.floorRank);
+                }
+            } catch (error) {
+                console.error('Failed to load rankings:', error);
+            }
+        }
+
+        function updateRankCard(elementId, rank) {
+            const element = document.getElementById(elementId);
+            const card = document.getElementById(elementId + '-card');
+
+            element.textContent = '#' + rank;
+
+            // Remove existing rank classes
+            element.classList.remove('gold', 'silver', 'bronze');
+            card.classList.remove('gold', 'silver', 'bronze');
+
+            // Add appropriate class based on rank
+            if (rank === 1) {
+                element.classList.add('gold');
+                card.classList.add('gold');
+            } else if (rank === 2) {
+                element.classList.add('silver');
+                card.classList.add('silver');
+            } else if (rank === 3) {
+                element.classList.add('bronze');
+                card.classList.add('bronze');
+            }
+        }
+
+        function generateAchievements(stats) {
+            const achievements = [
+                { id: 'first-blood', name: 'First Blood', desc: 'Get your first kill', icon: '⚔️', condition: stats.totalKills >= 1 },
+                { id: 'killer', name: 'Killer', desc: 'Get 100 kills', icon: '💀', condition: stats.totalKills >= 100 },
+                { id: 'slayer', name: 'Slayer', desc: 'Get 1,000 kills', icon: '🔥', condition: stats.totalKills >= 1000 },
+                { id: 'legend', name: 'Legend', desc: 'Get 10,000 kills', icon: '👑', condition: stats.totalKills >= 10000 },
+                { id: 'boss-hunter', name: 'Boss Hunter', desc: 'Kill 10 bosses', icon: '🐉', condition: stats.bossKills >= 10 },
+                { id: 'elite-slayer', name: 'Elite Slayer', desc: 'Kill 50 elites', icon: '⚡', condition: stats.eliteKills >= 50 },
+                { id: 'survivor', name: 'Survivor', desc: 'Complete a game', icon: '🛡️', condition: stats.gamesCompleted >= 1 },
+                { id: 'explorer', name: 'Explorer', desc: 'Reach floor 10', icon: '🗺️', condition: stats.deepestFloor >= 10 },
+                { id: 'deep-diver', name: 'Deep Diver', desc: 'Reach floor 25', icon: '🌊', condition: stats.deepestFloor >= 25 },
+                { id: 'treasure-hunter', name: 'Treasure Hunter', desc: 'Find a legendary item', icon: '💎', condition: stats.legendaryItems >= 1 },
+                { id: 'hoarder', name: 'Hoarder', desc: 'Collect 100 items', icon: '📦', condition: stats.totalItems >= 100 },
+                { id: 'rich', name: 'Rich', desc: 'Earn 10,000 gold', icon: '💰', condition: stats.totalGold >= 10000 },
+                { id: 'marathoner', name: 'Marathoner', desc: 'Play for 10 hours', icon: '⏱️', condition: stats.playtime >= 36000000 },
+                { id: 'veteran', name: 'Veteran', desc: 'Play 100 games', icon: '🎮', condition: stats.gamesPlayed >= 100 },
+                { id: 'damage-dealer', name: 'Damage Dealer', desc: 'Deal 100,000 damage', icon: '💥', condition: stats.totalDamage >= 100000 },
+                { id: 'mushroom-stomper', name: 'Mushroom Stomper', desc: 'Kill 100 mushrooms', icon: '🍄', condition: stats.mushroomsKilled >= 100 },
+            ];
+
+            const grid = document.getElementById('achievements-grid');
+            grid.innerHTML = '';
+
+            achievements.forEach(achievement => {
+                const card = document.createElement('div');
+                card.className = 'achievement-card ' + (achievement.condition ? 'unlocked' : 'locked');
+                card.innerHTML = `
+                    <div class="achievement-icon">${achievement.icon}</div>
+                    <div class="achievement-name">${achievement.name}</div>
+                    <div class="achievement-desc">${achievement.desc}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        function showAuthSection() {
+            document.getElementById('auth-section').style.display = 'block';
+            document.getElementById('profile-section').style.display = 'none';
+        }
+
+        function showProfileSection() {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('profile-section').style.display = 'block';
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            if (tab === 'login') {
+                document.querySelector('[onclick="switchTab(\'login\')"]').classList.add('active');
+                document.getElementById('login-tab').classList.add('active');
+            } else {
+                document.querySelector('[onclick="switchTab(\'register\')"]').classList.add('active');
+                document.getElementById('register-tab').classList.add('active');
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('login-error');
+            const btn = document.getElementById('login-btn');
+
+            errorDiv.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        usernameOrEmail: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('klyra_token', data.token);
+                    localStorage.setItem('klyra_user', JSON.stringify(data.user));
+                    await loadUserProfile(data.user.id);
+                } else {
+                    errorDiv.textContent = data.error;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Login failed. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Login';
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirm = document.getElementById('register-confirm').value;
+            const errorDiv = document.getElementById('register-error');
+            const successDiv = document.getElementById('register-success');
+            const btn = document.getElementById('register-btn');
+
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            if (password !== confirm) {
+                errorDiv.textContent = 'Passwords do not match';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+
+            try {
+                const response = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    successDiv.textContent = data.message || 'Account created! You can now login.';
+                    successDiv.style.display = 'block';
+                    document.getElementById('register-form').reset();
+                    setTimeout(() => switchTab('login'), 2000);
+                } else {
+                    errorDiv.textContent = data.error;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Registration failed. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Create Account';
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('klyra_token');
+            localStorage.removeItem('klyra_user');
+            location.reload();
+        }
+
+        function showForgotPassword() {
+            const email = prompt('Enter your email address:');
+            if (email) {
+                resetPassword(email);
+            }
+        }
+
+        async function resetPassword(email) {
+            try {
+                await fetch(`${API_URL}/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                alert('If that email exists, a password reset link has been sent.');
+            } catch (error) {
+                alert('Failed to send reset email. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>

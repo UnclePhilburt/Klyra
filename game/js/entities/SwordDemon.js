@@ -1,0 +1,467 @@
+// Sword Demon Enemy Entity
+class SwordDemon {
+    constructor(scene, data) {
+        this.scene = scene;
+        this.data = data;
+        this.health = data.health;
+        this.maxHealth = data.maxHealth;
+        this.isAlive = data.isAlive !== false;
+        this.damage = data.damage || 8;
+        this.isAttacking = false; // Track if currently playing attack animation
+        this.lastAttackTime = 0; // Track when last attack started
+
+        if (!this.isAlive) {
+            console.warn(`⚠️ SwordDemon ${data.id} created with isAlive: false`);
+        }
+
+        this.createSprite();
+    }
+
+    createSprite() {
+        // Position is always in pixels from server
+        const x = this.data.position.x;
+        const y = this.data.position.y;
+
+        // Get variant data from server
+        const glowColor = this.data.glowColor || 0xff0000;
+        const variant = this.data.variant || 'normal';
+
+        // All sword demons are same size: 124px tall (3.875 tiles)
+        // 64px sprite → 124px = scale 1.9375
+        const scale = 1.9375;
+
+        // Create sword demon sprite
+        this.sprite = this.scene.add.sprite(x, y, 'sworddemon', 0);
+        this.sprite.setOrigin(0.5);
+        this.sprite.setScale(scale);
+        this.sprite.setDepth(2);
+
+        // Add physics
+        this.scene.physics.add.existing(this.sprite);
+
+        if (!this.sprite.body) {
+            console.error(`❌ SwordDemon ${this.data.id}: Physics body failed to create!`);
+            return;
+        }
+
+        // Set hitbox (fixed at 3 tiles = 96px)
+        const hitboxSize = 96;
+        this.sprite.body.setSize(hitboxSize, hitboxSize);
+        this.sprite.body.setCollideWorldBounds(false);
+
+        // Store reference for collision detection (use 'enemyEntity' for compatibility)
+        this.sprite.enemyEntity = this;
+        this.sprite.wolfEntity = this; // Legacy compatibility
+
+        // Prevent camera culling
+        this.sprite.setScrollFactor(1, 1);
+
+        // Play idle animation (check if it exists first)
+        if (this.scene.anims.exists('sworddemon_idle')) {
+            this.sprite.play('sworddemon_idle');
+        } else {
+            console.warn('⚠️ Animation sworddemon_idle does not exist yet');
+        }
+
+        // Track movement
+        this.lastX = x;
+
+        // Initialize target position to current position (prevents undefined during lerp)
+        this.targetX = x;
+        this.targetY = y;
+
+        // Store variant
+        this.variant = variant;
+        this.scale = scale;
+
+        // Add boss crown for boss variants
+        if (variant === 'boss') {
+            // Fixed crown position (124px tall, crown above)
+            this.crownText = this.scene.add.text(x, y - 70, '👑', {
+                font: '20px Arial',
+                fill: '#FFD700'
+            });
+            this.crownText.setOrigin(0.5);
+            this.crownText.setDepth(3);
+            this.crownText.setScrollFactor(1, 1);
+        }
+    }
+
+    attack(targetX = null, targetY = null) {
+        // Prevent attack spam - enforce minimum cooldown (667ms to match animation)
+        const now = Date.now();
+        if (this.isAttacking || now - this.lastAttackTime < 667) {
+            return; // Still attacking or on cooldown
+        }
+
+        console.log(`⚔️ SwordDemon attack() called`);
+
+        // Face the target before attacking
+        if (targetX !== null && this.sprite) {
+            const dx = targetX - this.sprite.x;
+            if (Math.abs(dx) > 5) { // Only flip if target is significantly to one side
+                this.sprite.setFlipX(dx < 0);
+            }
+        }
+
+        // Play attack animation
+        if (this.sprite && this.sprite.anims && this.isAlive) {
+            console.log(`   Checking animation exists...`);
+            if (this.scene.anims.exists('sworddemon_attack')) {
+                console.log(`   ✅ Playing sworddemon_attack`);
+                this.isAttacking = true;
+                this.lastAttackTime = now;
+                this.sprite.play('sworddemon_attack');
+            } else {
+                console.warn(`   ❌ sworddemon_attack animation does NOT exist`);
+            }
+            // Return to previous animation after attack (8 frames at 12fps = ~667ms)
+            this.scene.time.delayedCall(667, () => {
+                this.isAttacking = false;
+                if (this.sprite && this.sprite.active && this.isAlive) {
+                    const wasMoving = this.currentState === 'walking';
+                    const animKey = wasMoving ? 'sworddemon_walk' : 'sworddemon_idle';
+                    if (this.scene.anims.exists(animKey)) {
+                        this.sprite.play(animKey);
+                    }
+                }
+            });
+        } else {
+            console.warn(`   ❌ Cannot attack - sprite:${!!this.sprite}, anims:${!!(this.sprite?.anims)}, alive:${this.isAlive}`);
+        }
+    }
+
+    takeDamage(amount) {
+        this.health -= amount;
+        if (this.health <= 0) {
+            this.health = 0;
+        }
+
+        // Blood splatter effect
+        this.showBloodEffect();
+
+        // Show damage number
+        this.showDamageNumber(amount);
+
+        // Play damage animation
+        if (this.sprite && this.sprite.anims && this.health > 0) {
+            if (this.scene.anims.exists('sworddemon_damage')) {
+                this.sprite.play('sworddemon_damage');
+            }
+            // Return to previous animation after damage (2 frames at 12fps = ~167ms)
+            this.scene.time.delayedCall(167, () => {
+                if (this.sprite && this.sprite.active && this.health > 0) {
+                    const wasMoving = this.currentState === 'walking';
+                    const animKey = wasMoving ? 'sworddemon_walk' : 'sworddemon_idle';
+                    if (this.scene.anims.exists(animKey)) {
+                        this.sprite.play(animKey);
+                    }
+                }
+            });
+        }
+
+        // Damage flash
+        this.sprite.setTint(0xffffff);
+        this.scene.time.delayedCall(100, () => {
+            if (this.sprite) this.sprite.clearTint();
+        });
+    }
+
+    showBloodEffect() {
+
+        // ANIMATED BLOOD SPLASH EXPLOSIONS - realistic blood spray!
+        const splashCount = 8; // Number of animated blood splashes
+
+        for (let i = 0; i < splashCount; i++) {
+            const angle = (Math.PI * 2 * i) / splashCount + (Math.random() - 0.5) * 0.8;
+            const speed = 60 + Math.random() * 80;
+
+            // Pick random blood splash animation
+            const splashAnims = ['blood_splash_1_anim', 'blood_splash_2_anim', 'blood_splash_3_anim'];
+            const randomAnim = splashAnims[Math.floor(Math.random() * splashAnims.length)];
+
+            const splash = this.scene.add.sprite(
+                this.sprite.x,
+                this.sprite.y,
+                'blood_splash_1'
+            );
+            splash.setDepth(9999);
+            splash.setScale(0.8 + Math.random() * 1.0); // Random size 0.8-1.8x
+            splash.setRotation(Math.random() * Math.PI * 2); // Random rotation
+            splash.setAlpha(0.9);
+
+            // Play animation
+            splash.play(randomAnim);
+
+            // Animate outward
+            this.scene.tweens.add({
+                targets: splash,
+                x: this.sprite.x + Math.cos(angle) * speed,
+                y: this.sprite.y + Math.sin(angle) * speed,
+                alpha: 0,
+                duration: 500 + Math.random() * 300,
+                ease: 'Cubic.easeOut',
+                onComplete: () => splash.destroy()
+            });
+        }
+
+        // Add more blood splash variety with different scales
+        for (let i = 0; i < 6; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 40 + Math.random() * 50;
+
+            const splashAnims = ['blood_splash_1_anim', 'blood_splash_2_anim', 'blood_splash_3_anim'];
+            const randomAnim = splashAnims[Math.floor(Math.random() * splashAnims.length)];
+
+            const splash = this.scene.add.sprite(
+                this.sprite.x,
+                this.sprite.y,
+                'blood_splash_1'
+            );
+            splash.setDepth(9999);
+            splash.setScale(0.4 + Math.random() * 0.6); // Smaller splashes
+            splash.setRotation(Math.random() * Math.PI * 2);
+            splash.setAlpha(0.8);
+            splash.play(randomAnim);
+
+            this.scene.tweens.add({
+                targets: splash,
+                x: this.sprite.x + Math.cos(angle) * speed,
+                y: this.sprite.y + Math.sin(angle) * speed,
+                alpha: 0,
+                duration: 400 + Math.random() * 250,
+                ease: 'Cubic.easeOut',
+                onComplete: () => splash.destroy()
+            });
+        }
+
+
+
+        // GROUND BLOOD POOLS - use blood splash sprites on ground
+        const puddleCount = 8 + Math.floor(Math.random() * 5);
+        for (let i = 0; i < puddleCount; i++) {
+            const offsetX = (Math.random() - 0.5) * 50;
+            const offsetY = (Math.random() - 0.5) * 50;
+
+            // Use a random frame from blood splash as static puddle
+            const splashSprites = ['blood_splash_1', 'blood_splash_2', 'blood_splash_3'];
+            const randomSprite = splashSprites[Math.floor(Math.random() * splashSprites.length)];
+            const randomFrame = Math.floor(Math.random() * 12); // Use mid-to-late frames
+
+            const puddle = this.scene.add.sprite(
+                this.sprite.x + offsetX,
+                this.sprite.y + offsetY,
+                randomSprite,
+                randomFrame + 4 // Start from frame 4+ for splattered look
+            );
+            puddle.setDepth(1);
+            puddle.setAlpha(0);
+            puddle.setScale(0.6 + Math.random() * 0.8);
+            puddle.setRotation(Math.random() * Math.PI * 2);
+
+            // Fade in
+            this.scene.tweens.add({
+                targets: puddle,
+                alpha: 0.7,
+                duration: 200,
+                ease: 'Cubic.easeOut'
+            });
+
+            // Fade out slowly - LONG lasting ground blood
+            this.scene.tweens.add({
+                targets: puddle,
+                alpha: 0,
+                duration: 3000 + Math.random() * 2000,
+                delay: 800,
+                ease: 'Linear',
+                onComplete: () => puddle.destroy()
+            });
+        }
+    }
+
+    showDamageNumber(amount) {
+        // Create floating damage text
+        const damageText = this.scene.add.text(
+            this.sprite.x,
+            this.sprite.y - 25,
+            Math.round(amount).toString(),
+            {
+                font: 'bold 22px monospace',
+                fill: '#ff4444',
+                stroke: '#000000',
+                strokeThickness: 4
+            }
+        );
+        damageText.setOrigin(0.5);
+        damageText.setDepth(10000);
+
+        // Animate the damage number
+        this.scene.tweens.add({
+            targets: damageText,
+            y: damageText.y - 45,
+            alpha: 0,
+            duration: 800,
+            ease: 'Cubic.easeOut',
+            onComplete: () => damageText.destroy()
+        });
+    }
+
+    die(playEffects = true) {
+        this.isAlive = false;
+
+        // CRITICAL FIX: Clear all bleed timers to prevent memory leak
+        if (this.bleedTimers && this.bleedTimers.length > 0) {
+            this.bleedTimers.forEach(timer => clearInterval(timer));
+            this.bleedTimers = [];
+        }
+
+        // Play death sound (40% chance) - only if on screen
+        if (playEffects && Math.random() < 0.4 && this.scene.sound) {
+            const deathSounds = [
+                'death_bone_snap', 'death_crunch', 'death_crunch_quick',
+                'death_crunch_splat', 'death_crunch_splat_2', 'death_kick',
+                'death_punch', 'death_punch_2', 'death_punch_3', 'death_slap',
+                'death_splat_double', 'death_squelch_1', 'death_squelch_2',
+                'death_squelch_3', 'death_squelch_4'
+            ];
+            const randomSound = deathSounds[Math.floor(Math.random() * deathSounds.length)];
+            this.scene.sound.play(randomSound, { volume: 0.15 });
+        }
+
+        // Play death animation
+        if (this.sprite && this.sprite.anims && this.scene.anims.exists('sworddemon_death')) {
+            this.sprite.play('sworddemon_death');
+        }
+
+        // Death particles (scaled for 124px size) - MUCH BLOODIER
+        const particleColor = 0x8b0000; // Dark blood red
+        const particleCount = this.variant === 'boss' ? 35 : 25; // Increased from 16/10
+
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 * i) / particleCount;
+            const distance = this.variant === 'boss' ? 100 : 75;
+            const particle = this.scene.add.circle(
+                this.sprite.x,
+                this.sprite.y,
+                this.variant === 'boss' ? 5 : 3,
+                particleColor
+            );
+
+            this.scene.tweens.add({
+                targets: particle,
+                x: this.sprite.x + Math.cos(angle) * distance,
+                y: this.sprite.y + Math.sin(angle) * distance,
+                alpha: 0,
+                duration: this.variant === 'boss' ? 800 : 500,
+                onComplete: () => particle.destroy()
+            });
+        }
+
+        // Fade out after death animation (9 frames at 10fps = 900ms)
+        const deathAnimDuration = 900;
+        const targets = [this.sprite];
+        if (this.crownText) targets.push(this.crownText);
+
+        this.scene.tweens.add({
+            targets: targets,
+            alpha: 0,
+            duration: 300,
+            delay: deathAnimDuration,
+            onComplete: () => {
+                if (this.sprite) this.sprite.destroy();
+                if (this.crownText) this.crownText.destroy();
+            }
+        });
+    }
+
+    setTargetPosition(x, y) {
+        if (!this.sprite) return;
+        this.targetX = x;
+        this.targetY = y;
+    }
+
+    update() {
+        if (!this.isAlive || !this.sprite || !this.sprite.active) return;
+
+        // Check if stunned - don't move if stunned
+        if (this.isStunned && Date.now() < this.stunnedUntil) {
+            // Stop physics velocity
+            if (this.sprite.body) {
+                this.sprite.body.setVelocity(0, 0);
+            }
+            return; // Skip movement while stunned
+        }
+
+        // Clear stun flag if expired
+        if (this.isStunned && Date.now() >= this.stunnedUntil) {
+            this.isStunned = false;
+            this.stunnedUntil = 0;
+        }
+
+        // Smooth movement using Phaser physics (same as Minions)
+        if (this.targetX !== undefined && this.targetY !== undefined) {
+            const dx = this.targetX - this.sprite.x;
+            const dy = this.targetY - this.sprite.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Use larger threshold to avoid jittering
+            if (dist > 3) {
+                // Use Phaser's physics for smooth movement
+                const speed = 200; // pixels per second
+                const angle = Math.atan2(dy, dx);
+
+                this.sprite.body.setVelocity(
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed
+                );
+            } else {
+                // Close enough, stop movement
+                this.sprite.body.setVelocity(0, 0);
+            }
+
+            // Animation state - only walk if moving significantly
+            const shouldWalk = dist > 3;
+
+            // Only change animation if state actually changed (and not attacking!)
+            if (!this.isAttacking) {
+                if (shouldWalk && this.currentState !== 'walking') {
+                    this.currentState = 'walking';
+                    if (this.scene.anims.exists('sworddemon_walk')) {
+                        this.sprite.play('sworddemon_walk', true);
+                    }
+                } else if (!shouldWalk && this.currentState !== 'idle') {
+                    this.currentState = 'idle';
+                    if (this.scene.anims.exists('sworddemon_idle')) {
+                        this.sprite.play('sworddemon_idle', true);
+                    }
+                }
+            }
+
+            // Flip sprite based on movement direction (only if moving significantly horizontally)
+            if (Math.abs(dx) > 2) { // Increased threshold to prevent rapid flipping
+                const shouldFlipLeft = dx < 0;
+                // Only flip if it's different from current state
+                if (this.sprite.flipX !== shouldFlipLeft) {
+                    this.sprite.setFlipX(shouldFlipLeft);
+                }
+            }
+        }
+
+        // Update crown for boss variants
+        if (this.crownText && this.crownText.active) {
+            this.crownText.setPosition(this.sprite.x, this.sprite.y - 70);
+        }
+    }
+
+    destroy() {
+        if (this.sprite) {
+            this.sprite.destroy();
+            this.sprite = null;
+        }
+        if (this.crownText) {
+            this.crownText.destroy();
+            this.crownText = null;
+        }
+        this.isAlive = false;
+    }
+}

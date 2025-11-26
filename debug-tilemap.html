@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tilemap Positioning Debug</title>
+</head>
+<body>
+    <h1>Phaser Tilemap Positioning Analysis</h1>
+
+    <h2>The Problem:</h2>
+    <p>When you create a Phaser tilemap with:</p>
+    <pre>
+const map = scene.make.tilemap({
+    tileWidth: 48,
+    tileHeight: 48,
+    width: 37,
+    height: 37
+});
+const tilemapLayer = map.createBlankLayer('layer', tileset, worldX, worldY);
+    </pre>
+
+    <h2>Expected Behavior:</h2>
+    <ul>
+        <li>Chunk (0,0) at position (0, 0) - covers pixels [0, 1776) x [0, 1776)</li>
+        <li>Chunk (1,0) at position (1776, 0) - covers pixels [1776, 3552) x [0, 1776)</li>
+        <li>Chunk (0,1) at position (0, 1776) - covers pixels [0, 1776) x [1776, 3552)</li>
+    </ul>
+
+    <h2>Actual Behavior:</h2>
+    <p><strong>THE TILEMAP DIMENSIONS ARE BEING CREATED AS 37x37 TILES</strong></p>
+    <p>But each chunk should render exactly 1776x1776 pixels (37 tiles * 48px = 1776px)</p>
+
+    <h2>Hypothesis:</h2>
+    <p>The tilemaps are being created correctly, but:</p>
+    <ol>
+        <li>Maybe the tilemap size calculation is wrong?</li>
+        <li>Maybe the positioning worldX, worldY is being interpreted incorrectly?</li>
+        <li>Maybe there's an issue with how tiles are being placed?</li>
+    </ol>
+
+    <h2>Key Code Location:</h2>
+    <p>BiomeChunkSystem.js, line 301-306 (tilemap creation)</p>
+    <p>BiomeChunkSystem.js, line 377 (tilemap layer creation with worldX, worldY)</p>
+
+    <h2>Solution:</h2>
+    <p>Need to verify if tilemap is actually 1776x1776 pixels or if it's being created at a different size!</p>
+</body>
+</html>

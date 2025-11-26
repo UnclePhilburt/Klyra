@@ -1,0 +1,3 @@
+ now were going to do the grass tiles. in A2 - terrain and misc. different basic grass variations to use are (these are all seperate tiles) 0-11, 52-61, 104-115, 156-157, basic dirty vvariations to use are
+520-531, 624-635 676-687. Dirty patch with grass tile variations are 533-544, 585-894, 637-648, 689-700, more basic grass varations are tile 559-570, 611-620, 663-674, 715-726, flower patches (that should be
+ placed on top of other tiles sepearte from the original flowers 780-791, 884-895, 936-947.

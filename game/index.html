@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+    <title>KLYRA - Multiplayer Roguelike</title>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="assets/favicon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/favicon/android-chrome-512x512.png">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <!-- Custom Menu Styles -->
+    <link rel="stylesheet" href="mainmenu/screen-manager.css">
+    <link rel="stylesheet" href="mainmenu/mainmenu.css">
+    <link rel="stylesheet" href="mainmenu/character-select-styles.css">
+</head>
+<body>
+    <!-- Start Screen (Shows First) -->
+    <div id="startScreen">
+        <div class="start-container">
+            <h1 class="start-title">KLYRA</h1>
+            <p class="start-subtitle">Multiplayer Roguelike</p>
+            <div class="start-ornament">⚔</div>
+            <button class="start-button" id="startButton">
+                <span class="start-button-text">PRESS START</span>
+            </button>
+            <div class="start-hint">Click anywhere to begin</div>
+        </div>
+    </div>
+
+    <!-- Particle Background Canvas -->
+    <canvas id="backgroundCanvas"></canvas>
+
+    <!-- Main Menu / Lobby Screen -->
+    <div id="lobbyScreen">
+        <div class="mystical-gateway">
+            <!-- Pixel Clouds -->
+            <div class="pixel-clouds">
+                <div class="pixel-cloud"></div>
+                <div class="pixel-cloud"></div>
+                <div class="pixel-cloud"></div>
+                <div class="pixel-cloud"></div>
+            </div>
+
+            <!-- Title -->
+            <div class="title-runes">
+                <h1 class="main-title">KLYRA</h1>
+                <p class="subtitle-runes">Multiplayer Roguelike Adventure</p>
+            </div>
+
+            <!-- Menu Container -->
+            <div class="gateway-container">
+                <div class="ritual-circle">
+                    <!-- Floating Sword Icon -->
+                    <div class="floating-runes">
+                        <span class="floating-rune"></span>
+                    </div>
+
+                    <!-- Name Display (dynamically populated by JS) -->
+                    <div class="name-inscription" id="nameDisplay">
+                        <!-- Will be filled by loadSavedPlayerName() -->
+                    </div>
+
+                    <!-- Enter Button -->
+                    <div class="enter-prompt" id="portalClick">ENTER REALM</div>
+
+                    <!-- Status Text -->
+                    <div class="status-runes" id="statusText"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Characters Button (Top Left) -->
+    <button id="charactersBtn">⚔️ CHARACTERS</button>
+
+    <!-- Settings Button -->
+    <button id="settingsBtn">⚙️</button>
+
+    <!-- Character Select Modal -->
+    <div id="characterSelectModal">
+        <div class="character-select-container">
+            <div class="character-select-title">SELECT YOUR HERO</div>
+            <button class="character-select-close" id="closeCharacterSelect">✕</button>
+
+            <div id="selectedCharacterDisplay" style="margin-bottom: 30px;">
+                Current Hero: <span id="currentCharacterName">ALDRIC</span>
+            </div>
+
+            <!-- Banked Souls Display -->
+            <div id="bankedSoulsDisplay" style="margin-bottom: 20px; padding: 15px; background: rgba(155, 0, 255, 0.15); border: 2px solid #9d00ff; border-radius: 8px; text-align: center;">
+                <div style="font-family: 'Press Start 2P', monospace; color: #9d00ff; font-size: 12px; margin-bottom: 5px;">BANKED SOULS</div>
+                <div id="bankedSoulsCount" style="font-family: 'Press Start 2P', monospace; color: #ffaa00; font-size: 18px; font-weight: bold;">0</div>
+                <div style="font-family: 'Press Start 2P', monospace; color: #888; font-size: 9px; margin-top: 5px;">Deposit souls at the banker to unlock heroes</div>
+            </div>
+
+            <!-- Free Character Rotation Timer -->
+            <div id="freeCharacterTimer" style="margin-bottom: 20px; padding: 15px; background: rgba(255, 215, 0, 0.15); border: 2px solid #FFD700; border-radius: 8px; text-align: center;">
+                <div style="font-family: 'Press Start 2P', monospace; color: #FFD700; font-size: 12px; margin-bottom: 5px;">⭐ FREE CHARACTER ROTATION</div>
+                <div id="freeCharacterName" style="font-family: 'Press Start 2P', monospace; color: #FFA500; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Loading...</div>
+                <div style="font-family: 'Press Start 2P', monospace; color: #888; font-size: 9px; margin-bottom: 5px;">Next rotation in:</div>
+                <div id="rotationCountdown" style="font-family: 'Press Start 2P', monospace; color: #FFD700; font-size: 16px; font-weight: bold;">--:--</div>
+            </div>
+
+            <div class="character-grid" id="characterGrid">
+                <!-- Character cards will be dynamically generated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Controller Activation Modal -->
+    <div id="controllerActivationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: #1a1a2e; border: 4px solid #FFD700; border-radius: 15px; padding: 40px; max-width: 500px; text-align: center; box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);">
+            <div style="font-size: 48px; margin-bottom: 20px;">🎮</div>
+            <h2 style="font-family: 'Press Start 2P', monospace; color: #FFD700; font-size: 18px; margin-bottom: 20px;">CONTROLLER DETECTED</h2>
+            <p style="font-family: 'Press Start 2P', monospace; color: #FFFFFF; font-size: 12px; line-height: 1.8; margin-bottom: 30px;">
+                Press any button on your controller to activate gamepad support
+            </p>
+            <button id="skipControllerActivation" style="font-family: 'Press Start 2P', monospace; background: #6B4FFF; border: 3px solid #2C1B47; color: #FFFFFF; padding: 15px 30px; font-size: 11px; cursor: pointer; border-radius: 5px; box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.3);">
+                SKIP (Use Keyboard)
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2>⚙️ SETTINGS</h2>
+                <button class="close-settings" id="closeSettings">✕</button>
+            </div>
+
+            <div style="padding: 30px;">
+                <!-- Music Volume -->
+                <div class="setting-item">
+                    <label>
+                        <span class="setting-icon">🎵</span>
+                        MUSIC VOLUME
+                    </label>
+                    <div class="volume-control">
+                        <input
+                            type="range"
+                            id="musicVolume"
+                            class="volume-slider"
+                            min="0"
+                            max="100"
+                            value="5"
+                        />
+                        <div id="volumeBar" style="display: flex; gap: 5px; align-items: flex-end; height: 20px;">
+                            <!-- Volume bar segments created by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fullscreen Toggle -->
+                <div class="setting-item" style="margin-top: 25px;">
+                    <button
+                        id="fullscreenToggle"
+                        style="
+                            width: 100%;
+                            padding: 20px;
+                            background: #6B4FFF;
+                            border: 4px solid #2C1B47;
+                            color: #FFFFFF;
+                            font-family: 'Press Start 2P', monospace;
+                            font-size: 11px;
+                            cursor: pointer;
+                            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.3);
+                            transition: all 0.2s ease;
+                        "
+                    >
+                        ENTER FULLSCREEN
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phaser Game Container (Hidden Initially) -->
+    <div id="game-container" style="display: none;"></div>
+
+    <!-- Version Info -->
+    <div class="version">v2.0 ALPHA</div>
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <!-- Character System (Load First!) -->
+    <script src="js/config/characters.js?v=3.1"></script>
+    <script src="js/config/MalacharSkills.js?v=2.5"></script>
+
+    <!-- Game Scripts -->
+    <script src="js/config.js?v=7.1"></script>
+    <script src="diagnostic.js"></script>
+    <script src="js/utils/Debug.js"></script>
+    <script src="js/utils/LDtkLoader.js"></script>
+    <script src="js/utils/MinionDebug.js?v=1.3"></script>
+    <script src="js/utils/BiomeGenerator.js?v=2.0"></script>
+    <script src="js/utils/MobileOptimizer.js?v=1.0"></script>
+    <script src="js/utils/MobileControls.js?v=2.0"></script>
+    <!-- Load MainMenu before ScreenManager since ScreenManager depends on it -->
+    <script src="mainmenu/mainmenu.js?v=5.2"></script>
+    <script src="js/managers/ScreenManager.js"></script>
+    <script src="js/managers/NetworkManager.js?v=4.2"></script>
+    <script src="js/managers/MusicManager.js?v=5.0"></script>
+    <script src="js/managers/FootstepManager.js?v=1.0"></script>
+    <script src="js/managers/ControllerManager.js?v=1.6"></script>
+    <script src="js/managers/AllyManager.js?v=1.0"></script>
+    <!-- Player Modules (Load before Player.js) -->
+    <script src="js/entities/PlayerSprite.js?v=2.7"></script>
+    <script src="js/entities/PlayerUI.js?v=2.3"></script>
+    <script src="js/entities/Player.js?v=6.4"></script>
+    <script src="js/entities/Enemy.js?v=6.0"></script>
+    <script src="js/entities/SwordDemon.js?v=2.0"></script>
+    <script src="js/entities/Minotaur.js?v=1.1"></script>
+    <script src="js/entities/Mushroom.js?v=1.0"></script>
+    <script src="js/entities/Emberclaw.js?v=1.0"></script>
+    <script src="js/entities/Minion.js?v=10.0"></script>
+    <script src="js/entities/Item.js?v=2.1"></script>
+    <script src="js/entities/ExperienceOrb.js?v=2.4"></script>
+    <script src="js/entities/MerchantNPC.js?v=2.0"></script>
+    <script src="js/entities/SkillShopNPC.js?v=1.0"></script>
+    <script src="js/entities/BankerNPC.js?v=1.2"></script>
+    <script src="js/entities/PetMerchantNPC.js?v=1.0"></script>
+    <script src="js/entities/PetStorageNPC.js?v=1.1"></script>
+    <script src="js/entities/BlackjackNPC_v4.js?v=7.7"></script>
+    <!-- UI System -->
+    <script src="js/ui/ModernHUD.js?v=4.2"></script>
+    <script src="js/ui/InventoryUI.js?v=2.1"></script>
+    <script src="js/ui/MusicUI.js"></script>
+    <script src="js/systems/VisualEffectsManager.js?v=2.0"></script>
+    <script src="js/systems/PassiveSkills.js?v=2.0"></script>
+    <script src="js/systems/PassiveAbilityManager.js?v=2.0"></script>
+    <script src="js/systems/PetManager.js?v=1.0"></script>
+    <script src="assets/sprites/pets/redpanda/RedPandaManager.js?v=1.0"></script>
+    <script src="js/systems/SkillSelector.js?v=3.3"></script>
+    <script src="js/systems/AbilityManager.js?v=1.9"></script>
+    <script src="js/systems/MalacharAbilityHandler.js?v=1.2"></script>
+    <script src="js/systems/AldricAbilityHandler.js?v=1.0"></script>
+    <script src="js/systems/KeliseAbilityHandler.js?v=2.0"></script>
+    <script src="js/systems/OrionAbilityHandler.js?v=1.0"></script>
+    <script src="js/systems/LunareAbilityHandler.js?v=1.0"></script>
+    <script src="js/systems/BastionAbilityHandler.js?v=2.2"></script>
+    <script src="js/systems/BiomeChunkSystem.js?v=4.1"></script>
+    <script src="js/scenes/BootScene.js?v=2.7"></script>
+    <script src="js/scenes/MenuScene.js"></script>
+    <script src="js/scenes/CharacterSelectScene.js"></script>
+    <script src="js/scenes/LobbyScene.js"></script>
+    <script src="js/scenes/LoadingScene.js"></script>
+    <script src="js/scenes/GameScene.js?v=12.3"></script>
+    <script src="js/main.js"></script>
+
+    <!-- Custom Menu System -->
+    <!-- mainmenu.js already loaded earlier before ScreenManager -->
+    <script src="mainmenu/UISoundManager.js"></script>
+    <script src="mainmenu/ProgressionSystem.js?v=3.0"></script>
+    <script src="mainmenu/CharacterSelectManager.js?v=2.8"></script>
+
+    <!-- Initialize -->
+    <script>
+        debug.info('CORE', 'KLYRA Loading...');
+        debug.info('CORE', `Character System: ${window.CharacterSystem ? 'Loaded' : 'Missing'}`);
+        debug.info('CORE', `Start Screen: ${window.startScreenInstance ? 'Loaded' : 'Missing'}`);
+        debug.info('CORE', `Character Manager: ${window.characterSelectManager ? 'Loaded' : 'Missing'}`);
+
+        // Verify modular entity classes are loaded
+        console.log('\n🔧 Module Status:');
+        console.log('  PlayerSprite:', typeof PlayerSprite !== 'undefined' ? '✅ Loaded' : '❌ Missing');
+        console.log('  PlayerUI:', typeof PlayerUI !== 'undefined' ? '✅ Loaded' : '❌ Missing');
+        console.log('  Player:', typeof Player !== 'undefined' ? '✅ Loaded' : '❌ Missing');
+
+        if (typeof PlayerSprite === 'undefined' || typeof PlayerUI === 'undefined') {
+            console.error('❌ CRITICAL: Player modules not loaded! Hard refresh (Ctrl+Shift+R) may be needed.');
+        } else {
+            console.log('✅ All player modules loaded successfully');
+        }
+    </script>
+</body>
+</html>

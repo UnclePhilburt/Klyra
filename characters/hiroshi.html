@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiroshi - KLYRA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --neon-pink: #ff006e;
+            --neon-purple: #8b5cf6;
+            --neon-blue: #3b82f6;
+            --neon-cyan: #06b6d4;
+            --neon-green: #10b981;
+            --crimson-red: #dc143c;
+            --sakura-pink: #ff6b9d;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: #000000;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        #grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(220, 20, 60, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(220, 20, 60, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Floating orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            animation: float 15s ease-in-out infinite;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--crimson-red), transparent);
+            top: -300px;
+            right: -300px;
+        }
+
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--sakura-pink), transparent);
+            bottom: -250px;
+            left: -250px;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(60px, 60px); }
+        }
+
+        /* Scanlines */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 999;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 1px solid rgba(220, 20, 60, 0.3);
+            z-index: 1000;
+        }
+
+        .logo {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, var(--neon-pink), var(--neon-purple), var(--neon-cyan), var(--neon-green));
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s linear infinite;
+            filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.8));
+            text-decoration: none;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2.5rem;
+        }
+
+        nav a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 700;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        nav a:hover {
+            color: var(--crimson-red);
+            text-shadow: 0 0 10px var(--crimson-red);
+        }
+
+        /* Hero section */
+        .hero {
+            position: relative;
+            z-index: 10;
+            padding: 150px 3rem 6rem;
+            text-align: center;
+        }
+
+        .character-icon-large {
+            font-size: 10rem;
+            margin-bottom: 2rem;
+            filter: drop-shadow(0 0 50px var(--crimson-red));
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 50px var(--crimson-red)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 80px var(--crimson-red)); }
+        }
+
+        .character-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, var(--crimson-red), var(--sakura-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 30px var(--crimson-red));
+        }
+
+        .character-subtitle {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .character-quote {
+            font-size: 1.2rem;
+            font-style: italic;
+            color: var(--sakura-pink);
+            max-width: 800px;
+            margin: 2rem auto;
+            line-height: 1.8;
+        }
+
+        /* Content sections */
+        .content {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 3rem 6rem;
+        }
+
+        .section {
+            margin-bottom: 5rem;
+            background: rgba(220, 20, 60, 0.05);
+            border: 2px solid rgba(220, 20, 60, 0.3);
+            padding: 3rem;
+            transition: all 0.3s;
+        }
+
+        .section:hover {
+            background: rgba(220, 20, 60, 0.08);
+            border-color: rgba(220, 20, 60, 0.5);
+            box-shadow: 0 10px 40px rgba(220, 20, 60, 0.3);
+        }
+
+        .section-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: var(--sakura-pink);
+            letter-spacing: 2px;
+            border-bottom: 2px solid var(--sakura-pink);
+            padding-bottom: 1rem;
+        }
+
+        .section-content {
+            font-size: 1.1rem;
+            line-height: 2;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .section-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-content strong {
+            color: var(--sakura-pink);
+        }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid var(--crimson-red);
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 30px var(--crimson-red);
+        }
+
+        .stat-value {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 3rem;
+            color: var(--crimson-red);
+            margin-bottom: 1rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Abilities */
+        .abilities-grid {
+            display: grid;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .ability {
+            background: rgba(0, 0, 0, 0.4);
+            border-left: 4px solid var(--crimson-red);
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .ability:hover {
+            background: rgba(220, 20, 60, 0.1);
+            border-left-width: 8px;
+            transform: translateX(10px);
+        }
+
+        .ability-name {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.2rem;
+            color: var(--crimson-red);
+            margin-bottom: 1rem;
+        }
+
+        .ability-description {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .ability-cooldown {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            font-style: italic;
+        }
+
+        /* Lore timeline */
+        .timeline {
+            margin-top: 2rem;
+            border-left: 3px solid var(--crimson-red);
+            padding-left: 2rem;
+        }
+
+        .timeline-event {
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .timeline-event::before {
+            content: '🌸';
+            position: absolute;
+            left: -2.8rem;
+            top: 0;
+            width: 2rem;
+            height: 2rem;
+            background: var(--crimson-red);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            box-shadow: 0 0 20px var(--crimson-red);
+        }
+
+        .timeline-date {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            color: var(--crimson-red);
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-text {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Play button */
+        .play-button {
+            display: inline-block;
+            margin: 3rem auto;
+            padding: 1.5rem 4rem;
+            background: linear-gradient(135deg, var(--crimson-red), var(--sakura-pink));
+            color: white;
+            text-decoration: none;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 2px solid var(--sakura-pink);
+            box-shadow: 0 0 30px rgba(220, 20, 60, 0.5);
+            transition: all 0.3s;
+            animation: buttonPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes buttonPulse {
+            0%, 100% { box-shadow: 0 0 30px rgba(220, 20, 60, 0.5); }
+            50% { box-shadow: 0 0 50px rgba(220, 20, 60, 0.8); }
+        }
+
+        .play-button:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 0 60px rgba(220, 20, 60, 0.9);
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 4rem 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .character-title {
+                font-size: 2.5rem;
+            }
+
+            .character-icon-large {
+                font-size: 6rem;
+            }
+
+            .section {
+                padding: 2rem;
+            }
+
+            .content {
+                padding: 0 1.5rem 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="grid-bg"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <header>
+        <a href="../index.html" class="logo">KLYRA</a>
+        <nav>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../characters.html">Characters</a></li>
+                <li><a href="../lore.html">Lore</a></li>
+                <li><a href="../game/">Play</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="hero">
+        <div class="character-icon-large">
+            <img src="/game/assets/sprites/hiroshi.png" alt="Hiroshi" style="width: 256px; height: 256px; image-rendering: pixelated;">
+        </div>
+        <h1 class="character-title">HIROSHI</h1>
+        <p class="character-subtitle">The Exiled Blade</p>
+        <p class="character-quote">
+            "The sword does not forge honor. Honor forges the sword. I learned this truth too late."
+        </p>
+    </div>
+
+    <div class="content">
+        <!-- Stats Section -->
+        <div class="section">
+            <h2 class="section-title">Combat Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">18</div>
+                    <div class="stat-label">Strength</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">100</div>
+                    <div class="stat-label">Health</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">8</div>
+                    <div class="stat-label">Defense</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">14</div>
+                    <div class="stat-label">Speed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backstory Section -->
+        <div class="section">
+            <h2 class="section-title">Origin Story</h2>
+            <div class="section-content">
+                <p>
+                    <strong>Hiroshi</strong> was born into the warrior caste of the Eastern Isles, lands far beyond Klyra's cursed reach.
+                    From childhood, he trained in the ancient ways of the blade - precision, discipline, honor above all else.
+                    By the age of twenty-five, he had earned the title of <strong>Master Swordsman</strong>, serving directly under Lord Takeda as his personal bodyguard.
+                </p>
+                <p>
+                    But excellence breeds envy. A rival samurai, <strong>Kaito the Serpent</strong>, coveted Hiroshi's position.
+                    On the night of the autumn festival, Lord Takeda was found dead - a single, perfect sword stroke through the heart.
+                    Hiroshi's blade, stolen from his chambers, lay beside the body. The evidence was damning. The council had no choice.
+                </p>
+                <p>
+                    Stripped of his name, his honor, and his homeland, Hiroshi was cast into exile. For seven years, he wandered the world alone,
+                    hunting whispers and shadows. He became a ghost himself - nameless, purposeless, hollow. Until he found proof: a dying assassin
+                    who confessed Kaito's conspiracy with his last breath.
+                </p>
+                <p>
+                    Hiroshi returned in the dead of night. The duel lasted three hundred heartbeats - every one an eternity.
+                    When it ended, Kaito lay dead, and Hiroshi stood victorious... but mortally wounded. As cherry blossoms fell around him
+                    and his blood stained the courtyard stones, he whispered his lord's name. Forgiveness never came.
+                </p>
+                <p>
+                    <strong>Death was not the end.</strong> Hiroshi awoke in the twisting corridors of Klyra, blade in hand, dishonor still branded on his soul.
+                    Now he fights in an endless war, seeking what he could not find in life: a way to restore honor to a name he no longer carries.
+                </p>
+            </div>
+        </div>
+
+        <!-- Abilities Section -->
+        <div class="section">
+            <h2 class="section-title">Abilities</h2>
+
+            <h3 style="color: var(--crimson); text-align: center; margin-bottom: 2rem; font-size: 1.2rem;">Starting Ability</h3>
+            <div class="abilities-grid">
+                <div class="ability" style="border: 3px solid var(--crimson); box-shadow: 0 0 20px rgba(220, 20, 60, 0.4);">
+                    <div class="ability-name">⚔️ Blade Flurry</div>
+                    <div class="ability-description">
+                        Unleash a quick three-slash combo in front of you, striking all enemies in a short-range cone.
+                        Each slash flows seamlessly into the next, embodying the fluid precision of a master swordsman.
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 6 seconds | Damage: High</div>
+                </div>
+            </div>
+
+            <h3 style="color: var(--crimson); text-align: center; margin: 3rem 0 2rem; font-size: 1.2rem;">Unique Character Abilities (Unlockable)</h3>
+            <div class="abilities-grid">
+                <div class="ability">
+                    <div class="ability-name">⚔️ Iaijutsu Strike</div>
+                    <div class="ability-description">
+                        A lightning-fast quick-draw attack that deals massive damage to a single target. Hiroshi sheathes his blade and enters a focused stance.
+                        The next attack is instantaneous and unblockable, striking before the enemy can react. Critical hit chance increased by 50% if used from stealth.
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 12 seconds</div>
+                </div>
+
+                <div class="ability">
+                    <div class="ability-name">🌸 Blade Dance</div>
+                    <div class="ability-description">
+                        Hiroshi becomes a whirlwind of crimson and steel, executing a devastating 7-hit combo that targets all enemies in close range.
+                        Each successive strike increases in speed and damage. During Blade Dance, Hiroshi gains 30% movement speed and cannot be interrupted.
+                        Cherry blossom petals mark each strike.
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 25 seconds</div>
+                </div>
+
+                <div class="ability">
+                    <div class="ability-name">🛡️ Deflecting Edge</div>
+                    <div class="ability-description">
+                        Enter a perfect defensive stance for 2 seconds. Any melee attack during this time is parried and immediately countered with a devastating riposte
+                        that deals 200% of the blocked damage back to the attacker. Successfully parrying an attack resets Iaijutsu Strike's cooldown.
+                        Mastery of timing separates the student from the master.
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 18 seconds</div>
+                </div>
+
+                <div class="ability">
+                    <div class="ability-name">⚡ One Thousand Cuts (Ultimate)</div>
+                    <div class="ability-description">
+                        Hiroshi taps into the full extent of his legendary skill, moving faster than the eye can follow. For 8 seconds, his attack speed increases by 200%
+                        and every strike applies a stacking bleed effect. Enemies hit 10+ times are executed instantly if below 30% health. The battlefield becomes a crimson
+                        blur as Hiroshi demonstrates why he was once called the greatest swordsman of the Eastern Isles.
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 90 seconds</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lore Timeline -->
+        <div class="section">
+            <h2 class="section-title">The Path of the Exiled</h2>
+            <div class="timeline">
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1078 - Birth Under Falling Petals</div>
+                    <div class="timeline-text">
+                        Hiroshi is born during the cherry blossom season to a minor samurai family in the Eastern Isles. His father, a decorated warrior,
+                        begins training him in swordsmanship at age five. The boy shows exceptional promise from his first wooden bokken.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1098 - The Tournament of Blades</div>
+                    <div class="timeline-text">
+                        At twenty years old, Hiroshi enters the prestigious Tournament of Blades. He defeats thirty-seven opponents without sustaining
+                        a single wound. Lord Takeda personally requests his service. Hiroshi's family weeps with pride as he swears the oath of the bodyguard.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1103 - The Night of Dishonor</div>
+                    <div class="timeline-text">
+                        The autumn festival celebration ends in tragedy. Lord Takeda is found murdered. Hiroshi's sword, the blade passed down through five
+                        generations of his family, lies crimson beside the body. Despite his pleas of innocence, the evidence condemns him. He is stripped
+                        of his name and exiled at dawn, forbidden to ever return under penalty of death.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1110 - Seven Years of Wandering</div>
+                    <div class="timeline-text">
+                        Hiroshi wanders the world as a nameless ronin, following rumors and hunting shadows. In a tavern in the western provinces, he finds
+                        a dying assassin who, in exchange for a merciful death, confesses: Kaito the Serpent orchestrated the assassination and framed Hiroshi
+                        to claim the position of Lord's champion. Hiroshi's purpose crystallizes into a single point - vengeance and vindication.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1113 - The Final Duel</div>
+                    <div class="timeline-text">
+                        Hiroshi infiltrates his homeland in darkness. He confronts Kaito in the same courtyard where Lord Takeda died. The duel is witnessed
+                        only by the moon and falling cherry blossoms. Three hundred exchanges of blade on blade. When it ends, Kaito is dead and Hiroshi
+                        stands victorious - but a hidden poison blade has pierced his side. He dies beneath the cherry trees, his honor restored but his name
+                        still forfeit. His last word: "Takeda..."
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1113-1128 - The Endless War</div>
+                    <div class="timeline-text">
+                        Hiroshi awakens not in the afterlife he earned, but in Klyra's cursed dungeons. For fifteen years, he has fought in the eternal cycle,
+                        each opponent defeated another mark toward an impossible goal. He tells no one of his count, spoken only in his mind like a mantra:
+                        784 victories. 216 remain until he reaches one thousand - the number that will surely, finally, restore his honor. It must. It has to.
+                        Because if it doesn't... what has this all been for?
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1128 - Present Day</div>
+                    <div class="timeline-text">
+                        Hiroshi continues his solitary path through Klyra. Other warriors have noticed his obsession - the way he whispers numbers after each kill,
+                        the way he seeks only "honorable" opponents and refuses to strike the wounded. Some admire his discipline. Others pity him.
+                        Malachar once asked him why he fights. Hiroshi's only answer: "I have 784 reasons. Soon I will have 1,000."
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secrets Section -->
+        <div class="section">
+            <h2 class="section-title">Hidden Truths</h2>
+            <div class="section-content">
+                <p>
+                    <strong>Hiroshi believes he has found the answer.</strong> In the depths of Klyra, among ancient texts and whispered legends,
+                    he pieced together a truth: defeat 1,000 honorable opponents, and the universe will acknowledge his worth. His name will be restored.
+                    His dishonor will be washed away. He will finally be worthy of the death he earned.
+                </p>
+                <p>
+                    He keeps meticulous count in his mind. Every duel, every victory against a worthy foe: <strong>784/1,000</strong>.
+                    The number sustains him. Drives him. Defines him. With each fight, he feels closer to redemption. Sometimes, in the moment after
+                    a particularly skilled opponent falls, he swears he can feel his honor returning - just a fragment, but tangible.
+                </p>
+                <p>
+                    But there is a truth Hiroshi refuses to see, one that Klyra knows all too well: <strong>Honor cannot be earned through the sword alone.</strong>
+                    Every kill he tallies, every opponent he defeats, every number he adds to his count - it binds him tighter to Klyra's cycle.
+                    His obsession with redemption through violence is the very chain that keeps him imprisoned.
+                </p>
+                <p>
+                    When he killed Kaito, he had already reclaimed his honor. The truth was proven. The guilty punished. But Hiroshi could not forgive himself
+                    for the years of exile, for the dishonor he endured, for dying with a stained name. And so he seeks external validation for an internal wound.
+                </p>
+                <p>
+                    <strong>The cruel arithmetic:</strong> If Hiroshi reaches 1,000 victories and finds no redemption, he will finally understand the truth - but by then,
+                    it may be too late. The only way to escape Klyra is to forgive himself, to accept that honor was never lost, only perceived as such.
+                    But for a samurai trained since childhood that honor is everything... how does one let go of everything they've ever believed?
+                </p>
+                <p>
+                    216 battles remain. The question is not whether Hiroshi will reach his goal.
+                    The question is: what will he become when he does?
+                </p>
+            </div>
+        </div>
+
+        <!-- Play CTA -->
+        <div class="button-container">
+            <a href="/game/" class="play-button">Play as Hiroshi →</a>
+        </div>
+    </div>
+
+    <script>
+        // Add scroll reveal animation
+        const sections = document.querySelectorAll('.section');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        sections.forEach(section => {
+            section.style.opacity = '0';
+            section.style.transform = 'translateY(30px)';
+            section.style.transition = 'all 0.6s ease-out';
+            observer.observe(section);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sir Aldric Thornheart - KLYRA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --neon-pink: #ff006e;
+            --neon-purple: #8b5cf6;
+            --neon-blue: #3b82f6;
+            --neon-cyan: #06b6d4;
+            --neon-green: #10b981;
+            --gold: #ffd700;
+            --steel-blue: #4682b4;
+            --char-theme: #ffd700;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: #000000;
+            color: #ffffff;
+            overflow-x: hidden;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect x="9" y="0" width="2" height="20" fill="rgb(255, 215, 0)"/><rect x="0" y="9" width="20" height="2" fill="rgb(255, 215, 0)"/><rect x="8" y="8" width="4" height="4" fill="rgb(255, 215, 0)"/></svg>'), auto;
+        }
+
+        /* Animated parallax background */
+        #grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(255, 215, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 215, 0, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            z-index: 0;
+            will-change: transform;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Floating orbs with parallax */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            animation: float 15s ease-in-out infinite;
+            z-index: 1;
+            pointer-events: none;
+            will-change: transform;
+        }
+
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--gold), transparent);
+            top: -300px;
+            right: -300px;
+        }
+
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--steel-blue), transparent);
+            bottom: -250px;
+            left: -250px;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(60px, 60px); }
+        }
+
+        /* Scanlines */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 999;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* Header with mobile menu */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            z-index: 1000;
+        }
+
+        .logo {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, var(--neon-pink), var(--neon-purple), var(--neon-cyan), var(--neon-green));
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s linear infinite;
+            filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.8));
+            text-decoration: none;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .hamburger span {
+            width: 30px;
+            height: 3px;
+            background: var(--char-theme);
+            transition: all 0.3s;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(8px, 8px);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -7px);
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2.5rem;
+        }
+
+        nav a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 700;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        nav a:hover {
+            color: var(--gold);
+            text-shadow: 0 0 10px var(--gold);
+        }
+
+        /* Hero section with flip card */
+        .hero {
+            position: relative;
+            z-index: 10;
+            padding: 150px 3rem 6rem;
+            text-align: center;
+        }
+
+        .character-card {
+            perspective: 1000px;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 400px;
+            height: 500px;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+
+        .character-card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border: 3px solid var(--char-theme);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.4);
+        }
+
+        .card-back {
+            transform: rotateY(180deg);
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .character-icon-large {
+            font-size: 10rem;
+            margin-bottom: 2rem;
+            filter: drop-shadow(0 0 50px var(--gold));
+            animation: pulse 3s ease-in-out infinite;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .character-icon-large:hover {
+            transform: scale(1.05);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 50px var(--gold)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 80px var(--gold)); }
+        }
+
+        .character-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, var(--gold), var(--steel-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 30px var(--gold));
+        }
+
+        .character-subtitle {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .character-quote {
+            font-size: 1.2rem;
+            font-style: italic;
+            color: var(--gold);
+            max-width: 800px;
+            margin: 2rem auto;
+            line-height: 1.8;
+        }
+
+        /* Content sections */
+        .content {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 3rem 6rem;
+        }
+
+        .section {
+            margin-bottom: 5rem;
+            background: rgba(255, 215, 0, 0.05);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            padding: 3rem;
+            transition: all 0.3s;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .section:hover {
+            background: rgba(255, 215, 0, 0.08);
+            border-color: rgba(255, 215, 0, 0.5);
+            box-shadow: 0 10px 40px rgba(255, 215, 0, 0.3);
+        }
+
+        .section-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: var(--gold);
+            letter-spacing: 2px;
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 1rem;
+        }
+
+        .section-content {
+            font-size: 1.1rem;
+            line-height: 2;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .section-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-content strong {
+            color: var(--gold);
+        }
+
+        /* Interactive stats with progress bars */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid var(--gold);
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 30px var(--gold);
+        }
+
+        .stat-bar-container {
+            width: 100%;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 6px;
+            margin: 1rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--char-theme), var(--steel-blue));
+            border-radius: 6px;
+            width: 0%;
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 0 0 10px var(--char-theme);
+        }
+
+        .stat-bar.filled {
+            width: var(--stat-value);
+        }
+
+        .stat-comparison {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            width: var(--avg-value);
+            border-radius: 6px;
+        }
+
+        .stat-value {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 3rem;
+            color: var(--gold);
+            margin-bottom: 1rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover .stat-value {
+            opacity: 1;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Enhanced abilities with tooltips */
+        .abilities-grid {
+            display: grid;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .ability {
+            background: rgba(0, 0, 0, 0.4);
+            border-left: 4px solid var(--gold);
+            padding: 2rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ability::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .ability:hover::before {
+            transform: translateX(100%);
+        }
+
+        .ability:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-left-width: 8px;
+            transform: translateX(10px) scale(1.02);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .ability.pinned {
+            background: rgba(255, 215, 0, 0.15);
+            border-left-width: 8px;
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.7);
+        }
+
+        .ability-name {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.2rem;
+            color: var(--gold);
+            margin-bottom: 1rem;
+            cursor: pointer;
+        }
+
+        .ability-description {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .ability-details {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 215, 0, 0.3);
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.4s;
+        }
+
+        .ability:hover .ability-details,
+        .ability.pinned .ability-details {
+            opacity: 1;
+            max-height: 200px;
+        }
+
+        .ability-cooldown {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            font-style: italic;
+        }
+
+        /* Animated timeline */
+        .timeline {
+            margin-top: 2rem;
+            border-left: 3px solid var(--gold);
+            padding-left: 2rem;
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: -3px;
+            top: 0;
+            width: 3px;
+            height: 0%;
+            background: var(--char-theme);
+            transition: height 2s ease-out;
+            box-shadow: 0 0 10px var(--char-theme);
+        }
+
+        .timeline.animated::before {
+            height: 100%;
+        }
+
+        .timeline-event {
+            margin-bottom: 3rem;
+            position: relative;
+            opacity: 0;
+            transform: translateX(-30px);
+            transition: all 0.6s ease-out;
+        }
+
+        .timeline-event:nth-child(even) {
+            transform: translateX(30px);
+        }
+
+        .timeline-event.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .timeline-event::before {
+            content: '⚔';
+            position: absolute;
+            left: -2.8rem;
+            top: 0;
+            width: 2rem;
+            height: 2rem;
+            background: var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            box-shadow: 0 0 20px var(--gold);
+            animation: badgePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { box-shadow: 0 0 20px var(--gold); }
+            50% { box-shadow: 0 0 35px var(--gold); transform: scale(1.1); }
+        }
+
+        .timeline-date {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            color: var(--gold);
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-text {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Hidden truth reveal */
+        .hidden-truth {
+            position: relative;
+        }
+
+        .truth-content {
+            filter: blur(8px);
+            user-select: none;
+            transition: filter 0.6s;
+        }
+
+        .truth-content.revealed {
+            filter: blur(0);
+            user-select: text;
+            animation: glitchReveal 0.5s;
+        }
+
+        @keyframes glitchReveal {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(2px, -2px); }
+            60% { transform: translate(-2px, -2px); }
+            80% { transform: translate(2px, 2px); }
+        }
+
+        .reveal-button {
+            display: inline-block;
+            margin: 2rem 0;
+            padding: 1rem 2rem;
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid var(--gold);
+            color: var(--gold);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .reveal-button:hover {
+            background: rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .reveal-button.hidden {
+            display: none;
+        }
+
+        .censored {
+            background: var(--gold);
+            color: var(--gold);
+            user-select: none;
+        }
+
+        /* Ability showcase modal */
+        .ability-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s;
+        }
+
+        .ability-modal.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: rgba(20, 20, 20, 0.95);
+            border: 3px solid var(--char-theme);
+            padding: 3rem;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--char-theme);
+            transition: transform 0.3s;
+        }
+
+        .modal-close:hover {
+            transform: rotate(90deg);
+        }
+
+        .ability-placeholder {
+            width: 100%;
+            height: 300px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 2px dashed var(--char-theme);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem 0;
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .modal-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+        }
+
+        .modal-nav button {
+            padding: 0.8rem 1.5rem;
+            background: rgba(255, 215, 0, 0.3);
+            border: 2px solid var(--char-theme);
+            color: white;
+            font-family: 'Space Mono', monospace;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-nav button:hover {
+            background: rgba(255, 215, 0, 0.5);
+            box-shadow: 0 0 15px var(--char-theme);
+        }
+
+        /* Play button */
+        .play-button {
+            display: inline-block;
+            margin: 3rem auto;
+            padding: 1.5rem 4rem;
+            background: linear-gradient(135deg, var(--gold), var(--steel-blue));
+            color: black;
+            font-weight: 700;
+            text-decoration: none;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            transition: all 0.3s;
+            animation: buttonPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes buttonPulse {
+            0%, 100% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); }
+            50% { box-shadow: 0 0 50px rgba(255, 215, 0, 0.8); }
+        }
+
+        .play-button:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.9);
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 4rem 0;
+        }
+
+        /* Easter egg notification */
+        .easter-egg-msg {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(255, 215, 0, 0.95);
+            color: black;
+            padding: 2rem 3rem;
+            border: 2px solid var(--gold);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            z-index: 3000;
+            opacity: 0;
+            transition: all 0.5s;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+        }
+
+        .easter-egg-msg.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hamburger {
+                display: flex;
+            }
+
+            nav {
+                position: fixed;
+                top: 80px;
+                left: 0;
+                width: 100%;
+                background: rgba(0, 0, 0, 0.95);
+                padding: 2rem;
+                transform: translateY(-100%);
+                transition: transform 0.3s;
+                border-bottom: 2px solid var(--char-theme);
+            }
+
+            nav.active {
+                transform: translateY(0);
+            }
+
+            nav ul {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .character-title {
+                font-size: 2.5rem;
+            }
+
+            .character-icon-large {
+                font-size: 6rem;
+            }
+
+            .card-inner {
+                width: 300px;
+                height: 400px;
+            }
+
+            .section {
+                padding: 2rem;
+            }
+
+            .content {
+                padding: 0 1.5rem 3rem;
+            }
+
+            body {
+                cursor: auto;
+            }
+
+            .ability:hover {
+                transform: scale(1.02);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="grid-bg"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <header>
+        <a href="../index.html" class="logo">KLYRA</a>
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../characters.html">Characters</a></li>
+                <li><a href="../lore.html">Lore</a></li>
+                <li><a href="../game/">Play</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="hero">
+        <div class="character-card">
+            <div class="card-inner">
+                <div class="card-front">
+                    <div class="character-icon-large" id="charIcon">
+                        🛡️
+                    </div>
+                    <div style="font-family: 'Press Start 2P', cursive; font-size: 0.8rem; color: var(--gold);">TANK</div>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: rgba(255,255,255,0.7);">Click to reveal truth</div>
+                </div>
+                <div class="card-back">
+                    <h3 style="font-family: 'Press Start 2P', cursive; color: var(--gold); margin-bottom: 1.5rem;">The Eternal Guardian</h3>
+                    <p style="font-size: 0.9rem; line-height: 1.8; color: rgba(255,255,255,0.8); text-align: center;">
+                        "They called me a hero when I stood at the bridge. Three days, three nights, thousands saved.
+                        I earned my rest. I earned my peace. But duty knows no end. My oath traps me more surely than
+                        any dungeon ever could. I am the shield that cannot rest."
+                    </p>
+                </div>
+            </div>
+        </div>
+        <h1 class="character-title">SIR ALDRIC THORNHEART</h1>
+        <p class="character-subtitle">The Unbreakable Sentinel</p>
+        <p class="character-quote">
+            "While I draw breath, no harm shall come to those under my watch. I am the wall that does not fall. I am the shield that does not break."
+        </p>
+    </div>
+
+    <div class="content">
+        <!-- Stats Section -->
+        <div class="section stats-section">
+            <h2 class="section-title">Combat Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-bar-container">
+                        <div class="stat-comparison" style="--avg-value: 80%;"></div>
+                        <div class="stat-bar" style="--stat-value: 70%;" data-value="14" data-max="20"></div>
+                    </div>
+                    <div class="stat-value">14</div>
+                    <div class="stat-label">Strength</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-bar-container">
+                        <div class="stat-comparison" style="--avg-value: 76%;"></div>
+                        <div class="stat-bar" style="--stat-value: 100%;" data-value="150" data-max="150"></div>
+                    </div>
+                    <div class="stat-value">150</div>
+                    <div class="stat-label">Health</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-bar-container">
+                        <div class="stat-comparison" style="--avg-value: 60%;"></div>
+                        <div class="stat-bar" style="--stat-value: 90%;" data-value="18" data-max="20"></div>
+                    </div>
+                    <div class="stat-value">18</div>
+                    <div class="stat-label">Defense</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-bar-container">
+                        <div class="stat-comparison" style="--avg-value: 60%;"></div>
+                        <div class="stat-bar" style="--stat-value: 30%;" data-value="6" data-max="20"></div>
+                    </div>
+                    <div class="stat-value">6</div>
+                    <div class="stat-label">Speed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backstory Section -->
+        <div class="section">
+            <h2 class="section-title">Origin Story</h2>
+            <div class="section-content">
+                <p>
+                    <strong>Sir Aldric Thornheart</strong> was born into nobility in the Kingdom of Valorheim, a realm renowned for its code of honor and unwavering dedication to the protection of the innocent. From boyhood, he was trained in the art of warfare, but more importantly, in the sacred duty of service.
+                </p>
+                <p>
+                    Rising through the ranks with distinction, Aldric became the <strong>King's Personal Guard</strong> - the highest honor a knight could achieve. He stood at the monarch's side through wars, assassinations, and political upheaval, never once faltering in his duty. His shield bore the crest of the thornheart - a heart wrapped in thorns, symbolizing love protected by sacrifice.
+                </p>
+                <p>
+                    When the <strong>Siege of Valorheim</strong> began, enemy forces numbering in the thousands descended upon the capital. As the city walls crumbled, the King ordered the evacuation of all civilians through the eastern bridge - the last escape route. Someone had to hold it. Someone had to buy time.
+                </p>
+                <p>
+                    Aldric stepped forward without hesitation. <strong>For three days and three nights</strong>, he held that bridge alone. Wave after wave of enemies crashed against him like water against stone. His armor shattered, his sword broke, his shield splintered - but his resolve never wavered. Thousands of innocents escaped because of his stand.
+                </p>
+                <p>
+                    On the third day, as the last civilian crossed to safety, Aldric's body finally gave out. He fell not from defeat, but from exhaustion - his duty fulfilled. The enemy forces found him collapsed on that bridge, surrounded by the fallen, a faint smile on his bloodied face.
+                </p>
+                <p>
+                    But death is not always the end. <strong>Klyra</strong> pulled his soul from whatever afterlife awaited him, binding him to its cursed dungeons. Now, a century later, Sir Aldric continues his vigil - protecting other Seekers, standing as their shield against the horrors of Klyra. He believes if he saves enough souls, he'll finally earn his rest.
+                </p>
+                <p>
+                    He doesn't yet realize that his own sense of duty is what traps him here.
+                </p>
+            </div>
+        </div>
+
+        <!-- Abilities Section -->
+        <div class="section">
+            <h2 class="section-title">Abilities</h2>
+
+            <h3 style="color: var(--gold); text-align: center; margin-bottom: 2rem; font-size: 1.2rem;">Starting Ability</h3>
+            <div class="abilities-grid">
+                <div class="ability ability-card" data-ability="0" style="border: 3px solid var(--gold); box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);">
+                    <div class="ability-name">🛡️ Shield Slam</div>
+                    <div class="ability-description">
+                        Slam your shield into the ground with tremendous force, dealing AoE damage to all enemies in a small radius around you.
+                        Enemies hit are briefly stunned. Perfect for controlling crowds that get too close to your position.
+                    </div>
+                    <div class="ability-details">
+                        <strong style="color: var(--gold);">Damage:</strong> Medium AoE<br>
+                        <strong style="color: var(--gold);">Radius:</strong> 5 meters<br>
+                        <strong style="color: var(--gold);">Stun:</strong> 1.5 seconds
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 8 seconds | Damage: Medium</div>
+                </div>
+            </div>
+
+            <h3 style="color: var(--gold); text-align: center; margin: 3rem 0 2rem; font-size: 1.2rem;">Unique Character Abilities (Unlockable)</h3>
+            <div class="abilities-grid">
+                <div class="ability ability-card" data-ability="1">
+                    <div class="ability-name">🛡️ Shield Wall</div>
+                    <div class="ability-description">
+                        Raise your shield in an impenetrable defensive stance, reducing all incoming damage by 70% for 8 seconds.
+                        While active, you cannot attack but gain immunity to knockback and crowd control effects.
+                        Your presence inspires nearby allies, granting them +25% defense.
+                    </div>
+                    <div class="ability-details">
+                        <strong style="color: var(--gold);">Damage Reduction:</strong> 70%<br>
+                        <strong style="color: var(--gold);">Duration:</strong> 8 seconds<br>
+                        <strong style="color: var(--gold);">Ally Buff:</strong> +25% defense
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 25 seconds</div>
+                </div>
+
+                <div class="ability ability-card" data-ability="2">
+                    <div class="ability-name">⚔️ Bastion's Resolve</div>
+                    <div class="ability-description">
+                        Strike your shield with your weapon, creating a resonating challenge that taunts all enemies within 15 meters to attack you instead of your allies.
+                        For 6 seconds after taunting, each hit you take increases your defense by 5% (stacks up to 10 times).
+                        The sound of duty calls - and enemies cannot resist.
+                    </div>
+                    <div class="ability-details">
+                        <strong style="color: var(--gold);">Taunt Range:</strong> 15 meters<br>
+                        <strong style="color: var(--gold);">Defense Stack:</strong> +5% per hit<br>
+                        <strong style="color: var(--gold);">Max Stacks:</strong> 10
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 18 seconds</div>
+                </div>
+
+                <div class="ability ability-card" data-ability="3">
+                    <div class="ability-name">💛 Guardian's Oath</div>
+                    <div class="ability-description">
+                        Designate a target ally and swear a sacred oath to protect them. For 12 seconds, you redirect 50% of all damage they would take to yourself instead.
+                        Additionally, if the protected ally's health drops below 30%, they gain a shield equal to 20% of your maximum health.
+                        Your oath is unbreakable - even in death.
+                    </div>
+                    <div class="ability-details">
+                        <strong style="color: var(--gold);">Damage Redirect:</strong> 50%<br>
+                        <strong style="color: var(--gold);">Shield Value:</strong> 20% of max HP<br>
+                        <strong style="color: var(--gold);">Duration:</strong> 12 seconds
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 35 seconds</div>
+                </div>
+
+                <div class="ability ability-card" data-ability="4">
+                    <div class="ability-name">🏰 Immortal Bulwark (Ultimate)</div>
+                    <div class="ability-description">
+                        Channel the memory of your legendary stand at Valorheim Bridge. For 15 seconds, you become an immovable object -
+                        reducing all damage taken to 1 per hit, gaining immunity to all status effects, and automatically taunting any enemy that attacks an ally within 20 meters.
+                        While active, your defensive aura grants all nearby allies 40% damage reduction.
+                        You are the wall. You do not fall.
+                    </div>
+                    <div class="ability-details">
+                        <strong style="color: var(--gold);">Damage Cap:</strong> 1 per hit<br>
+                        <strong style="color: var(--gold);">Aura Range:</strong> 20 meters<br>
+                        <strong style="color: var(--gold);">Ally Protection:</strong> 40%
+                    </div>
+                    <div class="ability-cooldown">Cooldown: 120 seconds</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lore Timeline -->
+        <div class="section timeline-section">
+            <h2 class="section-title">The Chronicles of Sir Aldric</h2>
+            <div class="timeline">
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 986 - Birth of a Knight</div>
+                    <div class="timeline-text">
+                        Aldric is born to House Thornheart, a noble family in the Kingdom of Valorheim. From the moment he can walk,
+                        he begins his training in swordsmanship, honor, and the sacred duty of protecting those who cannot protect themselves.
+                        His family motto: "Through Thorns, We Shield the Heart."
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1005 - Knight of the Realm</div>
+                    <div class="timeline-text">
+                        At nineteen, Aldric is formally knighted after single-handedly defending a village from a bandit raid.
+                        His reputation for unshakable courage and selfless protection spreads throughout Valorheim.
+                        The King takes notice of the young knight's dedication.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1012 - The King's Guard</div>
+                    <div class="timeline-text">
+                        Aldric is appointed to the King's Personal Guard - the highest honor in Valorheim. He serves with unwavering loyalty,
+                        thwarting three assassination attempts and standing firm during the Rebellion of the Northern Lords.
+                        His shield has never been broken, his oath never wavered.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1024 - The Siege Begins</div>
+                    <div class="timeline-text">
+                        The Coalition of Free Cities, jealous of Valorheim's prosperity, launches a massive siege. Thirty thousand soldiers surround the capital.
+                        The King orders the evacuation of all civilians through the eastern bridge - a narrow stone passage over a deadly gorge.
+                        Someone must hold it long enough for the evacuation to complete. Aldric volunteers immediately.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1024 - The Stand</div>
+                    <div class="timeline-text">
+                        For three days and three nights, Sir Aldric Thornheart holds Valorheim Bridge alone. Historians would later count over
+                        four hundred enemy soldiers fell trying to cross. His armor shattered. His sword broke. His shield split down the middle.
+                        But he did not fall. Not until the last civilian - a young girl carrying her infant brother - crossed to safety.
+                        Only then did he allow himself to collapse. His duty was complete.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1025 - Pulled into Klyra</div>
+                    <div class="timeline-text">
+                        Aldric's heroic death should have earned him eternal rest in the Hall of Heroes. Instead, something darker intervened.
+                        Klyra - the cursed dungeon that feeds on souls - sensed his unbreakable sense of duty. It pulled him from death itself,
+                        binding him to its endless corridors. Aldric awoke in darkness, shield in hand, surrounded by terrified Seekers who needed protection.
+                        His duty, it seemed, was not yet done.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1050-1120 - The Eternal Guardian</div>
+                    <div class="timeline-text">
+                        For decades, Aldric protects other Seekers within Klyra's depths. He saves hundreds - maybe thousands - of souls from the dungeon's horrors.
+                        Some escape Klyra entirely thanks to his protection. Each time someone survives because of him, he feels his purpose validated.
+                        He begins to believe that if he saves enough people, Klyra will release him. That his duty will finally be complete.
+                    </div>
+                </div>
+
+                <div class="timeline-event">
+                    <div class="timeline-date">Age 1128 - Present Day</div>
+                    <div class="timeline-text">
+                        Sir Aldric continues his vigil within Klyra's ever-shifting dungeons. His golden armor - though ethereal now - still gleams with purpose.
+                        Other Seekers speak of him in hushed, reverent tones: "If you see the Golden Shield, you'll live to see another day."
+                        But a terrible truth lurks beneath his hope: it is his very dedication, his unbreakable oath to protect, that keeps pulling him back to Klyra.
+                        The curse is not external - it is woven into the very core of who he is. To break free, he would have to abandon his duty.
+                        And Sir Aldric Thornheart would sooner die a thousand deaths than break his oath.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secrets Section -->
+        <div class="section hidden-truth">
+            <h2 class="section-title">Hidden Truths</h2>
+            <button class="reveal-button" id="revealBtn">Reveal The Truth</button>
+            <div class="section-content truth-content" id="truthContent">
+                <p>
+                    <strong>Sir Aldric believes he is trapped in Klyra against his will.</strong> He thinks that if he protects enough Seekers,
+                    if he saves enough souls, the dungeon will finally release him from his eternal service. Every life he saves, every shield-wall he raises,
+                    every ally he defends - these are tallies toward his freedom. He keeps count in his mind: <strong><span class="censored">2,847 Seekers protected. 1,203 saved from certain death.</span></strong>
+                </p>
+                <p>
+                    But there is a cruel irony at the heart of Aldric's existence. <strong>Klyra does not hold him prisoner.</strong>
+                    It is his own oath - sworn when he became a knight, reinforced at the bridge, and repeated with every soul he saves - that binds him.
+                    His sense of duty is so absolute, so unbreakable, that it has become a metaphysical chain stronger than any magic.
+                </p>
+                <p>
+                    Klyra doesn't need to trap him. <strong>He traps himself.</strong> Every time a Seeker is in danger, his oath pulls him back from whatever rest he might have found.
+                    Every cry for help echoes through the void and drags his soul back into the dungeon. He cannot rest while others suffer.
+                    He cannot lay down his shield while innocents are in peril.
+                </p>
+                <p>
+                    The only way for Sir Aldric Thornheart to escape Klyra would be to break his oath - to abandon someone in need, to turn away from his duty,
+                    to place his own freedom above the lives of others. But that would destroy the very essence of who he is.
+                    He would rather spend eternity as Klyra's Unbreakable Sentinel than live one day as a knight who broke his word.
+                </p>
+                <p>
+                    <strong>His curse is not imprisonment. It is perfection of purpose.</strong> And that is the most terrible trap of all -
+                    because it's one he would never choose to escape, even if he knew the truth.
+                </p>
+            </div>
+        </div>
+
+        <!-- Play CTA -->
+        <div class="button-container">
+            <a href="/game/" class="play-button">Play as Sir Aldric →</a>
+        </div>
+    </div>
+
+    <!-- Ability Modal -->
+    <div class="ability-modal" id="abilityModal">
+        <div class="modal-content">
+            <div class="modal-close" id="modalClose">×</div>
+            <h2 id="modalTitle" style="font-family: 'Press Start 2P', cursive; color: var(--gold); margin-bottom: 1rem;"></h2>
+            <div class="ability-placeholder">
+                Animation Preview<br>
+                (Assets coming soon)
+            </div>
+            <p id="modalDescription" style="font-size: 1.1rem; line-height: 1.8;"></p>
+            <div class="modal-nav">
+                <button id="prevAbility">← Previous</button>
+                <button id="nextAbility">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Easter Egg Message -->
+    <div class="easter-egg-msg" id="easterEgg"></div>
+
+    <script>
+        // Mobile menu
+        const hamburger = document.querySelector('.hamburger');
+        const nav = document.querySelector('nav');
+        hamburger?.addEventListener('click', () => {
+            hamburger.classList.toggle('active');
+            nav.classList.toggle('active');
+        });
+
+        // Parallax scrolling
+        let scrollY = 0;
+        window.addEventListener('scroll', () => {
+            scrollY = window.scrollY;
+            document.querySelector('#grid-bg').style.transform = `translateY(${scrollY * 0.5}px)`;
+            document.querySelector('.orb-1').style.transform = `translate(${scrollY * 0.3}px, ${scrollY * 0.2}px)`;
+            document.querySelector('.orb-2').style.transform = `translate(${-scrollY * 0.2}px, ${-scrollY * 0.3}px)`;
+        });
+
+        // Card flip
+        const characterCard = document.querySelector('.character-card');
+        characterCard.addEventListener('click', () => {
+            characterCard.classList.toggle('flipped');
+        });
+
+        // Scroll reveal animations
+        const sections = document.querySelectorAll('.section');
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const sectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+
+                    // Animate stat bars
+                    if (entry.target.classList.contains('stats-section')) {
+                        const bars = entry.target.querySelectorAll('.stat-bar');
+                        bars.forEach(bar => {
+                            setTimeout(() => bar.classList.add('filled'), 100);
+                        });
+                    }
+
+                    // Animate timeline
+                    if (entry.target.classList.contains('timeline-section')) {
+                        const timeline = entry.target.querySelector('.timeline');
+                        timeline.classList.add('animated');
+                        const events = entry.target.querySelectorAll('.timeline-event');
+                        events.forEach((event, index) => {
+                            setTimeout(() => {
+                                event.classList.add('visible');
+                            }, index * 200);
+                        });
+                    }
+                }
+            });
+        }, observerOptions);
+
+        sections.forEach(section => {
+            sectionObserver.observe(section);
+        });
+
+        // Ability interactions
+        const abilities = document.querySelectorAll('.ability-card');
+        abilities.forEach(ability => {
+            ability.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('ability-name')) {
+                    ability.classList.toggle('pinned');
+                }
+            });
+        });
+
+        // Ability modal
+        const abilityModal = document.getElementById('abilityModal');
+        const modalClose = document.getElementById('modalClose');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDescription = document.getElementById('modalDescription');
+        let currentAbilityIndex = 0;
+
+        const abilityData = [
+            {
+                name: '🛡️ Shield Slam',
+                description: 'Slam your shield into the ground with tremendous force, dealing AoE damage to all enemies in a small radius around you. Enemies hit are briefly stunned.'
+            },
+            {
+                name: '🛡️ Shield Wall',
+                description: 'Raise your shield in an impenetrable defensive stance, reducing all incoming damage by 70% for 8 seconds. Your presence inspires nearby allies, granting them +25% defense.'
+            },
+            {
+                name: '⚔️ Bastion\'s Resolve',
+                description: 'Strike your shield with your weapon, creating a resonating challenge that taunts all enemies within 15 meters to attack you instead of your allies.'
+            },
+            {
+                name: '💛 Guardian\'s Oath',
+                description: 'Designate a target ally and swear a sacred oath to protect them. For 12 seconds, you redirect 50% of all damage they would take to yourself instead.'
+            },
+            {
+                name: '🏰 Immortal Bulwark (Ultimate)',
+                description: 'Channel the memory of your legendary stand at Valorheim Bridge. For 15 seconds, you become an immovable object - reducing all damage taken to 1 per hit.'
+            }
+        ];
+
+        document.querySelectorAll('.ability-name').forEach((name, index) => {
+            name.addEventListener('click', (e) => {
+                e.stopPropagation();
+                currentAbilityIndex = index;
+                showAbilityModal(index);
+            });
+        });
+
+        function showAbilityModal(index) {
+            modalTitle.textContent = abilityData[index].name;
+            modalDescription.textContent = abilityData[index].description;
+            abilityModal.classList.add('active');
+        }
+
+        modalClose.addEventListener('click', () => {
+            abilityModal.classList.remove('active');
+        });
+
+        abilityModal.addEventListener('click', (e) => {
+            if (e.target === abilityModal) {
+                abilityModal.classList.remove('active');
+            }
+        });
+
+        document.getElementById('prevAbility').addEventListener('click', () => {
+            currentAbilityIndex = (currentAbilityIndex - 1 + abilityData.length) % abilityData.length;
+            showAbilityModal(currentAbilityIndex);
+        });
+
+        document.getElementById('nextAbility').addEventListener('click', () => {
+            currentAbilityIndex = (currentAbilityIndex + 1) % abilityData.length;
+            showAbilityModal(currentAbilityIndex);
+        });
+
+        // Keyboard navigation for modal
+        document.addEventListener('keydown', (e) => {
+            if (abilityModal.classList.contains('active')) {
+                if (e.key === 'ArrowLeft') {
+                    currentAbilityIndex = (currentAbilityIndex - 1 + abilityData.length) % abilityData.length;
+                    showAbilityModal(currentAbilityIndex);
+                } else if (e.key === 'ArrowRight') {
+                    currentAbilityIndex = (currentAbilityIndex + 1) % abilityData.length;
+                    showAbilityModal(currentAbilityIndex);
+                } else if (e.key === 'Escape') {
+                    abilityModal.classList.remove('active');
+                }
+            }
+        });
+
+        // Hidden truth reveal
+        const revealBtn = document.getElementById('revealBtn');
+        const truthContent = document.getElementById('truthContent');
+
+        revealBtn.addEventListener('click', () => {
+            revealBtn.classList.add('hidden');
+            truthContent.classList.add('revealed');
+
+            // Remove censoring
+            const censored = truthContent.querySelectorAll('.censored');
+            censored.forEach((el, index) => {
+                setTimeout(() => {
+                    el.classList.remove('censored');
+                }, index * 300);
+            });
+
+            // Add glow effect
+            truthContent.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.3)';
+        });
+
+        // Konami code
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    activateEasterEgg();
+                    konamiIndex = 0;
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        function activateEasterEgg() {
+            const easterEgg = document.getElementById('easterEgg');
+            easterEgg.textContent = 'The shield stands eternal. Even against the Konami Code.';
+            easterEgg.classList.add('show');
+
+            setTimeout(() => {
+                easterEgg.classList.remove('show');
+            }, 4000);
+
+            console.log('%c🛡️ SIR ALDRIC STANDS VIGIL 🛡️', 'color: #ffd700; font-size: 24px; font-weight: bold;');
+            console.log('%cThe Unbreakable Sentinel protects even the console.', 'color: #4682b4; font-size: 14px;');
+            console.log('%c"My duty knows no bounds, not even JavaScript."', 'color: #ffd700; font-style: italic;');
+        }
+
+        // Character icon click easter egg
+        let iconClicks = 0;
+        const charIcon = document.getElementById('charIcon');
+        charIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            iconClicks++;
+            if (iconClicks === 5) {
+                const easterEgg = document.getElementById('easterEgg');
+                easterEgg.textContent = 'Even shields crack under enough pressure. But duty never does.';
+                easterEgg.classList.add('show');
+                setTimeout(() => easterEgg.classList.remove('show'), 4000);
+                iconClicks = 0;
+            }
+        });
+
+        console.log('%c⚔️ HONOR ⚔️', 'color: #ffd700; font-size: 20px; font-weight: bold;');
+        console.log('%cYou stand in the presence of Sir Aldric Thornheart.', 'color: #4682b4; font-size: 12px;');
+        console.log('%cSeekers protected: 2,847 | Souls saved: 1,203', 'color: #ffd700; font-size: 12px;');
+    </script>
+</body>
+</html>

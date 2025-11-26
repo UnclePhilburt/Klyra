@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Test</title>
+</head>
+<body>
+    <h1>Admin Access Test</h1>
+    <div id="debug"></div>
+    <div id="result"></div>
+
+    <script>
+        const API_URL = 'http://localhost:3001';
+
+        async function test() {
+            const debugDiv = document.getElementById('debug');
+            const resultDiv = document.getElementById('result');
+
+            // Check localStorage
+            const token = localStorage.getItem('authToken');
+            const userId = localStorage.getItem('userId');
+
+            debugDiv.innerHTML = `
+                <h2>Debug Info:</h2>
+                <p>Token exists: ${!!token}</p>
+                <p>User ID: ${userId}</p>
+                <p>Token preview: ${token ? token.substring(0, 50) + '...' : 'None'}</p>
+            `;
+
+            if (!token || !userId) {
+                resultDiv.innerHTML = '<p style="color: red;">Not logged in! Please log in first.</p>';
+                return;
+            }
+
+            // Test profile endpoint
+            try {
+                const response = await fetch(`${API_URL}/auth/profile/${userId}`);
+                const data = await response.json();
+
+                resultDiv.innerHTML = `
+                    <h2>API Response:</h2>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <h3>Admin Status: ${data.user?.isAdmin ? 'YES ✅' : 'NO ❌'}</h3>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+
+        test();
+    </script>
+</body>
+</html>
