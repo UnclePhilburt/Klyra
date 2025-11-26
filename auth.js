@@ -308,7 +308,7 @@ async function getAllUsers() {
         const result = await pool.query(`
             SELECT
                 u.id, u.username, u.email, u.is_verified, u.is_admin,
-                u.created_at, u.last_login, u.banked_souls, u.unlocked_characters,
+                u.created_at, u.last_login, u.last_session, u.banked_souls, u.unlocked_characters,
                 u.is_banned, u.banned_reason, u.banned_at,
                 COALESCE(SUM(ps.games_played), 0) as games_played,
                 COALESCE(MAX(ps.deepest_floor), 0) as deepest_floor,
@@ -327,6 +327,7 @@ async function getAllUsers() {
             isAdmin: user.is_admin,
             createdAt: user.created_at,
             lastLogin: user.last_login,
+            lastSession: user.last_session,
             bankedSouls: user.banked_souls,
             unlockedCharacters: user.unlocked_characters || [],
             isBanned: user.is_banned,

@@ -4675,6 +4675,18 @@ io.on('connection', (socket) => {
                 position: player.position
             });
 
+            // Update last session time for logged-in users
+            if (userId) {
+                try {
+                    await auth.pool.query(
+                        'UPDATE users SET last_session = NOW() WHERE id = $1',
+                        [userId]
+                    );
+                } catch (error) {
+                    console.error('Error updating last_session:', error);
+                }
+            }
+
         } catch (error) {
             console.error('Error in player:join:', error);
             socket.emit('error', { message: 'Failed to join game' });
@@ -7739,11 +7751,12 @@ server.listen(PORT, async () => {
             await auth.pool.query(`
                 ALTER TABLE users
                 ADD COLUMN IF NOT EXISTS stored_pets TEXT[] DEFAULT '{}',
-                ADD COLUMN IF NOT EXISTS current_pet TEXT DEFAULT NULL;
+                ADD COLUMN IF NOT EXISTS current_pet TEXT DEFAULT NULL,
+                ADD COLUMN IF NOT EXISTS last_session TIMESTAMP DEFAULT NULL;
             `);
-            console.log('✅ Pet Storage migration completed');
+            console.log('✅ Pet Storage & Session tracking migrations completed');
         } catch (error) {
-            console.error('❌ Pet Storage migration failed:', error.message);
+            console.error('❌ Migration failed:', error.message);
         }
     } else {
         console.warn('⚠️  DATABASE_URL not set - stats will not persist');
