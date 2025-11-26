@@ -2598,15 +2598,15 @@ class Lobby {
         }
     }
 
-    addPlayer(player) {
+    addPlayer(player, isReconnecting = false) {
         // Count only real players (not bots) for capacity check
         const realPlayerCount = Array.from(this.players.values()).filter(p => !p.isBot).length;
         if (realPlayerCount >= this.maxPlayers) {
             return { success: false, error: 'Game is full' };
         }
 
-        // Ensure player is alive when joining
-        if (!player.isAlive) {
+        // Ensure player is alive when joining (but NOT for reconnecting players - they keep their state)
+        if (!isReconnecting && !player.isAlive) {
             console.log(`⚠️ Resetting ${player.username} to alive (was dead when joining)`);
             player.isAlive = true;
             player.health = player.maxHealth;
@@ -2615,13 +2615,17 @@ class Lobby {
         this.players.set(player.id, player);
         player.lobbyId = this.id;
 
-        // Assign spawn position (use modulo to wrap around if more players+bots than spawn points)
-        const spawnPoints = this.getSpawnPoints();
-        const spawnIndex = (this.players.size - 1) % spawnPoints.length;
-        player.position = spawnPoints[spawnIndex];
-
-        console.log(`✅ ${player.username} joined game ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
-        console.log(`📍 Assigned spawn position (PIXELS): (${player.position.x}, ${player.position.y})`);
+        // Only assign spawn position for NEW players, not reconnecting ones
+        if (!isReconnecting) {
+            const spawnPoints = this.getSpawnPoints();
+            const spawnIndex = (this.players.size - 1) % spawnPoints.length;
+            player.position = spawnPoints[spawnIndex];
+            console.log(`✅ ${player.username} joined game ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
+            console.log(`📍 Assigned spawn position (PIXELS): (${player.position.x}, ${player.position.y})`);
+        } else {
+            console.log(`✅ ${player.username} reconnected to game ${this.id.slice(0, 8)} (${this.players.size}/${this.maxPlayers})`);
+            console.log(`📍 Restored position (PIXELS): (${player.position.x}, ${player.position.y})`);
+        }
 
         return { success: true };
     }
@@ -4577,8 +4581,10 @@ io.on('connection', (socket) => {
             // Check if player is reconnecting
             const disconnectedPlayer = disconnectedPlayers.get(finalUsername);
             let player;
+            let isReconnecting = false;
 
             if (disconnectedPlayer && Date.now() - disconnectedPlayer.disconnectedAt < RECONNECT_TIMEOUT) {
+                isReconnecting = true;
                 // Reconnection - restore player with EXACT state (position, health, level, souls, etc.)
                 player = disconnectedPlayer;
                 player.id = socket.id;
@@ -4659,7 +4665,7 @@ io.on('connection', (socket) => {
                 }
             }
 
-            const result = lobby.addPlayer(player);
+            const result = lobby.addPlayer(player, isReconnecting);
 
             if (!result.success) {
                 socket.emit('error', { message: result.error });
