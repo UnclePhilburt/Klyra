@@ -81,56 +81,95 @@ class ScreenManager {
             console.log('🔄 Auto-reconnect starting...', session);
             debug.info('CORE', `Reconnecting as ${session.username} (${session.character})`);
 
-            // Set screen to lobby first (to hide start screen)
-            this.setScreen('LOBBY', false);
+            // Check if this is a recent disconnect (< 30 seconds = server still has player state)
+            const disconnectAge = Date.now() - session.timestamp;
+            const isRecentDisconnect = disconnectAge < 30 * 1000; // 30 seconds
 
-            // Initialize main menu
-            if (!this.initialized) {
-                window.mainMenuInstance = new MainMenu();
-                this.initialized = true;
+            if (isRecentDisconnect) {
+                console.log('⚡ Recent disconnect detected - skipping lobby UI entirely');
+
+                // Skip lobby - go straight to game preparation
+                // Keep start screen visible while loading
+
+                // Wait for game to be ready (Phaser initialization)
+                console.log('⏳ Waiting for game...');
+                let attempts = 0;
+                while (!window.game && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+
+                if (!window.game) {
+                    throw new Error('Game not initialized');
+                }
+                console.log('✅ Game ready');
+
+                // Connect to game - pass character directly
+                console.log('🎮 Connecting to game...');
+                debug.info('CORE', 'Reconnecting to game (fast path)...');
+                await window.game.connect(session.username, session.character);
+                console.log('✅ Connected to game');
+
+                // Transition directly to game screen
+                console.log('🎬 Transitioning to game screen...');
+                await this.transitionToGame();
+                console.log('✅ Auto-reconnect successful (fast path)!');
+                debug.info('CORE', 'Auto-reconnect successful!');
+            } else {
+                console.log('⏱️ Older session detected - showing lobby UI');
+
+                // Session exists but server likely doesn't have player state anymore
+                // Show lobby and let them click play normally
+                this.setScreen('LOBBY', false);
+
+                // Initialize main menu
+                if (!this.initialized) {
+                    window.mainMenuInstance = new MainMenu();
+                    this.initialized = true;
+                }
+
+                // Wait for CharacterSelectManager to be ready
+                console.log('⏳ Waiting for CharacterSelectManager...');
+                let attempts = 0;
+                while (!window.characterSelectManager && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+
+                if (!window.characterSelectManager) {
+                    throw new Error('CharacterSelectManager not initialized');
+                }
+                console.log('✅ CharacterSelectManager ready');
+
+                // Set the character selection for UI display
+                console.log('🎭 Selecting character:', session.character);
+                window.characterSelectManager.selectCharacter(session.character);
+
+                // Wait for game to be ready
+                console.log('⏳ Waiting for game...');
+                attempts = 0;
+                while (!window.game && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+
+                if (!window.game) {
+                    throw new Error('Game not initialized');
+                }
+                console.log('✅ Game ready');
+
+                // Connect to game - pass character directly to bypass UI state
+                console.log('🎮 Connecting to game...');
+                debug.info('CORE', 'Reconnecting to game...');
+                await window.game.connect(session.username, session.character);
+                console.log('✅ Connected to game');
+
+                // Transition to game screen
+                console.log('🎬 Transitioning to game screen...');
+                await this.transitionToGame();
+                console.log('✅ Auto-reconnect successful!');
+                debug.info('CORE', 'Auto-reconnect successful!');
             }
-
-            // Wait for CharacterSelectManager to be ready
-            console.log('⏳ Waiting for CharacterSelectManager...');
-            let attempts = 0;
-            while (!window.characterSelectManager && attempts < 50) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                attempts++;
-            }
-
-            if (!window.characterSelectManager) {
-                throw new Error('CharacterSelectManager not initialized');
-            }
-            console.log('✅ CharacterSelectManager ready');
-
-            // Set the character selection for UI display
-            console.log('🎭 Selecting character:', session.character);
-            window.characterSelectManager.selectCharacter(session.character);
-
-            // Wait for game to be ready
-            console.log('⏳ Waiting for game...');
-            attempts = 0;
-            while (!window.game && attempts < 50) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                attempts++;
-            }
-
-            if (!window.game) {
-                throw new Error('Game not initialized');
-            }
-            console.log('✅ Game ready');
-
-            // Connect to game - pass character directly to bypass UI state
-            console.log('🎮 Connecting to game...');
-            debug.info('CORE', 'Reconnecting to game...');
-            await window.game.connect(session.username, session.character);
-            console.log('✅ Connected to game');
-
-            // Transition to game screen
-            console.log('🎬 Transitioning to game screen...');
-            await this.transitionToGame();
-            console.log('✅ Auto-reconnect successful!');
-            debug.info('CORE', 'Auto-reconnect successful!');
         } catch (error) {
             console.error('❌ Auto-reconnect failed:', error);
             debug.error('CORE', 'Auto-reconnect failed:', error);
