@@ -1108,11 +1108,11 @@
                 `;
             }).join('');
 
-            document.getElementById('unlockCharactersModal').style.display = 'flex';
+            document.getElementById('unlockCharactersModal').classList.add('active');
         }
 
         function closeUnlockCharactersModal() {
-            document.getElementById('unlockCharactersModal').style.display = 'none';
+            document.getElementById('unlockCharactersModal').classList.remove('active');
             currentUnlockUserId = null;
         }
 
@@ -1452,6 +1452,12 @@
         document.getElementById('playerDetailModal').addEventListener('click', (e) => {
             if (e.target.id === 'playerDetailModal') {
                 closePlayerDetailModal();
+            }
+        });
+
+        document.getElementById('unlockCharactersModal').addEventListener('click', (e) => {
+            if (e.target.id === 'unlockCharactersModal') {
+                closeUnlockCharactersModal();
             }
         });
 
