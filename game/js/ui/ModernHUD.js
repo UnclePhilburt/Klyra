@@ -31,6 +31,7 @@ class ModernHUD {
         this.skillTexts = [];
         this.lowHealthTween = null;
         this.isReloading = false; // Prevent multiple reload calls
+        this.buttonClicked = false; // Track button clicks vs overlay clicks
 
         // ─── Controller ──────────────────────────────────────────────────────
         this.controllerIndex = 0;
@@ -370,8 +371,9 @@ class ModernHUD {
 
         container.on('pointerover', () => highlight(true));
         container.on('pointerout', () => highlight(false));
-        container.on('pointerdown', (pointer, localX, localY, event) => {
-            event.stopPropagation(); // Prevent overlay from catching this click
+        container.on('pointerdown', () => {
+            // Mark that a button was clicked (prevents overlay from closing menu)
+            this.buttonClicked = true;
             callback();
         });
 
@@ -464,7 +466,19 @@ class ModernHUD {
                 new Phaser.Geom.Rectangle(0, 0, this.scene.cameras.main.width, this.scene.cameras.main.height),
                 Phaser.Geom.Rectangle.Contains
             );
-            this.menuOverlay.once('pointerdown', () => this.toggleMenu());
+
+            // Track if a button was clicked this frame
+            this.buttonClicked = false;
+
+            this.menuOverlay.once('pointerdown', () => {
+                // Only close menu if we didn't click a button
+                this.scene.time.delayedCall(10, () => {
+                    if (!this.buttonClicked) {
+                        this.toggleMenu();
+                    }
+                    this.buttonClicked = false;
+                });
+            });
         } else {
             this.menuOverlay.setVisible(false);
             this.menuPanel.setVisible(false);
