@@ -84,6 +84,14 @@ class ControllerManager {
         // Detect if controller is being used
         this.detectControllerInput();
 
+        // Check if menu is open - if so, skip game input handling
+        const isMenuOpen = this.scene.modernHUD?.menuOpen;
+
+        if (isMenuOpen) {
+            // Menu is open - only handle menu navigation (let ModernHUD handle it)
+            return;
+        }
+
         // Handle movement (left stick)
         this.handleMovement();
 
