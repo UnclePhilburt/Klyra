@@ -5163,11 +5163,18 @@ io.on('connection', (socket) => {
                 const drops = calculateEnemyDrops(enemy);
 
                 // XP is now awarded via experience orbs only, not direct kills
-                // Spawn XP orb at enemy death location
+                // Spawn XP orb at enemy death location with explosion effect
                 const orbId = `orb_${Date.now()}_${Math.random()}`;
+
+                // Random angle and distance for explosion effect (small radius)
+                const orbAngle = Math.random() * Math.PI * 2;
+                const orbDistance = Math.random() * 30 + 10; // 10-40 pixels
+                const orbOffsetX = Math.cos(orbAngle) * orbDistance;
+                const orbOffsetY = Math.sin(orbAngle) * orbDistance;
+
                 lobby.gameState.experienceOrbs.set(orbId, {
-                    x: enemy.position.x,
-                    y: enemy.position.y,
+                    x: enemy.position.x + orbOffsetX,
+                    y: enemy.position.y + orbOffsetY,
                     expValue: drops.xp
                 });
 
@@ -5186,10 +5193,13 @@ io.on('connection', (socket) => {
                 for (let i = 0; i < drops.souls; i++) {
                     const soulId = uuidv4();
                     // enemy.position is in PIXELS, convert to tiles
-                    // Scatter souls slightly if multiple
-                    const scatter = i > 0 ? (Math.random() - 0.5) * 2 : 0;
-                    const soulTileX = (enemy.position.x / TILE_SIZE) + scatter;
-                    const soulTileY = (enemy.position.y / TILE_SIZE) + scatter;
+                    // Explode souls outward in random directions
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * 1.5 + 0.5; // 0.5-2 tiles
+                    const scatterX = Math.cos(angle) * distance;
+                    const scatterY = Math.sin(angle) * distance;
+                    const soulTileX = (enemy.position.x / TILE_SIZE) + scatterX;
+                    const soulTileY = (enemy.position.y / TILE_SIZE) + scatterY;
 
                     lobby.gameState.items.set(soulId, {
                         id: soulId,
