@@ -4706,9 +4706,20 @@ io.on('connection', (socket) => {
                 enemies: lobby.gameState.enemies.filter(e => e.isAlive !== false)
             };
 
+            // Log player state being sent to client
+            const playerData = player.toJSON();
+            console.log(`📤 Sending player data to client:`, {
+                username: playerData.username,
+                position: playerData.position,
+                health: playerData.health,
+                maxHealth: playerData.maxHealth,
+                level: playerData.level,
+                souls: playerData.souls
+            });
+
             socket.emit('game:start', {
                 lobbyId: lobby.id,
-                player: player.toJSON(),
+                player: playerData,
                 players: activePlayers,
                 gameState: filteredGameState,
                 world: worldData,
