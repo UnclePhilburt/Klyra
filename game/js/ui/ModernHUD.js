@@ -403,6 +403,34 @@ class ModernHUD {
             if (this.menuOpen) this.toggleMenu();
         });
         this.keys.push(esc);
+
+        // W key - Navigate up in menu
+        const wKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+        wKey.on('down', () => {
+            if (!this.menuOpen) return;
+            this.controllerMenuItems[this.controllerIndex]?.highlight(false);
+            this.controllerIndex = (this.controllerIndex - 1 + this.controllerMenuItems.length) % this.controllerMenuItems.length;
+            this.controllerMenuItems[this.controllerIndex]?.highlight(true);
+        });
+        this.keys.push(wKey);
+
+        // S key - Navigate down in menu
+        const sKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+        sKey.on('down', () => {
+            if (!this.menuOpen) return;
+            this.controllerMenuItems[this.controllerIndex]?.highlight(false);
+            this.controllerIndex = (this.controllerIndex + 1) % this.controllerMenuItems.length;
+            this.controllerMenuItems[this.controllerIndex]?.highlight(true);
+        });
+        this.keys.push(sKey);
+
+        // F key - Select/activate current menu item
+        const fKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+        fKey.on('down', () => {
+            if (!this.menuOpen) return;
+            this.controllerMenuItems[this.controllerIndex]?.callback();
+        });
+        this.keys.push(fKey);
     }
 
     // Controller polling IN update() - no separate timer

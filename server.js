@@ -5391,7 +5391,14 @@ io.on('connection', (socket) => {
                 const goldValue = 1; // Each soul is worth 1 gold
                 player.gold += goldValue;
                 player.totalGold += goldValue;
-                console.log(`👻 ${player.username} picked up soul (+${goldValue} gold, total: ${player.gold})`);
+                player.currency += goldValue; // Also update currency for UI display
+                console.log(`👻 ${player.username} picked up soul (+${goldValue} currency, total: ${player.currency})`);
+
+                // Broadcast currency update to the player
+                lobby.broadcast('player:update', {
+                    id: socket.id,
+                    currency: player.currency
+                });
             } else {
                 console.log(`📦 ${player.username} picked up ${item.type}`);
             }
@@ -6185,19 +6192,6 @@ io.on('connection', (socket) => {
             }
 
             console.log(`💎 ${player.username} collected orb ${data.orbId} (${data.expValue} XP)`);
-
-            // Add currency to player (souls earned from killing enemies)
-            if (player.currency === null || player.currency === undefined) {
-                player.currency = 0;
-            }
-            player.currency += data.expValue;
-            console.log(`   💰 ${player.username} currency: ${player.currency} (+${data.expValue})`);
-
-            // Broadcast currency update to the player
-            lobby.broadcast('player:update', {
-                id: socket.id,
-                currency: player.currency
-            });
 
             // Broadcast to only nearby players (within ~400 pixels / about half a screen)
             const SOUND_RANGE = 400; // Reduced from full lobby to only nearby players

@@ -3083,6 +3083,11 @@ class GameScene extends Phaser.Scene {
             this.modernHUD.updateUsername(this.localPlayer.username);
         }
 
+        // Initialize currency display with player's actual currency value
+        if (this.localPlayer && this.localPlayer.currency !== undefined) {
+            this.modernHUD.updateCurrency(this.localPlayer.currency);
+        }
+
         // Create inventory system (C key, hotbar 1-5)
         try {
             this.inventoryUI = new InventoryUI(this, this.localPlayer);
@@ -7332,6 +7337,42 @@ class GameScene extends Phaser.Scene {
                         const runningAnimKey = 'kelise_running';
 
                         // Play running animation if currently moving, otherwise idle
+                        if (caster.spriteRenderer.isMoving) {
+                            if (this.anims.exists(runningAnimKey)) {
+                                caster.spriteRenderer.sprite.play(runningAnimKey, true);
+                            }
+                        } else {
+                            if (this.anims.exists(idleAnimKey)) {
+                                caster.spriteRenderer.sprite.play(idleAnimKey, true);
+                            }
+                        }
+                    }
+                });
+            }
+            return;
+        }
+
+        // Handle other character attack animations (Zenryu, Orion, Bastion, Malachar, etc.)
+        if (data.abilityName && data.abilityName.includes('_attack')) {
+            if (this.anims.exists(data.abilityName)) {
+                caster.spriteRenderer.sprite.play(data.abilityName);
+
+                // Play attack sound if available
+                const characterName = data.abilityName.split('_')[0];
+                const soundKey = `${characterName}_attack`;
+                if (this.sound.get(soundKey)) {
+                    this.sound.play(soundKey, { volume: 0.3 });
+                }
+
+                // Return to appropriate animation when attack completes
+                caster.spriteRenderer.sprite.once('animationcomplete', (anim) => {
+                    if (anim.key === data.abilityName) {
+                        // Determine character class for idle/running animation
+                        const characterClass = caster.data?.class?.toLowerCase() || characterName;
+                        const idleAnimKey = `${characterClass}_idle`;
+                        const runningAnimKey = `${characterClass}_running`;
+
+                        // Return to running or idle animation
                         if (caster.spriteRenderer.isMoving) {
                             if (this.anims.exists(runningAnimKey)) {
                                 caster.spriteRenderer.sprite.play(runningAnimKey, true);
