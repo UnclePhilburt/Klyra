@@ -195,8 +195,8 @@ function calculateEnemyDrops(enemy) {
         souls += 5;
     }
 
-    // 5% chance for bonus soul drop (+1-2 souls)
-    const bonusSouls = Math.random() < 0.05 ? (1 + Math.floor(Math.random() * 2)) : 0;
+    // 1% chance for bonus soul drop (+1-2 souls)
+    const bonusSouls = Math.random() < 0.01 ? (1 + Math.floor(Math.random() * 2)) : 0;
 
     return {
         xp: xp,
