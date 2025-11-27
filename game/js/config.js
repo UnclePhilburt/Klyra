@@ -1,6 +1,6 @@
 // Game Configuration v5.10 - Home Server
 const GameConfig = {
-    SERVER_URL: 'http://47.213.170.139:3001',
+    SERVER_URL: 'https://api.klyra.lol',
 
     GAME: {
         WIDTH: 1280,
