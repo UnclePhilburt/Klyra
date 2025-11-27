@@ -7701,6 +7701,65 @@ app.get('/metrics', (req, res) => {
     });
 });
 
+// Admin dashboard endpoint - comprehensive server info
+app.get('/admin/dashboard', (req, res) => {
+    const memUsage = process.memoryUsage();
+
+    // Get detailed player list
+    const playerList = Array.from(players.values()).map(p => ({
+        id: p.id?.slice(0, 8),
+        username: p.username,
+        class: p.class,
+        level: p.level,
+        lobbyId: p.lobbyId?.slice(0, 8),
+        isGuest: p.isGuest,
+        lastActivity: p.lastActivity
+    }));
+
+    // Get detailed lobby info
+    const lobbyList = Array.from(lobbies.values()).map(lobby => ({
+        id: lobby.id.slice(0, 8),
+        playerCount: lobby.players?.size || 0,
+        maxPlayers: lobby.maxPlayers || 10,
+        status: lobby.status,
+        difficulty: lobby.difficulty,
+        floor: lobby.gameState?.floor || 1,
+        enemyCount: Object.keys(lobby.gameState?.enemies || {}).length,
+        startTime: lobby.startTime,
+        players: Array.from(lobby.players?.values() || []).map(p => ({
+            username: p.username,
+            class: p.class,
+            health: p.health,
+            maxHealth: p.maxHealth
+        }))
+    }));
+
+    res.json({
+        server: {
+            uptime: process.uptime(),
+            nodeVersion: process.version,
+            platform: process.platform,
+            memory: {
+                heapUsed: memUsage.heapUsed,
+                heapTotal: memUsage.heapTotal,
+                rss: memUsage.rss,
+                external: memUsage.external
+            }
+        },
+        game: {
+            activePlayers: players.size,
+            activeLobbies: lobbies.size,
+            uniquePlayersSession: uniquePlayerUsernames.size,
+            freeCharacter: currentFreeCharacter,
+            freeCharacterRotationTime: freeCharacterRotationTime
+        },
+        metrics: metrics,
+        players: playerList,
+        lobbies: lobbyList,
+        timestamp: Date.now()
+    });
+});
+
 // Reset all stats endpoint (admin only - requires confirmation token)
 app.post('/admin/reset-stats', async (req, res) => {
     try {
