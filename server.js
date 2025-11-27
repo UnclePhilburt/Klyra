@@ -7,12 +7,18 @@ const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const db = require('./database');
 const auth = require('./auth');
+const { SpatialGrid, ObjectPool, GameCache, BatchedWriter } = require('./spatial-grid');
+
+// PERFORMANCE OPTIMIZATION: Global caches and pools
+const gameCache = new GameCache(300000); // 5 min TTL for leaderboards, stats
+const ENEMY_POOL_SIZE = 5000; // Pre-allocate enemy objects
+const MINION_POOL_SIZE = 2000; // Pre-allocate minion objects
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
     cors: {
-        origin: ["https://unclephilburt.github.io", "https://klyra.lol", "http://localhost:3000", "http://localhost:5500", "*"], // Allow GitHub Pages, klyra.lol, and local development
+        origin: ["https://unclephilburt.github.io", "https://klyra.lol", "https://www.klyra.lol", "http://localhost:3000", "http://localhost:5500"],
         methods: ["GET", "POST"],
         credentials: true
     },
@@ -24,7 +30,7 @@ const io = socketIO(server, {
 });
 
 app.use(cors({
-    origin: ["https://unclephilburt.github.io", "https://klyra.lol", "http://localhost:3000", "http://localhost:5500", "*"],
+    origin: ["https://unclephilburt.github.io", "https://klyra.lol", "https://www.klyra.lol", "http://localhost:3000", "http://localhost:5500"],
     methods: ["GET", "POST"],
     credentials: true
 }));
@@ -120,6 +126,11 @@ const RECONNECT_TIMEOUT = 120000; // 2 minutes to reconnect
 const AFK_TIMEOUT = 180000; // 3 minutes AFK kick
 const RATE_LIMIT_INTERVAL = 100; // Min ms between actions
 const MAX_MESSAGE_LENGTH = 200;
+
+// PERFORMANCE: Increased limits for powerful hardware (16GB RAM, fast CPU)
+const MAX_ENEMIES_TOTAL = 5000; // Increased from 2000 - more chaos!
+const GAME_TICK_RATE = 50; // Decreased from 100ms to 50ms (20 updates/sec)
+const SPATIAL_GRID_CELL_SIZE = 500; // Pixels per grid cell for spatial partitioning
 
 // Data structures
 const lobbies = new Map();
@@ -2331,6 +2342,15 @@ class Lobby {
         this.botUpdateInterval = setInterval(() => {
             this.updateBots();
         }, 100);
+
+        // PERFORMANCE: Spatial grids for O(1) proximity queries instead of O(n^2)
+        this.enemySpatialGrid = new SpatialGrid(SPATIAL_GRID_CELL_SIZE);
+        this.playerSpatialGrid = new SpatialGrid(SPATIAL_GRID_CELL_SIZE);
+        this.minionSpatialGrid = new SpatialGrid(SPATIAL_GRID_CELL_SIZE);
+
+        // PERFORMANCE: Track last spatial grid update to batch updates
+        this.lastSpatialUpdate = 0;
+        this.SPATIAL_UPDATE_INTERVAL = 100; // Update spatial grids every 100ms
     }
 
     spawnBotsToFillSlots() {
@@ -2924,8 +2944,7 @@ class Lobby {
             return [];
         }
 
-        // PERFORMANCE: Global enemy cap per lobby (prevents runaway spawning)
-        const MAX_ENEMIES_TOTAL = 2000; // Doubled to support much higher enemy density
+        // PERFORMANCE: Global enemy cap per lobby (uses constant from top of file)
         if (this.gameState.enemies.length >= MAX_ENEMIES_TOTAL) {
             console.log(`⚠️ Enemy cap reached (${this.gameState.enemies.length}/${MAX_ENEMIES_TOTAL}), skipping spawn in region ${regionKey}`);
             return [];
@@ -7695,6 +7714,65 @@ app.get('/metrics', (req, res) => {
     });
 });
 
+// Admin dashboard endpoint - comprehensive server info
+app.get('/admin/dashboard', (req, res) => {
+    const memUsage = process.memoryUsage();
+
+    // Get detailed player list
+    const playerList = Array.from(players.values()).map(p => ({
+        id: p.id?.slice(0, 8),
+        username: p.username,
+        class: p.class,
+        level: p.level,
+        lobbyId: p.lobbyId?.slice(0, 8),
+        isGuest: p.isGuest,
+        lastActivity: p.lastActivity
+    }));
+
+    // Get detailed lobby info
+    const lobbyList = Array.from(lobbies.values()).map(lobby => ({
+        id: lobby.id.slice(0, 8),
+        playerCount: lobby.players?.size || 0,
+        maxPlayers: lobby.maxPlayers || 10,
+        status: lobby.status,
+        difficulty: lobby.difficulty,
+        floor: lobby.gameState?.floor || 1,
+        enemyCount: Object.keys(lobby.gameState?.enemies || {}).length,
+        startTime: lobby.startTime,
+        players: Array.from(lobby.players?.values() || []).map(p => ({
+            username: p.username,
+            class: p.class,
+            health: p.health,
+            maxHealth: p.maxHealth
+        }))
+    }));
+
+    res.json({
+        server: {
+            uptime: process.uptime(),
+            nodeVersion: process.version,
+            platform: process.platform,
+            memory: {
+                heapUsed: memUsage.heapUsed,
+                heapTotal: memUsage.heapTotal,
+                rss: memUsage.rss,
+                external: memUsage.external
+            }
+        },
+        game: {
+            activePlayers: players.size,
+            activeLobbies: lobbies.size,
+            uniquePlayersSession: uniquePlayerUsernames.size,
+            freeCharacter: currentFreeCharacter,
+            freeCharacterRotationTime: freeCharacterRotationTime
+        },
+        metrics: metrics,
+        players: playerList,
+        lobbies: lobbyList,
+        timestamp: Date.now()
+    });
+});
+
 // Reset all stats endpoint (admin only - requires confirmation token)
 app.post('/admin/reset-stats', async (req, res) => {
     try {
@@ -7721,6 +7799,187 @@ app.post('/admin/reset-stats', async (req, res) => {
         console.error('Error resetting stats:', error);
         res.status(500).json({ error: 'Failed to reset stats' });
     }
+});
+
+// ==========================================
+// ATLAS SECURITY API ENDPOINTS
+// ==========================================
+
+// Atlas middleware to verify admin token
+const atlasAuthMiddleware = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Atlas authentication required' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const result = auth.atlasVerifyToken(token);
+
+    if (!result.success) {
+        return res.status(401).json({ error: result.error });
+    }
+
+    req.atlasAdmin = result;
+    next();
+};
+
+// Atlas login
+app.post('/atlas/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    const result = await auth.atlasLogin(username, password);
+
+    if (result.success) {
+        // Log the login
+        await auth.atlasLogActivity(result.admin.id, 'LOGIN', null, null, null, req.ip);
+        console.log(`🔐 Atlas Security: ${username} logged in`);
+    }
+
+    res.json(result);
+});
+
+// Atlas verify token
+app.get('/atlas/verify', atlasAuthMiddleware, async (req, res) => {
+    const admin = await auth.atlasGetAdmin(req.atlasAdmin.atlasId);
+    res.json({ success: true, admin });
+});
+
+// Atlas create new admin (requires existing admin)
+app.post('/atlas/admins', atlasAuthMiddleware, async (req, res) => {
+    const { username, password, displayName, role } = req.body;
+
+    // Only super admins can create new admins
+    if (req.atlasAdmin.role !== 'super') {
+        return res.status(403).json({ error: 'Only super admins can create new admins' });
+    }
+
+    const result = await auth.atlasRegisterAdmin(username, password, displayName, role, req.atlasAdmin.atlasId);
+
+    if (result.success) {
+        await auth.atlasLogActivity(req.atlasAdmin.atlasId, 'CREATE_ADMIN', 'admin', result.admin.id.toString(), { username });
+        console.log(`🔐 Atlas Security: ${req.atlasAdmin.username} created admin ${username}`);
+    }
+
+    res.json(result);
+});
+
+// Atlas get all admins
+app.get('/atlas/admins', atlasAuthMiddleware, async (req, res) => {
+    const admins = await auth.atlasGetAllAdmins();
+    res.json({ success: true, admins });
+});
+
+// Atlas get activity log
+app.get('/atlas/activity', atlasAuthMiddleware, async (req, res) => {
+    const limit = parseInt(req.query.limit) || 100;
+    const logs = await auth.atlasGetActivityLog(limit);
+    res.json({ success: true, logs });
+});
+
+// Atlas change password
+app.post('/atlas/change-password', atlasAuthMiddleware, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const result = await auth.atlasChangePassword(req.atlasAdmin.atlasId, currentPassword, newPassword);
+
+    if (result.success) {
+        await auth.atlasLogActivity(req.atlasAdmin.atlasId, 'CHANGE_PASSWORD');
+    }
+
+    res.json(result);
+});
+
+// Atlas deactivate admin (super only)
+app.post('/atlas/admins/:adminId/deactivate', atlasAuthMiddleware, async (req, res) => {
+    if (req.atlasAdmin.role !== 'super') {
+        return res.status(403).json({ error: 'Only super admins can deactivate admins' });
+    }
+
+    const result = await auth.atlasDeactivateAdmin(parseInt(req.params.adminId));
+
+    if (result.success) {
+        await auth.atlasLogActivity(req.atlasAdmin.atlasId, 'DEACTIVATE_ADMIN', 'admin', req.params.adminId, { username: result.username });
+        console.log(`🔐 Atlas Security: ${req.atlasAdmin.username} deactivated admin ${result.username}`);
+    }
+
+    res.json(result);
+});
+
+// Atlas setup - create first super admin (only works if no admins exist)
+app.post('/atlas/setup', async (req, res) => {
+    const { username, password, displayName } = req.body;
+
+    // Check if any admins exist
+    const existingAdmins = await auth.atlasGetAllAdmins();
+    if (existingAdmins.length > 0) {
+        return res.status(403).json({ error: 'Setup already completed. Contact existing admin.' });
+    }
+
+    const result = await auth.atlasRegisterAdmin(username, password, displayName, 'super', null);
+
+    if (result.success) {
+        console.log(`🔐 Atlas Security: Initial super admin "${username}" created`);
+    }
+
+    res.json(result);
+});
+
+// Atlas protected admin endpoints - wrap existing admin endpoints
+app.get('/atlas/users', atlasAuthMiddleware, async (req, res) => {
+    const users = await auth.getAllUsers();
+    await auth.atlasLogActivity(req.atlasAdmin.atlasId, 'VIEW_USERS');
+    res.json({ success: true, users });
+});
+
+app.post('/atlas/users/:userId/souls', atlasAuthMiddleware, async (req, res) => {
+    const { souls } = req.body;
+    const result = await auth.adminUpdateSouls(parseInt(req.params.userId), souls);
+
+    if (result.success) {
+        await auth.atlasLogActivity(req.atlasAdmin.atlasId, 'UPDATE_SOULS', 'user', req.params.userId, { souls });
+        console.log(`🔐 Atlas: ${req.atlasAdmin.username} set ${result.username}'s souls to ${souls}`);
+    }
+
+    res.json(result);
+});
+
+app.post('/atlas/users/:userId/characters', atlasAuthMiddleware, async (req, res) => {
+    const { characters } = req.body;
+    const result = await auth.adminUnlockCharacters(parseInt(req.params.userId), characters);
+
+    if (result.success) {
+        await auth.atlasLogActivity(req.atlasAdmin.atlasId, 'UNLOCK_CHARACTERS', 'user', req.params.userId, { characters });
+        console.log(`🔐 Atlas: ${req.atlasAdmin.username} unlocked characters for ${result.username}`);
+    }
+
+    res.json(result);
+});
+
+app.post('/atlas/users/:userId/ban', atlasAuthMiddleware, async (req, res) => {
+    const { banned, reason } = req.body;
+    const result = await auth.adminBanUser(parseInt(req.params.userId), banned, reason);
+
+    if (result.success) {
+        await auth.atlasLogActivity(req.atlasAdmin.atlasId, banned ? 'BAN_USER' : 'UNBAN_USER', 'user', req.params.userId, { reason });
+        console.log(`🔐 Atlas: ${req.atlasAdmin.username} ${banned ? 'banned' : 'unbanned'} ${result.username}`);
+    }
+
+    res.json(result);
+});
+
+app.post('/atlas/users/:userId/reset-password', atlasAuthMiddleware, async (req, res) => {
+    const { newPassword } = req.body;
+    const result = await auth.adminResetPassword(parseInt(req.params.userId), newPassword);
+
+    if (result.success) {
+        await auth.atlasLogActivity(req.atlasAdmin.atlasId, 'RESET_PASSWORD', 'user', req.params.userId);
+        console.log(`🔐 Atlas: ${req.atlasAdmin.username} reset password for ${result.username}`);
+    }
+
+    res.json(result);
 });
 
 // AFK check interval
@@ -7844,6 +8103,7 @@ server.listen(PORT, async () => {
     if (process.env.DATABASE_URL) {
         await db.initDatabase();
         await auth.initUsersTable();
+        await auth.initAtlasTable(); // Initialize Atlas Security
 
         // Run Pet Storage migration
         try {

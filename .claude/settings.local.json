@@ -50,7 +50,14 @@
       "Bash(tasklist:*)",
       "Bash(cmd /c \"taskkill /PID 2172 /F\")",
       "Bash(cmd /c:*)",
-      "Bash(timeout /t 5)"
+      "Bash(timeout /t 5)",
+      "Bash(cloudflared tunnel:*)",
+      "Bash(net stop cloudflared)",
+      "Bash(net start cloudflared)",
+      "Bash(where:*)",
+      "Bash(cloudflared service:*)",
+      "Bash(sc query:*)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": [],
     "ask": []
