@@ -56,7 +56,8 @@
       "Bash(net start cloudflared)",
       "Bash(where:*)",
       "Bash(cloudflared service:*)",
-      "Bash(sc query:*)"
+      "Bash(sc query:*)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": [],
     "ask": []

@@ -711,9 +711,11 @@
             }
 
             try {
-                const res = await fetch(`${API_BASE}/global-stats`);
+                const res = await fetch(`${API_BASE}/atlas/users`, {
+                    headers: { 'Authorization': `Bearer ${atlasToken}` }
+                });
                 const data = await res.json();
-                document.getElementById('statTotalPlayers').textContent = data.totalPlayers || 0;
+                document.getElementById('statTotalPlayers').textContent = data.users?.length || 0;
             } catch (e) {}
         }
 
