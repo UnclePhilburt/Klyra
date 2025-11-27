@@ -12,7 +12,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
     cors: {
-        origin: ["https://unclephilburt.github.io", "https://klyra.lol", "http://localhost:3000", "http://localhost:5500", "*"], // Allow GitHub Pages, klyra.lol, and local development
+        origin: ["https://unclephilburt.github.io", "https://klyra.lol", "https://www.klyra.lol", "http://localhost:3000", "http://localhost:5500"],
         methods: ["GET", "POST"],
         credentials: true
     },
@@ -24,7 +24,7 @@ const io = socketIO(server, {
 });
 
 app.use(cors({
-    origin: ["https://unclephilburt.github.io", "https://klyra.lol", "http://localhost:3000", "http://localhost:5500", "*"],
+    origin: ["https://unclephilburt.github.io", "https://klyra.lol", "https://www.klyra.lol", "http://localhost:3000", "http://localhost:5500"],
     methods: ["GET", "POST"],
     credentials: true
 }));
