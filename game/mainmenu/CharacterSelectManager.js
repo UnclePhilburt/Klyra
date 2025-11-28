@@ -653,6 +653,19 @@ class CharacterSelectManager {
             this.updateBankedSoulsDisplay();
         });
 
+        // Listen for withdrawal confirmations
+        this.socket.on('bank:withdrawConfirm', (data) => {
+            console.log('✅ Withdrawal confirmed:', data);
+            this.bankedSouls = data.bankedSouls || 0;
+            this.updateBankedSoulsDisplay();
+        });
+
+        // Listen for bank errors
+        this.socket.on('bank:error', (data) => {
+            console.error('❌ Bank error:', data.error);
+            // Optionally show error to user
+        });
+
         // Listen for free character rotation
         this.socket.on('freeCharacter:update', (data) => {
             console.log('🎲 Free character update:', data);

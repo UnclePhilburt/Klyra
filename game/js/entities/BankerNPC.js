@@ -380,6 +380,8 @@ class BankerNPC {
         this.selectedDepositIndex = 0;
         this.updateHighlight();
 
+        // Fetch fresh bank data from server before displaying
+        this.fetchBankData();
         this.updateDisplay();
         console.log('💰 Soul bank opened');
     }
