@@ -1,0 +1,174 @@
+{
+	"asset":
+	{
+		"version": "2.0",
+		"generator": "Unreal Engine 5.4.4"
+	},
+	"scene": 0,
+	"accessors": [
+		{
+			"bufferView": 0,
+			"count": 20016,
+			"type": "SCALAR",
+			"componentType": 5123
+		},
+		{
+			"bufferView": 1,
+			"count": 12961,
+			"type": "VEC3",
+			"componentType": 5126,
+			"min": [ -4.4301343, -2.2231285e-16, -4.84593725 ],
+			"max": [ 5.28827381, 29.6887589, 4.50386715 ]
+		},
+		{
+			"bufferView": 2,
+			"count": 12961,
+			"type": "VEC3",
+			"componentType": 5126
+		},
+		{
+			"bufferView": 3,
+			"count": 12961,
+			"type": "VEC4",
+			"componentType": 5126
+		},
+		{
+			"bufferView": 4,
+			"count": 12961,
+			"type": "VEC2",
+			"componentType": 5126
+		},
+		{
+			"bufferView": 5,
+			"count": 12961,
+			"type": "VEC2",
+			"componentType": 5126
+		}
+	],
+	"buffers": [
+		{
+			"uri": "SM_Bld_ControlTower_01.bin",
+			"byteLength": 765848
+		}
+	],
+	"bufferViews": [
+		{
+			"buffer": 0,
+			"byteLength": 40032,
+			"target": 34963
+		},
+		{
+			"buffer": 0,
+			"byteLength": 155532,
+			"byteOffset": 40032,
+			"target": 34962
+		},
+		{
+			"buffer": 0,
+			"byteLength": 155532,
+			"byteOffset": 195564,
+			"target": 34962
+		},
+		{
+			"buffer": 0,
+			"byteLength": 207376,
+			"byteOffset": 351096,
+			"target": 34962
+		},
+		{
+			"buffer": 0,
+			"byteLength": 103688,
+			"byteOffset": 558472,
+			"target": 34962
+		},
+		{
+			"buffer": 0,
+			"byteLength": 103688,
+			"byteOffset": 662160,
+			"target": 34962
+		}
+	],
+	"images": [
+		{
+			"uri": "T_PolygonMilitary_01_A.png"
+		},
+		{
+			"uri": "T_PolygonMilitary_01_A_Normals.png"
+		}
+	],
+	"materials": [
+		{
+			"name": "M_PolygonMilitary_01_A",
+			"pbrMetallicRoughness":
+			{
+				"baseColorTexture":
+				{
+					"index": 0
+				},
+				"metallicFactor": 0,
+				"roughnessFactor": 0.800000012
+			},
+			"normalTexture":
+			{
+				"index": 1
+			},
+			"extensions":
+			{
+				"KHR_materials_specular":
+				{
+					"specularFactor": 0.200000003
+				}
+			}
+		}
+	],
+	"meshes": [
+		{
+			"name": "SM_Bld_ControlTower_01",
+			"primitives": [
+				{
+					"attributes":
+					{
+						"POSITION": 1,
+						"NORMAL": 2,
+						"TANGENT": 3,
+						"TEXCOORD_0": 4,
+						"TEXCOORD_1": 5
+					},
+					"indices": 0,
+					"material": 0
+				}
+			]
+		}
+	],
+	"nodes": [
+		{
+			"mesh": 0
+		}
+	],
+	"samplers": [
+		{
+			"minFilter": 9987,
+			"magFilter": 9729
+		}
+	],
+	"scenes": [
+		{
+			"nodes": [ 0 ]
+		}
+	],
+	"textures": [
+		{
+			"name": "T_PolygonMilitary_01_A",
+			"sampler": 0,
+			"source": 0
+		},
+		{
+			"name": "T_PolygonMilitary_01_A_Normals",
+			"sampler": 0,
+			"source": 1
+		}
+	],
+	"extensionsUsed": [
+		"KHR_materials_specular"
+	]
+}

@@ -1,0 +1,174 @@
+{
+	"asset":
+	{
+		"version": "2.0",
+		"generator": "Unreal Engine 5.4.4"
+	},
+	"scene": 0,
+	"accessors": [
+		{
+			"bufferView": 0,
+			"count": 252,
+			"type": "SCALAR",
+			"componentType": 5121
+		},
+		{
+			"bufferView": 1,
+			"count": 156,
+			"type": "VEC3",
+			"componentType": 5126,
+			"min": [ -3.80352521, -4.71761942, -6.32460308 ],
+			"max": [ 3.80352283, 3.51574436e-10, 6.32460451 ]
+		},
+		{
+			"bufferView": 2,
+			"count": 156,
+			"type": "VEC3",
+			"componentType": 5126
+		},
+		{
+			"bufferView": 3,
+			"count": 156,
+			"type": "VEC4",
+			"componentType": 5126
+		},
+		{
+			"bufferView": 4,
+			"count": 156,
+			"type": "VEC2",
+			"componentType": 5126
+		},
+		{
+			"bufferView": 5,
+			"count": 156,
+			"type": "VEC2",
+			"componentType": 5126
+		}
+	],
+	"buffers": [
+		{
+			"uri": "SM_Bld_Village_House_Plinth_02.bin",
+			"byteLength": 8988
+		}
+	],
+	"bufferViews": [
+		{
+			"buffer": 0,
+			"byteLength": 252,
+			"target": 34963
+		},
+		{
+			"buffer": 0,
+			"byteLength": 1872,
+			"byteOffset": 252,
+			"target": 34962
+		},
+		{
+			"buffer": 0,
+			"byteLength": 1872,
+			"byteOffset": 2124,
+			"target": 34962
+		},
+		{
+			"buffer": 0,
+			"byteLength": 2496,
+			"byteOffset": 3996,
+			"target": 34962
+		},
+		{
+			"buffer": 0,
+			"byteLength": 1248,
+			"byteOffset": 6492,
+			"target": 34962
+		},
+		{
+			"buffer": 0,
+			"byteLength": 1248,
+			"byteOffset": 7740,
+			"target": 34962
+		}
+	],
+	"images": [
+		{
+			"uri": "T_PolygonMilitary_01_A.png"
+		},
+		{
+			"uri": "T_PolygonMilitary_01_A_Normals.png"
+		}
+	],
+	"materials": [
+		{
+			"name": "M_PolygonMilitary_01_A",
+			"pbrMetallicRoughness":
+			{
+				"baseColorTexture":
+				{
+					"index": 0
+				},
+				"metallicFactor": 0,
+				"roughnessFactor": 0.800000012
+			},
+			"normalTexture":
+			{
+				"index": 1
+			},
+			"extensions":
+			{
+				"KHR_materials_specular":
+				{
+					"specularFactor": 0.200000003
+				}
+			}
+		}
+	],
+	"meshes": [
+		{
+			"name": "SM_Bld_Village_House_Plinth_02",
+			"primitives": [
+				{
+					"attributes":
+					{
+						"POSITION": 1,
+						"NORMAL": 2,
+						"TANGENT": 3,
+						"TEXCOORD_0": 4,
+						"TEXCOORD_1": 5
+					},
+					"indices": 0,
+					"material": 0
+				}
+			]
+		}
+	],
+	"nodes": [
+		{
+			"mesh": 0
+		}
+	],
+	"samplers": [
+		{
+			"minFilter": 9987,
+			"magFilter": 9729
+		}
+	],
+	"scenes": [
+		{
+			"nodes": [ 0 ]
+		}
+	],
+	"textures": [
+		{
+			"name": "T_PolygonMilitary_01_A",
+			"sampler": 0,
+			"source": 0
+		},
+		{
+			"name": "T_PolygonMilitary_01_A_Normals",
+			"sampler": 0,
+			"source": 1
+		}
+	],
+	"extensionsUsed": [
+		"KHR_materials_specular"
+	]
+}

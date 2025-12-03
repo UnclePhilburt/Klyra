@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPS Shooter - Main Menu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0a0a0a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 50%, rgba(200, 50, 0, 0.08) 0%, transparent 50%);
+            animation: bgShift 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgShift {
+            0% {
+                opacity: 0.4;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0.6;
+                transform: translate(30px, 20px) scale(1.05);
+            }
+        }
+
+        /* Floating particles */
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background: radial-gradient(circle, rgba(255, 80, 40, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFloat linear infinite;
+        }
+
+        .particle:nth-child(1) {
+            width: 120px;
+            height: 120px;
+            left: 15%;
+            animation-duration: 20s;
+            animation-delay: 0s;
+        }
+        .particle:nth-child(2) {
+            width: 80px;
+            height: 80px;
+            left: 70%;
+            animation-duration: 25s;
+            animation-delay: 5s;
+        }
+        .particle:nth-child(3) {
+            width: 100px;
+            height: 100px;
+            left: 40%;
+            animation-duration: 22s;
+            animation-delay: 10s;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.4;
+            }
+            100% {
+                transform: translateY(-10vh) scale(1) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Scan lines */
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.05) 0px,
+                rgba(0, 0, 0, 0.05) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        /* HUD corners */
+        .hud-corner {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 1px solid rgba(200, 80, 40, 0.4);
+            z-index: 4;
+            pointer-events: none;
+            animation: hudPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes hudPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.7; }
+        }
+
+        .hud-corner.top-left {
+            top: 30px;
+            left: 30px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .hud-corner.top-right {
+            top: 30px;
+            right: 30px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .hud-corner.bottom-left {
+            bottom: 30px;
+            left: 30px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .hud-corner.bottom-right {
+            bottom: 30px;
+            right: 30px;
+            border-left: none;
+            border-top: none;
+        }
+
+        /* Menu container */
+        .menu-container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 60px 80px;
+            border-radius: 4px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(200, 80, 40, 0.25);
+            animation: menuEntrance 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes menuEntrance {
+            0% {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Title */
+        h1 {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 56px;
+            color: #fff;
+            margin-bottom: 15px;
+            text-shadow:
+                0 2px 20px rgba(200, 80, 40, 0.4),
+                0 0 40px rgba(200, 80, 40, 0.2);
+            letter-spacing: 8px;
+            font-weight: 700;
+            animation: titleGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% {
+                text-shadow:
+                    0 2px 20px rgba(200, 80, 40, 0.4),
+                    0 0 40px rgba(200, 80, 40, 0.2);
+            }
+            50% {
+                text-shadow:
+                    0 2px 25px rgba(200, 80, 40, 0.6),
+                    0 0 50px rgba(200, 80, 40, 0.3);
+            }
+        }
+
+        .subtitle {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px;
+            color: #999;
+            margin-bottom: 50px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: 400;
+            animation: subtitleFade 1.2s ease-out;
+        }
+
+        @keyframes subtitleFade {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Menu buttons */
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 350px;
+        }
+
+        .menu-btn {
+            padding: 16px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            font-family: 'Rajdhani', sans-serif;
+            color: #fff;
+            background: rgba(40, 40, 40, 0.8);
+            border: 1px solid rgba(200, 80, 40, 0.3);
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+            animation: btnFadeIn 0.6s ease-out backwards;
+        }
+
+        .menu-btn:nth-child(1) { animation-delay: 0.3s; }
+        .menu-btn:nth-child(2) { animation-delay: 0.4s; }
+        .menu-btn:nth-child(3) { animation-delay: 0.5s; }
+        .menu-btn:nth-child(4) { animation-delay: 0.6s; }
+
+        @keyframes btnFadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .menu-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(200, 80, 40, 0.15), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .menu-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(200, 80, 40, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+
+        .menu-btn:hover::before {
+            left: 100%;
+        }
+
+        .menu-btn:hover::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .menu-btn:hover {
+            background: rgba(60, 40, 30, 0.95);
+            border-color: rgba(200, 80, 40, 0.7);
+            transform: translateX(8px) scale(1.02);
+            box-shadow:
+                0 0 25px rgba(200, 80, 40, 0.3),
+                0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-btn:active {
+            transform: translateX(4px) scale(0.98);
+            transition: all 0.1s ease;
+        }
+
+        .menu-btn.primary {
+            background: rgba(180, 60, 20, 0.35);
+            border-color: rgba(200, 80, 40, 0.6);
+            box-shadow: 0 0 15px rgba(200, 80, 40, 0.2);
+        }
+
+        .menu-btn.primary:hover {
+            background: rgba(200, 70, 30, 0.6);
+            border-color: rgba(220, 100, 50, 0.9);
+            box-shadow:
+                0 0 35px rgba(200, 80, 40, 0.5),
+                0 5px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .menu-btn.editor {
+            background: rgba(150, 100, 40, 0.3);
+            border-color: rgba(180, 120, 50, 0.5);
+        }
+
+        .menu-btn.editor:hover {
+            background: rgba(170, 120, 50, 0.55);
+            border-color: rgba(200, 140, 60, 0.8);
+            box-shadow:
+                0 0 30px rgba(180, 120, 50, 0.3),
+                0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Version */
+        .version {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            color: rgba(255, 255, 255, 0.3);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 12px;
+            z-index: 5;
+            letter-spacing: 1px;
+            animation: versionFade 2s ease-out;
+        }
+
+        @keyframes versionFade {
+            from { opacity: 0; }
+            to { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Particles -->
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <!-- Scan lines -->
+    <div class="scanlines"></div>
+
+    <!-- HUD Corners -->
+    <div class="hud-corner top-left"></div>
+    <div class="hud-corner top-right"></div>
+    <div class="hud-corner bottom-left"></div>
+    <div class="hud-corner bottom-right"></div>
+
+    <!-- Menu container -->
+    <div class="menu-container">
+        <h1>FPS SHOOTER</h1>
+        <div class="subtitle">Main Menu</div>
+
+        <div class="menu-buttons">
+            <button class="menu-btn primary" onclick="window.location.href='game.html'">
+                Start Game
+            </button>
+            <button class="menu-btn editor" onclick="window.location.href='editor.html'">
+                Level Editor
+            </button>
+            <button class="menu-btn" onclick="alert('Settings coming soon!')">
+                Settings
+            </button>
+            <button class="menu-btn" onclick="alert('Credits:\nBuilt with Three.js\nCharacter models & animations')">
+                Credits
+            </button>
+        </div>
+    </div>
+
+    <!-- Version -->
+    <div class="version">v1.0.0</div>
+
+    <script>
+        // Sound effect functions
+        function playHoverSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 600;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        function playClickSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Create two oscillators for a richer sound
+            const osc1 = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            osc1.connect(gainNode);
+            osc2.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            osc1.frequency.value = 400;
+            osc2.frequency.value = 600;
+            osc1.type = 'sine';
+            osc2.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+
+            osc1.start(audioContext.currentTime);
+            osc2.start(audioContext.currentTime);
+            osc1.stop(audioContext.currentTime + 0.15);
+            osc2.stop(audioContext.currentTime + 0.15);
+        }
+
+        // Add event listeners to all buttons
+        const buttons = document.querySelectorAll('.menu-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('mouseenter', playHoverSound);
+            btn.addEventListener('click', playClickSound);
+        });
+    </script>
+    <!-- Backend configuration -->
+    <script src="config.js"></script>
+    <!-- Socket.IO client -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <!-- Main game script -->
+    <script type="module" src="main.js"></script>
+</body>
+</html>

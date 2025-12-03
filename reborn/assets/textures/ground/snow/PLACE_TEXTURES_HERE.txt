@@ -1,0 +1,11 @@
+Place your snow texture files here:
+
+Required files:
+- albedo.jpg (base color)
+- normal.jpg (surface detail)
+- roughness.jpg (shininess)
+- ao.jpg (ambient occlusion)
+- displacement.jpg (optional - height map)
+
+Download from: https://fab.com
+Search for: "snow ground", "snow terrain", "snowy surface"

@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Animation Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            max-width: 300px;
+        }
+        #ui h3 {
+            margin-top: 0;
+        }
+        #current-animation {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .key {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        #animation-list {
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        #weapon-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            max-width: 250px;
+            display: none;
+        }
+        #weapon-controls.active {
+            display: block;
+        }
+        .slider-control {
+            margin: 8px 0;
+        }
+        .slider-control label {
+            display: block;
+            font-size: 11px;
+            margin-bottom: 2px;
+        }
+        .slider-control input[type="range"] {
+            width: 100%;
+        }
+        .slider-value {
+            font-size: 10px;
+            color: #4CAF50;
+        }
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+        }
+        #crosshair::before {
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            transform: translateY(-50%);
+        }
+        #crosshair::after {
+            left: 50%;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            transform: translateX(-50%);
+        }
+        #crosshair.dot {
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(0, 0, 0, 0.8);
+            border-radius: 50%;
+        }
+        #crosshair.dot::before,
+        #crosshair.dot::after {
+            display: none;
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            transition: opacity 0.5s;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-title {
+            font-size: 48px;
+            color: #fff;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+            font-weight: bold;
+        }
+
+        .loading-bar-container {
+            width: 400px;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid rgba(76, 175, 80, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .loading-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+        }
+
+        .loading-text {
+            color: #4CAF50;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .loading-percentage {
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        /* Team Selection Screen */
+        #team-selection-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s;
+        }
+
+        #team-selection-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .team-selection-title {
+            font-size: 48px;
+            color: #fff;
+            margin-bottom: 50px;
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+            font-weight: bold;
+        }
+
+        .team-selection-container {
+            display: flex;
+            gap: 40px;
+        }
+
+        .team-button {
+            width: 300px;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 3px solid;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .team-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 40px;
+        }
+
+        .team-button.team1 {
+            border-color: #ff4444;
+        }
+
+        .team-button.team1:hover {
+            box-shadow: 0 0 40px rgba(255, 68, 68, 0.8);
+            background: rgba(255, 68, 68, 0.1);
+        }
+
+        .team-button.team2 {
+            border-color: #4444ff;
+        }
+
+        .team-button.team2:hover {
+            box-shadow: 0 0 40px rgba(68, 68, 255, 0.8);
+            background: rgba(68, 68, 255, 0.1);
+        }
+
+        .team-icon {
+            font-size: 120px;
+            margin-bottom: 30px;
+        }
+
+        .team-name {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .team-description {
+            font-size: 18px;
+            color: #aaa;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        /* Death/Respawn Screen */
+        #death-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 8888;
+        }
+
+        #death-screen.visible {
+            display: flex;
+        }
+
+        .death-title {
+            font-size: 72px;
+            color: #ff4444;
+            margin-bottom: 30px;
+            text-shadow: 0 0 30px rgba(255, 68, 68, 0.8);
+            font-weight: bold;
+        }
+
+        .respawn-message {
+            font-size: 28px;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .respawn-timer {
+            font-size: 48px;
+            color: #4CAF50;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+        }
+
+        /* Player Health Bar */
+        #player-health-bar {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            z-index: 1000;
+        }
+
+        .health-bar-container {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .health-bar-label {
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .health-bar-bg {
+            background: #333;
+            height: 25px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #555;
+        }
+
+        .health-bar-fill {
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        .health-bar-fill.low {
+            background: linear-gradient(90deg, #ff0000, #ff6b6b);
+        }
+
+        .health-text {
+            color: #4CAF50;
+            font-size: 14px;
+            margin-top: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+
+        /* Score Display */
+        #score-display {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            z-index: 1000;
+            min-width: 400px;
+        }
+
+        .team-score {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .team-score-label {
+            font-size: 14px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .team-score.team1 .team-score-label {
+            color: #ff4444;
+        }
+
+        .team-score.team2 .team-score-label {
+            color: #4444ff;
+        }
+
+        .team-score-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .score-separator {
+            font-size: 28px;
+            color: #888;
+            font-weight: bold;
+        }
+
+        .player-stats {
+            position: fixed;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .player-stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-stat-label {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .player-stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        /* Kill Feed */
+        #kill-feed {
+            position: fixed;
+            top: 150px;
+            right: 20px;
+            width: 350px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .kill-feed-item {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border-left: 4px solid;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease-out;
+            transition: opacity 0.5s;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .kill-feed-item.team1 {
+            border-left-color: #ff4444;
+        }
+
+        .kill-feed-item.team2 {
+            border-left-color: #4444ff;
+        }
+
+        .kill-feed-killer {
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .kill-feed-weapon {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .kill-feed-victim {
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .kill-feed-icon {
+            font-size: 16px;
+        }
+
+        /* End Game Screen */
+        #end-game-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+        }
+
+        #end-game-screen.visible {
+            display: flex;
+        }
+
+        .victory-title {
+            font-size: 72px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 40px;
+        }
+
+        .victory-title.team1 {
+            color: #ff4444;
+            text-shadow: 0 0 40px rgba(255, 68, 68, 0.8);
+        }
+
+        .victory-title.team2 {
+            color: #4444ff;
+            text-shadow: 0 0 40px rgba(68, 68, 255, 0.8);
+        }
+
+        .final-score {
+            font-size: 48px;
+            color: #fff;
+            margin-bottom: 40px;
+        }
+
+        .final-stats {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .final-stat-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            font-size: 24px;
+            color: #fff;
+            margin: 10px 0;
+        }
+
+        .final-stat-label {
+            color: #aaa;
+        }
+
+        .final-stat-value {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .reload-button {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .reload-button:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-title">LOADING</div>
+        <div class="loading-bar-container">
+            <div class="loading-bar" id="loading-bar"></div>
+        </div>
+        <div class="loading-text" id="loading-text">Loading animations...</div>
+        <div class="loading-percentage" id="loading-percentage">0%</div>
+    </div>
+
+    <!-- Team Selection Screen -->
+    <div id="team-selection-screen" class="hidden">
+        <div class="team-selection-title">SELECT YOUR TEAM</div>
+        <div class="team-selection-container">
+            <div class="team-button team1" id="select-team1">
+                <div class="team-icon">🔴</div>
+                <div class="team-name">TEAM 1</div>
+                <div class="team-description">Red Team / Attackers</div>
+            </div>
+            <div class="team-button team2" id="select-team2">
+                <div class="team-icon">🔵</div>
+                <div class="team-name">TEAM 2</div>
+                <div class="team-description">Blue Team / Defenders</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Death/Respawn Screen -->
+    <div id="death-screen">
+        <div class="death-title">YOU DIED</div>
+        <div class="respawn-message">Respawning in</div>
+        <div class="respawn-timer" id="respawn-timer">5</div>
+    </div>
+
+    <!-- Player Health Bar -->
+    <div id="player-health-bar">
+        <div class="health-bar-container">
+            <div class="health-bar-label">HEALTH</div>
+            <div class="health-bar-bg">
+                <div class="health-bar-fill" id="player-health-fill"></div>
+            </div>
+            <div class="health-text"><span id="player-health-text">100</span> / 100</div>
+        </div>
+    </div>
+
+    <!-- Score Display -->
+    <div id="score-display">
+        <div class="team-score team1">
+            <div class="team-score-label">TEAM 1</div>
+            <div class="team-score-value" id="team1-score">0</div>
+        </div>
+        <div class="score-separator">-</div>
+        <div class="team-score team2">
+            <div class="team-score-label">TEAM 2</div>
+            <div class="team-score-value" id="team2-score">0</div>
+        </div>
+    </div>
+
+    <!-- Player Stats -->
+    <div class="player-stats">
+        <div class="player-stat">
+            <span class="player-stat-label">KILLS:</span>
+            <span class="player-stat-value" id="player-kills">0</span>
+        </div>
+        <div class="player-stat">
+            <span class="player-stat-label">DEATHS:</span>
+            <span class="player-stat-value" id="player-deaths">0</span>
+        </div>
+    </div>
+
+    <!-- FPS Counter -->
+    <div id="fps-counter" style="position: fixed; top: 10px; right: 10px; color: #0f0; font-family: monospace; font-size: 14px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 3px; z-index: 1000;">FPS: 60</div>
+
+    <!-- Kill Feed -->
+    <div id="kill-feed"></div>
+
+    <!-- End Game Screen -->
+    <div id="end-game-screen">
+        <div class="victory-title" id="victory-title">TEAM 1 WINS!</div>
+        <div class="final-score" id="final-score">50 - 32</div>
+        <div class="final-stats">
+            <h2 style="color: #fff; text-align: center; margin-top: 0;">YOUR STATS</h2>
+            <div class="final-stat-row">
+                <span class="final-stat-label">Kills:</span>
+                <span class="final-stat-value" id="final-kills">0</span>
+            </div>
+            <div class="final-stat-row">
+                <span class="final-stat-label">Deaths:</span>
+                <span class="final-stat-value" id="final-deaths">0</span>
+            </div>
+            <div class="final-stat-row">
+                <span class="final-stat-label">K/D Ratio:</span>
+                <span class="final-stat-value" id="final-kd">0.00</span>
+            </div>
+        </div>
+        <button class="reload-button" onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
+
+    <div id="crosshair"></div>
+
+    <!-- NPC Health Bar -->
+    <div id="npc-health-container" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -150px); display: none;">
+        <div style="background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 5px; text-align: center; min-width: 200px;">
+            <div style="color: white; font-size: 14px; margin-bottom: 5px;">Target</div>
+            <div style="background: #333; height: 20px; border-radius: 10px; overflow: hidden; border: 2px solid #555;">
+                <div id="npc-health-bar" style="background: linear-gradient(90deg, #ff0000, #ff6b6b); height: 100%; width: 100%; transition: width 0.3s;"></div>
+            </div>
+            <div style="color: #4CAF50; font-size: 12px; margin-top: 5px;">
+                <span id="npc-health-text">100</span> / 100 HP
+            </div>
+        </div>
+    </div>
+
+    <div id="ui">
+        <h3>Animation Demo</h3>
+        <div>Camera: <span id="camera-mode" style="color: #4CAF50; font-weight: bold;">First-Person</span></div>
+        <div>Character: <span id="current-character" style="color: #4CAF50;">Loading...</span></div>
+        <div>Weapon: <span id="current-weapon" style="color: #ff9800;">Unarmed</span></div>
+        <div>Animation: <span id="current-animation">Loading...</span></div>
+        <div style="margin-top: 10px;">
+            <div id="pointer-status" style="color: #ff9800; font-weight: bold; margin-bottom: 5px;">
+                Click to lock mouse
+            </div>
+            <strong>Controls:</strong><br>
+            <span class="key">Q / E</span> Switch character<br>
+            <span class="key">R</span> Toggle weapon (Rifle/Unarmed)<br>
+            <span class="key">C</span> Toggle crouch<br>
+            <span class="key">Click</span> Lock mouse to game<br>
+            <span class="key">ESC</span> Unlock mouse<br>
+            <span class="key">WASD</span> Move character<br>
+            <span class="key">Shift</span> Sprint (jog)<br>
+            <span class="key">Mouse Move</span> Rotate camera<br>
+            <span class="key">Arrow Keys</span> Also rotate camera<br>
+            <span class="key">Scroll</span> Zoom in/out<br>
+            <span class="key">P</span> Toggle First/Third Person<br>
+            <span class="key">H</span> Toggle crosshair style<br>
+            <span class="key">1-9</span> Manual animation test
+
+            <div id="rifle-controls-info" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
+                <strong style="color: #4CAF50;">Rifle Actions:</strong><br>
+                <span class="key">Left Click</span> Fire weapon<br>
+                <span class="key">Right Click</span> Aim Down Sights (hold)<br>
+                <span class="key">V</span> Toggle ADS<br>
+                <span class="key">T</span> Reload<br>
+                <span class="key">F</span> Fire (alt)<br>
+                <span class="key">G</span> Melee attack<br>
+                <span class="key">M</span> Manual rifle adjust mode
+            </div>
+        </div>
+        <div id="animation-list"></div>
+    </div>
+
+    <div id="weapon-controls">
+        <h4 style="margin-top: 0;">Rifle Position Adjuster</h4>
+        <div style="background: rgba(76, 175, 80, 0.2); padding: 8px; border-radius: 3px; margin-bottom: 10px; font-size: 12px;">
+            <strong>Press M to enable manual mode</strong><br>
+            <span style="font-size: 11px; color: #aaa;">Green border = Manual mode active</span>
+        </div>
+
+        <div class="slider-control">
+            <label>Position X: <span class="slider-value" id="pos-x-val">0</span></label>
+            <input type="range" id="pos-x" min="-1" max="1" step="0.01" value="0">
+        </div>
+
+        <div class="slider-control">
+            <label>Position Y: <span class="slider-value" id="pos-y-val">0</span></label>
+            <input type="range" id="pos-y" min="-1" max="1" step="0.01" value="0">
+        </div>
+
+        <div class="slider-control">
+            <label>Position Z: <span class="slider-value" id="pos-z-val">0</span></label>
+            <input type="range" id="pos-z" min="-1" max="1" step="0.01" value="0">
+        </div>
+
+        <hr style="margin: 10px 0; border-color: #444;">
+
+        <div class="slider-control">
+            <label>Rotation X: <span class="slider-value" id="rot-x-val">0</span>°</label>
+            <input type="range" id="rot-x" min="-180" max="180" step="1" value="0">
+        </div>
+
+        <div class="slider-control">
+            <label>Rotation Y: <span class="slider-value" id="rot-y-val">0</span>°</label>
+            <input type="range" id="rot-y" min="-180" max="180" step="1" value="0">
+        </div>
+
+        <div class="slider-control">
+            <label>Rotation Z: <span class="slider-value" id="rot-z-val">0</span>°</label>
+            <input type="range" id="rot-z" min="-180" max="180" step="1" value="0">
+        </div>
+
+        <hr style="margin: 10px 0; border-color: #444;">
+
+        <div class="slider-control">
+            <label>Scale: <span class="slider-value" id="scale-val">1</span></label>
+            <input type="range" id="scale" min="0.1" max="2" step="0.1" value="1">
+        </div>
+
+        <button id="copy-values" style="width: 100%; padding: 8px; margin-top: 10px; background: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">
+            Copy Values to Console
+        </button>
+    </div>
+
+    <!-- Proximity Prompt for Briefing Board -->
+    <div id="briefing-board-prompt" style="display: none; position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.9); padding: 20px 40px; border-radius: 12px; border: 3px solid rgba(76, 175, 80, 0.6); z-index: 5000; box-shadow: 0 0 30px rgba(76, 175, 80, 0.4);">
+        <div style="text-align: center;">
+            <div style="font-size: 18px; color: #4CAF50; margin-bottom: 8px; font-weight: bold;">BRIEFING BOARD</div>
+            <div style="font-size: 24px; color: white; font-weight: bold;">
+                Press <span style="background: #4CAF50; color: black; padding: 5px 15px; border-radius: 5px; margin: 0 5px;">↑ UP</span> to Start a Game
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Setup Menu (Ravenfield/Battlefield Style) -->
+    <div id="game-setup-menu" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 9500; overflow-y: auto;">
+        <div style="max-width: 1200px; margin: 50px auto; padding: 40px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 20px; border: 3px solid rgba(76, 175, 80, 0.4); box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);">
+
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 40px; border-bottom: 2px solid rgba(76, 175, 80, 0.3); padding-bottom: 20px;">
+                <h1 style="color: #4CAF50; font-size: 48px; margin: 0 0 10px 0; text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);">GAME SETUP</h1>
+                <p style="color: #aaa; font-size: 18px; margin: 0;">Configure your match settings</p>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">
+
+                <!-- Left Column: AI Settings -->
+                <div style="background: rgba(0, 0, 0, 0.3); padding: 25px; border-radius: 15px; border: 2px solid rgba(255, 255, 255, 0.1);">
+                    <h2 style="color: #4CAF50; font-size: 28px; margin: 0 0 20px 0; display: flex; align-items: center; gap: 10px;">
+                        <span>🤖</span> AI CONFIGURATION
+                    </h2>
+
+                    <!-- AI Count -->
+                    <div style="margin-bottom: 25px;">
+                        <label style="display: block; color: white; font-size: 16px; margin-bottom: 10px; font-weight: bold;">
+                            Total AI Bots: <span id="ai-count-display" style="color: #4CAF50;">20</span>
+                        </label>
+                        <input type="range" id="ai-count-slider" min="0" max="100" step="5" value="20" style="width: 100%; height: 8px; border-radius: 5px; background: rgba(255,255,255,0.2); cursor: pointer;">
+                        <div style="display: flex; justify-content: space-between; color: #888; font-size: 12px; margin-top: 5px;">
+                            <span>0</span>
+                            <span>50</span>
+                            <span>100</span>
+                        </div>
+                    </div>
+
+                    <!-- Team Split -->
+                    <div style="margin-bottom: 25px;">
+                        <label style="display: block; color: white; font-size: 16px; margin-bottom: 10px; font-weight: bold;">
+                            Team Split
+                        </label>
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <div style="flex: 1; text-align: center; padding: 10px; background: rgba(255, 68, 68, 0.2); border: 2px solid #ff4444; border-radius: 8px;">
+                                <div style="color: #ff4444; font-size: 12px; margin-bottom: 5px;">TEAM 1</div>
+                                <div id="team1-ai-count" style="color: white; font-size: 24px; font-weight: bold;">10</div>
+                            </div>
+                            <div style="flex: 1; text-align: center; padding: 10px; background: rgba(68, 68, 255, 0.2); border: 2px solid #4444ff; border-radius: 8px;">
+                                <div style="color: #4444ff; font-size: 12px; margin-bottom: 5px;">TEAM 2</div>
+                                <div id="team2-ai-count" style="color: white; font-size: 24px; font-weight: bold;">10</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Difficulty -->
+                    <div style="margin-bottom: 25px;">
+                        <label style="display: block; color: white; font-size: 16px; margin-bottom: 10px; font-weight: bold;">
+                            AI Difficulty
+                        </label>
+                        <select id="ai-difficulty" style="width: 100%; padding: 12px; font-size: 16px; background: rgba(0,0,0,0.5); color: white; border: 2px solid rgba(76, 175, 80, 0.3); border-radius: 8px; cursor: pointer;">
+                            <option value="easy">Easy - Slow reaction, poor aim</option>
+                            <option value="normal" selected>Normal - Balanced gameplay</option>
+                            <option value="hard">Hard - Fast reaction, good aim</option>
+                            <option value="expert">Expert - Very challenging</option>
+                        </select>
+                    </div>
+
+                    <!-- AI Behavior -->
+                    <div style="margin-bottom: 0;">
+                        <label style="display: block; color: white; font-size: 16px; margin-bottom: 10px; font-weight: bold;">
+                            AI Behavior Type
+                        </label>
+                        <select id="ai-behavior" style="width: 100%; padding: 12px; font-size: 16px; background: rgba(0,0,0,0.5); color: white; border: 2px solid rgba(76, 175, 80, 0.3); border-radius: 8px; cursor: pointer;">
+                            <option value="balanced" selected>Balanced - Mix of offense/defense</option>
+                            <option value="aggressive">Aggressive - Rush tactics</option>
+                            <option value="defensive">Defensive - Hold positions</option>
+                            <option value="tactical">Tactical - Cover and flank</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Right Column: Map & Game Settings -->
+                <div style="background: rgba(0, 0, 0, 0.3); padding: 25px; border-radius: 15px; border: 2px solid rgba(255, 255, 255, 0.1);">
+                    <h2 style="color: #4CAF50; font-size: 28px; margin: 0 0 20px 0; display: flex; align-items: center; gap: 10px;">
+                        <span>🗺️</span> MAP & GAME SETTINGS
+                    </h2>
+
+                    <!-- Map Selection -->
+                    <div style="margin-bottom: 25px;">
+                        <label style="display: block; color: white; font-size: 16px; margin-bottom: 10px; font-weight: bold;">
+                            Select Map
+                        </label>
+                        <div id="map-selector" style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="map-option" data-map="test1" style="padding: 15px; background: rgba(76, 175, 80, 0.2); border: 3px solid #4CAF50; border-radius: 10px; cursor: pointer; transition: all 0.3s;">
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <div style="width: 80px; height: 80px; background: rgba(0,0,0,0.5); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 32px;">🏞️</div>
+                                    <div style="flex: 1;">
+                                        <div style="color: white; font-size: 20px; font-weight: bold; margin-bottom: 5px;">Test Map 1</div>
+                                        <div style="color: #aaa; font-size: 14px;">Default test map for gameplay testing</div>
+                                    </div>
+                                    <div style="color: #4CAF50; font-size: 24px;">✓</div>
+                                </div>
+                            </div>
+                            <!-- More maps will be added here in the future -->
+                        </div>
+                    </div>
+
+                    <!-- Game Mode (for future) -->
+                    <div style="margin-bottom: 25px;">
+                        <label style="display: block; color: white; font-size: 16px; margin-bottom: 10px; font-weight: bold;">
+                            Game Mode <span style="color: #888; font-size: 12px; font-weight: normal;">(Coming Soon)</span>
+                        </label>
+                        <select disabled style="width: 100%; padding: 12px; font-size: 16px; background: rgba(0,0,0,0.3); color: #666; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; cursor: not-allowed;">
+                            <option>Team Deathmatch (Current)</option>
+                        </select>
+                    </div>
+
+                    <!-- Score Limit (for future) -->
+                    <div style="margin-bottom: 0;">
+                        <label style="display: block; color: white; font-size: 16px; margin-bottom: 10px; font-weight: bold;">
+                            Score Limit <span style="color: #888; font-size: 12px; font-weight: normal;">(Coming Soon)</span>
+                        </label>
+                        <input type="number" disabled value="50" style="width: 100%; padding: 12px; font-size: 16px; background: rgba(0,0,0,0.3); color: #666; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; cursor: not-allowed;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Buttons -->
+            <div style="display: flex; gap: 20px; justify-content: center;">
+                <button id="start-game-btn" style="padding: 18px 60px; font-size: 24px; font-weight: bold; background: linear-gradient(135deg, #4CAF50, #45a049); color: white; border: none; border-radius: 12px; cursor: pointer; transition: all 0.3s; box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);">
+                    🎮 START GAME
+                </button>
+                <button id="cancel-game-btn" style="padding: 18px 60px; font-size: 24px; font-weight: bold; background: rgba(255, 68, 68, 0.2); color: #ff4444; border: 2px solid #ff4444; border-radius: 12px; cursor: pointer; transition: all 0.3s;">
+                    ✖ CANCEL
+                </button>
+            </div>
+
+            <!-- Quick Stats Preview -->
+            <div style="margin-top: 30px; padding: 20px; background: rgba(76, 175, 80, 0.1); border-radius: 10px; border: 1px solid rgba(76, 175, 80, 0.3);">
+                <div style="text-align: center; color: #4CAF50; font-size: 14px; margin-bottom: 10px; font-weight: bold;">MATCH PREVIEW</div>
+                <div style="display: flex; justify-content: center; gap: 40px; color: white; font-size: 14px;">
+                    <div><span style="color: #888;">Map:</span> <span id="preview-map" style="color: #4CAF50; font-weight: bold;">Test Map 1</span></div>
+                    <div><span style="color: #888;">Total Bots:</span> <span id="preview-bots" style="color: #4CAF50; font-weight: bold;">20</span></div>
+                    <div><span style="color: #888;">Difficulty:</span> <span id="preview-difficulty" style="color: #4CAF50; font-weight: bold;">Normal</span></div>
+                    <div><span style="color: #888;">Type:</span> <span id="preview-behavior" style="color: #4CAF50; font-weight: bold;">Balanced</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backend configuration -->
+    <script src="config.js"></script>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
